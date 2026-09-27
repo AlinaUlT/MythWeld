@@ -168,3 +168,108 @@ Nothing to check. The ticket holds no rules facts.
 **Found, not fixed:** nothing.
 
 **Changelog:** nothing for the changelog; a person sees a blank page.
+
+---
+
+### SETUP-02 One unit test and one browser test
+
+**Hat:** Vitest and Playwright (Pixel 7) each run one passing test
+**Depends on:** SETUP-01
+**Size:** S
+**Screen:** No
+**SPEC:** §4.2 (tests row), §12 stage 0
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `vitest.config.ts` — new, at the root. The other files it touches:
+
+- `package.json` — changes: `test` runs Vitest once; new `e2e` script.
+- `apps/web/playwright.config.ts` — new: the Pixel 7 project and the preview server.
+- `apps/web/e2e/smoke.spec.ts` — new: the one browser test.
+- `packages/engine/test/smoke.test.ts` — new: the one unit test.
+- `apps/web/package.json` — changes: `e2e` script.
+
+#### 2. What is missing now
+
+Measured on 2026-09-27, after SETUP-01:
+
+```
+$ pnpm test
+Scope: 5 of 6 workspace projects        (runs nothing, exit 0)
+$ pnpm e2e
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command "e2e" not found
+```
+
+#### 3. What it should look like when done
+
+1. `pnpm test` runs Vitest once over every workspace project and reports
+   `1 passed (1)`, with the test named `SETUP-02 engine smoke`.
+2. `pnpm e2e` builds the web app, serves it with `vite preview`, and runs Playwright with one
+   project named `pixel-7`: `1 passed`.
+3. The browser test opens `/` and checks the page title is `GrimoireMancer` (read from
+   `APP_NAME`, not typed a second time).
+4. The browser test saves a screenshot to `apps/web/test-results/` (git-ignored; not committed).
+5. `pnpm lint && pnpm typecheck` stay green; the Playwright config and the tests are type-checked.
+
+#### 4. How to do it
+
+1. Root dev dependency `vitest`. Root `vitest.config.ts` with
+   `test.projects: ['packages/*', 'apps/web']` and `include: ['**/test/**/*.test.ts']`, so
+   every package can add tests under `test/` without more config. Root script
+   `test: vitest run`.
+2. `packages/engine/test/smoke.test.ts`: `describe('SETUP-02 engine smoke', …)` imports
+   `@grimoire/engine` and checks the import resolves. It is the only test until phase 1.
+3. `apps/web` dev dependency `@playwright/test`. `playwright.config.ts`:
+   - one project `pixel-7` = `devices['Pixel 7']` (touch, mobile user agent, device pixel ratio);
+   - `webServer`: `pnpm build && pnpm preview --port 4173 --strictPort`, `url` on that port;
+   - `launchOptions.executablePath` from `PLAYWRIGHT_CHROMIUM_PATH` when it is set, so the cloud
+     environment uses its preinstalled Chromium and nothing is downloaded.
+4. `apps/web/e2e/smoke.spec.ts`: `test('SETUP-02 app opens', …)` → `page.goto('/')`,
+   `expect(page).toHaveTitle(APP_NAME)`, `page.screenshot(...)`.
+5. Scripts: `apps/web` `e2e: playwright test`; root `e2e: pnpm --filter @grimoire/web e2e`.
+6. `.gitignore`: add `test-results`, `playwright-report`.
+7. Run the gate including `pnpm e2e`.
+
+**Viewport question for the checkpoint.** Playwright's Pixel 7 is 412×839 CSS pixels.
+`docs/tickets/README.md` asks for screenshots at 360×800. The plan keeps the Pixel 7 device
+(touch, user agent, pixel ratio) and overrides only the viewport to 360×800, so every screenshot
+is the size the README asks for.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen. The page is still blank.
+
+#### 7. Tests
+
+- `packages/engine/test/smoke.test.ts` — the engine package can be imported.
+- `apps/web/e2e/smoke.spec.ts` — the built app opens on a Pixel 7 profile; title is `APP_NAME`.
+- Control numbers from: `APP_NAME` in `apps/web/src/config/app.ts`.
+
+#### 8. Checked against the source
+
+Nothing to check. The ticket holds no rules facts.
+
+#### 9. Not in this ticket
+
+- Coverage reporting and the 90 % `engine` threshold — ENG-23.
+- The iPhone 14 project from SPEC §4.2 — not in the phase 0 rows; added when a screen needs it.
+- Screenshot comparison against saved images — not planned; screenshots are shown in the chat.
+- CI — SETUP-03.
+
+#### 10. Rake check
+
+- **`engine` is pure TypeScript:** Vitest is a root dev dependency, not an `engine` dependency;
+  the smoke test imports only `@grimoire/engine`.
+- **No telemetry:** Playwright and Vitest run locally; the test makes no external request.
+- **Screenshots are not committed:** `test-results` is git-ignored.
+- **No tool attribution; nothing invisible.**
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
