@@ -11,4 +11,5 @@ Format:
 
 ---
 
-Nothing yet.
+- 2026-09-27 · SETUP-04 · The app opens dark, with a bottom bar of four tabs: Characters, Library,
+  Dice, Settings. Each tab shows only its title.

@@ -435,6 +435,39 @@ Nothing to check. The ticket holds no rules facts.
 
 <!-- Filled at the end. Never left empty. -->
 
+**Built in order A** (Alina, 2026-09-27): SETUP-05 came first, so the labels are i18n keys.
+
+**Measured on 2026-09-27:**
+
+- `pnpm lint`: `Checked 44 files`, 0 errors. `pnpm typecheck`: 5 of 5 projects `Done`.
+- `pnpm test`: `Test Files 4 passed (4)`, `Tests 10 passed (10)`, 587 ms.
+- `pnpm e2e`: `5 passed (10.5s)` on `pixel-7` (1 from SETUP-02, 4 new).
+- The four tabs at 360x800: each 90x56 CSS pixels, top at y = 744, bottom at y = 800.
+- Screenshots: `characters.png`, `library.png`, `dice.png`, `settings.png`, each 945x2100
+  pixels = 360x800 CSS pixels. Shown in the chat; not committed.
+- Build: JS 396.10 kB (125.66 kB gzip), up from 264.27 kB; CSS 7.01 kB (2.29 kB gzip).
+  The difference is react-router, the four lucide icons and Tailwind.
+
+**Versions:** tailwindcss 4.3.3, `@tailwindcss/vite` 4.3.3, react-router 7.18.4,
+lucide-react 1.48.0, clsx 2.1.1, tailwind-merge 3.7.0.
+
+**Differences from §1 and §4:**
+
+- `src/pages/PageTitle.tsx` is new: the heading the four pages share.
+- `biome.json` got `css.parser.tailwindDirectives: true`; without it Biome fails to parse
+  `@theme`, `@custom-variant` and `@apply`.
+- `index.html` got `viewport-fit=cover`, so `env(safe-area-inset-bottom)` has a value on a
+  phone with a home bar.
+- The current tab is marked by colour (`text-primary`) and `aria-current="page"`; the others
+  use `text-muted-foreground`.
+- `components.json` names the alias `@/…` the shadcn CLI expects. No `@` path alias exists in
+  Vite or TypeScript yet; components copied in by hand use relative imports.
+- The e2e test reads the expected labels from `locales/en/common.json`, not from typed text.
+
+**Found, not fixed:** nothing.
+
+**Changelog:** one line — the bottom bar with four tabs.
+
 ---
 
 ### SETUP-05 Visible text through i18next
