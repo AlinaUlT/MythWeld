@@ -434,3 +434,168 @@ Nothing to check. The ticket holds no rules facts.
 #### 11. What came out of it
 
 <!-- Filled at the end. Never left empty. -->
+
+---
+
+### SETUP-05 Visible text through i18next
+
+**Hat:** Every visible string goes through an i18next key, enforced by lint
+**Depends on:** SETUP-02
+**Size:** S
+**Screen:** No
+**SPEC:** §9 (first bullet: locale files, no text in JSX), ADR 000 item 3 (`en` only)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/i18n/index.ts` — new: creates and initialises the i18next instance.
+The other files it touches:
+
+- `apps/web/src/locales/en/common.json` — new: the English strings of the `common` namespace.
+- `apps/web/src/i18n/i18next.d.ts` — new: tells TypeScript which keys exist.
+- `apps/web/src/main.tsx` — changes: imports `./i18n` before rendering.
+- `apps/web/package.json` — changes: `i18next`, `react-i18next`.
+- `apps/web/tsconfig.json` — changes: `resolveJsonModule`; `test` joins `include`.
+- `biome.json` — changes: an override for `apps/web/src/**` that turns on `noJsxLiterals` and
+  the plugin below.
+- `biome/no-visible-literals.grit` — new: a Biome GritQL plugin.
+- `apps/web/test/i18n.test.ts`, `apps/web/test/no-visible-literals.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on 2026-09-27, at `6691b3c`:
+
+- No i18n: `grep -rl i18n apps packages` finds nothing; `apps/web/src` holds only `App.tsx`,
+  `main.tsx`, `config/app.ts`.
+- No rule: a probe file `apps/web/src/Probe.tsx` with `<p title="Tip">Hello</p>` passes
+  `pnpm lint` (`Checked 27 files in 7ms. No fixes applied.`, exit 0).
+
+#### 3. What it should look like when done
+
+1. `apps/web/src/locales/en/common.json` holds 4 keys: `nav.characters` = `Characters`,
+   `nav.library` = `Library`, `nav.dice` = `Dice`, `nav.settings` = `Settings` (the tab labels
+   SETUP-04 §6 asks for). No `ru` folder (ADR 000).
+2. The app initialises i18next once, before the first render, with language `en`, namespace
+   `common`, and the strings bundled into the build (no network loading).
+3. `i18n.t('nav.dice')` returns `Dice`. `t('nav.nope')` is a TypeScript error.
+4. `pnpm lint` fails on each of these in `apps/web/src/**`:
+   text between tags (`<p>Hello</p>`); a string or template in braces (`{'Hello'}`,
+   `` {`Hello`} ``); a string in the attributes `title`, `alt`, `placeholder`, `label`,
+   `aria-label`, `aria-description` (as `"…"` or `{'…'}`).
+5. `pnpm lint` does not fail on: `{t('nav.dice')}`, `title={t('…')}`, `className="…"`, `href`,
+   `src`, `type`, `data-*`, and `{' '}` (a space between elements).
+6. `pnpm test`: the lint test runs Biome on a bad sample (expects exit 1 and 9 errors at the
+   listed lines) and on a good sample (expects exit 0).
+7. The screen does not change: `App` still renders nothing.
+
+#### 4. How to do it
+
+1. Add `i18next` 26 and `react-i18next` 17 to `apps/web`.
+2. `locales/en/common.json` with the 4 keys of §3.1, nested (`{ "nav": { "dice": "Dice" } }`).
+3. `i18n/index.ts`: `i18next.use(initReactI18next).init({ lng: 'en', fallbackLng: 'en',
+   supportedLngs: ['en'], ns: ['common'], defaultNS: 'common', resources: { en: { common } },
+   interpolation: { escapeValue: false } })`, synchronous, and `export default i18next`.
+4. `i18n/i18next.d.ts`: `CustomTypeOptions` with `defaultNS: 'common'` and
+   `resources: { common: typeof common }`, so unknown keys fail `pnpm typecheck`.
+5. `main.tsx`: `import './i18n';` above the `App` import.
+6. The lint rule, in two parts (see "Differs from the row" below):
+   - Biome's built-in `style/noJsxLiterals` with default options: text between tags.
+   - `biome/no-visible-literals.grit`: a string or template literal as a JSX child, and a
+     string in the six visible attributes of §3.4. Whitespace-only strings are allowed.
+   - Both are switched on in a `biome.json` `overrides` entry for `apps/web/src/**` only.
+7. `test/no-visible-literals.test.ts` (`describe('SETUP-05 no visible literals')`): copies
+   `biome.json` and the plugin into a temporary folder, writes the bad and the good sample to
+   `apps/web/src/Sample.tsx` inside it, runs the repository's `biome lint` there, and checks
+   the exit code and the error lines. The samples are strings inside the test, so the real
+   `pnpm lint` never sees a bad file.
+8. `test/i18n.test.ts` (`describe('SETUP-05 i18n')`): language is `en`; the 4 keys give their
+   English text; one `@ts-expect-error` line on an unknown key keeps the type check honest.
+9. Run the gate, `pnpm e2e` included (the ticket touches `apps/web`).
+
+**Differs from the row and SETUP-04, checked against the code:**
+
+- The row says "a lint rule". Biome 2.5.14's `noJsxLiterals` alone catches only text between
+  tags. Its `noStrings` option would also catch `{'…'}` and attributes, but measured on a
+  sample it also flags the key inside `t('nav.dice')` and every `className`, so it cannot be
+  used. The GritQL plugin covers the rest. It was tried on a sample: 9 of 9 bad spots found,
+  0 false hits.
+- SETUP-04 §4 says the rule is "tested on `App.tsx`". `App.tsx` has no JSX (`return null`), so
+  the test uses the two samples instead. `App.tsx` is still linted like every file.
+- Biome cannot lint text piped in (`--stdin-file-path` exits 1 even on a clean file, and
+  prints no errors), hence the temporary folder in step 7.
+- SPEC §9 names four namespaces and `ru`. Only `en/common.json` is created: ADR 000 keeps `ru`
+  for later, and `sheet`, `library`, `editor` come with their screens.
+
+#### 5. Stored data
+
+Nothing stored changes. The language is not saved yet; there is only one.
+
+#### 6. What a person will see
+
+Not a screen. The keys of §3.1 are shown by SETUP-04.
+
+#### 7. Tests
+
+- `apps/web/test/i18n.test.ts` — i18next is `en`; the 4 keys return their English text.
+- `apps/web/test/no-visible-literals.test.ts` — bad sample: exit 1, 9 errors at the expected
+  lines; good sample: exit 0.
+- Control numbers from: the key table in SETUP-04 §6; the samples' line numbers, counted in the
+  test source.
+
+#### 8. Checked against the source
+
+Nothing to check. The ticket holds no rules facts.
+
+#### 9. Not in this ticket
+
+- The tab bar that uses the `nav.*` keys — SETUP-04.
+- The Russian locale, the glossary check and the language switch — the Russian phase (ADR 000).
+- Ruleset-dependent terms through i18next context (`term.species_2014`, SPEC §9) — the first
+  ticket that shows such a term.
+- The `sheet`, `library`, `editor` namespaces — the phases that build those screens.
+- Strings passed to our own components under other prop names (for example `heading="…"`) — not
+  caught; the six attribute names are extended when such a component appears.
+
+#### 10. Rake check
+
+- **No user-facing string literal in a component:** this ticket builds the rule itself.
+- **No external requests:** the strings are bundled; no `i18next-http-backend`, no language
+  detector that reads anything but the build.
+- **`engine` is pure TypeScript:** i18next is added to `apps/web` only.
+- **No tool attribution; nothing invisible:** the JSON and the plugin are plain ASCII.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+
+**Order change (Alina, 2026-09-27):** SETUP-05 is built before SETUP-04 (option A in SETUP-04 §4),
+so the tab labels are i18n keys from the start. SETUP-04 stays 🚧 and is built next.
+
+**Measured on 2026-09-27:**
+
+- Whole gate (`lint && typecheck && test && e2e`): exit 0, 7.4 s.
+- `pnpm lint`: `Checked 32 files`, 0 errors. `pnpm typecheck`: 5 of 5 projects `Done`.
+- `pnpm test`: `Test Files 3 passed (3)`, `Tests 6 passed (6)`, 323 ms.
+- `pnpm e2e`: `1 passed (3.3s)` on `pixel-7`. The screen is unchanged (still blank).
+- The real `pnpm lint` on a probe `<p title="Tip">Hello</p>` in `apps/web/src`: 2 errors
+  (`plugin` at 2:19, `lint/style/noJsxLiterals` at 2:25). The probe was deleted.
+- The `@ts-expect-error` line is live: pointed at `nav.dice`, `tsc` failed with TS2578.
+- Build: JS bundle 264.27 kB (82.64 kB gzip), up from 219.65 kB in SETUP-01; the difference is
+  i18next and react-i18next.
+
+**Versions:** i18next 26.4.2, react-i18next 17.0.15.
+
+**Differences from §3 and §4:**
+
+- The bad sample puts `Hello` inside `<p>` on its own line: `noJsxLiterals` reports a text
+  node from where it starts, and bare text after a tag starts on the tag's line.
+- Biome formats `.grit` files too; the plugin is kept in Biome's format.
+- `pnpm e2e` needs `PLAYWRIGHT_CHROMIUM_PATH` in the cloud container
+  (`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`); without it Playwright looks for a
+  browser build that is not installed. Same as SETUP-02 §11; SETUP-09 writes it down.
+
+**Found, not fixed:** strings passed to our own components under other prop names are not
+caught (§9).
+
+**Changelog:** nothing for the changelog; nothing a person sees changed.

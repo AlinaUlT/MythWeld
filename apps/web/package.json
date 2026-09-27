@@ -15,8 +15,10 @@
     "@grimoire/engine": "workspace:*",
     "@grimoire/pdf": "workspace:*",
     "@grimoire/schema": "workspace:*",
+    "i18next": "^26.4.2",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "react-i18next": "^17.0.15"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

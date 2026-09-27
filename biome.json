@@ -33,5 +33,18 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/web/src/**"],
+      "plugins": ["./biome/no-visible-literals.grit"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noJsxLiterals": "error"
+          }
+        }
+      }
+    }
+  ]
 }

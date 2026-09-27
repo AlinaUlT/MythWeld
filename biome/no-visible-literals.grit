@@ -1,0 +1,32 @@
+// SETUP-05: visible text in JSX must come from an i18n key. Biome's noJsxLiterals catches text
+// between tags; this catches a string in braces and a string in an attribute a person sees.
+language js
+
+or {
+  JsxExpressionChild(expression=$text) where {
+    $text <: or {
+      JsStringLiteralExpression(),
+      JsTemplateExpression()
+    },
+    $text <: not r"^.\s*.$",
+    register_diagnostic(span=$text, message="Visible text must come from an i18n key.")
+  },
+  JsxAttribute(name=$name, initializer=JsxAttributeInitializerClause(value=$value)) where {
+    $name <: or {
+      `title`,
+      `alt`,
+      `placeholder`,
+      `label`,
+      `aria-label`,
+      `aria-description`
+    },
+    $value <: or {
+      JsxString(),
+      JsxExpressionAttributeValue(expression=or {
+        JsStringLiteralExpression(),
+        JsTemplateExpression()
+      })
+    },
+    register_diagnostic(span=$value, message="Visible text must come from an i18n key.")
+  }
+}

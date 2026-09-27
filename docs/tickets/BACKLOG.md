@@ -30,7 +30,7 @@ Gate: SPEC §12 stage 0, with the English-only screenshot from ADR 000.
 | SETUP-02 | Vitest and Playwright (Pixel 7) each run one passing test | S | ✅ 2026-09-27 |
 | SETUP-03 | CI runs lint, typecheck, test and build on every push to `main` | XS | ✅ 2026-09-27 |
 | SETUP-04 | The app shell shows the bottom bar with four empty tabs | S | 🚧 |
-| SETUP-05 | Every visible string goes through an i18next key, enforced by lint | S | 🔲 |
+| SETUP-05 | Every visible string goes through an i18next key, enforced by lint | S | ✅ 2026-09-27 |
 | SETUP-06 | Dexie opens its database and asks for persistent storage | XS | 🔲 |
 | SETUP-07 | The app installs to the home screen and opens offline | S | 🔲 |
 | SETUP-08 | Every push to `main` deploys to a public link | S | 🔲 |
@@ -42,6 +42,8 @@ Gate: SPEC §12 stage 0, with the English-only screenshot from ADR 000.
   Settings; dark theme by default.
 - **SETUP-05** — i18next with an `en` locale only (ADR 000); a lint rule that fails on a string
   literal in JSX.
+  **Built before SETUP-04** (Alina, 2026-09-27; option A in SETUP-04 §4), so the tab labels are
+  i18n keys from the start.
 - **SETUP-08** — **needs Alina.** Cloudflare Pages (or GitHub Pages) needs an account. A chat
   cannot create an account or sign in. SPA fallback to `index.html`.
 - **SETUP-09** — the phase's last ticket. Its §11 carries the proof of the stage 0 gate: the link
