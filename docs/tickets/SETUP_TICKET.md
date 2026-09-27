@@ -298,3 +298,26 @@ Nothing to check. The ticket holds no rules facts.
 **Found, not fixed:** nothing.
 
 **Changelog:** nothing for the changelog; nothing a person sees changed.
+
+---
+
+### SETUP-03 CI on every push · XS
+
+**Hat:** CI runs lint, typecheck, test and build on every push to `main`
+**Where:** `.github/workflows/ci.yml` — new
+**Depends on:** SETUP-02
+
+**What it should look like when done:**
+1. A push to `main` starts the workflow `CI` on GitHub Actions.
+2. It runs, in order: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`,
+   `pnpm test`, `pnpm build`, with Node from `.nvmrc` and pnpm from `packageManager`.
+3. The run for this ticket's own commit is green.
+
+**Tests:** the workflow run for this commit on GitHub Actions — every step green, control numbers:
+the same `1 passed (1)` that `pnpm test` gives locally.
+**What came out of it:** The workflow has one job, `check`, on `ubuntu-latest`, with the five
+steps of §3 item 2. Locally, before the push, the same commands gave: lint 26 files, 0 errors;
+typecheck 5 of 5 projects; `Tests 1 passed (1)`; build in 362 ms. Item 3 can only be seen after
+the push, because a push to `main` is what starts the run; its result is reported in the chat.
+`pnpm e2e` is not in CI: the row names lint, typecheck, test and build only. Found, not fixed:
+nothing. Nothing for the changelog.

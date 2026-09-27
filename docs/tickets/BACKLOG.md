@@ -28,7 +28,7 @@ Gate: SPEC §12 stage 0, with the English-only screenshot from ADR 000.
 |---|---|---|---|
 | SETUP-01 | An empty pnpm monorepo with the six packages builds and lints | S | ✅ 2026-09-27 |
 | SETUP-02 | Vitest and Playwright (Pixel 7) each run one passing test | S | ✅ 2026-09-27 |
-| SETUP-03 | CI runs lint, typecheck, test and build on every push to `main` | XS | 🔲 |
+| SETUP-03 | CI runs lint, typecheck, test and build on every push to `main` | XS | ✅ 2026-09-27 |
 | SETUP-04 | The app shell shows the bottom bar with four empty tabs | S | 🔲 |
 | SETUP-05 | Every visible string goes through an i18next key, enforced by lint | S | 🔲 |
 | SETUP-06 | Dexie opens its database and asks for persistent storage | XS | 🔲 |
