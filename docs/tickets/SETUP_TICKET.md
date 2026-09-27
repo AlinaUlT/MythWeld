@@ -321,3 +321,116 @@ typecheck 5 of 5 projects; `Tests 1 passed (1)`; build in 362 ms. Item 3 can onl
 the push, because a push to `main` is what starts the run; its result is reported in the chat.
 `pnpm e2e` is not in CI: the row names lint, typecheck, test and build only. Found, not fixed:
 nothing. Nothing for the changelog.
+
+---
+
+### SETUP-04 The app shell
+
+**Hat:** The app shell shows the bottom bar with four empty tabs
+**Depends on:** SETUP-02, and SETUP-05 if the checkpoint accepts the order change below
+**Size:** S
+**Screen:** Yes — the shell: bottom bar and four empty tab pages
+**SPEC:** §7.1, §7.2 (last bullet: dark theme, 44 px targets), §4.2 (styles, routing rows)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/shell/AppShell.tsx` — new. The other files it touches:
+
+- `apps/web/src/shell/tabs.ts` — new: the four tabs as data (route, icon, i18n key).
+- `apps/web/src/pages/{Characters,Library,Dice,Settings}Page.tsx` — new, empty pages.
+- `apps/web/src/App.tsx` — changes: the router.
+- `apps/web/src/index.css` — new: Tailwind v4 and the theme colour tokens.
+- `apps/web/src/lib/cn.ts`, `apps/web/components.json` — new: the shadcn/ui setup.
+- `apps/web/vite.config.ts` — changes: the Tailwind plugin.
+- `apps/web/e2e/shell.spec.ts` — new.
+
+#### 2. What is missing now
+
+Measured on 2026-09-27: `App` returns `null`; the SETUP-02 screenshot is a blank white
+945×2100 page. There is no router, no CSS and no Tailwind.
+
+#### 3. What it should look like when done
+
+1. At 360×800 a bar is fixed to the bottom of the screen with four tabs, left to right:
+   Characters · Library · Dice · Settings, each with a lucide icon above its label.
+2. Each tab is at least 44 px tall and 44 px wide (SPEC §7.2).
+3. `/` opens Characters. Tapping a tab changes the URL to `/characters`, `/library`, `/dice`,
+   `/settings` and marks that tab as current (`aria-current="page"`).
+4. Each page shows only its title (the same word as its tab). Nothing else yet.
+5. The page is dark by default: the `<html>` element has the class `dark`.
+6. `pnpm e2e`: the shell test taps all four tabs and passes; 4 screenshots at 360×800.
+
+#### 4. How to do it
+
+1. Add `tailwindcss` 4 with `@tailwindcss/vite`, `lucide-react`, `react-router` 7,
+   `clsx`, `tailwind-merge`.
+2. `index.css`: `@import "tailwindcss";`, colour tokens as CSS variables in the shadcn/ui
+   form (`--background`, `--foreground`, `--primary`, `--muted`, `--border`, …), dark values
+   on `.dark`. `index.html` gets `class="dark"` on `<html>`.
+3. shadcn/ui: `components.json` and `cn()` so components can be added later. **No component is
+   added yet**: the bar needs none. The shadcn registry (`ui.shadcn.com`) is blocked from this
+   cloud environment (`CONNECT tunnel failed, response 403`), so later components are copied
+   in by hand from the shadcn source (MIT).
+4. `tabs.ts`: `[{ path: '/characters', icon: Users, labelKey: 'nav.characters' }, …]`.
+5. `AppShell`: `<main>` with `<Outlet/>`, then `<nav>` fixed to the bottom with `NavLink`s,
+   padded for the phone's bottom safe area (`env(safe-area-inset-bottom)`).
+6. Router: `createBrowserRouter` with the shell as layout, the four pages, `/` → redirect to
+   `/characters`, unknown paths → Characters.
+7. Tests: unit test that `tabs.ts` has four unique paths; e2e test taps each tab, checks the
+   URL, the title and `aria-current`, and saves a screenshot.
+
+**Order question for the checkpoint.** The tab labels are visible text. The rules forbid a
+string literal in a component, but i18next comes one row later, in SETUP-05. Two ways:
+- **A (recommended):** do SETUP-05 before SETUP-04. The labels are i18n keys from the start;
+  nothing is written twice. SETUP-05's lint rule is tested on `App.tsx` and a test fixture.
+- **B:** keep the order. SETUP-04 puts the labels in a temporary map; SETUP-05 moves them to
+  i18next and deletes the map.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+The shell at 360×800, dark. Bottom bar with four tabs. English keys (SETUP-05 owns the file):
+
+| Key | Text |
+|---|---|
+| `nav.characters` | Characters |
+| `nav.library` | Library |
+| `nav.dice` | Dice |
+| `nav.settings` | Settings |
+
+Each page title uses the same key. There is no loading, empty or error state yet: the pages
+hold nothing.
+
+#### 7. Tests
+
+- `apps/web/test/tabs.test.ts` — four tabs, unique paths, every label key exists in `en`.
+- `apps/web/e2e/shell.spec.ts` — taps all four tabs; URL, title and `aria-current` change.
+- Control numbers from: SPEC §7.1 (the four tabs and their order), §7.2 (44 px).
+
+#### 8. Checked against the source
+
+Nothing to check. The ticket holds no rules facts.
+
+#### 9. Not in this ticket
+
+- The fifth tab "Game master" — later (SPEC §7.1).
+- Light theme and the theme switch — the Settings screen, phase 2.
+- Any content in the pages — phase 2 onwards.
+- The app icon and install — SETUP-07.
+
+#### 10. Rake check
+
+- **No string literal in a component:** labels are i18n keys (order A) or one temporary map
+  that SETUP-05 deletes (order B).
+- **No WotC names or logos:** lucide icons only (`Users`, `BookOpen`, `Dices`, `Settings`).
+- **No external requests:** no web fonts from a CDN; the system font stack.
+- **No tool attribution; nothing invisible.**
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
