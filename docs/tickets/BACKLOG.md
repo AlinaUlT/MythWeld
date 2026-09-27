@@ -26,7 +26,7 @@ Gate: SPEC §12 stage 0, with the English-only screenshot from ADR 000.
 
 | ID | Hat | Size | Status |
 |---|---|---|---|
-| SETUP-01 | An empty pnpm monorepo with the six packages builds and lints | S | 🚧 |
+| SETUP-01 | An empty pnpm monorepo with the six packages builds and lints | S | ✅ 2026-09-27 |
 | SETUP-02 | Vitest and Playwright (Pixel 7) each run one passing test | S | 🔲 |
 | SETUP-03 | CI runs lint, typecheck, test and build on every push to `main` | XS | 🔲 |
 | SETUP-04 | The app shell shows the bottom bar with four empty tabs | S | 🔲 |
@@ -80,8 +80,14 @@ benchmark is within 10 ms; a formula cycle stops with a readable message. No UI,
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | 🔲 |
 | ENG-23 | `engine` coverage is at least 90 % and `compute()` stays within 10 ms | S | 🔲 |
 
+- **ENG-02** — `meta.translation` takes the four values of SPEC §5.2 (`official`, `community`,
+  `machine`, `reviewed`); §3.3 lists only three. Alina's decision, 2026-09-27.
 - **ENG-09, ENG-10** — hand-written minimal entities only, not an import. Every rules fact in
   them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`).
+- **ENG-09** — golden A says mountain dwarf, but its numbers (+2 CON, +1 WIS, Dwarven Toughness)
+  are the hill dwarf's, and SRD 5.1 has only the hill dwarf. §8 checks the 2014 and 2024 sources
+  and shows Alina the result before the fixture is written. The golden values are not changed
+  without her.
 - **ENG-12 to ENG-17** — each ticket turns on the golden-test lines it makes true. The full
   goldens A–D are green by ENG-19.
 - **ENG-19** — ability increase source, subclass level, multiclass rounding, exhaustion, rests,

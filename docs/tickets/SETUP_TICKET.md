@@ -59,8 +59,8 @@ There is no `package.json`, no workspace, no TypeScript config and no linter.
    `GrimoireMancer`.
 7. `packages/engine/package.json` has no dependency except `@grimoire/schema`.
 8. The app name is written in exactly one place: `apps/web/src/config/app.ts`
-   (`APP_NAME = 'GrimoireMancer'`). `grep -r GrimoireMancer apps packages --include=*.ts*`
-   finds that one line.
+   (`APP_NAME = 'GrimoireMancer'`, `APP_SHORT_NAME = 'GM'`).
+   `grep -r GrimoireMancer apps packages --include=*.ts*` finds that one line.
 
 #### 4. How to do it
 
@@ -136,3 +136,35 @@ Nothing to check. The ticket holds no rules facts.
 #### 11. What came out of it
 
 <!-- Filled at the end. Never left empty. -->
+
+**Measured on 2026-09-27, after a clean `pnpm install --frozen-lockfile`:**
+
+- `pnpm -r ls --depth -1`: 5 projects — `@grimoire/web`, `schema`, `engine`, `content`, `pdf`.
+- `pnpm lint`: `Checked 22 files in 8ms. No fixes applied.` 0 errors, 0 warnings.
+- `pnpm typecheck`: 5 of 5 projects `Done`. A planted type error in `engine` made `tsc` exit 1,
+  so the check is live.
+- `pnpm test`: exit 0, 0 tests (the runner is SETUP-02).
+- Whole gate (`lint && typecheck && test`): 2.2 s.
+- `pnpm build`: built in 342 ms; `dist/index.html` has `<title>GrimoireMancer</title>`;
+  the JS bundle is 219.65 kB (68.60 kB gzip), all of it React.
+- `packages/engine` depends only on `@grimoire/schema`; its `lib` is `ES2022`, no DOM.
+
+**Versions installed:** pnpm 10.33.0, Node 22.22.2, TypeScript 7.0.2, Biome 2.5.14, Vite 8.3.1,
+`@vitejs/plugin-react` 6.1.1, React 19.3.0.
+
+**Differences from §3:**
+
+- Alina chose the short name `GM`, so `APP_SHORT_NAME` sits next to `APP_NAME`. It is not used
+  yet; the PWA manifest (SETUP-07) will read it.
+- `pnpm e2e` does not exist yet (SETUP-02), so this ticket's gate had no e2e step.
+
+**Decisions taken at this checkpoint (Alina, 2026-09-27):**
+
+- Work goes to `main`, as `CLAUDE.md` says.
+- The four translation labels of SPEC §5.2 are used — noted on ENG-02 in `BACKLOG.md`.
+- Golden A's subrace is checked against the sources in ENG-09 §8 — noted on ENG-09 in
+  `BACKLOG.md`.
+
+**Found, not fixed:** nothing.
+
+**Changelog:** nothing for the changelog; a person sees a blank page.
