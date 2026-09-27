@@ -273,3 +273,28 @@ Nothing to check. The ticket holds no rules facts.
 #### 11. What came out of it
 
 <!-- Filled at the end. Never left empty. -->
+
+**Measured on 2026-09-27, after a clean `pnpm install --frozen-lockfile`:**
+
+- `pnpm test`: `Test Files 1 passed (1)`, `Tests 1 passed (1)`, 185 ms.
+- `pnpm e2e`: `1 passed (3.2s)` on project `pixel-7`; the build and preview server included.
+- Screenshot `home.png`: 945×2100 pixels = 360×800 CSS pixels at the Pixel 7 pixel ratio 2.625.
+  It is blank, as expected before SETUP-04. Not committed.
+- Whole gate (`lint && typecheck && test && e2e`): 7.3 s.
+- Versions: Vitest 5.0.2, `@playwright/test` 1.63.0, Chromium from `/opt/pw-browsers`.
+
+**Differences from §4:**
+
+- No Vitest `projects`: one root config with an `include` list
+  (`packages/*/test/**/*.test.ts`, `apps/web/test/**/*.test.{ts,tsx}`). A projects glob would
+  also have picked up the Playwright spec. Projects come back when `apps/web` needs a DOM
+  environment for its tests.
+- `vite.config.ts` imports `./src/config/app.ts` with the extension, because Vite 8 warned
+  about the extensionless import. `tsconfig.base.json` got `allowImportingTsExtensions`.
+- `apps/web` got `@types/node` 22 so the Playwright config type-checks.
+- The environment variable is `PLAYWRIGHT_CHROMIUM_PATH`; without it Playwright uses its own
+  browser. SETUP-09 writes this into `docs/RUNNING.md`.
+
+**Found, not fixed:** nothing.
+
+**Changelog:** nothing for the changelog; nothing a person sees changed.
