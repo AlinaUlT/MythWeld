@@ -866,3 +866,66 @@ Nothing to check. The ticket holds no rules facts.
 #### 11. What came out of it
 
 <!-- Filled at the end. Never left empty. -->
+
+**Decision (Alina, 2026-09-28):** "make the decisions yourself". Built as planned at the
+checkpoint; pushed to `main`, as `CLAUDE.md` says.
+
+**Measured on 2026-09-28:**
+
+- Whole gate (`lint && typecheck && test && e2e`): exit 0, 13.8 s.
+- `pnpm lint`: `Checked 52 files`, 0 errors. `pnpm typecheck`: 5 of 5 projects `Done`.
+- `pnpm test`: `Test Files 6 passed (6)`, `Tests 18 passed (18)` (3 new).
+- `pnpm e2e`: `10 passed (8.8s)` on `pixel-7` (4 new).
+- In headless Chromium, on a profile on disk: `Page.getInstallabilityErrors` gives `[]`;
+  `Page.getAppManifest` gives 0 errors.
+- Offline, after the first open: the reload comes from the service worker
+  (`fromServiceWorker()` is `true`) and shows Characters; `/dice` shows Dice.
+- The test sees the page's requests and the service worker's: 6 and 14 on a first open, all to
+  the app's own origin.
+- The tests are live. Each break below was made by hand, run, and undone:
+  - the `registerSW` call removed: the install and offline tests fail (no service worker ever
+    controls the page);
+  - the manifest listed in `globPatterns` a second time: the offline test fails with
+    `page.reload: net::ERR_INTERNET_DISCONNECTED`;
+  - a `fetch('https://example.com/probe')` added to `main.tsx`: the offline test fails with
+    `"https://example.com"` in the list of origins.
+- The update reload (§3.7), measured once by hand, not automated: with the page open, `sw.js`
+  was changed and `registration.update()` called. The page reloaded by itself once, 2415 ms
+  later: 2 loads in total, no loop.
+- Screenshots `offline-characters.png`, `offline-dice.png`: 945×2100 pixels = 360×800 CSS pixels.
+  Shown in the chat; not committed.
+- Build: `precache 12 entries (508.00 KiB)`. `sw.js` 1,582 bytes, `workbox-9c191d2f.js` 15,112
+  bytes, `manifest.webmanifest` 0.44 kB. Icons: 64 px 796 B, 192 px 1,972 B, 512 px 5,150 B,
+  maskable 512 px 3,252 B, Apple 180 px 1,279 B, `favicon.ico` 866 B, `favicon.svg` 481 B.
+- Main JS 492.98 kB (157.35 kB gzip), up from 491.88 kB (156.88 kB gzip): +1.10 kB. `workbox-window`
+  loads as its own chunk, 5.65 kB (2.20 kB gzip). CSS unchanged, 7.03 kB.
+- `pnpm-lock.yaml`: 149 → 533 packages. The added ones run at build time only (`workbox-build`
+  brings Babel, Rollup and Terser; the icon generator brings `sharp`). The app itself gains only
+  `workbox-window`.
+
+**Versions:** vite-plugin-pwa 1.3.0, @vite-pwa/assets-generator 1.0.4, workbox-window 7.4.1;
+pulled in: workbox-build 7.4.1, sharp 0.35.5.
+
+**Differences from §4 and §7:**
+
+- `skipWaiting: true` and `clientsClaim: true` are set in the Workbox options. The plugin sets them
+  only when it injects its own register script (`vite-plugin-pwa` 1.3.0, `dist/index.js`, the
+  `injectRegister === "auto"` check). With `injectRegister: false` and without them, the service
+  worker became active but never controlled the page: 2 e2e tests timed out. A new version would
+  also have waited until every tab of the app closed.
+- `biome.json` got an override that turns off `a11y/noSvgWithoutTitle` for
+  `apps/web/public/**/*.svg`. Biome 2.5.14 lints SVG files and asks for a `<title>`. The icon's
+  name comes from the manifest; a title would be an untranslated string that nobody sees.
+- The unit test checks three things: the square `viewBox`, the background colour, and no
+  `<text>` (text would render with whatever fonts a machine has).
+- The e2e tests are named `SETUP-07 …` one by one, like the SETUP-04 tests, not grouped in a
+  `describe` block.
+- The installability test launches with Playwright's `launchOptions` fixture, so it uses the same
+  `PLAYWRIGHT_CHROMIUM_PATH` as the other tests.
+
+**Found, not fixed:** the test browser itself (Chromium, not the app) tries to reach
+`www.google.com` and `android.clients.google.com` in the background; the cloud environment's proxy
+refuses them. They are not page or service-worker requests: the e2e origin check sees none.
+SETUP-09 can say so in `docs/RUNNING.md`, so the proxy messages are not read as the app's.
+
+**Changelog:** one line: the app installs to the home screen and opens offline.

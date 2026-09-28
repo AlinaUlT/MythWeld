@@ -1,3 +1,4 @@
+import { registerSW } from 'virtual:pwa-register';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
@@ -19,3 +20,6 @@ createRoot(root).render(
 // logged; the screen that explains it comes with the first data (phase 2).
 db.open().catch((error: unknown) => console.error(error));
 requestPersistentStorage().catch((error: unknown) => console.error(error));
+
+// The service worker is registered after the first render too. Online, the app works without it.
+registerSW({ immediate: true, onRegisterError: (error: unknown) => console.error(error) });
