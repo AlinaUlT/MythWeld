@@ -24,6 +24,9 @@ SPEC §12 has been shown true in the chat. The list is not copied here; SPEC §1
 
 Gate: SPEC §12 stage 0, with the English-only screenshot from ADR 000.
 
+**Closed 2026-09-28.** The gate's proof is in SETUP-09 §11, in
+[`docs/archive/tickets/SETUP_TICKET.md`](../archive/tickets/SETUP_TICKET.md).
+
 | ID | Hat | Size | Status |
 |---|---|---|---|
 | SETUP-01 | An empty pnpm monorepo with the six packages builds and lints | S | ✅ 2026-09-27 |
@@ -34,7 +37,7 @@ Gate: SPEC §12 stage 0, with the English-only screenshot from ADR 000.
 | SETUP-06 | Dexie opens its database and asks for persistent storage | XS | ✅ 2026-09-28 |
 | SETUP-07 | The app installs to the home screen and opens offline | S | ✅ 2026-09-28 |
 | SETUP-08 | Every push to `main` deploys to a public link | S | ✅ 2026-09-28 |
-| SETUP-09 | `docs/RUNNING.md` and `docs/adr/001-platform.md` exist | XS | 🔲 |
+| SETUP-09 | `docs/RUNNING.md` and `docs/adr/001-platform.md` exist | XS | ✅ 2026-09-28 |
 
 - **SETUP-01** — Vite + React 19 + TypeScript strict in `apps/web`; empty `schema`, `engine`,
   `content`, `pdf` packages; Biome. `foundry` is not created until phase L1.

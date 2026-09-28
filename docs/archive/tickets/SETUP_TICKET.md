@@ -4,7 +4,7 @@
 a build, a linter, tests, CI, an installable offline app and a public link. This theme lays that
 ground once, so every later ticket only adds code and runs the same quality gate.
 **SPEC:** stage 0, sections §2 (D1, D5), §4
-**Order and status:** [`BACKLOG.md`](BACKLOG.md) — never repeated here.
+**Order and status:** [`BACKLOG.md`](../../tickets/BACKLOG.md) — never repeated here.
 **Theme is closed when:** every SETUP row is ✅ or ❌, and the stage 0 "Готово, когда" list in
 SPEC §12 is proved, with the English-only screenshot from ADR 000.
 **Read before starting:** `CLAUDE.md`, `docs/tickets/README.md`, the SPEC sections above.
@@ -1092,3 +1092,50 @@ listed by `git ls-remote --tags` on 2026-09-28.
 needed.
 
 **Changelog:** one line — the public link.
+
+---
+
+### SETUP-09 How to run it, and the platform decision · XS
+
+**Hat:** `docs/RUNNING.md` and `docs/adr/001-platform.md` exist
+**Where:** `docs/RUNNING.md`, `docs/adr/001-platform.md` — new
+**Depends on:** SETUP-08
+
+**What it should look like when done:**
+1. `docs/RUNNING.md` says how to install, run, test and deploy, with the measured addresses and
+   the cloud container's browser path.
+2. `docs/adr/001-platform.md` records the platform (SPEC D1) and the host chosen in SETUP-08.
+3. This §11 carries the proof of the stage 0 gate (SPEC §12), with the English-only screenshot of
+   ADR 000.
+
+**Tests:** none new; the gate is run for the screenshot and to show nothing else changed. Control
+numbers: the gate's counts; the phone check is Alina's.
+**What came out of it:**
+
+Measured on 2026-09-28:
+
+- Whole gate (`lint && typecheck && test && e2e`): exit 0, 24.4 s. `Checked 52 files`, 0 errors;
+  `Tests 18 passed (18)`; `10 passed (13.9s)` on `pixel-7`, under `/MythWeld/`.
+- `pnpm --filter @grimoire/web dev` prints `Local: http://localhost:5173/MythWeld/`.
+
+**The stage 0 gate (SPEC §12), item by item:**
+
+1. The app opens on a phone from the link and installs to the home screen — Alina, 2026-09-28,
+   after opening `https://alinault.github.io/MythWeld/` in Chrome on her phone, installing it,
+   opening it from the icon, turning on airplane mode, and opening it again: "Works."
+2. It works offline after the first visit — the same check, step 5. Also the e2e test
+   `SETUP-07 after the first visit the app opens offline`.
+3. CI is green — run 10 of CI, for `be8a7d2` (SETUP-08): job `check` success, job `deploy`
+   success; its site check printed `page 200, manifest 200, sw.js 200, dice 404` and
+   `"start_url":"/MythWeld/"`.
+4. An e2e test takes a screenshot of the main screen — `characters.png` from
+   `SETUP-04 tapping each tab opens its page`, 945×2100 pixels = 360×800 CSS pixels, English only
+   (ADR 000). Shown in the chat; not committed.
+
+**Phase 0 is closed**, and with it the SETUP theme: every row is ✅. This file moves whole to
+`docs/archive/tickets/`, as `docs/tickets/README.md` says.
+
+**Found, not fixed:** nothing new. Still open from SETUP-08: `ci.yml` uses older majors of three
+actions.
+
+**Changelog:** nothing for the changelog; a person sees no change.
