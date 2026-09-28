@@ -32,7 +32,7 @@ Gate: SPEC §12 stage 0, with the English-only screenshot from ADR 000.
 | SETUP-04 | The app shell shows the bottom bar with four empty tabs | S | ✅ 2026-09-27 |
 | SETUP-05 | Every visible string goes through an i18next key, enforced by lint | S | ✅ 2026-09-27 |
 | SETUP-06 | Dexie opens its database and asks for persistent storage | XS | ✅ 2026-09-28 |
-| SETUP-07 | The app installs to the home screen and opens offline | S | 🔲 |
+| SETUP-07 | The app installs to the home screen and opens offline | S | 🚧 |
 | SETUP-08 | Every push to `main` deploys to a public link | S | 🔲 |
 | SETUP-09 | `docs/RUNNING.md` and `docs/adr/001-platform.md` exist | XS | 🔲 |
 

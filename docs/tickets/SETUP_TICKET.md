@@ -699,3 +699,170 @@ data); a screen that shows whether storage is persistent, or that the database f
 **Found, not fixed:** nothing.
 
 **Changelog:** nothing for the changelog; nothing a person sees changed.
+
+---
+
+### SETUP-07 Install and offline
+
+**Hat:** The app installs to the home screen and opens offline
+**Depends on:** SETUP-04 (the shell it caches), SETUP-06
+**Size:** S
+**Screen:** Yes — the home-screen icon and the app opened with no network; the tab pages do not
+change
+**SPEC:** §4.2 (PWA row), §12 stage 0 (install, offline after the first open, a placeholder icon),
+§3.4 (no WotC marks in the icon), §11 (no external requests)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/vite.config.ts` — changes: the `VitePWA` plugin, with the manifest and the
+service worker. The other files it touches:
+
+- `apps/web/public/favicon.svg` — new: the placeholder icon. Every PNG icon is generated from it
+  at build time.
+- `apps/web/pwa-assets.config.ts` — new: which PNG icons are generated, and their background.
+- `apps/web/src/config/app.ts` — changes: `APP_BACKGROUND_COLOR`.
+- `apps/web/src/main.tsx` — changes: registers the service worker.
+- `apps/web/tsconfig.json` — changes: the types of `virtual:pwa-register`;
+  `pwa-assets.config.ts` joins `include`.
+- `apps/web/package.json` — changes: `vite-plugin-pwa`, `@vite-pwa/assets-generator` (dev),
+  `workbox-window`.
+- `apps/web/e2e/pwa.spec.ts`, `apps/web/test/pwa.test.ts` — new.
+
+A service worker is a script the browser keeps next to the site. It answers the app's requests
+from a local copy, so the app opens with no network. The manifest is the JSON file that gives the
+browser the name, the icon and the window style for installing.
+
+#### 2. What is missing now
+
+Measured on 2026-09-28 at `4f37bf7`, on the built app in headless Chromium:
+
+- `apps/web/dist/` holds `index.html` and `assets/` (one JS file, one CSS file). No manifest, no
+  icon, no service worker.
+- `link[rel=manifest]` on the page: 0. `navigator.serviceWorker.getRegistrations()`: 0.
+- First open, then network off, then reload: `page.reload: net::ERR_INTERNET_DISCONNECTED`.
+
+#### 3. What it should look like when done
+
+1. `pnpm build` writes `manifest.webmanifest`, `sw.js`, and the icons `pwa-64x64.png`,
+   `pwa-192x192.png`, `pwa-512x512.png`, `maskable-icon-512x512.png`,
+   `apple-touch-icon-180x180.png`, `favicon.ico`, next to `favicon.svg`.
+2. The manifest: `name` = `APP_NAME` (`GrimoireMancer`), `short_name` = `APP_SHORT_NAME` (`GM`),
+   `display` = `standalone`, `start_url` = `/`, `scope` = `/`, `background_color` and
+   `theme_color` = `#0a0a0a`. Icons: 192 and 512 for `any`, 512 for `maskable`. Each image's real
+   size equals its `sizes` entry.
+3. `background_color` equals the page's rendered dark background (`oklch(0.145 0 0)`, measured as
+   `#0a0a0a` in Chromium).
+4. Chrome's own installability check (`Page.getInstallabilityErrors`) returns an empty list. The
+   manifest parses with 0 errors.
+5. After the first open, with the network off: a reload shows the Characters page, and opening
+   `/dice` directly shows the Dice page.
+6. Every request the page and its service worker make goes to the app's own origin.
+7. When a new version has downloaded, it takes over and the page reloads once.
+8. The icon is a light outline of a polyhedral die on the dark background. No letters, no WotC
+   marks. It is shown in the chat.
+9. `pnpm e2e`: the 6 earlier tests and the new ones pass. Screenshots of the offline Characters
+   and Dice pages at 360×800.
+
+#### 4. How to do it
+
+1. Add to `apps/web`: `vite-plugin-pwa` 1.3.0 and `@vite-pwa/assets-generator` 1.0.4 (dev),
+   `workbox-window` 7.
+   - The generator stays on 1.x: `vite-plugin-pwa` 1.3.0 asks for `^1.0.0`; 2.0.0 gives a peer
+     warning (measured).
+   - `workbox-window` is a direct dependency: without it the build fails with
+     `failed to resolve import "workbox-window"` (measured), because pnpm does not let the app
+     import a dependency's dependency.
+2. `src/config/app.ts`: `APP_BACKGROUND_COLOR = '#0a0a0a'`.
+3. `public/favicon.svg`: 512×512, a rounded square in `#0a0a0a`, a die outline in `#e5e5e5`
+   (the dark `--primary`, measured).
+4. `pwa-assets.config.ts`: `minimal2023Preset`; the maskable and Apple icons get
+   `APP_BACKGROUND_COLOR` as background; `images: ['public/favicon.svg']`.
+5. `vite.config.ts`: `VitePWA({ registerType: 'autoUpdate', injectRegister: false,
+   pwaAssets: { config: true, overrideManifestIcons: true },
+   workbox: { globPatterns: ['**/*.{js,css,html,ico,png,svg}'] },
+   manifest: { name, short_name, lang: 'en', display: 'standalone', background_color,
+   theme_color } })`. `start_url` and `scope` come from Vite's `base` (`/`).
+6. `main.tsx`: `registerSW({ immediate: true, onRegisterError })` from `virtual:pwa-register`,
+   after the first render, next to the database start. A failure is logged; nothing breaks.
+7. The tests of §7, then the gate with `pnpm e2e`.
+
+**Technical choices, made in the ticket (ADR 002):**
+
+- **Icons are generated at build time from one SVG**, not committed as PNG files. Changing the
+  icon is one file, and git holds no binary files. The cost is the image library `sharp` in the
+  dev dependencies (a prebuilt binary from npm). To reverse: run the generator once and commit
+  the PNGs.
+- **A new version takes over as soon as it has downloaded, and the page reloads once.** A deploy
+  then shows on the first open, not the second. The update check runs when the app opens, so the
+  reload comes seconds after opening. To reverse: `registerType: 'prompt'` and a "new version"
+  button, which needs a screen and strings.
+- **The manifest is not in `globPatterns`.** The plugin adds it by itself. Listing it twice made
+  Workbox cache nothing at all (measured: `add-to-cache-list-conflicting-entries`, 0 files
+  cached).
+- **The installability test opens its own browser profile.** In Playwright's normal context
+  Chrome answers `in-incognito` (measured). That answer is about the test browser, not the app.
+  In a normal profile the list is empty (measured on a trial build).
+
+#### 5. Stored data
+
+Nothing stored changes. The service worker's cache holds copies of the built files, not a
+person's data. The Dexie database is not touched.
+
+#### 6. What a person will see
+
+- In Chrome on Android, the menu item "Install app" (or "Add to Home screen") puts the icon on
+  the home screen with the label `GM`. The app opens full screen, without the address bar, dark
+  from the first frame.
+- After one visit with a network, the app opens with no network.
+- The tab pages do not change. No new visible string and no new i18n key: the label under the
+  icon is `APP_SHORT_NAME`.
+
+#### 7. Tests
+
+- `apps/web/test/pwa.test.ts` — `describe('SETUP-07 app icon')`: the background of
+  `favicon.svg` is `APP_BACKGROUND_COLOR`, so the icon and the splash screen cannot drift apart.
+- `apps/web/e2e/pwa.spec.ts` — `describe('SETUP-07 install and offline')`:
+  - the manifest fields and the real icon sizes (§3.2), and the rendered background (§3.3);
+  - installability errors are `[]` in a normal browser profile (§3.4);
+  - offline reload and offline `/dice`, with screenshots (§3.5); every request is same-origin
+    (§3.6).
+- Not automated:
+  - the update reload (§3.7) needs two different builds; it is seen on the phone once SETUP-08
+    has deployed twice;
+  - Safari on iPhone: this environment has no WebKit browser.
+- Control numbers from: `APP_NAME`, `APP_SHORT_NAME`, `APP_BACKGROUND_COLOR` in
+  `src/config/app.ts`; the page titles in `locales/en/common.json`; the icon sizes from the
+  manifest.
+
+#### 8. Checked against the source
+
+Nothing to check. The ticket holds no rules facts.
+
+#### 9. Not in this ticket
+
+- The public link and the host's fallback to `index.html` — SETUP-08. Paths come from Vite's
+  `base`, so a host that serves the app under a sub-path changes one setting there.
+- The proof on Alina's phone (install, network off, open again) — SETUP-09 §11, after SETUP-08.
+- A "new version available" button and an "offline ready" message — later, only if the automatic
+  reload gets in the way.
+- An install button inside the app — not planned; the browser menu installs it.
+- Caching SRD packs and loading the rest lazily (SPEC §5.7) — phase 3.
+- Screenshots and a description in the manifest, for Chrome's larger install sheet — phase 7.
+- The service worker in `pnpm dev` — off; the dev server behaves as before.
+
+#### 10. Rake check
+
+- **No WotC names or logos:** the icon is a plain die outline drawn for this ticket; the name is
+  `APP_NAME`.
+- **No external requests:** Workbox's runtime is served from the app's own origin
+  (`workbox-*.js` in `dist`), not from a CDN. The e2e test fails on a request to another origin.
+- **No user-facing string literal in a component:** no new component; the installed name comes
+  from `config/app.ts`.
+- **`engine` is pure TypeScript:** every new package goes to `apps/web`.
+- **No tool attribution; nothing invisible:** the SVG and the configs are plain ASCII.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
