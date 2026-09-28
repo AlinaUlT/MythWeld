@@ -929,3 +929,131 @@ refuses them. They are not page or service-worker requests: the e2e origin check
 SETUP-09 can say so in `docs/RUNNING.md`, so the proxy messages are not read as the app's.
 
 **Changelog:** one line: the app installs to the home screen and opens offline.
+
+---
+
+### SETUP-08 A public link
+
+**Hat:** Every push to `main` deploys to a public link
+**Depends on:** SETUP-03 (CI), SETUP-07 (paths follow Vite's `base`)
+**Size:** S
+**Screen:** No — the screens do not change; they get a public address
+**SPEC:** §4.2 (deploy row: GitHub Pages; SPA fallback to `index.html`), §12 stage 0
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `.github/workflows/ci.yml` — changes: after the checks, the build is published to
+GitHub Pages. The other files it touches:
+
+- `apps/web/src/config/app.ts` — changes: `APP_BASE_PATH = '/MythWeld/'`.
+- `apps/web/vite.config.ts` — changes: `base: APP_BASE_PATH`.
+- `apps/web/src/App.tsx` — changes: the router's `basename`.
+- `apps/web/playwright.config.ts` — changes: the tests open the app under `APP_BASE_PATH`.
+- `apps/web/e2e/*.spec.ts` — changes: paths relative to the base.
+
+#### 2. What is missing now
+
+Measured on 2026-09-28 at `400f474`:
+
+- No deploy: `ci.yml` runs lint, typecheck, test and build, and publishes nothing.
+- The repository `AlinaUlT/MythWeld` is public, so GitHub Pages is free for it. A project site is
+  served under the repository's name: `https://alinault.github.io/MythWeld/`.
+- A trial build with `base: '/MythWeld/'`: the manifest gets `start_url` and `scope`
+  `/MythWeld/`, and every script, style and icon link starts with `/MythWeld/`. But the router
+  does not know the base: opening `/MythWeld/` jumps to `/characters`, outside the app, and the
+  tab links are `/characters`, `/library`, `/dice`, `/settings`.
+- GitHub Pages has no fallback to `index.html`: a path with no file behind it gets the site's
+  `404.html`.
+- This cloud container cannot reach `alinault.github.io` (the request gets no answer), so the live
+  site is checked from GitHub's runner and on Alina's phone.
+
+#### 3. What it should look like when done
+
+1. A push to `main` runs the checks; only when they pass, the job `deploy` publishes the build to
+   GitHub Pages. A red check publishes nothing.
+2. `https://alinault.github.io/MythWeld/` opens the app on Characters. The deploy job fetches the
+   page, `manifest.webmanifest` and `sw.js` from the public address and fails unless each answers
+   200.
+3. A direct link such as `https://alinault.github.io/MythWeld/dice` opens the Dice page, on the
+   first visit too (through `404.html`, a copy of `index.html`).
+4. The tab links are `/MythWeld/characters` and so on; the manifest's `start_url` and `scope` are
+   `/MythWeld/`.
+5. The whole e2e suite runs against a build under `/MythWeld/`, so the tests check what is
+   deployed. `pnpm e2e`: 10 passed.
+6. The base path is written in one place, `APP_BASE_PATH`. Moving to another host is one line.
+
+#### 4. How to do it
+
+1. **Alina, once:** GitHub → `AlinaUlT/MythWeld` → Settings → Pages → Build and deployment →
+   Source: **GitHub Actions**. The workflow cannot turn this on itself; its token has no admin
+   rights.
+2. `config/app.ts`: `APP_BASE_PATH = '/MythWeld/'`. `vite.config.ts`: `base: APP_BASE_PATH`.
+3. `App.tsx`: `createBrowserRouter(routes, { basename: import.meta.env.BASE_URL })`. Vite sets
+   `BASE_URL` from `base`, so the app itself never names the path.
+4. `playwright.config.ts`: `baseURL` and the server `url` end in `APP_BASE_PATH`. The specs use
+   relative paths (`./`, `dice`, `characters`), which Playwright resolves against `baseURL`.
+5. `ci.yml`:
+   - `check` job: after the build, `404.html` is copied from `index.html`, and
+     `actions/upload-pages-artifact@v5` uploads `apps/web/dist`;
+   - new `deploy` job: `needs: check`, `environment: github-pages`, permissions `pages: write` and
+     `id-token: write`, `actions/deploy-pages@v5`, then a `curl` check of the three addresses in
+     §3.2 and of `/MythWeld/dice`;
+   - `concurrency: pages`, so two pushes never publish at the same time.
+6. The gate, `pnpm e2e` included. Push; read the `deploy` job's log.
+
+**Technical choices, made in the ticket (ADR 002):**
+
+- **The e2e suite always runs under `/MythWeld/`**, not at `/`. The tests then check the same
+  paths people get: the service worker's scope, the manifest, the router's base and deep links.
+  To reverse: `APP_BASE_PATH = '/'`.
+- **`404.html` is made in the workflow**, not in the Vite build. It is how GitHub Pages does a
+  fallback; another host (Cloudflare Pages) has its own and would be confused by the file.
+- **The deploy uses the build that passed the checks**, uploaded from the `check` job, not a
+  second build.
+
+#### 5. Stored data
+
+Nothing stored changes. The app moves from `/` to `/MythWeld/` only on the public site; nobody has
+installed it anywhere yet, so no saved data is left behind.
+
+#### 6. What a person will see
+
+Not a screen. The same app, at a public address. On a first visit to a deep link GitHub answers
+with status 404 and the app still opens; a person sees no difference.
+
+#### 7. Tests
+
+- The existing e2e suite, run under `/MythWeld/`: all 10 tests pass there.
+- `apps/web/e2e/shell.spec.ts` — the tab links start with `APP_BASE_PATH`.
+- `apps/web/e2e/pwa.spec.ts` — `start_url` and `scope` equal `APP_BASE_PATH`.
+- The `deploy` job's `curl` check: 200 for the page, the manifest and `sw.js`; the app's page
+  for `/MythWeld/dice`.
+- Control numbers from: `APP_BASE_PATH`; GitHub's documented project-site address
+  (`<owner>.github.io/<repository>/`).
+
+#### 8. Checked against the source
+
+Nothing to check. The ticket holds no rules facts.
+
+#### 9. Not in this ticket
+
+- `docs/RUNNING.md`, `docs/adr/001-platform.md` and the check on Alina's phone — SETUP-09.
+- A custom domain — not planned; it would cost money.
+- Running `pnpm e2e` in CI — not in the row; the local gate runs it.
+- Updating `actions/checkout`, `setup-node` and `pnpm/action-setup` (v4 in `ci.yml`; newer
+  majors exist) — found, not fixed here.
+
+#### 10. Rake check
+
+- **No external requests:** the app still asks only its own origin; the e2e origin test runs under
+  the new path.
+- **No WotC names:** the address holds the repository name `MythWeld` and the app name.
+- **No secrets:** GitHub Pages needs no token or password; the workflow uses GitHub's own
+  short-lived token.
+- **No tool attribution; nothing invisible.**
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
