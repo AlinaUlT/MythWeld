@@ -689,6 +689,9 @@ Measured on 2026-09-28:
   because Chrome decides by itself and says yes more readily once the app is installed
   (SETUP-07). Only Chromium was measured; what other browsers show when asked was not.
 
+**Decision (Alina, 2026-09-28):** both differences accepted. Choices of this kind are made
+without asking from now on (ADR 002).
+
 **Not in this ticket:** the seven tables and `dexie-react-hooks` (the phase 2 tickets that store
 data); a screen that shows whether storage is persistent, or that the database failed to open
 (phase 2, Settings).

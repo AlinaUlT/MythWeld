@@ -169,8 +169,12 @@ Three exceptions. They are data, not wording:
 - **Name what does NOT change**, as its own list.
 - **State the choice plainly at the end**, in one sentence, with what happens after each answer.
 - **One fact, one place.** A note points at the file that owns the fact; it does not repeat it.
-- **Alina decides.** When the SPEC and a rules source disagree, or a decision in §2 looks wrong,
-  stop and ask. Do not change the decision without asking.
+- **Technical choices are made, not asked** ([ADR 002](docs/adr/002-technical-choices.md)). How
+  a thing is built, stored, tested or ordered is decided in the ticket, even where it departs
+  from the letter of a SPEC detail. The ticket says why; the chat reports it as done.
+- **Alina decides** everything else ADR 002 lists: when the SPEC and a rules source disagree, a
+  decision in §2 that looks wrong, golden values, licensing, what the app does for a person.
+  Stop and ask. Do not change such a decision without asking.
 
 ---
 
