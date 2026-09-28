@@ -632,3 +632,67 @@ so the tab labels are i18n keys from the start. SETUP-04 stays 🚧 and is built
 caught (§9).
 
 **Changelog:** nothing for the changelog; nothing a person sees changed.
+
+---
+
+### SETUP-06 The database and persistent storage · XS
+
+**Hat:** Dexie opens its database and asks for persistent storage
+**Where:** `apps/web/src/db/` — `db.ts` (the database) and `persist.ts` (the request), both
+started from `apps/web/src/main.tsx`
+**Depends on:** SETUP-02
+
+**What it should look like when done:**
+1. After the app opens, the browser holds an IndexedDB database named `grimoire`, at Dexie
+   version 1 (IndexedDB version 10), with no tables.
+2. On every start the app calls `navigator.storage.persisted()`. If the answer is `false`, it
+   calls `navigator.storage.persist()` once. If it is `true`, it asks nothing more.
+3. `requestPersistentStorage()` returns `granted`, `denied` or `unsupported` (no Storage API).
+4. Neither step holds up the first render. A failure is logged to the console; nothing breaks.
+5. `dexie` is a dependency of `apps/web` only. The screen does not change.
+
+It stays XS: no table and no record is stored (no §5), the screen does not change (no §6), and
+there are no rules facts (no §8).
+
+**Tests:** `apps/web/test/storage.test.ts` — the name `grimoire`, version 1, no tables; the four
+answers of `requestPersistentStorage()` with a fake Storage API and with none.
+`apps/web/e2e/storage.spec.ts` — in Chromium, the database appears and the app calls `persisted`
+then `persist`. Control numbers: SPEC §11 (the `persist()` call); Dexie's "version 1 = IndexedDB
+version 10", measured in Chromium.
+
+**What came out of it:**
+
+Measured on 2026-09-28:
+
+- Whole gate (`lint && typecheck && test && e2e`): exit 0, 10.6 s.
+- `pnpm lint`: `Checked 48 files`, 0 errors. `pnpm typecheck`: 5 of 5 projects `Done`.
+- `pnpm test`: `Test Files 5 passed (5)`, `Tests 15 passed (15)` (5 new).
+- `pnpm e2e`: `6 passed` on `pixel-7` (1 new).
+- In headless Chromium after the app opens: `indexedDB.databases()` gives
+  `[{ name: 'grimoire', version: 10 }]`; `navigator.storage.persisted()` gives `false`, so the
+  app goes on to call `persist()`. The e2e test records the calls instead of expecting a yes.
+- The e2e test is live: with the `db.open()` call removed it failed (`Received array: []`); with
+  only the `persist` call removed it failed (`Received: Array []`).
+- Build: JS 491.88 kB (156.88 kB gzip), up from 396.10 kB (125.66 kB gzip): +95.78 kB
+  (+31.22 kB gzip), all of it Dexie. CSS 7.01 → 7.03 kB: Tailwind reads the word "table" in a
+  code comment as a class name.
+
+**Versions:** dexie 4.4.6.
+
+**Differences from SPEC §11:**
+
+- SPEC §11 lists seven tables. Version 1 declares none. Each table comes as a new version with
+  the ticket that first stores into it, once its record shape exists (ENG-05, ENG-06). Reason:
+  Dexie cannot change a table's primary key later; in Dexie 4.4.6 such an upgrade throws
+  `Not yet support for changing primary key` (`dexie.mjs`, line 3827).
+- SPEC §11 says to ask at the first start. The app asks at every start until the answer is yes,
+  because Chrome decides by itself and says yes more readily once the app is installed
+  (SETUP-07). Only Chromium was measured; what other browsers show when asked was not.
+
+**Not in this ticket:** the seven tables and `dexie-react-hooks` (the phase 2 tickets that store
+data); a screen that shows whether storage is persistent, or that the database failed to open
+(phase 2, Settings).
+
+**Found, not fixed:** nothing.
+
+**Changelog:** nothing for the changelog; nothing a person sees changed.
