@@ -21,6 +21,7 @@ ticket is in [`TEMPLATE.md`](TEMPLATE.md). Order and status are in [`BACKLOG.md`
 | `PDF` | Own PDF template, filling an uploaded sheet | 6 |
 | `POL` | Accessibility, performance, onboarding, Android | 7 |
 | `RU` | The Russian interface, the glossary check, Russian overlays for SRD texts | later (ADR 000) |
+| `SYS` | Game systems beyond fifth edition: their modules and content (ADR 004) | later (ADR 004) |
 | `OPS` | Around the code: CI, deploy, tooling, docs. This theme never closes | — |
 
 Phases L1–L6 get their own area codes when they are opened.

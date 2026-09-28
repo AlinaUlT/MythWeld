@@ -1,7 +1,9 @@
 # Grimoire — the short guide
 
-**Grimoire** (working name) is an offline-first PWA for fifth-edition play with the 2014 rules
-(SRD 5.1) and the 2024 rules (SRD 5.2.1). It has three parts: a character sheet that computes
+**Grimoire** (working name) is an offline-first PWA for tabletop role-playing games. Its first game
+system is fifth edition, with the 2014 rules (SRD 5.1) and the 2024 rules (SRD 5.2.1); other D&D
+editions, Pathfinder and later systems come as system modules
+([ADR 004](docs/adr/004-game-systems.md)). It has three parts: a character sheet that computes
 every derived number and can show where each one came from, a reference library, and homebrew
 content that uses the same rules engine. The full specification is [`docs/SPEC.md`](docs/SPEC.md).
 
@@ -91,14 +93,16 @@ rules in a new function.
   nothing from the network. CI checks this rule (`ENG-01`). Every rule lives in `engine` or
   `content`, never in a component.
 - **Everything is data** (D3). Never hardcode the six abilities or the 18 skills in code. A custom
-  ability such as `san` must behave exactly like `str`.
+  ability such as `san` must behave exactly like `str`. The core names no game: a system's stats,
+  skills, entity types and rules live in its module and its packs (ADR 004).
 - **`compute()` is pure and deterministic** (§6.1). The UI reads only `Computed` and its
   breakdown. A number shown on screen with no breakdown entry is a bug.
 - **Manual overrides always win** (§6.1 step 7). They apply in the `final` phase, and the
   breakdown labels them as a manual edit.
-- **2014/2024 differences live in `rulesets/2014.ts` and `rulesets/2024.ts`** (§6.3). Never
-  scatter `if (ruleset === '2024')` checks through other code. The multiclass half-caster
-  rounding (2014 down, 2024 up) sits in one place.
+- **Each system's rules live in its own module** (ADR 004). Inside the fifth-edition module,
+  2014/2024 differences live in `rulesets/2014.ts` and `rulesets/2024.ts` (§6.3). Never scatter
+  `if (ruleset === '2024')` or `if (system === …)` checks through other code. The multiclass
+  half-caster rounding (2014 down, 2024 up) sits in one place.
 - **Formulas never run code** (§5.6). No `eval`, no `new Function`. Formulas have a length limit
   and a depth limit. A missing path gives `0` plus a warning, not an exception. Formulas in the
   `base` phase read only levels, class levels and choices.
@@ -110,16 +114,21 @@ rules in a new function.
 - **A stored-shape change needs a migration** (§5.8): bump `schemaVersion` and add a pure
   `vN → vN+1` function with its own test.
 
-**Content and licensing** (§3)
+**Content and licensing** (§3, [ADR 003](docs/adr/003-library-packs.md))
 
-- Only SRD 5.1 and SRD 5.2.1 content (CC-BY-4.0) goes into the repository and into builds. That
-  includes test fixtures.
-- Never scrape or copy text from ttg.club, dnd5e.wikidot.com, dnd2024.wikidot.com or any
-  non-SRD book. ttg.club is a reference for Russian terms only.
+- Only openly licensed content goes into the repository and into builds, test fixtures included.
+  Today that is SRD 5.1 and SRD 5.2.1 (CC-BY-4.0). Another system's open content joins only after
+  its license is read from the publisher's own legal text and Alina approves.
+- Never scrape or copy text from ttg.club, dnd5e.wikidot.com, dnd2024.wikidot.com or any book
+  without an open license. ttg.club is a reference for Russian terms only.
 - Every pack carries license metadata. A pack with `redistributable: false` never enters the
   public build.
+- A pack a person makes is personal (`redistributable: false`): it stays on the device, and the
+  app never uploads it by itself. Whether a pack is built-in, local or community is set by the
+  app when it is installed, never read from the pack file.
 - No "D&D", "Dungeons & Dragons" or WotC logos in names, icons or the UI. "5E compatible" is the
-  only allowed phrase.
+  only allowed phrase for fifth edition. How any other system is named on screen is checked
+  against its publisher's trademark policy first.
 - No official PDF character sheets in the repository, only field-mapping profiles (JSON). Field
   names are read from the real file, never written from memory (§10.2).
 
@@ -144,7 +153,7 @@ product. The commit message says what the ticket did, not what wrote it.
 **Nothing invisible.** No zero-width characters, no byte-order marks, no non-breaking spaces,
 except in code that deliberately strips them from imported text.
 
-**No non-SRD rules text**, even in a test, a fixture or a code comment.
+**No rules text without an open license**, even in a test, a fixture or a code comment.
 
 ---
 

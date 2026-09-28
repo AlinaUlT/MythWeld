@@ -56,6 +56,12 @@ Gate: SPEC §12 stage 0, with the English-only screenshot from ADR 000.
 Gate: SPEC §12 stage 1 — golden tests A, B, B4, C, D, E pass; `engine` coverage ≥ 90 %; the
 benchmark is within 10 ms; a formula cycle stops with a readable message. No UI, no SRD import.
 
+**Re-cut before ENG-01 starts** (ADR 004). The rows below are the first cut, written for fifth
+edition only. The re-cut splits the game-free core from the fifth-edition module, adds the
+made-up test system, and puts ADR 003's pack items into the schema rows from the start: `system`,
+the source details, the dependency checks, and refusing a newer `schemaVersion`. The new rows are
+shown to Alina before they replace these.
+
 | ID | Hat | Size | Status |
 |---|---|---|---|
 | ENG-01 | CI fails if `engine` imports React, DOM, Dexie or the network | XS | 🔲 |
@@ -105,13 +111,15 @@ benchmark is within 10 ms; a formula cycle stops with a readable message. No UI,
 | 2 | 2 | `SHEET` | Character list, manual creation, the sheet with every tab, trackers, rolls, rests, undo, JSON export |
 | 3 | 3 | `CONT` | SRD 2014 and 2024 import, mechanics for levels 1–5, the library, search, attribution |
 | 4 | 4 | `WIZ` | The creation wizard, the level-up wizard, house rules |
-| 5 | 5 | `HB` | The homebrew editor, the effect builder, before/after preview, pack import and export |
+| 5 | 5 | `HB` | The homebrew editor, the effect builder, before/after preview, several personal packs, `.gmpack` import and export with the import checks (ADR 003) |
 | 6 | 6 | `PDF` | Own template (6a), filling an uploaded sheet (6b) |
 | 7 | 7 | `POL` | Accessibility, performance, onboarding, optional Android |
 | RU | — | `RU` | Russian locale, glossary check, Russian overlays for SRD texts (ADR 000); placed when phase 3 closes |
+| SYS | — | `SYS` | More game systems: other D&D editions, Pathfinder, later others (ADR 004); placed when phase 2 closes |
 
 Phases L1–L6 (Foundry, game master tools, assistant, accounts, shared room) are in SPEC §12 and
-get rows only when Alina opens them.
+get rows only when Alina opens them. ADR 003 adds two more of that kind: the Fantasy Grounds
+exporter, and the community place for sharing packs (its gate is a lawyer's check).
 
 ---
 
@@ -120,6 +128,15 @@ get rows only when Alina opens them.
 **Phase 0 → phase 1 → phase 2 → phase 3 → phase 4 → phase 5 → phase 6 → phase 7.** Inside a
 phase, rows go in number order unless a row's "Depends on" allows otherwise.
 
-Two things can change this order, and both are Alina's decision (SPEC §14):
+Three things can change this order, and all are Alina's decision (SPEC §14):
 - if she plays in Foundry now, L1 can move ahead of phase 6;
-- the Russian phase is placed when phase 3 closes.
+- the Russian phase is placed when phase 3 closes;
+- the more-systems phase is placed when phase 2 closes (ADR 004).
+
+---
+
+## OPS — around the code (never closes)
+
+| ID | Hat | Size | Status |
+|---|---|---|---|
+| OPS-01 | ADR 003 and ADR 004 record the library packs and the game systems | XS | ✅ 2026-09-28 |
