@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
-import { APP_BACKGROUND_COLOR, APP_NAME, APP_SHORT_NAME } from '../src/config/app';
+import { APP_BACKGROUND_COLOR, APP_BASE_PATH, APP_NAME, APP_SHORT_NAME } from '../src/config/app';
 import en from '../src/locales/en/common.json' with { type: 'json' };
 
 type Icon = { src: string; sizes: string; purpose?: string };
@@ -16,7 +16,7 @@ async function waitForServiceWorker(page: Page) {
 }
 
 test('SETUP-07 the manifest names the app and its icons', async ({ page, request }) => {
-  await page.goto('/');
+  await page.goto('./');
   const href = await page.locator('link[rel="manifest"]').getAttribute('href');
   const manifestUrl = new URL(href ?? '', page.url());
   const manifest = await (await request.get(manifestUrl.href)).json();
@@ -24,8 +24,8 @@ test('SETUP-07 the manifest names the app and its icons', async ({ page, request
     name: APP_NAME,
     short_name: APP_SHORT_NAME,
     display: 'standalone',
-    start_url: '/',
-    scope: '/',
+    start_url: APP_BASE_PATH,
+    scope: APP_BASE_PATH,
     background_color: APP_BACKGROUND_COLOR,
     theme_color: APP_BACKGROUND_COLOR,
   });
@@ -50,7 +50,7 @@ test('SETUP-07 the manifest names the app and its icons', async ({ page, request
 });
 
 test('SETUP-07 the manifest colour is the colour the page renders', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('./');
   // A 1x1 canvas turns the computed oklch() colour into the sRGB bytes the screen shows.
   const rendered = await page.evaluate(() => {
     const canvas = document.createElement('canvas');
@@ -91,7 +91,7 @@ test('SETUP-07 after the first visit the app opens offline', async ({
 }, testInfo) => {
   const origins = new Set<string>();
   context.on('request', (request) => origins.add(new URL(request.url()).origin));
-  await page.goto('/');
+  await page.goto('./');
   await waitForServiceWorker(page);
 
   await context.setOffline(true);
@@ -101,7 +101,7 @@ test('SETUP-07 after the first visit the app opens offline', async ({
   await page.screenshot({ path: testInfo.outputPath('offline-characters.png') });
 
   // A link straight to a tab opens too: the service worker answers every page with index.html.
-  await page.goto('/dice');
+  await page.goto('dice');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(en.nav.dice);
   await page.screenshot({ path: testInfo.outputPath('offline-dice.png') });
 

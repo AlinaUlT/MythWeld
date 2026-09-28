@@ -19,7 +19,7 @@ test('SETUP-06 the database opens and persistent storage is asked for', async ({
       return persisted.call(this);
     };
   });
-  await page.goto('/');
+  await page.goto('./');
 
   // Dexie stores its version 1 as IndexedDB version 10.
   await expect

@@ -1057,3 +1057,38 @@ Nothing to check. The ticket holds no rules facts.
 #### 11. What came out of it
 
 <!-- Filled at the end. Never left empty. -->
+
+**Alina, 2026-09-28:** Settings → Pages → Source set to GitHub Actions ("as free as possible").
+
+**Measured on 2026-09-28, before the push:**
+
+- Whole gate (`lint && typecheck && test && e2e`): exit 0, 19.8 s.
+- `pnpm lint`: `Checked 52 files`, 0 errors. `pnpm typecheck`: 5 of 5 projects `Done`.
+- `pnpm test`: `Test Files 6 passed (6)`, `Tests 18 passed (18)`.
+- `pnpm e2e`, every test under `http://localhost:4173/MythWeld/`: `10 passed (13.0s)`.
+- The tests are live: with the router's `basename` removed, 4 failed and 6 passed
+  (`toHaveURL` and the new `href` check); restored, 10 passed.
+- Build: `manifest.webmanifest` has `start_url` and `scope` `/MythWeld/`; JS 493.04 kB
+  (157.38 kB gzip); `precache 12 entries (508.14 KiB)`.
+- `ci.yml` parses; jobs `check` then `deploy` (`needs: check`).
+
+**After the push:** the first deploy and the `Check the public site` step are read from GitHub
+Actions and reported in the chat. This container cannot reach `alinault.github.io`, so the step's
+log is the proof from here; the proof on a phone is SETUP-09.
+
+**Differences from §4:**
+
+- `concurrency` sits on the `deploy` job only, so checks of two pushes still run side by side.
+- The site check retries up to 12 times, 5 s apart: new files take a few seconds to reach every
+  GitHub Pages server.
+- `APP_BASE_PATH` sits in `config/app.ts` next to the app name; `vite.config.ts` and
+  `playwright.config.ts` read it from there.
+
+**Versions:** `actions/upload-pages-artifact` v5 and `actions/deploy-pages` v5, the newest majors
+listed by `git ls-remote --tags` on 2026-09-28.
+
+**Found, not fixed:** `ci.yml` still uses `actions/checkout`, `actions/setup-node` and
+`pnpm/action-setup` v4; v7, v7 and v6 exist. Updating them is an `OPS` ticket if it is ever
+needed.
+
+**Changelog:** one line — the public link.

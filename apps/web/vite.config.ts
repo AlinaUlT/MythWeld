@@ -2,9 +2,10 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { APP_BACKGROUND_COLOR, APP_NAME, APP_SHORT_NAME } from './src/config/app.ts';
+import { APP_BACKGROUND_COLOR, APP_BASE_PATH, APP_NAME, APP_SHORT_NAME } from './src/config/app.ts';
 
 export default defineConfig({
+  base: APP_BASE_PATH,
   plugins: [
     react(),
     tailwindcss(),

@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-09-28 · SETUP-08 · The app has a public link: https://alinault.github.io/MythWeld/. It
+  updates by itself after every change that passes the checks.
 - 2026-09-28 · SETUP-07 · The app can be installed to the home screen, with its own icon, and opens
   with no network after the first visit.
 - 2026-09-27 · SETUP-04 · The app opens dark, with a bottom bar of four tabs: Characters, Library,

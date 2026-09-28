@@ -1,13 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
+import { APP_BASE_PATH } from './src/config/app';
 
 const port = 4173;
+// The tests open the app under the same path the public site uses; specs use relative paths.
+const baseURL = `http://localhost:${port}${APP_BASE_PATH}`;
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH;
 
 export default defineConfig({
   testDir: 'e2e',
   forbidOnly: !!process.env.CI,
   reporter: 'list',
-  use: { baseURL: `http://localhost:${port}` },
+  use: { baseURL },
   projects: [
     {
       name: 'pixel-7',
@@ -21,7 +24,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `pnpm build && pnpm preview --port ${port} --strictPort`,
-    url: `http://localhost:${port}`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
   },
 });

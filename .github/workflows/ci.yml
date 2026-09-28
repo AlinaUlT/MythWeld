@@ -1,4 +1,5 @@
 # SETUP-03: the same gate as CLAUDE.md, plus the build, on every push to main.
+# SETUP-08: when every check passes, that same build is published to GitHub Pages.
 name: CI
 
 on:
@@ -8,6 +9,8 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,3 +23,46 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      # GitHub Pages has no fallback to index.html: a path with no file behind it gets 404.html.
+      - run: cp apps/web/dist/index.html apps/web/dist/404.html
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: apps/web/dist
+
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # Two pushes never publish at the same time; a running deploy is allowed to finish.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
+      - name: Check the public site
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          site="${PAGE_URL%/}/"
+          fetch() { curl -s -o "$2" -w '%{http_code}' "$1"; }
+          # The new files can take a few seconds to reach every GitHub Pages server.
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            page=$(fetch "$site" page.html)
+            manifest=$(fetch "${site}manifest.webmanifest" manifest.json)
+            worker=$(fetch "${site}sw.js" sw.js)
+            deep=$(fetch "${site}dice" deep.html)
+            echo "attempt $attempt: page $page, manifest $manifest, sw.js $worker, dice $deep"
+            if [ "$page" = 200 ] && [ "$manifest" = 200 ] && [ "$worker" = 200 ] \
+              && grep -q '<div id="root">' deep.html; then
+              grep -o '"start_url":"[^"]*"' manifest.json
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
