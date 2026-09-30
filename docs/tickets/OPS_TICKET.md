@@ -500,3 +500,30 @@ path, because those are addresses: changing them means renaming the account or t
 which only the owner can do on GitHub. Found, not fixed: six earlier commit messages and one
 commit's author field still hold the name; removing them rewrites the history of `main`, which
 waits for the owner's answer. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-14 The library's look on the phone · XS
+
+**Hat:** ADR 012 records the library's look on the phone
+**Where:** `docs/adr/012-library-look-on-the-phone.md` — new; `docs/design/BRIEF.md`,
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-13
+
+**What it should look like when done:**
+1. ADR 012 records the owner's choice of 2026-09-30: an entry opens in a floating window over
+   the list; the list page's controls, groups, cards and markers; the window's parts, "Damage
+   dice" by level included.
+2. It states that nothing is copied from the two references: no text, images or styling.
+3. BRIEF P7 and `BACKLOG.md` follow it.
+4. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** the references were a tabletop app's floating spell window and a
+website's spell page, which the owner likes for its overall layout; the ADR names neither. The
+website's comments section is not taken: the app has no server for it. The gate is green:
+lint checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.75 s.
+Found, not fixed:
+nothing. Nothing for the changelog; a person sees no change.

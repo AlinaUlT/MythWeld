@@ -200,6 +200,7 @@ split off an old row got a new id.
   that open and close, ability score methods, level-up by XP or milestone. Phase 5: adding
   packs from "Books in use". DM tools: encounter templates. The table link's phase: the DM's
   level-up control, changes reviewed together.
+- **ADR 012** — added by OPS-14. Phase 3: the library's list page and its floating entry window.
 - **ADR 011, by phase** — added by OPS-12. Phase 2: descriptions open and close, from fixtures
   and free text. Phase 3: the SRD texts. Phase 5: the person's packs.
 
@@ -241,6 +242,7 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-11 | `CLAUDE.md` says every detail the owner gives is recorded in the same chat | XS | ✅ 2026-09-30 |
 | OPS-12 | ADR 011 records full descriptions on the sheet | XS | ✅ 2026-09-30 |
 | OPS-13 | No personal name for the owner appears in the repository | XS | ✅ 2026-09-30 |
+| OPS-14 | ADR 012 records the library's look on the phone | XS | ✅ 2026-09-30 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. The owner's chosen results come back into it.

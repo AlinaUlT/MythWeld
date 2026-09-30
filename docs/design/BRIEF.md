@@ -260,6 +260,12 @@ and license; buttons "Add to character" and "Make homebrew copy".
 ADR 010: the library is one page with a topic picker on top: Armor, Backgrounds, Classes,
 Encounter templates, Feats, Items, Monsters, Species, Spells, Weapons. Each entry in a list
 shows its source. An entry opens with all its details, as a rulebook shows them.
+ADR 012: the entry opens in a floating window over the list. The list page has search, Filter,
+Sources, Export, Grouping, Sorting and a legend; entries are cards grouped by level (for
+spells) with a kind icon, name, source badge, school, and V S M, concentration and ritual
+markers. The window shows both names, source badges, share / homebrew copy / edit / close, a
+type line, a properties box, the full text with tappable terms and dice, "At higher levels",
+"Damage dice" by level (opens and closes), and classes and subclasses with their sources.
 States: search with no results; a "Missing: <id>" chip inside a text.
 ```
 
