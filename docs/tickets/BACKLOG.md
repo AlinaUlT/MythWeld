@@ -151,6 +151,7 @@ Three things can change this order, and all are Alina's decision (SPEC §14):
 | OPS-02 | ADR 005 records the product decisions of 2026-09-29 | XS | ✅ 2026-09-30 |
 | OPS-03 | The design brief for the screens exists | S | ✅ 2026-09-30 |
 | OPS-04 | ADR 006 removes the stops that protect nothing | XS | ✅ 2026-09-30 |
+| OPS-05 | Phase 1 is re-cut to follow ADRs 003–005 | XS | 🚧 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. Alina's chosen results come back into it.

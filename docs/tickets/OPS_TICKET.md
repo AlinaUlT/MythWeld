@@ -231,3 +231,35 @@ of size S and M, any ticket that changes an engine number, and a document that m
 decision for Alina (the phase 1 re-cut is the named example). The gate is green: lint checked 52
 files; typecheck passed; 6 test files, 18 tests passed, 0 failed, 798 ms. Found, not fixed:
 nothing. Nothing for the changelog; a person sees no change.
+
+### OPS-05 The phase 1 re-cut · XS
+
+**Hat:** Phase 1 is re-cut to follow ADRs 003–005
+**Where:** `docs/tickets/BACKLOG.md` — the phase 1 section, the Order section, the OPS table;
+`docs/tickets/README.md` — the `ENG` area line
+**Depends on:** OPS-01, OPS-02
+
+**What it should look like when done:**
+1. Phase 1's table is in work order: the game-free core first, then the fifth-edition module
+   (ADR 004 item 1). One area, `ENG`, covers both, so no new area code is needed.
+2. One row makes the fifth-edition module its own package, which CI stops the core from
+   importing (ADR 004 item 2).
+3. One row builds the made-up test system, and the core's compute rows are tested on it
+   (ADR 004 item 4).
+4. The schema rows carry ADR 003's pack items from the start: `system`, the source details, no
+   `meta.foundry`, no field that says where a pack came from. One row checks dependencies,
+   dependency loops and a newer `schemaVersion` when packs load.
+5. ADR 005's three phase 1 items each have a row: golden F, the ability-bonus source as a
+   choice, the roll result's shape. Golden F's row shows its values to Alina before its test is
+   written. This ticket writes no golden value.
+6. Every row is XS, S or M, with a hat of one phrase without "and". No id is reused: an old row
+   keeps its id when its meaning stays; a split-off part gets a new id; a row that goes gets ❌
+   with the reason.
+7. The gate line names golden F, the made-up test system and the core-import check.
+8. Alina approved the rows in the chat before they were written (ADR 004, ADR 006 item 3).
+9. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** <!-- Filled at the end. Never left empty. -->
