@@ -236,6 +236,7 @@ Three things can change this order, and all are Alina's decision (SPEC §14):
 | OPS-08 | ADR 008 records the navigation Alina chose | XS | ✅ 2026-09-30 |
 | OPS-09 | ADR 009 records Alina's sheet, dice, rulebook and campaign requirements | XS | ✅ 2026-09-30 |
 | OPS-10 | ADR 010 records Alina's library, dice, creation, level and spell requirements | XS | ✅ 2026-09-30 |
+| OPS-11 | `CLAUDE.md` says every detail Alina gives is recorded in the same chat | XS | ✅ 2026-09-30 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. Alina's chosen results come back into it.

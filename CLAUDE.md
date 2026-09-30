@@ -185,6 +185,9 @@ Three exceptions. They are data, not wording:
 - **End with what was done and what comes next**, not with a question. Only for a decision
   that is hers, state the choice in one sentence, with what happens after each answer.
 - **One fact, one place.** A note points at the file that owns the fact; it does not repeat it.
+- **Nothing she says is lost.** Every requirement, design choice or technical detail Alina gives
+  in the chat is written, in the same chat, into the file that owns it: an ADR for a decision,
+  `docs/design/BRIEF.md` for a screen. The report names the file and the commit.
 - **Technical choices are made, not asked** ([ADR 002](docs/adr/002-technical-choices.md)). How
   a thing is built, stored, tested or ordered is decided in the ticket, even where it departs
   from the letter of a SPEC detail. The ticket says why; the chat reports it as done.

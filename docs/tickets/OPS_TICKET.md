@@ -425,3 +425,25 @@ gate's counts.
 packages; 10 test files, 59 tests passed, 0 failed, 1.72 s. The "Turn" tab's name was chosen so
 it does not clash with the "Actions" list behind "⋯". Found, not fixed: nothing. Nothing for the
 changelog; a person sees no change.
+
+---
+
+### OPS-11 Every detail is recorded · XS
+
+**Hat:** `CLAUDE.md` says every detail Alina gives is recorded in the same chat
+**Where:** `CLAUDE.md` — "Working with Alina"; `docs/tickets/BACKLOG.md`
+**Depends on:** OPS-10
+
+**What it should look like when done:**
+1. "Working with Alina" has a bullet: every requirement, design choice or technical detail
+   Alina gives in the chat is written, in the same chat, into the file that owns it (an ADR for
+   a decision, `docs/design/BRIEF.md` for a screen); the report names the file and the commit.
+2. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** Alina asked on 2026-09-30 that technical details she adds later be
+recorded too, so nothing is forgotten; ADRs 009 and 010 were the first records of this kind. The
+gate is green: lint checked 66 files; typecheck passed in all 5 packages; 59 tests passed,
+0 failed. Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
