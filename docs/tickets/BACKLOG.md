@@ -200,6 +200,8 @@ split off an old row got a new id.
   that open and close, ability score methods, level-up by XP or milestone. Phase 5: adding
   packs from "Books in use". DM tools: encounter templates. The table link's phase: the DM's
   level-up control, changes reviewed together.
+- **ADR 011, by phase** — added by OPS-12. Phase 2: descriptions open and close, from fixtures
+  and free text. Phase 3: the SRD texts. Phase 5: the person's packs.
 
 Phases L1–L6 (Foundry, game master tools, assistant, accounts, shared room) are in SPEC §12 and
 get rows only when Alina opens them. ADR 003 adds two more of that kind: the Fantasy Grounds
@@ -237,6 +239,7 @@ Three things can change this order, and all are Alina's decision (SPEC §14):
 | OPS-09 | ADR 009 records Alina's sheet, dice, rulebook and campaign requirements | XS | ✅ 2026-09-30 |
 | OPS-10 | ADR 010 records Alina's library, dice, creation, level and spell requirements | XS | ✅ 2026-09-30 |
 | OPS-11 | `CLAUDE.md` says every detail Alina gives is recorded in the same chat | XS | ✅ 2026-09-30 |
+| OPS-12 | ADR 011 records full descriptions on the sheet | XS | ✅ 2026-09-30 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. Alina's chosen results come back into it.

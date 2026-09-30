@@ -447,3 +447,27 @@ gate's counts.
 recorded too, so nothing is forgotten; ADRs 009 and 010 were the first records of this kind. The
 gate is green: lint checked 66 files; typecheck passed in all 5 packages; 59 tests passed,
 0 failed. Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-12 Full descriptions on the sheet · XS
+
+**Hat:** ADR 011 records full descriptions on the sheet
+**Where:** `docs/adr/011-descriptions-on-the-sheet.md` — new; `docs/design/BRIEF.md`,
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-11
+
+**What it should look like when done:**
+1. ADR 011 records Alina's requirement of 2026-09-30: every ability, skill, feature, feat, spell
+   and item opens and closes its description in place; tapping one shows "See full
+   description", the exact text of its source, with the source named; only openly licensed text
+   or the person's own packs are shown.
+2. BRIEF P4 and `BACKLOG.md` follow it.
+3. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** the first record made under OPS-11's rule. The gate is green: lint
+checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.50 s. Found,
+not fixed: nothing. Nothing for the changelog; a person sees no change.

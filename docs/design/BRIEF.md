@@ -218,6 +218,9 @@ ADR 010: a level-up button in the header; a "Turn" tab listing everything the ch
 grouped by action, bonus action, reaction, once per turn, always on, limited uses; spell slots
 as a grid, one column per level, circles two per row; casting offers "Don't use a spell slot";
 spells granted by a feature show their source, "1/LR" and "no spell slot".
+ADR 011: every ability, skill, feature, feat, spell and item opens and closes its description
+in place; tapping one shows a summary and "See full description", the exact text of its
+source, with the source named.
 ```
 
 ### P5 Roll dialog and breakdown · player
