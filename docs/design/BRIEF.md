@@ -143,6 +143,8 @@ conditions, each chapter showing the badges of the books it draws from; a switch
 "My packs". No button to make a character here.
 Actions: tap "My characters" to open the list (P2); tap a chapter to open it; tap a switch to
 turn a book or pack on or off.
+ADR 010: "⋯" on "Books in use" adds packs (downloaded, imported, the person's own); a link
+"All sources" lists every book and pack on the device with its license.
 One state only.
 ```
 
@@ -178,6 +180,9 @@ On screen: one scrolling form, in this order:
 8. Ability scores: six number fields, any numbers.
 9. Equipment: add items.
 A bar pinned at the bottom shows the live numbers: AC, hit points, initiative.
+ADR 010: each step opens with an arrow to show what was chosen and closes with it; "Change"
+stays. Ability scores offer standard array, point buy, 4d6, and custom methods built from
+dice, rerolls, drops, a shared bonus roll, a cap or a pool.
 Warnings appear inline in amber; nothing blocks "Create".
 States: empty form; filled with Iren; a warning shown (for example a mix that may not fit).
 ```
@@ -209,6 +214,10 @@ background and the feats; for a spellcaster, the spellcasting ability, spell sav
 attack bonus together at the top of Spells and in the header row.
 Edit mode adds custom items and companions (familiar, pet, mount), custom sections, and custom
 stats, for example "Vitality = 8 + STR mod + DEX mod + CON mod = 14 (+2)".
+ADR 010: a level-up button in the header; a "Turn" tab listing everything the character can do,
+grouped by action, bonus action, reaction, once per turn, always on, limited uses; spell slots
+as a grid, one column per level, circles two per row; casting offers "Don't use a spell slot";
+spells granted by a feature show their source, "1/LR" and "no spell slot".
 ```
 
 ### P5 Roll dialog and breakdown · player
@@ -228,7 +237,7 @@ number shows a "Manual edit" label.
 ```text
 Design P6, three frames. Phone 360×800, dark and light.
 1. "Damage": a large number keypad; "Apply". If the character is concentrating, a follow-up
-   asks for a concentration save with a "Roll" button.
+   asks for a concentration save with a "Roll" button. "Heal" opens the same keypad (ADR 010).
 2. "Short rest": hit dice to spend, each spend rolls; a summary of what comes back.
 3. "Long rest": before confirming, a list of exactly what will be restored (hit points, slots,
    uses); "Confirm" and "Cancel".
@@ -245,6 +254,9 @@ Backgrounds, Feats, Spells, Equipment, Magic items, Monsters, Conditions, Rules.
 Frame 2, a spell's card (for example "Bless", with a "2014" badge): the text with tappable link
 chips to other entries; a short mechanics summary; "Used in" (entries that point here); source
 and license; buttons "Add to character" and "Make homebrew copy".
+ADR 010: the library is one page with a topic picker on top: Armor, Backgrounds, Classes,
+Encounter templates, Feats, Items, Monsters, Species, Spells, Weapons. Each entry in a list
+shows its source. An entry opens with all its details, as a rulebook shows them.
 States: search with no results; a "Missing: <id>" chip inside a text.
 ```
 
@@ -270,6 +282,8 @@ On screen: a formula field ("2d6+3"; also accepts "2к6+3"); buttons d4 d6 d8 d1
 a roll area where dice land (3D, with a "Flat dice" setting); the result large; the roll
 history below.
 A "Skins" row: basic skins free; the owner's skins with a star mark.
+ADR 010: any count of dice in one roll (for example 37d6), and an edit mode that adds custom
+dice with any number of faces.
 States: before the first roll; after a roll; history full.
 ```
 
@@ -295,6 +309,9 @@ Frame 2, a campaign's page: its one edition; the party (each player's name, hit 
 conditions); the table link status ("Off", "3 players connected", "Through relay"); "Invite"
 (a QR code and a link); the session log; DM notes; images; a backup reminder
 ("Last backup: 12 days ago").
+ADR 009/010: a player's changes waiting for approval show per character: the name with an
+edit icon, one line per change ("HP 6 → 12", "+24 gold, +12 silver", "added spell …"), then
+"Approve changes?" Yes / No; "See all changes" when there are several.
 ```
 
 ### P12 Initiative tracker · DM · free
@@ -411,5 +428,6 @@ opens: P1 to P17 from this brief. Mark which screens belong to the Game master s
 | Base colours | Not chosen. The base theme is plain and calm; personality comes from paid skins. Rejected: Lavender (3D52A0 · 7091E6 · 8697C4 · ADBBDA · EDE8F5) and Cream (F7F5E6 · 333A56 · 52658F · E8E8E8), which read as a clinic or government app. Sky (E2F0F9 · B0DDE4 · 286FB4 · FFFFFF · DF4C73) is still open | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "P4 · 3 palettes" | 2026-09-30 |
 | Overall design | The navigation of ADR 008: no bottom bar; a start page (Player or Game master); a player page with what a player needs before making a character; My characters with "+" in the corner. The five home-page options with a bottom bar are rejected. The look is still being drawn | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v1" | 2026-09-30 |
 | P17 Player page | — | — | — |
+| Library, dice, creation, levels, Turn tab, spells, DM review | Recorded in ADR 010 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3" | 2026-09-30 |
 | Sheet, dice, rulebook and campaign requirements | Recorded in ADR 009: dice panel on the sheet, features by source, About tab, spellcasting line, Inspiration stars, token frame, custom items, sections and stats, honest animated dice, several books at once, DM control in a campaign | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v2" | 2026-09-30 |
 | Future skins | Six retro looks are kept as ideas for optional paid skins: Win95 shareware, 16-bit RPG menu, green-screen terminal, parchment overload, wood and leather, early homepage. Not the base design | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Retro and weird" | 2026-09-30 |

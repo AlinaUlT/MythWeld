@@ -396,3 +396,32 @@ Iren's own modifiers (STR +3, DEX +1, CON +2; BRIEF Part 1), so 8 + 3 + 1 + 2 = 
 (14 − 10) / 2 = modifier +2. Found, not fixed: SRD's inspiration rule is not checked yet; ADR 009
 item 5 marks it `[ПРОВЕРИТЬ]` for the ticket that builds Inspiration. Nothing for the changelog;
 a person sees no change.
+
+---
+
+### OPS-10 Library, dice, creation, level and spell requirements · XS
+
+**Hat:** ADR 010 records Alina's library, dice, creation, level and spell requirements
+**Where:** `docs/adr/010-library-dice-creation-levels-turn-tab.md` — new; `docs/design/BRIEF.md`,
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-09
+
+**What it should look like when done:**
+1. ADR 010 holds every requirement Alina gave on 2026-09-30 after the ADR 009 mockups: "⋯" on
+   Books in use to add packs; All sources; the one-page library with topics and full entries;
+   custom dice and any count of dice; the Damage and Heal number pad; level-up by XP or
+   milestone, with the DM's control in a campaign; the Turn tab; the spell slot grid; casting
+   without a slot and granted spells marked "1/LR"; creation steps that open and close; ability
+   score methods as data, with her three examples; changes reviewed together by the DM.
+2. Each item names its phase; `BACKLOG.md` lists them by phase.
+3. BRIEF P3, P4, P6, P7, P9, P11 and P17 follow ADR 010; Part 5 points to it.
+4. What stays open is listed in ADR 010.
+5. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** the gate is green: lint checked 66 files; typecheck passed in all 5
+packages; 10 test files, 59 tests passed, 0 failed, 1.72 s. The "Turn" tab's name was chosen so
+it does not clash with the "Actions" list behind "⋯". Found, not fixed: nothing. Nothing for the
+changelog; a person sees no change.
