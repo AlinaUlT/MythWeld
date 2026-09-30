@@ -256,3 +256,134 @@ Found, not fixed:
 - The 11 slugs above: noted for phase 3 in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-03 The core entity types
+
+**Hat:** The core entity types have Zod schemas
+**Depends on:** ENG-02 (the entity base)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.3 (`AbilityDef`, `SkillDef`, `ConditionDef`); ADR 004 items 1, 4
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/schema/src/entity-types.ts` — new. The types the game-free core owns.
+- `packages/schema/src/formula.ts` — new: the stored form of a formula.
+- `packages/schema/src/entity-base.ts` — changes: `visibleTextSchema` is exported.
+- `packages/schema/src/index.ts` — changes: exports both new files.
+- `packages/schema/test/entity-types.test.ts` — new.
+
+#### 2. What is missing now
+
+- `@grimoire/schema` exports only the base: `grep -n "ability\|skill\|condition"
+  packages/schema/src/*.ts` prints nothing.
+- No formula schema exists; SPEC §5.3's `modFormula` and `totalFormula` have nothing to use.
+- `pnpm test`: 8 files, 35 tests; none for an entity type.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/schema` exports `abilityDefSchema`, `skillDefSchema`, `conditionDefSchema`,
+   `coreEntitySchema`, `formulaSchema`, and the types `AbilityDef`, `SkillDef`, `ConditionDef`,
+   `CoreEntity`, `Formula`.
+2. The core owns three types, the ones every system needs and ADR 004 item 1 names (stats,
+   skills) plus conditions on a character: `ability`, `skill`, `condition`. Each is the base with
+   `type` fixed to its name.
+3. `ability` needs `key`, `abbr` (L10n) and `order` (a whole number, 0 or more); it takes
+   `modFormula?`, `hasSave?`, `defaultMax?` (a whole number, 1 or more).
+4. `skill` needs `key` and `ability`, a stat's key in the key pattern of ENG-02; it takes
+   `totalFormula?` and `passive?`.
+5. `condition` takes `maxLevel?`, a whole number, 1 or more.
+6. A formula is stored as text with a visible character; `''` and `'   '` are refused.
+7. A made-up stat `san` passes with the same fields as `str`; so does `grit`.
+8. Parsing adds nothing: no default modifier formula, save or maximum is filled in.
+9. The base's checks hold in every type: an id naming another type is refused on `id`; an
+   unknown field is refused (`abbr` on a skill).
+10. `coreEntitySchema` picks the schema by `type`; `feat` is refused on `type`.
+11. `z.toJSONSchema(coreEntitySchema)` gives three options, each with
+    `additionalProperties: false`.
+12. The quality gate is green.
+
+#### 4. How to do it
+
+1. `formula.ts`: `formulaSchema = visibleTextSchema`.
+2. `entity-types.ts`: `entityBaseSchema.safeExtend({ type: z.literal('ability'), … })` per type;
+   `coreEntitySchema = z.discriminatedUnion('type', [...])`.
+3. The tests of §7.
+
+Technical choices (ADR 002):
+- **Only three core types.** SPEC §5.2's list is fifth edition's (ADR 004 changes it to core
+  types plus a module's). `species`, `class`, `subclass`, `background`, `feat`, `feature`,
+  `spell`, `item` and the simple types (`language`, `damageType`, `weaponProperty`,
+  `weaponMastery`, `toolKind`, `rule`) are fifth edition's: ENG-32. Adding a type to the core
+  later breaks nothing stored.
+- **No defaults in the schema.** SPEC §5.3's defaults (`floor((@score - 10) / 2)`, a save, a
+  maximum of 20) are fifth edition's rules; the module supplies them (ENG-24, ENG-28). The core
+  schema keeps the fields optional and the round trip exact.
+- **`safeExtend`, not `extend`.** Measured on Zod 4.6.5: `entityBaseSchema.extend({ type:
+  z.literal('ability') })` throws `Cannot overwrite keys on object schemas containing
+  refinements. Use .safeExtend() instead.` `safeExtend` keeps the id-matches-type check.
+- **No formula length limit here.** The limits are ENG-07's, with its parser; size limits on
+  stored text are phase 5's (ENG-02 §9).
+
+#### 5. Stored data
+
+Nothing stored changes. No pack or character is stored yet.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/schema/test/entity-types.test.ts` — `describe('ENG-03 core entity types')`: round
+  trip with no defaults, a custom stat like a standard one, the fields of each type, the base's
+  checks, the choice by `type`, the type names, the JSON Schema export.
+- Control values from: SPEC §5.3's field lists; the stat keys `str` and `san` of SPEC §5.3 and
+  D3. Test entities are made up; they hold no rules text.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is used. The fields come from SPEC §5.3.
+
+#### 9. Not in this ticket
+
+- `effects`, `grants`, `prerequisites`, `UsesDef`: ENG-04.
+- The fifth-edition types and their defaults: ENG-32; how a module adds its types: ENG-24.
+- A skill's `ability` naming a stat that exists; a `key` unique among packs: ENG-25.
+- Parsing a formula, its length and depth limits: ENG-07.
+- The roll table, a core entity (ADR 005 item 8): its phase, L3.
+
+#### 10. Rake check
+
+- **Everything is data; the core names no game.** No stat, skill or condition name is in the
+  code. The test passes `san` and `grit` exactly like `str`.
+- **Each system's rules live in its own module.** No fifth-edition default is in the core.
+- **Formulas never run code.** A formula is only text here; nothing evaluates it.
+- **Entity names stay bilingual.** `abbr` is L10n, like `name`.
+- **Licensing.** Test data is made up; no SRD or book text.
+
+#### 11. What came out of it
+
+Measured:
+- The new test file alone: `Tests 9 passed (9)`, 402 ms.
+- Lint: `Checked 61 files`, 0 errors (58 before).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 9 passed (9)`, `Tests 44 passed (44)`, 1.20 s (before: 8 files, 35 tests).
+- Build: `Done`.
+- The tests bite. Each guard removed on its own, 9 tests run each time: `order` any number,
+  1 fails; `key` optional on `ability`, 2 fail; a skill's `ability` any text, 1 fails; a formula
+  any text, 2 fail; `maxLevel` 0 or less allowed, 1 fails; `ability` built without the base's
+  id check, 1 fails.
+
+Differences from §3: none.
+
+Found, not fixed:
+- ENG-02 §4 says `.extend()` on the refined base keeps the check. True when adding keys;
+  replacing a key (`type`) throws, measured above. ENG-24 and ENG-32 use `safeExtend`. No row
+  needed.
+
+Nothing for the changelog.

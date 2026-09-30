@@ -72,7 +72,7 @@ split off an old row got a new id.
 | **Core** | **schemas** | | |
 | ENG-01 | CI fails if `engine` imports React, DOM, Dexie or the network | XS | ✅ 2026-09-30 |
 | ENG-02 | The entity base has a core Zod schema, ids included | S | ✅ 2026-09-30 |
-| ENG-03 | The core entity types have Zod schemas | S | 🔲 |
+| ENG-03 | The core entity types have Zod schemas | S | ✅ 2026-09-30 |
 | ENG-04 | Effects, grants, prerequisites have game-free Zod schemas | S | 🔲 |
 | ENG-24 | A system module adds its entity types to the schemas | S | 🔲 |
 | ENG-05 | The content pack has a schema, exported as JSON Schema | S | 🔲 |

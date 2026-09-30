@@ -9,7 +9,7 @@ import {
 } from './ids';
 
 /** Text that shows something: not empty, not only spaces. */
-const visibleTextSchema = z.string().regex(/\S/, 'Must hold a visible character.');
+export const visibleTextSchema = z.string().regex(/\S/, 'Must hold a visible character.');
 
 export const localeSchema = z.enum(['en', 'ru']);
 export type Locale = z.infer<typeof localeSchema>;
