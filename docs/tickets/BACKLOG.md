@@ -188,6 +188,12 @@ split off an old row got a new id.
   entity with prerequisites.
 - **Phase 2** — found by OPS-08: ADR 008 replaces the SETUP-04 bottom bar with a start page, a
   player page and My characters. The phase 2 rows build that navigation instead of the bar.
+- **ADR 009, by phase** — added by OPS-09. Phase 2: the dice panel on the sheet, features by
+  source, the About tab, the spellcasting line, Inspiration, portrait and token, custom items,
+  companions and sections. Phase 3: several rulebooks at once, the source on every entry.
+  Phase 5: custom stats, the person's packs next to the books, custom entries with effects. The
+  dice phase (with ADR 005 item 11): the honest animated roll, custom roll modifiers. The table
+  link's phase: the campaign copy, the DM's changes, approval of important changes.
 
 Phases L1–L6 (Foundry, game master tools, assistant, accounts, shared room) are in SPEC §12 and
 get rows only when Alina opens them. ADR 003 adds two more of that kind: the Fantasy Grounds
@@ -222,6 +228,7 @@ Three things can change this order, and all are Alina's decision (SPEC §14):
 | OPS-06 | ADR 007 limits stops to Alina's decisions | XS | ✅ 2026-09-30 |
 | OPS-07 | The design brief records Alina's choices of 2026-09-30 | XS | ✅ 2026-09-30 |
 | OPS-08 | ADR 008 records the navigation Alina chose | XS | ✅ 2026-09-30 |
+| OPS-09 | ADR 009 records Alina's sheet, dice, rulebook and campaign requirements | XS | ✅ 2026-09-30 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. Alina's chosen results come back into it.

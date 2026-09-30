@@ -53,6 +53,9 @@ RULES FOR EVERY SCREEN
 - After every change, a small "Undo" message appears at the bottom.
 - An unmade choice shows a badge with a count, like [!1], that opens the list of choices.
 - Missing content shows a grey chip "Missing: <id>". Never an error page.
+- Every library entry shows the book or pack it comes from, wherever it is listed, so entries
+  from different sources never look alike.
+- Dice open from any sheet in a panel that covers at most half the screen.
 - A warning is a small amber note. Nothing is ever blocked by a rule.
 - Numbers are large. Modifiers always show a sign: +3, −1, +0.
 - Leave room in every label: all text will also appear in Russian, which is often longer.
@@ -132,12 +135,14 @@ One state only.
 Design P17 "Player". Phone 360×800, dark and light.
 Purpose: what a player needs before making a character.
 On screen: a back arrow and the title "Player"; a card "My characters" with portraits,
-"2 of 3" and "last opened: Iren"; the rulebook as a table of contents: Species, Classes,
-Backgrounds, Feats, Spells, Equipment, Rules and conditions. Each chapter shows its source as a
-small badge (2024, 2014, My packs); a switch "Rules base 2014 / 2024" sits on the rulebook's
-title row. Under it two tiles: "Dice" and "My packs". No button to make a character here.
-Actions: tap "My characters" to open the list (P2); tap a chapter to open it; tap a badge to
-choose the chapter's source.
+"2 of 3" and "last opened: Iren"; "Books in use": several can be on at once, for example
+"SRD 2024", "SRD 2014" and one of the person's homebrew packs, each with a switch; the rulebook
+as a table of contents: Species, Classes, Backgrounds, Feats, Spells, Equipment, Rules and
+conditions, each chapter showing the badges of the books it draws from; a switch
+"Rules base 2014 / 2024" on the rulebook's title row. Under it two tiles: "Dice" and
+"My packs". No button to make a character here.
+Actions: tap "My characters" to open the list (P2); tap a chapter to open it; tap a switch to
+turn a book or pack on or off.
 One state only.
 ```
 
@@ -196,6 +201,14 @@ Equipment (items with worn and attuned toggles, weight, coins cp sp ep gp pp wit
 Features (grouped by source: class, species, background, feats; Second Wind's uses with the
 label "1 back on a short rest, all on a long rest"), Notes (plain text).
 A lock icon in the header shows play mode; the "Edit" switch sits in the tab's menu.
+Also on the sheet (ADR 009): the portrait as a round token with a simple frame; Inspiration as
+eight-pointed stars, 3 by default; a dice button that opens a half-screen dice panel; an
+"About" tab (background, alignment, languages, proficiencies, tools) next to Spells, Gear and
+Features; Features grouped under "Human", "Fighter" (subclass on the line below), the
+background and the feats; for a spellcaster, the spellcasting ability, spell save DC and spell
+attack bonus together at the top of Spells and in the header row.
+Edit mode adds custom items and companions (familiar, pet, mount), custom sections, and custom
+stats, for example "Vitality = 8 + STR mod + DEX mod + CON mod = 14 (+2)".
 ```
 
 ### P5 Roll dialog and breakdown · player
@@ -398,4 +411,5 @@ opens: P1 to P17 from this brief. Mark which screens belong to the Game master s
 | Base colours | Not chosen. The base theme is plain and calm; personality comes from paid skins. Rejected: Lavender (3D52A0 · 7091E6 · 8697C4 · ADBBDA · EDE8F5) and Cream (F7F5E6 · 333A56 · 52658F · E8E8E8), which read as a clinic or government app. Sky (E2F0F9 · B0DDE4 · 286FB4 · FFFFFF · DF4C73) is still open | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "P4 · 3 palettes" | 2026-09-30 |
 | Overall design | The navigation of ADR 008: no bottom bar; a start page (Player or Game master); a player page with what a player needs before making a character; My characters with "+" in the corner. The five home-page options with a bottom bar are rejected. The look is still being drawn | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v1" | 2026-09-30 |
 | P17 Player page | — | — | — |
+| Sheet, dice, rulebook and campaign requirements | Recorded in ADR 009: dice panel on the sheet, features by source, About tab, spellcasting line, Inspiration stars, token frame, custom items, sections and stats, honest animated dice, several books at once, DM control in a campaign | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v2" | 2026-09-30 |
 | Future skins | Six retro looks are kept as ideas for optional paid skins: Win95 shareware, 16-bit RPG menu, green-screen terminal, parchment overload, wood and leather, early homepage. Not the base design | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Retro and weird" | 2026-09-30 |

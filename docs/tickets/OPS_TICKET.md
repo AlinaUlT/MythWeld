@@ -365,3 +365,34 @@ says so. The gate is green: lint checked 66 files; typecheck passed in all 5 pac
 files, 59 tests passed, 0 failed, 1.35 s. Found, not fixed: SPEC §7.1 still describes
 the bottom bar; the SPEC is read, not edited, and ADR 008 overrides it. Nothing for the
 changelog; a person sees no change.
+
+---
+
+### OPS-09 Sheet, dice, rulebook and campaign requirements · XS
+
+**Hat:** ADR 009 records Alina's sheet, dice, rulebook and campaign requirements
+**Where:** `docs/adr/009-sheet-dice-rulebooks-dm-control.md` — new; `docs/design/BRIEF.md`,
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-08
+
+**What it should look like when done:**
+1. ADR 009 holds every requirement Alina gave on 2026-09-30 after the ADR 008 mockups: the dice
+   panel on the sheet; features by source; the About tab; the spellcasting line; Inspiration as
+   eight-pointed stars, 3 by default, set by the DM; portrait and token frame; custom items,
+   companions, sections and stats (her Vitality example); the honest, realistic dice animation;
+   custom roll modifiers; several rulebooks and packs at once with the source on every entry;
+   the campaign copy with DM changes and DM approval of important changes.
+2. Each item names the phase that builds it; `BACKLOG.md` lists them by phase.
+3. BRIEF's base block, P4 and P17 follow ADR 009; Part 5 points to it.
+4. What stays open is listed in ADR 009.
+5. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** the gate is green: lint checked 66 files; typecheck passed in all 5
+packages; 10 test files, 59 tests passed, 0 failed, 1.34 s. Vitality's example numbers are
+Iren's own modifiers (STR +3, DEX +1, CON +2; BRIEF Part 1), so 8 + 3 + 1 + 2 = 14 and
+(14 − 10) / 2 = modifier +2. Found, not fixed: SRD's inspiration rule is not checked yet; ADR 009
+item 5 marks it `[ПРОВЕРИТЬ]` for the ticket that builds Inspiration. Nothing for the changelog;
+a person sees no change.
