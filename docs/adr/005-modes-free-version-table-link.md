@@ -1,10 +1,10 @@
 # ADR 005 — Modes, the free version, mixed editions, the table link, AI and themes
 
-**Status:** accepted · **Date:** 2026-09-29 · **Decided by:** Alina
+**Status:** accepted · **Date:** 2026-09-29 · **Decided by:** The owner
 
 ## Context
 
-Before phase 1, Alina set out what the app does around the sheet:
+Before phase 1, the owner set out what the app does around the sheet:
 - a player mode and a DM mode;
 - what is free and what is paid;
 - mixing the 2014 and 2024 editions on one character;
@@ -54,7 +54,7 @@ Support around the app:
   Patreon.
 - **Kickstarter backers and first supporters** get the paid version forever, a dice skin only they
   get, and their name in the credits.
-- **The price is Alina's**, set before the payment phase opens.
+- **The price is the owner's**, set before the payment phase opens.
 - **The app earns money.** This answers SPEC §14 question 3: content under a non-commercial
   license (for example the Long Story Short translation, CC BY-NC-SA) never enters the app.
 - **The payment phase opens only after the lawyer's check** of ADR 003 Part B item 7, which then
@@ -77,7 +77,7 @@ Support around the app:
    entries with two ids, and the person picks one. A setting, "prefer 2014" or "prefer 2024",
    hides the other copy in lists. A badge shows each entry's edition.
 6. **Golden test F** is a character that mixes both editions, computed by hand. Its values are
-   shown to Alina and approved before the test is used (SPEC §6.7). It joins phase 1.
+   shown to the owner and approved before the test is used (SPEC §6.7). It joins phase 1.
 
 ### 4. No link to D&D Beyond
 
@@ -116,7 +116,7 @@ the "paste text from your book" assistant (SPEC §13.1), which makes personal pa
 7. **Without the link**, "Share with the DM" as a file or a link stays (SPEC §13.2): a read-only
    copy of the sheet.
 8. Where the finder and relay servers run, and what they cost, is decided in the phase that builds
-   the link. Money is Alina's decision (ADR 002).
+   the link. Money is the owner's decision (ADR 002).
 
 ### 6. AI: the person's own key, free, off by default
 
@@ -153,7 +153,7 @@ the "paste text from your book" assistant (SPEC §13.1), which makes personal pa
    | Lines | `#2f3b4d` | `#b5c2d8` |
 
 5. **Fonts.** Body text in **Inter**. Headings in one of **EB Garamond**, **Alegreya**, **Lora** or
-   **Cormorant Garamond**; Alina picks it in the design step (OPS-03). All five are under the SIL
+   **Cormorant Garamond**; the owner picks it in the design step (OPS-03). All five are under the SIL
    Open Font License, and all five have Cyrillic letters. The font files ship inside the app; they
    are never loaded from a font server (SPEC §11).
 6. **Not used:**
@@ -231,7 +231,7 @@ extras of the paid version (item 2).
 | SPEC | Was | Now |
 |---|---|---|
 | §5.8, §6.3 | `allowMixedRulesets`: content of the other edition, with a warning | Also: a bonus of one kind counts once, and the person picks its source; an edition preference for entries in both editions (item 3) |
-| §6.7 | Golden tests A–E | Adds golden F, a mixed-edition character, with values approved by Alina (item 3) |
+| §6.7 | Golden tests A–E | Adds golden F, a mixed-edition character, with values approved by the owner (item 3) |
 | §7.1 | Four tabs; a DM tab later | Player and DM modes, both at once if wanted; DM mode adds the fifth tab (item 1) |
 | §7.5 | A theme setting | Themes as design tokens, the theme editor, the ITS colours, the fonts (item 7) |
 | §10 | Our own template; filling an uploaded sheet | Adds the person's own images and fonts (item 12) |
@@ -249,12 +249,12 @@ extras of the paid version (item 2).
 - The formula language (SPEC §5.6).
 - ADR 003, Part B item 5 included, and ADR 004.
 - Offline first: a person's data stays on their device (D5).
-- Phases 0–7 and their order. The L phases open only when Alina opens them.
+- Phases 0–7 and their order. The L phases open only when the owner opens them.
 - The licensing rules and the i18n rules.
 
 ## Still open
 
-Each of these is decided in the phase named, and the money ones by Alina (ADR 002):
+Each of these is decided in the phase named, and the money ones by the owner (ADR 002):
 - the price, and how a purchase is remembered on the device: the payment phase;
 - whether joining someone else's campaign as a player counts toward any limit (proposed: no): the
   payment phase;
@@ -264,14 +264,14 @@ Each of these is decided in the phase named, and the money ones by Alina (ADR 00
 
 ## Consequences
 
-- **Phase 1 re-cut** (still shown to Alina before it replaces the rows) adds:
+- **Phase 1 re-cut** (still shown to the owner before it replaces the rows) adds:
   - golden F, with its values approved first;
   - the ability-bonus source as a choice in the fifth-edition module;
   - the roll result's shape of item 5.6, so a roll can be sent to a DM later.
 - **The roll table** is a new entity type. Adding it later needs no migration, so it waits for its
   phase.
 - **Phase 2** builds its screens on design tokens.
-- **Later phases**, each opened by Alina:
+- **Later phases**, each opened by the owner:
   - the DM tools (L3, grown by items 8 and 9);
   - AI (L4, item 6);
   - the table link (L5, item 5);

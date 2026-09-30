@@ -45,12 +45,12 @@ Gate: SPEC §12 stage 0, with the English-only screenshot from ADR 000.
   Settings; dark theme by default.
 - **SETUP-05** — i18next with an `en` locale only (ADR 000); a lint rule that fails on a string
   literal in JSX.
-  **Built before SETUP-04** (Alina, 2026-09-27; option A in SETUP-04 §4), so the tab labels are
+  **Built before SETUP-04** (the owner, 2026-09-27; option A in SETUP-04 §4), so the tab labels are
   i18n keys from the start.
-- **SETUP-08** — **needs Alina.** Cloudflare Pages (or GitHub Pages) needs an account. A chat
+- **SETUP-08** — **needs the owner.** Cloudflare Pages (or GitHub Pages) needs an account. A chat
   cannot create an account or sign in. SPA fallback to `index.html`.
 - **SETUP-09** — the phase's last ticket. Its §11 carries the proof of the stage 0 gate: the link
-  opened on Alina's phone, installed, and opened again with the network off.
+  opened on the owner's phone, installed, and opened again with the network off.
 
 ---
 
@@ -61,7 +61,7 @@ the made-up test system passes through the core; CI fails if the core imports a 
 coverage of `engine` and of the fifth-edition module ≥ 90 %; the benchmark is within 10 ms; a
 formula cycle stops with a readable message. No UI, no SRD import.
 
-**Re-cut on 2026-09-30 by OPS-05** (ADR 003, ADR 004, ADR 005), approved by Alina before it was
+**Re-cut on 2026-09-30 by OPS-05** (ADR 003, ADR 004, ADR 005), approved by the owner before it was
 written. The game-free core comes first, and its compute rows are tested on the made-up test
 system. The fifth-edition module follows, as its own package. The table is in work order, which
 since the re-cut is not number order. An old row kept its id where its meaning stayed; a part
@@ -112,7 +112,7 @@ split off an old row got a new id.
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
 - **ENG-02** — `meta.translation` takes the four values of SPEC §5.2 (`official`, `community`,
-  `machine`, `reviewed`); §3.3 lists only three. Alina's decision, 2026-09-27. `source` gains
+  `machine`, `reviewed`); §3.3 lists only three. The owner's decision, 2026-09-27. `source` gains
   `book`, `author`, `license`; `meta.foundry` is left out (ADR 003 items A1, A2).
 - **ENG-24** — found by ENG-04: a module adds grant kinds, and lists the values the core checks
   only for shape (proficiency categories and levels, recovery events). `safeExtend` cannot widen
@@ -150,7 +150,7 @@ split off an old row got a new id.
   schemas. Every rules fact in them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`).
 - **ENG-09** — golden A says mountain dwarf, but its numbers (+2 CON, +1 WIS, Dwarven Toughness)
   are the hill dwarf's, and SRD 5.1 has only the hill dwarf. §8 checks the 2014 and 2024 sources
-  and shows Alina the result before the fixture is written. The golden values are not changed
+  and shows the owner the result before the fixture is written. The golden values are not changed
   without her.
 - **ENG-13 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true. The
   full goldens A–D are green by ENG-19.
@@ -162,7 +162,7 @@ split off an old row got a new id.
 - **ENG-22** — the Appendix Д pack gains the `system` field (ADR 004 item 3); no expected value
   changes.
 - **ENG-37** — ADR 005 item 3.6. The ticket stops to show the character and its hand-computed
-  values to Alina (golden values are hers); the test is written only after her yes. No golden F value is
+  values to the owner (golden values are hers); the test is written only after her yes. No golden F value is
   written before that.
 - **ENG-23** — the phase's last ticket. Its §11 carries the proof of the stage 1 gate.
 
@@ -204,7 +204,7 @@ split off an old row got a new id.
   and free text. Phase 3: the SRD texts. Phase 5: the person's packs.
 
 Phases L1–L6 (Foundry, game master tools, assistant, accounts, shared room) are in SPEC §12 and
-get rows only when Alina opens them. ADR 003 adds two more of that kind: the Fantasy Grounds
+get rows only when the owner opens them. ADR 003 adds two more of that kind: the Fantasy Grounds
 exporter, and the community place for sharing packs (its gate is a lawyer's check). ADR 005
 reshapes three of them: L3 gains roll tables, generators and a fuller tool list; L4 is the
 person's own AI key, free; L5's campaign sync becomes the table link. It adds three more: payments
@@ -217,7 +217,7 @@ person's own AI key, free; L5's campaign sync becomes the table link. It adds th
 **Phase 0 → phase 1 → phase 2 → phase 3 → phase 4 → phase 5 → phase 6 → phase 7.** Inside a
 phase, rows go in the order of its table unless a row's "Depends on" allows otherwise.
 
-Three things can change this order, and all are Alina's decision (SPEC §14):
+Three things can change this order, and all are the owner's decision (SPEC §14):
 - if she plays in Foundry now, L1 can move ahead of phase 6;
 - the Russian phase is placed when phase 3 closes;
 - the more-systems phase is placed when phase 2 closes (ADR 004).
@@ -233,13 +233,14 @@ Three things can change this order, and all are Alina's decision (SPEC §14):
 | OPS-03 | The design brief for the screens exists | S | ✅ 2026-09-30 |
 | OPS-04 | ADR 006 removes the stops that protect nothing | XS | ✅ 2026-09-30 |
 | OPS-05 | Phase 1 is re-cut to follow ADRs 003–005 | XS | ✅ 2026-09-30 |
-| OPS-06 | ADR 007 limits stops to Alina's decisions | XS | ✅ 2026-09-30 |
-| OPS-07 | The design brief records Alina's choices of 2026-09-30 | XS | ✅ 2026-09-30 |
-| OPS-08 | ADR 008 records the navigation Alina chose | XS | ✅ 2026-09-30 |
-| OPS-09 | ADR 009 records Alina's sheet, dice, rulebook and campaign requirements | XS | ✅ 2026-09-30 |
-| OPS-10 | ADR 010 records Alina's library, dice, creation, level and spell requirements | XS | ✅ 2026-09-30 |
-| OPS-11 | `CLAUDE.md` says every detail Alina gives is recorded in the same chat | XS | ✅ 2026-09-30 |
+| OPS-06 | ADR 007 limits stops to the owner's decisions | XS | ✅ 2026-09-30 |
+| OPS-07 | The design brief records the owner's choices of 2026-09-30 | XS | ✅ 2026-09-30 |
+| OPS-08 | ADR 008 records the navigation the owner chose | XS | ✅ 2026-09-30 |
+| OPS-09 | ADR 009 records the owner's sheet, dice, rulebook and campaign requirements | XS | ✅ 2026-09-30 |
+| OPS-10 | ADR 010 records the owner's library, dice, creation, level and spell requirements | XS | ✅ 2026-09-30 |
+| OPS-11 | `CLAUDE.md` says every detail the owner gives is recorded in the same chat | XS | ✅ 2026-09-30 |
 | OPS-12 | ADR 011 records full descriptions on the sheet | XS | ✅ 2026-09-30 |
+| OPS-13 | No personal name for the owner appears in the repository | XS | ✅ 2026-09-30 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
-  style of ADR 005 item 7, and a prompt per screen. Alina's chosen results come back into it.
+  style of ADR 005 item 7, and a prompt per screen. The owner's chosen results come back into it.

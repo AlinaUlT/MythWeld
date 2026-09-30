@@ -1,10 +1,10 @@
 # ADR 010 — Library, dice, creation, levels, the Turn tab, spells and DM review
 
-**Status:** accepted · **Date:** 2026-09-30 · **Decided by:** Alina
+**Status:** accepted · **Date:** 2026-09-30 · **Decided by:** The owner
 
 ## Context
 
-After the ADR 009 mockups (the design canvas, page "Our design v2"), Alina added more
+After the ADR 009 mockups (the design canvas, page "Our design v2"), the owner added more
 requirements on 2026-09-30. As with ADR 009, they are written down once here, so she does not
 have to repeat them. Each item names the phase that builds it (ADR 007 item 4).
 
@@ -55,7 +55,7 @@ have to repeat them. Each item names the phase that builds it (ADR 007 item 4).
     hides it. "Change" stays. (Phase 4.)
 12. **Ability score methods are data.** Standard array, point buy, 4d6, and custom methods. A
     method is described by: dice per stat, reroll rules, what is dropped, a shared bonus roll, a
-    cap, or a pool the scores are taken from. Methods never run code (SPEC §5.6). Alina's
+    cap, or a pool the scores are taken from. Methods never run code (SPEC §5.6). The owner's
     examples:
     1. Roll 4d6 for each of the six stats. If dice show 1, one of those 1s can be rerolled,
        once, and the new result must be kept: 3, 4, 1, 1 lets one of the two 1s be rerolled.

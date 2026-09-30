@@ -1,10 +1,10 @@
 # ADR 003 — Library packs, and keeping the owner clear of content rights
 
-**Status:** accepted · **Date:** 2026-09-28 · **Decided by:** Alina
+**Status:** accepted · **Date:** 2026-09-28 · **Decided by:** The owner
 
 ## Context
 
-Alina wrote a note, "GrimoireMancer — Library / Compendium Architecture" (2026-09-28). It asks for
+The owner wrote a note, "GrimoireMancer — Library / Compendium Architecture" (2026-09-28). It asks for
 three separate layers: the app, the rules content in packs, and content people make themselves.
 Most of it is already in the SPEC:
 
@@ -19,7 +19,7 @@ Most of it is already in the SPEC:
 | Offline first | D5 |
 | Schema versions with migrations | §5.8 |
 
-Alina added one requirement: people may type content word for word from books they own, and may
+The owner added one requirement: people may type content word for word from books they own, and may
 share their libraries in a community place around the app. The owner does not add that content,
 and must not carry the rights risk for it.
 
@@ -60,11 +60,11 @@ and must not carry the rights risk for it.
 
    A file that says "official" about itself changes nothing.
 
-### Part B — the owner stays clear of content rights
+### Part B — The owner stays clear of content rights
 
 1. **The app ships only openly licensed content.** Today that is SRD 5.1 and SRD 5.2.1
    (CC-BY-4.0). The open content of any other system joins only after its license has been read
-   from the publisher's own legal text, in the ticket's §8, and Alina has approved it.
+   from the publisher's own legal text, in the ticket's §8, and the owner has approved it.
 2. **Everything a person makes is personal by default.** A new pack is `redistributable: false`.
    It stays on the device. The app never uploads it by itself, and no build ever includes it.
 3. **Export says what it means.** Exporting a personal pack is allowed; it is the person's own
@@ -87,7 +87,7 @@ and must not carry the rights risk for it.
    icon or store listing. How each game system may be named on screen is checked against that
    publisher's trademark or compatibility policy before the name appears.
 7. **This is not legal advice.** These rules lower the risk; they do not remove it. Before the
-   community place opens, and before any store release, a lawyer in Alina's country checks the
+   community place opens, and before any store release, a lawyer in the owner's country checks the
    terms of use, the takedown process and the system names. Hosting rules differ by country; the
    US DMCA "safe harbor" and the EU Digital Services Act, for example, both depend on a working
    notice-and-takedown process. This check is the gate of the phase that builds the community
@@ -117,5 +117,5 @@ and must not carry the rights risk for it.
 - ADR 003's schema items are built from the start in the phase 1 schema tickets, so no migration
   is ever needed for them. See the phase 1 note in `docs/tickets/BACKLOG.md`.
 - Phase 5 grows: several personal packs, `.gmpack` files and the import checks.
-- Two later phases, opened only when Alina opens them: the Fantasy Grounds exporter, and the
+- Two later phases, opened only when the owner opens them: the Fantasy Grounds exporter, and the
   community place (with Part B item 4 as its gate).

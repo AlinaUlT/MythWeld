@@ -37,18 +37,18 @@ story. Three rules replace what a branch would give:
 - the ticket id is the first thing in the commit message, so `git log --grep=ENG-07` finds the
   ticket's commits.
 
-**Claude Code runs every command itself:** pnpm, Playwright, git. Alina does not type commands.
+**Claude Code runs every command itself:** pnpm, Playwright, git. The owner does not type commands.
 She makes the decisions that are hers and reads the results in the chat. So report measured results,
 not "it passed". For example: `412 passed, 0 failed, 38.2 s`. When there are screenshots, show
 them in the chat. Screenshots are not committed.
 
-**Stops.** The chat stops only for a decision that is Alina's: the list in ADR 002, "Still
-Alina's" (golden values, a rules source that disagrees with the SPEC, licensing, features and
+**Stops.** The chat stops only for a decision that is the owner's: the list in ADR 002, "Still
+the owner's" (golden values, a rules source that disagrees with the SPEC, licensing, features and
 scope, money and accounts, a person's saved data). Everything else runs straight through, at any
 size: §3 and §4 are written in the ticket file, not shown for a yes. Her answers to a list of
 questions are written into the repository at once. Never asked: git, the push to `main`, layout,
 names inside code, test data, the next ticket. In doubt, it is not a stop
-([ADR 007](docs/adr/007-stop-only-for-alinas-decisions.md)).
+([ADR 007](docs/adr/007-stop-only-for-the-owners-decisions.md)).
 
 **Which file answers what.** Each fact has one owner, and no other file repeats it:
 
@@ -60,16 +60,16 @@ names inside code, test data, the next ticket. In doubt, it is not a stop
 | What the app is, the decisions D1–D11, data model, engine, screens, stages | [`docs/SPEC.md`](docs/SPEC.md) — in Russian, the owner's document |
 | A decision that changes the spec | `docs/adr/NNN-title.md` |
 | What a person can already see | [`docs/CHANGELOG.md`](docs/CHANGELOG.md) |
-| How the screens should look, and the designs Alina chose | [`docs/design/BRIEF.md`](docs/design/BRIEF.md) |
+| How the screens should look, and the designs the owner chose | [`docs/design/BRIEF.md`](docs/design/BRIEF.md) |
 | Installing, running, testing, deploying | `docs/RUNNING.md` — written by `SETUP-09`; does not exist before it |
 | The hand-computed golden characters | SPEC §6.7 → `packages/engine/test/golden/` |
 | Russian terms | `packages/content/glossary.ru.json` (seeded from SPEC Appendix B) |
-| Copy-paste prompts for new chats (Alina) | [`PROMPTS.md`](PROMPTS.md) |
+| Copy-paste prompts for new chats (the owner) | [`PROMPTS.md`](PROMPTS.md) |
 | Open tickets of one theme, expanded | `docs/tickets/<AREA>_TICKET.md` |
 | A closed theme's tickets and what each one learned | `docs/archive/tickets/<AREA>_TICKET.md` |
 | Ticket → files → commits | Search the ticket id in the code, and `git log --grep=<id>` |
 
-**`docs/archive/` is not for working from.** Open a file there only if Alina names it, or if a
+**`docs/archive/` is not for working from.** Open a file there only if the owner names it, or if a
 ticket builds on a closed ticket's §11.
 
 ---
@@ -122,7 +122,7 @@ rules in a new function.
 
 - Only openly licensed content goes into the repository and into builds, test fixtures included.
   Today that is SRD 5.1 and SRD 5.2.1 (CC-BY-4.0). Another system's open content joins only after
-  its license is read from the publisher's own legal text and Alina approves.
+  its license is read from the publisher's own legal text and the owner approves.
 - Never scrape or copy text from ttg.club, dnd5e.wikidot.com, dnd2024.wikidot.com or any book
   without an open license. ttg.club is a reference for Russian terms only.
 - Every pack carries license metadata. A pack with `redistributable: false` never enters the
@@ -156,6 +156,10 @@ rules in a new function.
 link. Documents, code comments, ticket text and the changelog do not name the assistant or any AI
 product. The commit message says what the ticket did, not what wrote it.
 
+**No personal names.** The person who owns this project is "the owner" in every file, commit
+message, mockup and chat reply. Never write a personal name for them, and never take one from an
+account name, an email address or a repository address.
+
 **Nothing invisible.** No zero-width characters, no byte-order marks, no non-breaking spaces,
 except in code that deliberately strips them from imported text.
 
@@ -169,14 +173,14 @@ except in code that deliberately strips them from imported text.
 files, the backlog, the changelog, the ADRs and `RUNNING.md`.
 
 Three exceptions. They are data, not wording:
-- `docs/SPEC.md`, which Alina wrote in Russian. It is read, not edited; a change to it is an ADR.
+- `docs/SPEC.md`, which the owner wrote in Russian. It is read, not edited; a change to it is an ADR.
   A ticket cites a SPEC section number and does not copy its text.
 - Russian names inside entities (`name.ru`) and `glossary.ru.json`.
 - The Russian locale files, once the Russian phase opens.
 
 ---
 
-## Working with Alina
+## Working with the owner
 
 - **Simple words.** Explain a term the first time you use it.
 - **Literal, not figurative.** No analogies. Show the exact text, value or command output.
@@ -185,13 +189,13 @@ Three exceptions. They are data, not wording:
 - **End with what was done and what comes next**, not with a question. Only for a decision
   that is hers, state the choice in one sentence, with what happens after each answer.
 - **One fact, one place.** A note points at the file that owns the fact; it does not repeat it.
-- **Nothing she says is lost.** Every requirement, design choice or technical detail Alina gives
+- **Nothing she says is lost.** Every requirement, design choice or technical detail the owner gives
   in the chat is written, in the same chat, into the file that owns it: an ADR for a decision,
   `docs/design/BRIEF.md` for a screen. The report names the file and the commit.
 - **Technical choices are made, not asked** ([ADR 002](docs/adr/002-technical-choices.md)). How
   a thing is built, stored, tested or ordered is decided in the ticket, even where it departs
   from the letter of a SPEC detail. The ticket says why; the chat reports it as done.
-- **Alina decides** everything else ADR 002 lists: when the SPEC and a rules source disagree, a
+- **The owner decides** everything else ADR 002 lists: when the SPEC and a rules source disagree, a
   decision in §2 that looks wrong, golden values, licensing, what the app does for a person.
   Stop and ask. Do not change such a decision without asking.
 

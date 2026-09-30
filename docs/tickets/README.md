@@ -59,7 +59,7 @@ Only `BACKLOG.md` carries a status. A ticket file never says "done". Its §11 sa
 3. **Checked against the code as it is now**, not against the row. If the row and the code
    disagree, §4 follows the code, and §11 says so.
 4. **No stop for the shape.** §3 and §4 are written, then built, at any size. The work stops
-   only for a decision that is Alina's (ADR 007).
+   only for a decision that is the owner's (ADR 007).
 5. **Built.** §4 is done, and the quality gate in `CLAUDE.md` is green.
 6. **§11 filled.** It is never left empty.
 7. **✅ and the date in `BACKLOG.md`**, then the commit and the push.

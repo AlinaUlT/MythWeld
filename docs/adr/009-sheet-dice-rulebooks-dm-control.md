@@ -1,10 +1,10 @@
 # ADR 009 — The sheet, dice, rulebooks, custom content and DM control
 
-**Status:** accepted · **Date:** 2026-09-30 · **Decided by:** Alina
+**Status:** accepted · **Date:** 2026-09-30 · **Decided by:** The owner
 
 ## Context
 
-While reviewing the mockups of ADR 008 on 2026-09-30, Alina listed what the sheet, the dice,
+While reviewing the mockups of ADR 008 on 2026-09-30, the owner listed what the sheet, the dice,
 the rulebook and a campaign must do. Some items are design, some are product scope, some shape
 the data. She asked that all of them be written down once, so she does not have to repeat them.
 This ADR is that record. Each item names the phase that builds it; placing an item in a phase is
@@ -44,7 +44,7 @@ ordering work (ADR 007 item 4).
    and a field for its use. This is D3 and SPEC §6 applied: a custom stat is data, like `san`.
    (Phase 5.)
 
-   Alina's example, **Vitality**: score = 8 + STR modifier + DEX modifier + CON modifier. For
+   the owner's example, **Vitality**: score = 8 + STR modifier + DEX modifier + CON modifier. For
    Iren: 8 + 3 + 1 + 2 = 14, modifier +2. Its rule: it can be added as a bonus to any check,
    save or attack roll, "equal to the proficiency bonus".
 

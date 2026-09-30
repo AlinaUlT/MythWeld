@@ -1,10 +1,10 @@
 # ADR 004 — More than one game system
 
-**Status:** accepted · **Date:** 2026-09-28 · **Decided by:** Alina
+**Status:** accepted · **Date:** 2026-09-28 · **Decided by:** The owner
 
 ## Context
 
-The SPEC builds a sheet for one game: fifth edition, with the 2014 rules and the 2024 rules. Alina
+The SPEC builds a sheet for one game: fifth edition, with the 2014 rules and the 2024 rules. The owner
 decided on 2026-09-28 that the app must work with every edition of D&D and with Pathfinder, and
 later with other game systems.
 
@@ -39,7 +39,7 @@ this is the cheapest moment to split them.
    invented game, with its own stats and resources and no content from any real game, so the
    proof raises no licensing question.
 5. **Fifth edition is the first module**, as planned: its SRD content and the golden tests A–E
-   are ready. Every later system gets its own hand-computed golden characters, approved by Alina,
+   are ready. Every later system gets its own hand-computed golden characters, approved by the owner,
    before its module is built.
 6. **The other systems are later phases.** Other D&D editions, Pathfinder, then others. For each
    one:
@@ -72,9 +72,9 @@ this is the cheapest moment to split them.
 
 ## Consequences
 
-- **Phase 1 is re-cut before ENG-01 starts.** The new rows are shown to Alina before they replace
+- **Phase 1 is re-cut before ENG-01 starts.** The new rows are shown to the owner before they replace
   the old ones in `docs/tickets/BACKLOG.md`.
-- The "more systems" phase (area `SYS`) is placed when phase 2 closes. That is Alina's decision.
+- The "more systems" phase (area `SYS`) is placed when phase 2 closes. That is the owner's decision.
   The recommendation is right after phase 2, before the library (phase 3), so that the library,
   the wizard and the editor are built for every system from the start.
 - The hard invariants in `CLAUDE.md` about data and rulesets now speak of systems.

@@ -1,6 +1,6 @@
 # ADR 000 — How the work runs, and in which language
 
-**Status:** accepted · **Date:** 2026-09-27 · **Decided by:** Alina
+**Status:** accepted · **Date:** 2026-09-27 · **Decided by:** The owner
 
 ## Context
 
@@ -8,7 +8,7 @@
 request, documentation in Russian, and an interface in Russian and English from stage 0. Its
 Appendix A is a draft `CLAUDE.md` built on that.
 
-The working rules are instead taken from an earlier project of Alina's, where they were tested
+The working rules are instead taken from an earlier project of the owner's, where they were tested
 over about sixty tickets. There, work is cut into small tickets, each ticket is one chat and one
 commit to `main`, and everything is written in English.
 

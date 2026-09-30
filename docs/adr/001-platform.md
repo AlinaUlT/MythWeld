@@ -1,6 +1,6 @@
 # ADR 001 — The platform: an installable web app on GitHub Pages
 
-**Status:** accepted · **Date:** 2026-09-28 · **Decided by:** Alina (SPEC D1; the host on
+**Status:** accepted · **Date:** 2026-09-28 · **Decided by:** The owner (SPEC D1; the host on
 2026-09-28)
 
 ## Context
@@ -19,7 +19,7 @@ this record. Phase 0 built the platform and measured it; this ADR records what w
 3. **Hosted on GitHub Pages**, at `https://alinault.github.io/MythWeld/` (SETUP-08).
    - It costs nothing for a public repository, and needs no account beyond GitHub.
    - It publishes only a build that passed the checks.
-   - Alina chose it on 2026-09-28: "as free as possible".
+   - The owner chose it on 2026-09-28: "as free as possible".
 4. **The app's path is one setting**, `APP_BASE_PATH`. The build, the router, the manifest, the
    service worker and the tests all follow it.
 

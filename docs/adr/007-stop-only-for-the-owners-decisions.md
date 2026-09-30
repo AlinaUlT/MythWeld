@@ -1,6 +1,6 @@
-# ADR 007 — The chat stops only for Alina's decisions
+# ADR 007 — The chat stops only for the owner's decisions
 
-**Status:** accepted · **Date:** 2026-09-30 · **Decided by:** Alina
+**Status:** accepted · **Date:** 2026-09-30 · **Decided by:** The owner
 
 ## Context
 
@@ -10,13 +10,13 @@ was hers to answer (the phase 1 rows, ADR 004). The others were:
 - whether to approve test data of the made-up test system;
 - a closing "say X or Y" about where the commit goes.
 
-Alina said on 2026-09-30: do things yourself, and do not ask what does not need her approval.
+The owner said on 2026-09-30: do things yourself, and do not ask what does not need her approval.
 The questions made her think the work was stuck and failing.
 
 ## Decision
 
-1. **The chat stops only for a decision that is Alina's.** That is the list in ADR 002, "Still
-   Alina's":
+1. **The chat stops only for a decision that is the owner's.** That is the list in ADR 002, "Still
+   the owner's":
    - the decisions D1–D11 (SPEC §2);
    - a rules source that disagrees with the SPEC; a golden value that looks wrong;
    - licensing and content sources;
@@ -44,7 +44,7 @@ The questions made her think the work was stuck and failing.
 - The golden tests are hand-computed and approved; code cannot pass by changing them.
 - Nothing is committed unless the quality gate is green.
 - Every change is one commit, and one commit undoes it.
-- Alina reads each result in the chat report.
+- The owner reads each result in the chat report.
 
 ## What this changes
 
@@ -52,13 +52,13 @@ The questions made her think the work was stuck and failing.
 |---|---|---|
 | ADR 006, item 3 | S and M code tickets, engine-number tickets and new-decision documents stop | Replaced by items 1–4 |
 | ADR 002, "What does not change" | The checkpoint for S and M tickets stays | No checkpoint by size (item 2) |
-| `CLAUDE.md`, the steps, "The checkpoint", "Working with Alina" | A checkpoint for S and M; a choice at the end of each report | Items 1, 2, 5, 6 |
+| `CLAUDE.md`, the steps, "The checkpoint", "Working with the owner" | A checkpoint for S and M; a choice at the end of each report | Items 1, 2, 5, 6 |
 | `docs/tickets/README.md`, lifecycle step 4 | Checkpoint for S and M | No stop for the shape |
 | `PROMPTS.md`, prompts 2 and 6 | "Stop and show me" | Build straight through; stop only under item 1 |
 
 ## What does not change
 
-- ADR 002's list of what Alina decides.
+- ADR 002's list of what the owner decides.
 - The golden tests, and every hard invariant in `CLAUDE.md`.
 - The quality gate, and one ticket = one commit on `main`.
 - ADR 006 items 1 and 2.

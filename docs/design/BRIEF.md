@@ -1,7 +1,7 @@
 # Design brief — the screens
 
 **What this file is for:** designing the app's screens in a design tool, one screen at a time,
-and keeping what Alina chose.
+and keeping what the owner chose.
 
 **How to use it:**
 1. Paste the **base block** (Part 1) into the design tool.
@@ -407,7 +407,7 @@ opens: P1 to P17 from this brief. Mark which screens belong to the Game master s
 
 ---
 
-## Part 5 — What Alina chose
+## Part 5 — What the owner chose
 
 | Item | Chosen | Link or notes | Date |
 |---|---|---|---|

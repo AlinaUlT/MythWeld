@@ -1,6 +1,6 @@
 # ADR 002 — Technical choices are made in the ticket, not asked
 
-**Status:** accepted · **Date:** 2026-09-28 · **Decided by:** Alina
+**Status:** accepted · **Date:** 2026-09-28 · **Decided by:** The owner
 
 The number 001 is kept for `001-platform.md`, which SETUP-09 writes (SPEC §12, stage 0).
 
@@ -8,7 +8,7 @@ The number 001 is kept for `001-platform.md`, which SETUP-09 writes (SPEC §12, 
 
 SETUP-06 made two technical choices that differ from the letter of SPEC §11: the database starts
 with no tables, and persistent storage is asked for on every start, not only the first. Both were
-put to Alina as a question. She accepted both, and said that choices of this kind, the ones that
+put to the owner as a question. She accepted both, and said that choices of this kind, the ones that
 are optimal and logical for development, are to be made without asking.
 
 ## Decision
@@ -21,7 +21,7 @@ are optimal and logical for development, are to be made without asking.
    ticket names the SPEC section, what differs, and why.
 4. **The chat reports it as done**, in one line, with what it would take to reverse.
 
-## Still Alina's
+## Still the owner's
 
 - The decisions D1–D11 (SPEC §2).
 - Rules: when the SPEC and a rules source disagree; golden test values (SPEC §6.7).

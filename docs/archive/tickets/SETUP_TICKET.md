@@ -154,11 +154,11 @@ Nothing to check. The ticket holds no rules facts.
 
 **Differences from §3:**
 
-- Alina chose the short name `GM`, so `APP_SHORT_NAME` sits next to `APP_NAME`. It is not used
+- The owner chose the short name `GM`, so `APP_SHORT_NAME` sits next to `APP_NAME`. It is not used
   yet; the PWA manifest (SETUP-07) will read it.
 - `pnpm e2e` does not exist yet (SETUP-02), so this ticket's gate had no e2e step.
 
-**Decisions taken at this checkpoint (Alina, 2026-09-27):**
+**Decisions taken at this checkpoint (the owner, 2026-09-27):**
 
 - Work goes to `main`, as `CLAUDE.md` says.
 - The four translation labels of SPEC §5.2 are used — noted on ENG-02 in `BACKLOG.md`.
@@ -435,7 +435,7 @@ Nothing to check. The ticket holds no rules facts.
 
 <!-- Filled at the end. Never left empty. -->
 
-**Built in order A** (Alina, 2026-09-27): SETUP-05 came first, so the labels are i18n keys.
+**Built in order A** (the owner, 2026-09-27): SETUP-05 came first, so the labels are i18n keys.
 
 **Measured on 2026-09-27:**
 
@@ -602,7 +602,7 @@ Nothing to check. The ticket holds no rules facts.
 
 <!-- Filled at the end. Never left empty. -->
 
-**Order change (Alina, 2026-09-27):** SETUP-05 is built before SETUP-04 (option A in SETUP-04 §4),
+**Order change (the owner, 2026-09-27):** SETUP-05 is built before SETUP-04 (option A in SETUP-04 §4),
 so the tab labels are i18n keys from the start. SETUP-04 stays 🚧 and is built next.
 
 **Measured on 2026-09-27:**
@@ -689,7 +689,7 @@ Measured on 2026-09-28:
   because Chrome decides by itself and says yes more readily once the app is installed
   (SETUP-07). Only Chromium was measured; what other browsers show when asked was not.
 
-**Decision (Alina, 2026-09-28):** both differences accepted. Choices of this kind are made
+**Decision (the owner, 2026-09-28):** both differences accepted. Choices of this kind are made
 without asking from now on (ADR 002).
 
 **Not in this ticket:** the seven tables and `dexie-react-hooks` (the phase 2 tickets that store
@@ -844,7 +844,7 @@ Nothing to check. The ticket holds no rules facts.
 
 - The public link and the host's fallback to `index.html` — SETUP-08. Paths come from Vite's
   `base`, so a host that serves the app under a sub-path changes one setting there.
-- The proof on Alina's phone (install, network off, open again) — SETUP-09 §11, after SETUP-08.
+- The proof on the owner's phone (install, network off, open again) — SETUP-09 §11, after SETUP-08.
 - A "new version available" button and an "offline ready" message — later, only if the automatic
   reload gets in the way.
 - An install button inside the app — not planned; the browser menu installs it.
@@ -867,7 +867,7 @@ Nothing to check. The ticket holds no rules facts.
 
 <!-- Filled at the end. Never left empty. -->
 
-**Decision (Alina, 2026-09-28):** "make the decisions yourself". Built as planned at the
+**Decision (the owner, 2026-09-28):** "make the decisions yourself". Built as planned at the
 checkpoint; pushed to `main`, as `CLAUDE.md` says.
 
 **Measured on 2026-09-28:**
@@ -967,7 +967,7 @@ Measured on 2026-09-28 at `400f474`:
 - GitHub Pages has no fallback to `index.html`: a path with no file behind it gets the site's
   `404.html`.
 - This cloud container cannot reach `alinault.github.io` (the request gets no answer), so the live
-  site is checked from GitHub's runner and on Alina's phone.
+  site is checked from GitHub's runner and on the owner's phone.
 
 #### 3. What it should look like when done
 
@@ -986,7 +986,7 @@ Measured on 2026-09-28 at `400f474`:
 
 #### 4. How to do it
 
-1. **Alina, once:** GitHub → `AlinaUlT/MythWeld` → Settings → Pages → Build and deployment →
+1. **The owner, once:** GitHub → `AlinaUlT/MythWeld` → Settings → Pages → Build and deployment →
    Source: **GitHub Actions**. The workflow cannot turn this on itself; its token has no admin
    rights.
 2. `config/app.ts`: `APP_BASE_PATH = '/MythWeld/'`. `vite.config.ts`: `base: APP_BASE_PATH`.
@@ -1039,7 +1039,7 @@ Nothing to check. The ticket holds no rules facts.
 
 #### 9. Not in this ticket
 
-- `docs/RUNNING.md`, `docs/adr/001-platform.md` and the check on Alina's phone — SETUP-09.
+- `docs/RUNNING.md`, `docs/adr/001-platform.md` and the check on the owner's phone — SETUP-09.
 - A custom domain — not planned; it would cost money.
 - Running `pnpm e2e` in CI — not in the row; the local gate runs it.
 - Updating `actions/checkout`, `setup-node` and `pnpm/action-setup` (v4 in `ci.yml`; newer
@@ -1058,7 +1058,7 @@ Nothing to check. The ticket holds no rules facts.
 
 <!-- Filled at the end. Never left empty. -->
 
-**Alina, 2026-09-28:** Settings → Pages → Source set to GitHub Actions ("as free as possible").
+**The owner, 2026-09-28:** Settings → Pages → Source set to GitHub Actions ("as free as possible").
 
 **Measured on 2026-09-28, before the push:**
 
@@ -1109,7 +1109,7 @@ needed.
    ADR 000.
 
 **Tests:** none new; the gate is run for the screenshot and to show nothing else changed. Control
-numbers: the gate's counts; the phone check is Alina's.
+numbers: the gate's counts; the phone check is the owner's.
 **What came out of it:**
 
 Measured on 2026-09-28:
@@ -1120,7 +1120,7 @@ Measured on 2026-09-28:
 
 **The stage 0 gate (SPEC §12), item by item:**
 
-1. The app opens on a phone from the link and installs to the home screen — Alina, 2026-09-28,
+1. The app opens on a phone from the link and installs to the home screen — The owner, 2026-09-28,
    after opening `https://alinault.github.io/MythWeld/` in Chrome on her phone, installing it,
    opening it from the icon, turning on airplane mode, and opening it again: "Works."
 2. It works offline after the first visit — the same check, step 5. Also the e2e test

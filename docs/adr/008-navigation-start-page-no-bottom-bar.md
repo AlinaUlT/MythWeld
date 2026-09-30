@@ -1,13 +1,13 @@
 # ADR 008 — Navigation: a start page, a player page, no bottom bar
 
-**Status:** accepted · **Date:** 2026-09-30 · **Decided by:** Alina
+**Status:** accepted · **Date:** 2026-09-30 · **Decided by:** The owner
 
 ## Context
 
 SPEC §7.1 plans a bottom bar with four tabs, and ADR 005 item 1.2 adds a DM tab to it. SETUP-04
 built that bar as the app shell.
 
-On 2026-09-30 Alina looked at mockups of the screens on a design canvas
+On 2026-09-30 the owner looked at mockups of the screens on a design canvas
 ([`docs/design/BRIEF.md`](../design/BRIEF.md) Part 5 links it). She rejected the bottom bar and
 the home pages built around it. She showed screenshots of a tabletop app she uses and asked for
 its ideas and parts, in a design of our own.

@@ -138,7 +138,7 @@ Nothing for the changelog.
 7. `key` is camelCase, fit to be one step of a formula path (SPEC §5.6): `str`, `san`,
    `sleightOfHand` are accepted; `Str`, `sleight-of-hand`, `1st`, `''` are refused.
 8. `meta.translation` takes exactly `official`, `community`, `machine`, `reviewed` (the four
-   values of SPEC §5.2, Alina's decision of 2026-09-27); anything else is refused.
+   values of SPEC §5.2, the owner's decision of 2026-09-27); anything else is refused.
 9. `meta.foundry` is refused (ADR 003 item A1). `meta.variantOf` must be an entity id;
    `meta.manual` is a boolean.
 10. `source` has `pack` (a pack id), and optional `page`, `book`, `author`, `license` (ADR 003

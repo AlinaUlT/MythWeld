@@ -1,10 +1,10 @@
 # ADR 011 — Every entry on the sheet opens its full description
 
-**Status:** accepted · **Date:** 2026-09-30 · **Decided by:** Alina
+**Status:** accepted · **Date:** 2026-09-30 · **Decided by:** The owner
 
 ## Context
 
-After ADR 010, Alina added one more requirement on 2026-09-30. It is recorded here under the rule
+After ADR 010, the owner added one more requirement on 2026-09-30. It is recorded here under the rule
 in `CLAUDE.md`, "Nothing she says is lost".
 
 ## Decision

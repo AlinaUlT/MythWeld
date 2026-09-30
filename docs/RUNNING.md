@@ -80,7 +80,7 @@ pnpm e2e
 - The result is on GitHub under Actions → CI; the `deploy` job's last step prints the answers it
   got, for example `page 200, manifest 200, sw.js 200, dice 404`. The `404` for `dice` is
   expected: GitHub Pages sends `404.html`, which is the app.
-- One-time setting, already made by Alina: repository Settings → Pages → Source: GitHub Actions.
+- One-time setting, already made by the owner: repository Settings → Pages → Source: GitHub Actions.
 
 ### Moving to another host
 
