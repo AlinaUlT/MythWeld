@@ -187,4 +187,22 @@ unchanged. The term pair Race (2014) / Species (2024) comes from SPEC §6.3.
 
 #### 11. What came out of it
 
-<!-- Filled at the end. Never left empty. -->
+`docs/design/BRIEF.md` exists: 371 lines, 16 screen prompts (P1–P16), 2 extra prompts (a heading
+font sampler, an app map), and an empty "What Alina chose" table with 17 rows. `CLAUDE.md`'s doc
+map has one new row. The gate is green: lint checked 52 files; typecheck passed; 6 test files,
+18 tests passed, 0 failed, 783 ms. No invisible characters; no AI product named.
+
+Differs from §3:
+- **Five parts, not six.** The app summary, the rules and the style form one "base block", so
+  the design tool gets them in one paste. Each screen's section is its prompt, so nothing is
+  written twice. The parts: the base block, the screens, extra prompts, notes, the choices.
+- **Added: where each colour may be used.** Contrast was measured with the WCAG formula:
+  dark heading 3.31:1 and dark accent-bright 3.71:1 on bg (large text and icons only); dark
+  accent 2.08:1 on bg (never text); light accent-2 2.95:1 on bg (never text); text-on-accent on
+  light accent-dark 3.49:1 (large text only). Body text passes: 10.02:1 dark, 11.93:1 light.
+- **Added: text-on-accent `#e5ebee`**, ITS's `--text-dl` (shared by both themes), because
+  buttons need a text colour and ADR 005's table has none.
+
+Found, not fixed: the contrast limits above bind the phase 2 ticket that turns the colours into
+design tokens; they are written in the brief, and ADR 005 is not changed. Nothing for the
+changelog; a person sees no change.

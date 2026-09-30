@@ -57,6 +57,7 @@ engine computes.
 | What the app is, the decisions D1–D11, data model, engine, screens, stages | [`docs/SPEC.md`](docs/SPEC.md) — in Russian, the owner's document |
 | A decision that changes the spec | `docs/adr/NNN-title.md` |
 | What a person can already see | [`docs/CHANGELOG.md`](docs/CHANGELOG.md) |
+| How the screens should look, and the designs Alina chose | [`docs/design/BRIEF.md`](docs/design/BRIEF.md) |
 | Installing, running, testing, deploying | `docs/RUNNING.md` — written by `SETUP-09`; does not exist before it |
 | The hand-computed golden characters | SPEC §6.7 → `packages/engine/test/golden/` |
 | Russian terms | `packages/content/glossary.ru.json` (seeded from SPEC Appendix B) |
