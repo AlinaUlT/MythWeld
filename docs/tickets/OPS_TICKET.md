@@ -262,4 +262,17 @@ nothing. Nothing for the changelog; a person sees no change.
 **Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
 gate's counts.
 
-**What came out of it:** <!-- Filled at the end. Never left empty. -->
+**What came out of it:** Alina approved the rows on 2026-09-30, before they were written. Phase 1
+now has 37 rows (was 23): 14 new (ENG-24 to ENG-37), none cancelled; 4 XS, 21 S, 12 M; no hat
+holds "and" (counted by a script over `BACKLOG.md`). Old rows kept as they were: ENG-01, ENG-18,
+ENG-22. Old rows with the same scope and only the hat reworded to drop "and": ENG-07, ENG-09,
+ENG-10, ENG-13, ENG-14, ENG-15, ENG-19. Narrowed, with the split-off parts under new ids: ENG-03,
+ENG-05, ENG-06, ENG-08, ENG-16, ENG-20, ENG-21. Checked in the code before cutting:
+`packages/schema/src/index.ts` and `packages/engine/src/index.ts` hold only `export {};`, and Zod
+is not installed, so the split costs no migration. Decided here (ADR 002): one area, `ENG`, for the
+core and the module; the Order section reads "the order of its table"; ENG-31 picks the module's
+package name and `system` id; the 90 % coverage bar covers the fifth-edition module too. The
+made-up test system's expected values are test data, not goldens (ENG-27 note). No golden value
+was written or changed. The gate is green: lint checked 52 files; typecheck passed in all 5
+packages; 6 test files, 18 tests passed, 0 failed, 683 ms. Found, not fixed: nothing. Nothing for
+the changelog; a person sees no change.

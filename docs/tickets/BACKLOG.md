@@ -56,55 +56,104 @@ Gate: SPEC §12 stage 0, with the English-only screenshot from ADR 000.
 
 ## Phase 1 — Schemas and the engine (SPEC stage 1)
 
-Gate: SPEC §12 stage 1 — golden tests A, B, B4, C, D, E pass; `engine` coverage ≥ 90 %; the
-benchmark is within 10 ms; a formula cycle stops with a readable message. No UI, no SRD import.
+Gate: SPEC §12 stage 1, widened by ADR 004 and ADR 005 — golden tests A, B, B4, C, D, E, F pass;
+the made-up test system passes through the core; CI fails if the core imports a system module;
+coverage of `engine` and of the fifth-edition module ≥ 90 %; the benchmark is within 10 ms; a
+formula cycle stops with a readable message. No UI, no SRD import.
 
-**Re-cut before ENG-01 starts** (ADR 004). The rows below are the first cut, written for fifth
-edition only. The re-cut splits the game-free core from the fifth-edition module, adds the
-made-up test system, and puts ADR 003's pack items into the schema rows from the start: `system`,
-the source details, the dependency checks, and refusing a newer `schemaVersion`. It also adds
-ADR 005's three phase 1 items: golden F (a mixed-edition character, its values approved by Alina
-first), the ability-bonus source as a choice, and a roll result that can be sent to a DM later.
-The new rows are shown to Alina before they replace these.
+**Re-cut on 2026-09-30 by OPS-05** (ADR 003, ADR 004, ADR 005), approved by Alina before it was
+written. The game-free core comes first, and its compute rows are tested on the made-up test
+system. The fifth-edition module follows, as its own package. The table is in work order, which
+since the re-cut is not number order. An old row kept its id where its meaning stayed; a part
+split off an old row got a new id.
 
 | ID | Hat | Size | Status |
 |---|---|---|---|
+| **Core** | **schemas** | | |
 | ENG-01 | CI fails if `engine` imports React, DOM, Dexie or the network | XS | 🔲 |
-| ENG-02 | Zod schemas for ids and the entity base | S | 🔲 |
-| ENG-03 | Zod schemas for each entity type | M | 🔲 |
-| ENG-04 | Zod schemas for effects, grants and prerequisites | S | 🔲 |
-| ENG-05 | The content pack and locale overlay schemas, with the exported JSON Schema | S | 🔲 |
-| ENG-06 | The character document schema, with the migration frame | S | 🔲 |
-| ENG-07 | Formulas are parsed and evaluated safely, returning the paths they read | M | 🔲 |
-| ENG-08 | Dice notation is rolled, with advantage, disadvantage and critical hits | S | 🔲 |
-| ENG-09 | 2014 fixtures: the SRD entities goldens A and C need | M | 🔲 |
-| ENG-10 | 2024 fixtures: the SRD entities goldens B, B4, C and D need | M | 🔲 |
-| ENG-11 | `compute()` resolves references and expands grants | M | 🔲 |
-| ENG-12 | Ability scores are computed in the base phase | S | 🔲 |
-| ENG-13 | Modifiers, proficiency bonus, saves, skills and passives are computed | M | 🔲 |
-| ENG-14 | Hit points, armor class, initiative and speed are computed | M | 🔲 |
-| ENG-15 | Spellcasting numbers and slots are computed, multiclass included | M | 🔲 |
-| ENG-16 | Attacks, weapon mastery and resource maximums are computed | M | 🔲 |
-| ENG-17 | Derived-phase effects, toggles and manual overrides apply with a breakdown | M | 🔲 |
+| ENG-02 | The entity base has a core Zod schema, ids included | S | 🔲 |
+| ENG-03 | The core entity types have Zod schemas | S | 🔲 |
+| ENG-04 | Effects, grants, prerequisites have game-free Zod schemas | S | 🔲 |
+| ENG-24 | A system module adds its entity types to the schemas | S | 🔲 |
+| ENG-05 | The content pack has a schema, exported as JSON Schema | S | 🔲 |
+| ENG-06 | The core character document has a schema, with the migration frame | S | 🔲 |
+| ENG-25 | Packs are checked as they load into the content index | S | 🔲 |
+| **Core** | **formulas, dice** | | |
+| ENG-07 | Formulas evaluate safely, returning the paths they read | M | 🔲 |
+| ENG-08 | Dice notation is rolled, in `d` or `к` | S | 🔲 |
+| ENG-26 | A roll result has the shape the table link will send | XS | 🔲 |
+| **Core** | **compute, tested on the made-up system** | | |
+| ENG-27 | The made-up test system exists as core test data | S | 🔲 |
+| ENG-11 | `compute()` gathers every entity a character has, grants included | M | 🔲 |
+| ENG-12 | Stat scores are computed in the base phase | S | 🔲 |
+| ENG-28 | `compute()` runs the derived-value steps a system module supplies | S | 🔲 |
+| ENG-29 | Resource maximums are computed from their formulas | XS | 🔲 |
+| ENG-17 | Derived-phase effects, toggles, overrides apply with a breakdown | M | 🔲 |
 | ENG-18 | A formula cycle stops with a message naming the paths | S | 🔲 |
-| ENG-19 | The 2014 and 2024 ruleset modules hold every rules difference | M | 🔲 |
-| ENG-20 | Damage, healing and trackers change the character and can be undone | M | 🔲 |
-| ENG-21 | Short rest, long rest and level-up change the character and can be undone | M | 🔲 |
+| ENG-30 | Tracker actions return a log entry that undoes them | S | 🔲 |
+| **Fifth edition** | **its own package** | | |
+| ENG-31 | The fifth-edition module is a package the core cannot import | XS | 🔲 |
+| ENG-32 | The fifth-edition entity types have Zod schemas | M | 🔲 |
+| ENG-33 | The fifth-edition part of the character document has a schema | S | 🔲 |
+| ENG-09 | 2014 fixtures: every SRD entity golden A or C needs | M | 🔲 |
+| ENG-10 | 2024 fixtures: every SRD entity golden B, B4, C or D needs | M | 🔲 |
+| ENG-13 | Check bonuses are computed: modifiers, proficiency, saves, skills, passives | M | 🔲 |
+| ENG-14 | Combat numbers are computed: hit points, armor class, initiative, speed | M | 🔲 |
+| ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | 🔲 |
+| ENG-16 | Attacks are computed, weapon mastery included | S | 🔲 |
+| ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | S | 🔲 |
+| ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | 🔲 |
+| ENG-35 | The ability-bonus source is a choice, the rules base by default | S | 🔲 |
+| ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | 🔲 |
+| ENG-21 | A rest changes the character by its edition's rules | S | 🔲 |
+| ENG-36 | Level-up changes the character through an undoable action | S | 🔲 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | 🔲 |
-| ENG-23 | `engine` coverage is at least 90 % and `compute()` stays within 10 ms | S | 🔲 |
+| ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
+| ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
 - **ENG-02** — `meta.translation` takes the four values of SPEC §5.2 (`official`, `community`,
-  `machine`, `reviewed`); §3.3 lists only three. Alina's decision, 2026-09-27.
-- **ENG-09, ENG-10** — hand-written minimal entities only, not an import. Every rules fact in
-  them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`).
+  `machine`, `reviewed`); §3.3 lists only three. Alina's decision, 2026-09-27. `source` gains
+  `book`, `author`, `license`; `meta.foundry` is left out (ADR 003 items A1, A2).
+- **ENG-05** — the pack names its `system` and its edition (`ruleset`), and carries `homepage`,
+  `repository`, `copyrightNotice` (ADR 003 item A2, ADR 004 item 3). No field says where a pack
+  came from; the app sets that (ADR 003 item A7). The locale overlay schema is here too. The JSON
+  Schema is exported per system: the core's types plus the module's.
+- **ENG-06** — the core part of ADR 004's §5.8 row; the module's part is ENG-33. Packs and
+  characters share the migration frame, which refuses a file with a newer `schemaVersion`
+  (ADR 003 item A6).
+- **ENG-25** — ADR 003 item A3: a missing dependency gives a warning and `Missing: <id>`; a
+  dependency loop refuses the pack, with a message naming the loop; a pack never replaces another
+  pack's entry. Also: a duplicate `key` among active packs (SPEC §5.1); a pack of another system
+  is not loaded for a character (ADR 004 item 3).
+- **ENG-26** — ADR 005 item 5.6: who rolled, what for, the dice, the result, the breakdown; public,
+  secret to the DM, or hidden by the DM. Only the shape; sending it belongs to the table-link
+  phase.
+- **ENG-27** — a small invented game with its own stats, skills and resources, and no content
+  from any real game (ADR 004 item 4). Its expected values are computed by hand from its own
+  rules; they are test data, not goldens. ENG-28 adds its derived-value steps.
+- **ENG-11** — an entity of the other edition gives a warning, never a block (SPEC §5.8,
+  ADR 005 item 3.3).
+- **ENG-31** — the package name and the `system` id are chosen here, checked against the rule on
+  names in `CLAUDE.md`. `CLAUDE.md`'s layout, its dependency line and its golden-test path follow
+  the new package.
+- **ENG-09, ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's
+  schemas. Every rules fact in them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`).
 - **ENG-09** — golden A says mountain dwarf, but its numbers (+2 CON, +1 WIS, Dwarven Toughness)
   are the hill dwarf's, and SRD 5.1 has only the hill dwarf. §8 checks the 2014 and 2024 sources
   and shows Alina the result before the fixture is written. The golden values are not changed
   without her.
-- **ENG-12 to ENG-17** — each ticket turns on the golden-test lines it makes true. The full
-  goldens A–D are green by ENG-19.
+- **ENG-13 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true. The
+  full goldens A–D are green by ENG-19.
 - **ENG-19** — ability increase source, subclass level, multiclass rounding, exhaustion, rests,
   inspiration (SPEC §6.3 table). Golden C and golden D close here.
+- **ENG-35** — ADR 005 item 3.4: a 2014 race with a 2024 background gives ability increases from
+  one of the two, never both; the default is the rules base's source. Its §8 reads both SRDs for
+  other bonuses of one kind given in two places; each one found becomes a new row.
+- **ENG-22** — the Appendix Д pack gains the `system` field (ADR 004 item 3); no expected value
+  changes.
+- **ENG-37** — ADR 005 item 3.6. The ticket's checkpoint shows the character and its
+  hand-computed values to Alina; the test is written only after her yes. No golden F value is
+  written before that.
 - **ENG-23** — the phase's last ticket. Its §11 carries the proof of the stage 1 gate.
 
 ---
@@ -134,7 +183,7 @@ person's own AI key, free; L5's campaign sync becomes the table link. It adds th
 ## Order
 
 **Phase 0 → phase 1 → phase 2 → phase 3 → phase 4 → phase 5 → phase 6 → phase 7.** Inside a
-phase, rows go in number order unless a row's "Depends on" allows otherwise.
+phase, rows go in the order of its table unless a row's "Depends on" allows otherwise.
 
 Three things can change this order, and all are Alina's decision (SPEC §14):
 - if she plays in Foundry now, L1 can move ahead of phase 6;
@@ -151,7 +200,7 @@ Three things can change this order, and all are Alina's decision (SPEC §14):
 | OPS-02 | ADR 005 records the product decisions of 2026-09-29 | XS | ✅ 2026-09-30 |
 | OPS-03 | The design brief for the screens exists | S | ✅ 2026-09-30 |
 | OPS-04 | ADR 006 removes the stops that protect nothing | XS | ✅ 2026-09-30 |
-| OPS-05 | Phase 1 is re-cut to follow ADRs 003–005 | XS | 🚧 |
+| OPS-05 | Phase 1 is re-cut to follow ADRs 003–005 | XS | ✅ 2026-09-30 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. Alina's chosen results come back into it.

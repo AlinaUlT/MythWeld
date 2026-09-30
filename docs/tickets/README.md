@@ -13,7 +13,7 @@ ticket is in [`TEMPLATE.md`](TEMPLATE.md). Order and status are in [`BACKLOG.md`
 | Area | What it covers | SPEC stage |
 |---|---|---|
 | `SETUP` | The scaffold: monorepo, build, tests, CI, PWA, deploy | 0 |
-| `ENG` | Schemas and the rules engine: formulas, effects, `compute()`, actions, dice | 1 |
+| `ENG` | The game-free core and the fifth-edition module: schemas, formulas, effects, `compute()`, actions, dice (ADR 004) | 1 |
 | `SHEET` | Character list, manual creation, the character sheet and its trackers | 2 |
 | `CONT` | SRD import, mechanics, the library, search, attribution | 3 |
 | `WIZ` | The creation wizard, level-up, house rules | 4 |
