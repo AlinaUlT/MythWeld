@@ -1,6 +1,6 @@
 # ADR 006 — Fewer stops: document-only tickets, and Alina's answers recorded at once
 
-**Status:** accepted · **Date:** 2026-09-30 · **Decided by:** Alina
+**Status:** accepted; item 3 replaced by ADR 007 · **Date:** 2026-09-30 · **Decided by:** Alina
 
 ## Context
 

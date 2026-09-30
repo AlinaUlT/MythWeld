@@ -151,8 +151,8 @@ split off an old row got a new id.
   other bonuses of one kind given in two places; each one found becomes a new row.
 - **ENG-22** — the Appendix Д pack gains the `system` field (ADR 004 item 3); no expected value
   changes.
-- **ENG-37** — ADR 005 item 3.6. The ticket's checkpoint shows the character and its
-  hand-computed values to Alina; the test is written only after her yes. No golden F value is
+- **ENG-37** — ADR 005 item 3.6. The ticket stops to show the character and its hand-computed
+  values to Alina (golden values are hers); the test is written only after her yes. No golden F value is
   written before that.
 - **ENG-23** — the phase's last ticket. Its §11 carries the proof of the stage 1 gate.
 
@@ -201,6 +201,7 @@ Three things can change this order, and all are Alina's decision (SPEC §14):
 | OPS-03 | The design brief for the screens exists | S | ✅ 2026-09-30 |
 | OPS-04 | ADR 006 removes the stops that protect nothing | XS | ✅ 2026-09-30 |
 | OPS-05 | Phase 1 is re-cut to follow ADRs 003–005 | XS | ✅ 2026-09-30 |
+| OPS-06 | ADR 007 limits stops to Alina's decisions | XS | ✅ 2026-09-30 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. Alina's chosen results come back into it.

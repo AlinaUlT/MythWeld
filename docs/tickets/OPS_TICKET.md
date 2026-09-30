@@ -276,3 +276,30 @@ made-up test system's expected values are test data, not goldens (ENG-27 note). 
 was written or changed. The gate is green: lint checked 52 files; typecheck passed in all 5
 packages; 6 test files, 18 tests passed, 0 failed, 683 ms. Found, not fixed: nothing. Nothing for
 the changelog; a person sees no change.
+
+### OPS-06 Stop only for Alina's decisions · XS
+
+**Hat:** ADR 007 limits stops to Alina's decisions
+**Where:** `docs/adr/007-stop-only-for-alinas-decisions.md` — new; `CLAUDE.md`, `PROMPTS.md`,
+`docs/tickets/README.md`, `docs/adr/002-technical-choices.md`, `docs/adr/006-fewer-stops.md`,
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-04
+
+**What it should look like when done:**
+1. ADR 007 records Alina's rule of 2026-09-30: the chat stops only for a decision on ADR 002's
+   "Still Alina's" list; no stop by ticket size; git and the push to `main` are never asked; a
+   report ends with what was done and what comes next.
+2. `CLAUDE.md` (the steps, "Stops", "Working with Alina"), `docs/tickets/README.md` (lifecycle
+   step 4), ADR 002, ADR 006 and `PROMPTS.md` (prompts 2 and 6) follow it.
+3. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** Alina set the rule on 2026-09-30, after the OPS-05 chat stopped or ended
+with a question four times when only one was hers (the phase 1 rows). Still stops: everything on
+ADR 002's list, which includes golden F's values (ENG-37) and golden A's dwarf check (ENG-09). No
+longer stops: S and M tickets by size, engine tickets that match approved goldens, cutting a phase
+into rows unless a row adds or drops a feature. The gate is green: lint checked 52 files;
+typecheck passed in all 5 packages; 6 test files, 18 tests passed, 0 failed, 778 ms. Found, not
+fixed: nothing. Nothing for the changelog; a person sees no change.

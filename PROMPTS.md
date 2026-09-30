@@ -44,24 +44,19 @@ Read only the SPEC sections the row points at.
 
 git pull --rebase first. Then expand <ID> from docs/tickets/TEMPLATE.md into the theme file,
 in number order. Check the plan against the code as it is now, not against the row. If they
-disagree, fix §4 and say so.
+disagree, fix §4 and say so in §11.
 
-Then stop and show me §3 and §4: a few short answers, not an essay. I am approving the shape
-of the work, not reading a design document. The long version stays in the file.
+Then build it without stopping: do §4 → the quality gate green → fill §11 → ✅ and the date in
+BACKLOG.md → one commit starting with <ID> → push. Show me the test count and the time from the
+gate. If the ticket changes a screen, show me the screenshots.
 
-After my yes: do §4 → the quality gate green → fill §11 → ✅ and the date in BACKLOG.md →
-one commit starting with <ID> → push. Show me the test count and the time from the gate.
-If the ticket changes a screen, show me the screenshots.
-
-Anything marked [ПРОВЕРИТЬ] is checked against the source before it is built, in §8.
-If a golden value looks wrong, stop and explain. Do not change it.
+Stop only for a decision that is mine (ADR 007): a golden value that looks wrong, the SPEC and
+the SRD disagreeing, licensing, a feature or scope change, money. Anything marked [ПРОВЕРИТЬ] is
+checked against the source before it is built, in §8.
 Short answers, plain language, no analogies. Everything new is in English.
 ```
 
-**For an XS ticket** the checkpoint can be dropped, if every decision is already in the prompt and
-the ticket changes no number the engine computes. Replace the "Then stop and show me" paragraph
-with: "No checkpoint. Show me `git status --short` and the gate result before the commit."
-A document-only ticket (Markdown only) drops the checkpoint at any size (ADR 006).
+Every size runs the same way (ADR 007).
 
 ---
 
@@ -106,7 +101,8 @@ Grimoire project. Read CLAUDE.md and docs/tickets/BACKLOG.md. Phase <N-1> is clo
 Read SPEC §12 stage <N> and the SPEC sections it depends on. Cut phase <N> into rows of size
 XS, S or M, each with a hat of one phrase without "and", in the same table form as phases
 0 and 1. Name the phase's last row: its §11 will carry the proof of the stage gate.
-Show me the rows before writing them into BACKLOG.md.
+Write them into BACKLOG.md and commit. Stop first only if a row adds or drops a feature
+compared with SPEC §12 and the ADRs (ADR 007).
 ```
 
 ---

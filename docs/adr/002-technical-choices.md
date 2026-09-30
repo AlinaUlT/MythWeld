@@ -32,7 +32,7 @@ are optimal and logical for development, are to be made without asking.
 
 ## What does not change
 
-- The checkpoint for S and M tickets stays. (ADR 006 exempts document-only tickets.) Technical choices appear in it as decided, with the
-  reason, not as questions.
+- Technical choices are reported as decided, with the reason, not as questions. (The checkpoint
+  for S and M tickets is gone: ADR 007.)
 - The hard invariants in `CLAUDE.md`.
 - ADR 000.

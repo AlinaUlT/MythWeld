@@ -22,9 +22,9 @@ One ticket = one chat = one commit, straight to `main`. The hat is one phrase wi
 Size is XS / S / M. Anything bigger is split in `BACKLOG.md` **before** coding.
 
 **The steps for a ticket, in order:**
-`git pull --rebase` → expand the ticket (if it is still a row) → checkpoint (S and M only) → do §4
-→ quality gate green → fill §11 → ✅ and the date **in `BACKLOG.md`** → commit whose first line
-starts with the ticket id → `git push`.
+`git pull --rebase` → expand the ticket (if it is still a row) → do §4 → quality gate green →
+fill §11 → ✅ and the date **in `BACKLOG.md`** → commit whose first line starts with the ticket id
+→ `git push`.
 
 **The quality gate:** `pnpm lint && pnpm typecheck && pnpm test`. A ticket that touches
 `apps/web` also runs `pnpm e2e`. Commit only when the whole gate is green. Do not close a ticket
@@ -38,17 +38,17 @@ story. Three rules replace what a branch would give:
   ticket's commits.
 
 **Claude Code runs every command itself:** pnpm, Playwright, git. Alina does not type commands.
-She approves the shape of the work and reads the results in the chat. So report measured results,
+She makes the decisions that are hers and reads the results in the chat. So report measured results,
 not "it passed". For example: `412 passed, 0 failed, 38.2 s`. When there are screenshots, show
 them in the chat. Screenshots are not committed.
 
-**The checkpoint.** For an S or M ticket: after expanding it, stop and show §3 and §4 as a few
-short answers. Alina is approving the shape of the work, not reading a design document. The long
-version stays in the ticket file. An XS ticket has no checkpoint unless it changes a number the
-engine computes. A document-only ticket (Markdown only: no code, no configuration, no content
-data) has no checkpoint at any size, and Alina's answers to a list of questions are written into
-the repository at once. A document that makes a new decision for her still stops
-([ADR 006](docs/adr/006-fewer-stops.md)).
+**Stops.** The chat stops only for a decision that is Alina's: the list in ADR 002, "Still
+Alina's" (golden values, a rules source that disagrees with the SPEC, licensing, features and
+scope, money and accounts, a person's saved data). Everything else runs straight through, at any
+size: §3 and §4 are written in the ticket file, not shown for a yes. Her answers to a list of
+questions are written into the repository at once. Never asked: git, the push to `main`, layout,
+names inside code, test data, the next ticket. In doubt, it is not a stop
+([ADR 007](docs/adr/007-stop-only-for-alinas-decisions.md)).
 
 **Which file answers what.** Each fact has one owner, and no other file repeats it:
 
@@ -182,7 +182,8 @@ Three exceptions. They are data, not wording:
 - **Literal, not figurative.** No analogies. Show the exact text, value or command output.
 - **One fact per line, short sentences.** A list of facts beats a paragraph.
 - **Name what does NOT change**, as its own list.
-- **State the choice plainly at the end**, in one sentence, with what happens after each answer.
+- **End with what was done and what comes next**, not with a question. Only for a decision
+  that is hers, state the choice in one sentence, with what happens after each answer.
 - **One fact, one place.** A note points at the file that owns the fact; it does not repeat it.
 - **Technical choices are made, not asked** ([ADR 002](docs/adr/002-technical-choices.md)). How
   a thing is built, stored, tested or ordered is decided in the ticket, even where it departs
