@@ -332,3 +332,36 @@ the ITS colours: it changes by a new ADR once Alina picks the base colours. The 
 lint checked 66 files; typecheck passed in all 5 packages; 10 test files, 59 tests passed,
 0 failed, 1.26 s. The first commit left this ticket text out; a second commit with the same id
 adds it. Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-08 The navigation Alina chose · XS
+
+**Hat:** ADR 008 records the navigation Alina chose
+**Where:** `docs/adr/008-navigation-start-page-no-bottom-bar.md` — new; `docs/design/BRIEF.md`,
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-07
+
+**What it should look like when done:**
+1. ADR 008 records Alina's decisions of 2026-09-30: no bottom bar; a start page with the game
+   system and Player or Game master; a player page with My characters, the rulebook chapters
+   with a source per chapter, Dice and My packs, and no create button; My characters with "+" in
+   the corner and Actions on a swipe or "⋯"; recorded creation steps; a sheet whose features are
+   used and tracked on it, and an edit mode; the reference app's ideas and parts, never its look.
+2. ADR 008 lists what it changes in SPEC §7.1 and ADR 005 item 1, and what stays open.
+3. BRIEF Part 1 describes the new navigation. P1 becomes the start page, P17 is the player page,
+   and P2, P3, P4 and X2 no longer mention a bottom bar. Part 5 records the overall design.
+4. `BACKLOG.md` notes for phase 2 that the SETUP-04 bottom bar is replaced.
+5. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** Alina rejected the bottom bar and every home page built around it,
+then described the flow and sent screenshots of a reference app. The screenshots stay out of the
+repository, and the ADR does not name the app. The mockups are on the design canvas, page "Our
+design v1". The SETUP-04 shell still shows the bottom bar; phase 2 replaces it, and `BACKLOG.md`
+says so. The gate is green: lint checked 66 files; typecheck passed in all 5 packages; 10 test
+files, 59 tests passed, 0 failed, 1.35 s. Found, not fixed: SPEC §7.1 still describes
+the bottom bar; the SPEC is read, not edited, and ADR 008 overrides it. Nothing for the
+changelog; a person sees no change.

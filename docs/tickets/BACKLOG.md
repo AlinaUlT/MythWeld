@@ -186,6 +186,8 @@ split off an old row got a new id.
 - **Phases 2, 4** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
   §8.2: a warning, never a block). The row is cut with the first phase that lets a person pick an
   entity with prerequisites.
+- **Phase 2** — found by OPS-08: ADR 008 replaces the SETUP-04 bottom bar with a start page, a
+  player page and My characters. The phase 2 rows build that navigation instead of the bar.
 
 Phases L1–L6 (Foundry, game master tools, assistant, accounts, shared room) are in SPEC §12 and
 get rows only when Alina opens them. ADR 003 adds two more of that kind: the Fantasy Grounds
@@ -219,6 +221,7 @@ Three things can change this order, and all are Alina's decision (SPEC §14):
 | OPS-05 | Phase 1 is re-cut to follow ADRs 003–005 | XS | ✅ 2026-09-30 |
 | OPS-06 | ADR 007 limits stops to Alina's decisions | XS | ✅ 2026-09-30 |
 | OPS-07 | The design brief records Alina's choices of 2026-09-30 | XS | ✅ 2026-09-30 |
+| OPS-08 | ADR 008 records the navigation Alina chose | XS | ✅ 2026-09-30 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. Alina's chosen results come back into it.

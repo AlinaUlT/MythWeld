@@ -8,9 +8,9 @@ and keeping what Alina chose.
 2. Then paste **one screen's prompt** (Part 2) or an extra prompt (Part 3).
 3. When a design is right, write what you chose into **Part 5**.
 
-**Who owns what:** the features come from SPEC §7 and ADR 005; the colours and fonts from ADR 005
-item 7. The base block carries a copy of them so it can be pasted in one piece. If this file and
-those ever differ, SPEC §7 and ADR 005 win.
+**Who owns what:** the features come from SPEC §7 and ADR 005; the navigation from ADR 008; the
+colours and fonts from ADR 005 item 7. The base block carries a copy of them so it can be pasted
+in one piece. If this file and those ever differ, SPEC §7 and the ADRs win.
 
 ---
 
@@ -30,10 +30,16 @@ WHAT THE APP DOES
   random generators.
 - The first game is fifth edition, with the 2014 rules and the 2024 rules.
 
-MODES AND THE BOTTOM BAR
-- The person picks "I play", "I run games", or both. Settings change it at any time.
-- Bottom bar, in this order: Characters · Library · Dice · Table · Settings.
-- "Table" is the DM tab. It shows only when DM mode is on. Without it the bar has four tabs.
+NAVIGATION (no bottom bar)
+- Start page: the game system ("5E compatible"), then two large choices: "Player" and
+  "Game master". The Game master side comes later; mark it so.
+- Player page: what a player needs before making a character. "My characters" (count, last
+  opened); the rulebook as chapters (Species, Classes, Backgrounds, Feats, Spells, Equipment,
+  Rules and conditions), each showing its source: 2014, 2024 or "My packs"; Dice; My packs.
+  No "create" button here.
+- My characters: the list, with "+" in the corner to make a new character. A swipe or "⋯" on a
+  character opens Actions: Copy, Link for DM, Transfer, Export, Delete.
+- Every page has a back arrow; Settings open from a gear in the top corner.
 
 RULES FOR EVERY SCREEN
 - Size: phone 360×800 first. On a tablet: the list on the left, the open card on the right.
@@ -60,7 +66,7 @@ RULES FOR EVERY SCREEN
 STYLE
 Colours (token: dark / light):
 - bg (main background): #1a1e24 / #f8fbff
-- bg-outer (bars, bottom bar): #0b0f13 / #eef3fd
+- bg-outer (bars, pinned panels): #0b0f13 / #eef3fd
 - text: #bccad8 / #30353a
 - text-muted: #97a1b9 / #697580
 - heading: #c14343 / #c14343
@@ -103,17 +109,35 @@ For anything not listed here, use placeholder numbers and mark them as samples.
 
 ## Part 2 — The screens
 
-Sixteen screens. Each block is one prompt: paste it after the base block. The mark after each
-title says which mode shows it, and what is free or paid (ADR 005 item 2).
+Seventeen screens. Each block is one prompt: paste it after the base block. The mark after each
+title says which mode shows it, and what is free or paid (ADR 005 item 2). The navigation is
+ADR 008's.
 
-### P1 First start · both modes
+### P1 Start page · both modes
 
 ```text
-Design P1 "First start". Phone 360×800, dark and light.
-Purpose: the person picks how they use the app, once.
-On screen: the app name; one line saying what it is; three large choices, one under another:
-"I play", "I run games", "Both". Under them, small text: "You can change this in Settings."
-Action: tapping a choice opens the Characters tab (or the Table tab for "I run games").
+Design P1 "Start". Phone 360×800, dark and light.
+Purpose: the person picks the game system and how they use the app.
+On screen: the app name; a chip "5E compatible · 2014 and 2024 rules"; two large choices in
+the lower half, one under another: "Player" (your characters and your rulebook) and
+"Game master" (campaigns, party, encounters), the second marked "Later". A gear in the top
+corner opens Settings.
+Action: tapping "Player" opens the player page (P17).
+One state only.
+```
+
+### P17 Player page · player
+
+```text
+Design P17 "Player". Phone 360×800, dark and light.
+Purpose: what a player needs before making a character.
+On screen: a back arrow and the title "Player"; a card "My characters" with portraits,
+"2 of 3" and "last opened: Iren"; the rulebook as a table of contents: Species, Classes,
+Backgrounds, Feats, Spells, Equipment, Rules and conditions. Each chapter shows its source as a
+small badge (2024, 2014, My packs); a switch "Rules base 2014 / 2024" sits on the rulebook's
+title row. Under it two tiles: "Dice" and "My packs". No button to make a character here.
+Actions: tap "My characters" to open the list (P2); tap a chapter to open it; tap a badge to
+choose the chapter's source.
 One state only.
 ```
 
@@ -124,11 +148,12 @@ Design P2 "Characters". Phone 360×800, dark and light.
 Purpose: all the person's characters.
 On screen: one card per character with a portrait circle, the name, class and level, a
 "2014" or "2024" badge, and a thin hit point bar. A counter "1 of 3" at the top (free limit).
-A large "New character" button in the lower half. "Import file" as a smaller action.
-Actions: tap a card to open the sheet; long-press for Duplicate, Export, Delete (Delete shows
-"Undo").
-States: empty (a short friendly line, "New character" and "Import file"); one character (Iren);
-at the limit, "3 of 3": "New character" shows a star and opens the paid offer. Existing
+A "+" in the top corner makes a new character. "Import file" as a smaller action.
+Actions: tap a card to open the sheet; swipe a card left for Copy, Link for DM, Delete and
+"More"; "More" (or "⋯") opens the full Actions list: Copy, Link for DM, Transfer, Export,
+Delete (Delete shows "Undo").
+States: empty (a short friendly line, "+" and "Import file"); one character (Iren); a card
+swiped open; at the limit, "3 of 3": "+" shows a star and opens the paid offer. Existing
 characters always open.
 ```
 
@@ -147,7 +172,7 @@ On screen: one scrolling form, in this order:
 7. Classes and levels (add a class with a level).
 8. Ability scores: six number fields, any numbers.
 9. Equipment: add items.
-A bar pinned above the bottom bar shows the live numbers: AC, hit points, initiative.
+A bar pinned at the bottom shows the live numbers: AC, hit points, initiative.
 Warnings appear inline in amber; nothing blocks "Create".
 States: empty form; filled with Iren; a warning shown (for example a mix that may not fit).
 ```
@@ -158,7 +183,7 @@ States: empty form; filled with Iren; a warning shown (for example a mix that ma
 Design P4 "Character sheet" for Iren. Phone 360×800, dark and light.
 Pinned at the top: "Iren · Fighter 1", a "2024" badge, a [!1] choices badge; under it the row
 "AC 17 · Init +3 · 30 ft · Prof +2".
-Pinned at the bottom, above the bottom bar, near the thumb: the hit point bar "12 / 12" with
+Pinned at the bottom, near the thumb: the hit point bar "12 / 12" with
 "Damage" and "Heal" buttons; under it the tabs, swiped sideways:
 Main · Combat · Spells · Equipment · Features · Notes.
 Design the Main tab fully, and the Combat tab as a second frame:
@@ -332,9 +357,8 @@ Dark theme. Label each version with its font name.
 ### X2 App map
 
 ```text
-Draw a map of the whole app: the bottom bar tabs (Characters, Library, Dice, Table, Settings)
-and, under each, the screens it opens: P1 to P16 from this brief. Mark which screens show only
-in DM mode.
+Draw a map of the whole app: the start page, the player page, and under each the screens it
+opens: P1 to P17 from this brief. Mark which screens belong to the Game master side.
 ```
 
 ---
@@ -355,7 +379,7 @@ in DM mode.
 | Item | Chosen | Link or notes | Date |
 |---|---|---|---|
 | Heading font (X1) | — | — | — |
-| P1 First start | — | — | — |
+| P1 Start page | — | — | — |
 | P2 Characters list | — | — | — |
 | P3 Character creation | — | — | — |
 | P4 Character sheet | V3 "Thumb": name and the stats row pinned at the top; hit points, "Damage", "Heal" and the tabs pinned at the bottom; Main tab as in the P4 prompt | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "P4 · 3 palettes", column V3 | 2026-09-30 |
@@ -372,5 +396,6 @@ in DM mode.
 | P15 Generators | — | — | — |
 | P16 A player's view of a campaign | — | — | — |
 | Base colours | Not chosen. The base theme is plain and calm; personality comes from paid skins. Rejected: Lavender (3D52A0 · 7091E6 · 8697C4 · ADBBDA · EDE8F5) and Cream (F7F5E6 · 333A56 · 52658F · E8E8E8), which read as a clinic or government app. Sky (E2F0F9 · B0DDE4 · 286FB4 · FFFFFF · DF4C73) is still open | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "P4 · 3 palettes" | 2026-09-30 |
-| Overall design | Not chosen. The app does not open straight on a character sheet: it gets a first page, with room for the features of later phases. At least five options are drawn | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Overall design · 5 options" | 2026-09-30 |
+| Overall design | The navigation of ADR 008: no bottom bar; a start page (Player or Game master); a player page with what a player needs before making a character; My characters with "+" in the corner. The five home-page options with a bottom bar are rejected. The look is still being drawn | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v1" | 2026-09-30 |
+| P17 Player page | — | — | — |
 | Future skins | Six retro looks are kept as ideas for optional paid skins: Win95 shareware, 16-bit RPG menu, green-screen terminal, parchment overload, wood and leather, early homepage. Not the base design | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Retro and weird" | 2026-09-30 |
