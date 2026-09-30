@@ -62,8 +62,10 @@ benchmark is within 10 ms; a formula cycle stops with a readable message. No UI,
 **Re-cut before ENG-01 starts** (ADR 004). The rows below are the first cut, written for fifth
 edition only. The re-cut splits the game-free core from the fifth-edition module, adds the
 made-up test system, and puts ADR 003's pack items into the schema rows from the start: `system`,
-the source details, the dependency checks, and refusing a newer `schemaVersion`. The new rows are
-shown to Alina before they replace these.
+the source details, the dependency checks, and refusing a newer `schemaVersion`. It also adds
+ADR 005's three phase 1 items: golden F (a mixed-edition character, its values approved by Alina
+first), the ability-bonus source as a choice, and a roll result that can be sent to a DM later.
+The new rows are shown to Alina before they replace these.
 
 | ID | Hat | Size | Status |
 |---|---|---|---|
@@ -111,7 +113,7 @@ shown to Alina before they replace these.
 
 | Phase | SPEC stage | Area | What it delivers |
 |---|---|---|---|
-| 2 | 2 | `SHEET` | Character list, manual creation, the sheet with every tab, trackers, rolls, rests, undo, JSON export |
+| 2 | 2 | `SHEET` | Character list, manual creation, the sheet with every tab, trackers, rolls, rests, undo, JSON export; screens built on design tokens (ADR 005) |
 | 3 | 3 | `CONT` | SRD 2014 and 2024 import, mechanics for levels 1–5, the library, search, attribution |
 | 4 | 4 | `WIZ` | The creation wizard, the level-up wizard, house rules |
 | 5 | 5 | `HB` | The homebrew editor, the effect builder, before/after preview, several personal packs, `.gmpack` import and export with the import checks (ADR 003) |
@@ -122,7 +124,10 @@ shown to Alina before they replace these.
 
 Phases L1–L6 (Foundry, game master tools, assistant, accounts, shared room) are in SPEC §12 and
 get rows only when Alina opens them. ADR 003 adds two more of that kind: the Fantasy Grounds
-exporter, and the community place for sharing packs (its gate is a lawyer's check).
+exporter, and the community place for sharing packs (its gate is a lawyer's check). ADR 005
+reshapes three of them: L3 gains roll tables, generators and a fuller tool list; L4 is the
+person's own AI key, free; L5's campaign sync becomes the table link. It adds three more: payments
+(one payment, no subscription; its gate is a lawyer's check), dice skins, and the theme editor.
 
 ---
 
@@ -143,3 +148,8 @@ Three things can change this order, and all are Alina's decision (SPEC §14):
 | ID | Hat | Size | Status |
 |---|---|---|---|
 | OPS-01 | ADR 003 and ADR 004 record the library packs and the game systems | XS | ✅ 2026-09-28 |
+| OPS-02 | ADR 005 records the product decisions of 2026-09-29 | XS | ✅ 2026-09-30 |
+| OPS-03 | The design brief for the screens exists | S | 🔲 |
+
+- **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
+  style of ADR 005 item 7, and a prompt per screen. Alina's chosen results come back into it.

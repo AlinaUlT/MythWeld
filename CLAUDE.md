@@ -140,7 +140,9 @@ rules in a new function.
 - Entity names stay bilingual (`name.en`, and `name.ru` when it is known), because search must
   find both.
 - The dice parser accepts both `d` and `к`.
-- No telemetry and no external requests, except links the person opens themselves (§11).
+- No telemetry and no external requests, except links the person opens themselves and features
+  the person turns on: the table link and their own AI key (§11,
+  [ADR 005](docs/adr/005-modes-free-version-table-link.md)). Both are off until then.
 
 ---
 

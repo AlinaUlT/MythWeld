@@ -37,3 +37,37 @@ they are not legal advice; a lawyer's check is the gate of the future community-
 done here, on purpose: the phase 1 re-cut (shown to Alina first) and any license check of another
 system's content (each system's own ticket). Found, not fixed: nothing. Nothing for the
 changelog; a person sees no change.
+
+### OPS-02 The product decisions of 2026-09-29 · XS
+
+**Hat:** ADR 005 records the product decisions of 2026-09-29
+**Where:** `docs/adr/005-modes-free-version-table-link.md` — new; `CLAUDE.md`,
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-01
+
+**What it should look like when done:**
+1. ADR 005 records Alina's seven answers of 2026-09-29: 3 free characters; 1 free campaign with
+   the table link; no limit on homebrew or packs; AI with the person's own key, free and off by
+   default; the ITS colour values reused in our own code; campaign sync by the table link
+   (peer-to-peer); partial mixing of the two editions, with golden F.
+2. It also records what the discussion settled around them: the two modes, the free and paid
+   table, no D&D Beyond link, dice skins, roll tables and generators, the DM tools, images, PDF
+   extras, the fonts. It lists what it changes in the SPEC, what does not change, what is still
+   open, and its sources.
+3. `CLAUDE.md`: the external-requests invariant names the features a person turns on.
+4. `BACKLOG.md`: the phase 1 re-cut note carries ADR 005's three phase 1 items; the later-phase
+   paragraph names what ADR 005 reshapes and adds; OPS-03 is listed.
+5. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** The gate is green: lint checked 52 files; typecheck passed in every
+package; 6 test files, 18 tests passed, 0 failed, 577 ms. Measured for the ADR, not remembered:
+the ITS colours from its `theme.css` (main branch), its license (GPL-2.0) from its `LICENSE`, and
+each font's license (`OFL`) and Cyrillic support from Google Fonts' metadata and CSS API. Some
+sources were blocked from the work environment (dndbeyond.com, dmheroes.com, the app stores,
+supabase.com, cloudflare.com, shieldmaiden.app); the ADR marks those facts as coming from search
+results, and names no server price. Differs from the chat: the fonts ship inside the app, because
+SPEC §11 forbids loading them from a font server (found in SETUP-04's rake check). Found, not
+fixed: nothing. Nothing for the changelog; a person sees no change.
