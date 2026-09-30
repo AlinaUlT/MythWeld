@@ -73,7 +73,7 @@ split off an old row got a new id.
 | ENG-01 | CI fails if `engine` imports React, DOM, Dexie or the network | XS | ✅ 2026-09-30 |
 | ENG-02 | The entity base has a core Zod schema, ids included | S | ✅ 2026-09-30 |
 | ENG-03 | The core entity types have Zod schemas | S | ✅ 2026-09-30 |
-| ENG-04 | Effects, grants, prerequisites have game-free Zod schemas | S | 🔲 |
+| ENG-04 | Effects, grants, prerequisites have game-free Zod schemas | S | ✅ 2026-09-30 |
 | ENG-24 | A system module adds its entity types to the schemas | S | 🔲 |
 | ENG-05 | The content pack has a schema, exported as JSON Schema | S | 🔲 |
 | ENG-06 | The core character document has a schema, with the migration frame | S | 🔲 |
@@ -114,12 +114,16 @@ split off an old row got a new id.
 - **ENG-02** — `meta.translation` takes the four values of SPEC §5.2 (`official`, `community`,
   `machine`, `reviewed`); §3.3 lists only three. Alina's decision, 2026-09-27. `source` gains
   `book`, `author`, `license`; `meta.foundry` is left out (ADR 003 items A1, A2).
+- **ENG-24** — found by ENG-04: a module adds grant kinds, and lists the values the core checks
+  only for shape (proficiency categories and levels, recovery events). `safeExtend` cannot widen
+  the base's `grants`; ENG-04 §4 has the measurement.
 - **ENG-05** — the pack names its `system` and its edition (`ruleset`), and carries `homepage`,
   `repository`, `copyrightNotice` (ADR 003 item A2, ADR 004 item 3). No field says where a pack
   came from; the app sets that (ADR 003 item A7). The locale overlay schema is here too. The JSON
   Schema is exported per system: the core's types plus the module's. Found by ENG-02: Zod's
   refinements do not reach the JSON Schema (at least one language, http or https links, the id's
-  type equal to `type`); ENG-02 §11 has the measurement.
+  type equal to `type`); ENG-02 §11 has the measurement. ENG-04 adds 8 more; ENG-04 §11 lists
+  them.
 - **ENG-06** — the core part of ADR 004's §5.8 row; the module's part is ENG-33. Packs and
   characters share the migration frame, which refuses a file with a newer `schemaVersion`
   (ADR 003 item A6).
@@ -140,6 +144,8 @@ split off an old row got a new id.
   the new package. Found by ENG-01: a relative path can climb out of `packages/engine` into a
   sibling package (`../../content/src/index.ts`), and ENG-01's lint rule cannot see that; the
   core-to-module check here also covers a climb into the module by relative path.
+- **ENG-32** — found by ENG-04: also fifth edition's grant kinds `spell` and `item`, built on
+  ENG-04's `grantBaseSchema`, `chooseEntitiesSchema` and `usesDefSchema`.
 - **ENG-09, ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's
   schemas. Every rules fact in them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`).
 - **ENG-09** — golden A says mountain dwarf, but its numbers (+2 CON, +1 WIS, Dwarven Toughness)
@@ -177,6 +183,9 @@ split off an old row got a new id.
 
 - **Phase 3** — found by ENG-02: 11 of 4,428 5e-database slugs do not fit the entity id's slug
   pattern; the import maps them. ENG-02 §11 lists them.
+- **Phases 2, 4** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
+  §8.2: a warning, never a block). The row is cut with the first phase that lets a person pick an
+  entity with prerequisites.
 
 Phases L1–L6 (Foundry, game master tools, assistant, accounts, shared room) are in SPEC §12 and
 get rows only when Alina opens them. ADR 003 adds two more of that kind: the Fantasy Grounds

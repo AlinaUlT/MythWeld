@@ -387,3 +387,220 @@ Found, not fixed:
   needed.
 
 Nothing for the changelog.
+
+---
+
+### ENG-04 Effects, grants, prerequisites
+
+**Hat:** Effects, grants, prerequisites have game-free Zod schemas
+**Depends on:** ENG-03 (the formula schema, the core types that carry them)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.2 (`effects`, `grants`, `prerequisites`), §5.4, §5.5; ADR 004 items 1, 4
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/schema/src/grant.ts` — new. Grants, choices, `UsesDef`.
+- `packages/schema/src/effect.ts` — new: effects.
+- `packages/schema/src/prerequisite.ts` — new: prerequisites.
+- `packages/schema/src/text.ts` — new: `visibleTextSchema`, `localeSchema`, `l10nSchema`, moved
+  out of `entity-base.ts`.
+- `packages/schema/src/ids.ts` — changes: `computedPathSchema`.
+- `packages/schema/src/entity-base.ts` — changes: `effects`, `grants`, `prerequisites`.
+- `packages/schema/src/entity-types.ts`, `packages/schema/src/formula.ts` — change: import the
+  text schemas from `text.ts`.
+- `packages/schema/src/index.ts` — changes: exports the new files.
+- `packages/schema/test/mechanics.test.ts` — new.
+
+#### 2. What is missing now
+
+- `grep -rn "effects\|grants\|prerequisites\|UsesDef\|Choose" packages/schema/src/` prints
+  nothing, exit 1.
+- `entityBaseSchema` is strict, so an entity with `effects` or `grants` is refused today:
+  Appendix Д's feat cannot be written.
+- `pnpm test`: `Test Files 9 passed (9)`, `Tests 44 passed (44)`; none for an effect, a grant or
+  a prerequisite.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/schema` exports `effectSchema`, `effectOpSchema`, `effectPhaseSchema`,
+   `grantSchema`, `grantBaseSchema`, `chooseKeysSchema`, `chooseEntitiesSchema`,
+   `usesDefSchema`, `prerequisiteSchema`, `computedPathSchema`, and the types `Effect`,
+   `EffectOp`, `EffectPhase`, `Grant`, `ChooseKeys`, `ChooseEntities`, `UsesDef`,
+   `Prerequisite`, `ComputedPath`.
+2. Every entity takes `effects?`, `grants?`, `prerequisites?`. The `grants` and `effects` of
+   Appendix Д's feat parse to equal objects.
+3. A computed path is camelCase steps joined by dots: `abilities.san.score`, `d20.all.bonus`,
+   `init.bonus` are accepted; `''`, `.score`, `score.`, `abilities..score`,
+   `abilities.San.score`, `abilities.*.score`, `abilities.san-x.score` are refused.
+4. An effect needs `id` (a slug), `target` (a computed path), `op`, `value`; it takes `phase?`
+   (`base`, `derived`, `final`), `priority?` (a whole number), `when?` (a formula),
+   `situational?` (L10n), `toggle?` (`label` L10n and `default` boolean, both needed),
+   `label?` (L10n).
+5. `op` takes exactly the nine of SPEC §5.4: `add`, `mul`, `set`, `max`, `min`, `append`,
+   `advantage`, `disadvantage`, `note`; anything else is refused on `op`.
+6. `value` fits its `op`: `add`, `mul`, `max`, `min` take a number or a formula; `set` a number,
+   a boolean or text; `append` text; `advantage` and `disadvantage` only `true`; `note` L10n.
+   `add` with `true`, `add` with `Infinity`, `append` with `3`, `advantage` with `false`, `note`
+   with plain text are refused on `value`.
+7. A grant needs `id` (a slug) and `kind`; it takes `atLevel?`, a whole number, 1 or more. The
+   core's kinds are `entity`, `proficiency`, `abilityScore`, `resource`. `feat`, `feature`,
+   `spell`, `item` are refused on `kind`.
+8. `entity` takes `fixed?` (entity ids) and `choose?`; `proficiency` needs `category` (a key) and
+   takes `fixed?` (keys), `choose?`, `level?` (a number above 0). Each needs `fixed`, `choose` or
+   both; with neither it is refused.
+9. `choose` needs `count`, a whole number, 1 or more, and `from`: either a list (keys for
+   `proficiency`, entity ids for `entity`) or a filter with at least one of `type`, `tag`,
+   `category`. A list with a repeat, an empty list, `{}` and a `count` above the list's length
+   are refused. `fixed` is a list with no repeat and at least one item.
+10. `abilityScore` with `mode: 'fixed'` needs `values`: stat key → whole number, not 0, at least
+    one. With `mode: 'distribute'` it needs `from` (stat keys, no repeat, at least one) and
+    `patterns` (at least one list of whole numbers of 1 or more, none longer than `from`).
+11. `resource` needs `key`, `label` (L10n) and `uses`. `uses` needs `max` (a formula) and
+    `recovery` (at least one item); a recovery item needs `on` (a key) and `amount` (`all` or a
+    formula).
+12. A prerequisite is one of `ability` (`key`, `min` a whole number), `level` (`min` a whole
+    number, 1 or more), `entity` (`id` an entity id), `proficiency` (`category`, `key`, both
+    keys), `formula` (`formula`, `label` L10n). Another `kind` is refused on `kind`.
+13. Two effects of one entity with the same `id` are refused on `effects.<n>.id`; two grants, on
+    `grants.<n>.id`. An effect and a grant may share an id.
+14. A made-up game passes: recovery `on: 'scene'`, proficiency category `lore` at `level: 3`, a
+    stat `grit`.
+15. Any field not named here is refused, in every object. Parsing adds nothing: a valid input
+    parses to an equal object.
+16. `z.toJSONSchema` runs for `effectSchema`, `grantSchema`, `prerequisiteSchema` and
+    `entityBaseSchema`; every object option has `additionalProperties: false`.
+17. The quality gate is green.
+
+#### 4. How to do it
+
+1. `text.ts`: move `visibleTextSchema`, `localeSchema`, `l10nSchema` and their types out of
+   `entity-base.ts`; point `entity-base.ts`, `entity-types.ts`, `formula.ts` at it.
+2. `ids.ts`: `computedPathSchema`, built from the camelCase pattern the key already uses.
+3. `effect.ts`: one strict object per group of ops, sharing the fields of §3 item 4;
+   `effectSchema = z.discriminatedUnion('op', [...])`.
+4. `grant.ts`: `usesDefSchema`; `chooseKeysSchema`, `chooseEntitiesSchema` from one builder;
+   `grantBaseSchema = z.strictObject({ id, atLevel })`; each kind is
+   `grantBaseSchema.safeExtend({ kind: z.literal(…), … })`; `abilityScore` is a union on `mode`
+   nested in the union on `kind`.
+5. `prerequisite.ts`: `z.discriminatedUnion('kind', [...])`.
+6. `entity-base.ts`: `effects`, `grants`, `prerequisites`, each an optional list; effects and
+   grants with a unique-id check on the list.
+7. The tests of §7.
+
+Technical choices (ADR 002):
+- **The core's grant kinds name no game.** SPEC §5.5's `feature` and `feat` kinds become one
+  `entity` kind: it gives entities by id or by choice, whatever their type. Feat and feature are
+  fifth edition's types (ENG-03 §4). `spell` and `item` carry fifth edition's fields (the
+  spellcasting stat, "always prepared"; a quantity in the inventory, which ADR 004 gives to the
+  module), so ENG-32 adds them, and ENG-24 decides how a module adds a kind. Measured on Zod
+  4.6.5: `safeExtend` with a wider `grants` list parses at run time but fails typecheck
+  (`… is not assignable to type 'never'`), so ENG-24 needs another way than `safeExtend`.
+- **Open keys where the list belongs to a system.** A proficiency's `category` and `level`, a
+  recovery's `on`, a filter's `category` are checked for shape only (a key; a number above 0).
+  Fifth edition's values (`skill`, `save`, `armor` …; 0.5, 1, 2; `short`, `long`, `dawn`,
+  `turn`, `manual`) are its module's to list (ENG-24, ENG-32).
+- **All nine ops stay in the core.** Each says what an effect does to a number, a list, a roll
+  or a note; none names a stat, a type or a rule. What advantage does to a roll is ENG-34's, in
+  the module. A module that needs another op widens the list, which no stored file can fail.
+- **`value` is checked against `op`.** SPEC §5.4 gives one union for every op, so `add` with
+  `true` would pass it. `advantage` and `disadvantage` take only `true`: SPEC needs a value,
+  and `false` would mean nothing. `note` takes L10n, not a string: a note is text a person reads,
+  and every such text in an entity is L10n (SPEC §5.2).
+- **Effect and grant ids are slugs, unique in their list.** A choice is stored under
+  `<entityId>#<grantId>` (SPEC §5.5); a slug cannot hold `#`. Toggles need one effect per id.
+- **The proficiency prerequisite's `id` is named `key`.** Its value is a key, like a proficiency
+  grant's `fixed`; everywhere else in the schemas an `id` is an entity id or a slug.
+- **A choice that can never be completed is refused**: a repeat in a list, or a `count` above
+  its length. A filter's size is not known until packs load (ENG-25).
+- **The text schemas get their own file.** Effects, grants and prerequisites use L10n, and the
+  base uses them; importing L10n from `entity-base.ts` would be an import cycle. What the
+  package exports stays the same.
+
+#### 5. Stored data
+
+Nothing stored changes. No pack or character is stored yet.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/schema/test/mechanics.test.ts` — `describe('ENG-04 effects, grants, prerequisites')`:
+  Appendix Д's grant and effect, computed paths, the fields of an effect, `value` by `op`, each
+  grant kind, choices, `UsesDef`, each prerequisite kind, unique ids, a made-up game, unknown
+  fields, the round trip, the JSON Schema export.
+- Control values from: SPEC §5.4 and §5.5 field lists; Appendix Д's feat. The other test data is
+  made up and holds no rules text.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is used. The fields come from SPEC §5.4 and §5.5.
+
+#### 9. Not in this ticket
+
+- Which targets exist (the catalog of SPEC §5.4), and an effect's phase taken from its target:
+  ENG-17, with the module's targets from ENG-28.
+- Evaluating `value` and `when`: ENG-07. Applying effects: ENG-12, ENG-17. Toggles in the
+  character document: ENG-06.
+- Expanding grants, storing choices, `pendingChoices`: ENG-06, ENG-11.
+- Checking a prerequisite against a character (a warning, never a block, SPEC §8.2): see §11.
+- Fifth edition's grant kinds `spell` and `item`, `FeatureDef.uses`, a class's multiclass
+  prerequisites: ENG-32. How a module adds grant kinds and narrows the open keys: ENG-24.
+- Formula length and depth limits: ENG-07. Size limits on lists: phase 5 (ADR 003 item A6).
+
+#### 10. Rake check
+
+- **Everything is data; the core names no game.** No rest, proficiency category, proficiency
+  level or entity type of any game is in the code. The test passes a made-up game's `scene`
+  recovery and `lore` proficiency.
+- **Each system's rules live in its own module.** Fifth edition's lists are left to ENG-24 and
+  ENG-32.
+- **Formulas never run code.** `value`, `when` and `max` are only text here.
+- **Missing is not broken; prerequisites warn.** A grant or prerequisite naming an id that does
+  not exist is valid here. The schema checks the shape of a prerequisite, never a character
+  against it.
+- **Ids are stable.** Effect and grant ids are slugs, apart from their labels.
+- **Entity names stay bilingual.** Labels, notes, `situational` and toggle labels are L10n.
+- **Licensing.** Test data is made up, plus Appendix Д's homebrew feat; no SRD or book text.
+
+#### 11. What came out of it
+
+Measured:
+- The new test file alone: `Tests 15 passed (15)`, 483 ms.
+- Lint: `Checked 66 files`, 0 errors (61 before).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 10 passed (10)`, `Tests 59 passed (59)`, 1.09 s (before: 9 files, 44 tests).
+- Build: `Done`.
+- The tests bite. Each guard removed on its own, 15 tests run each time: `value` of
+  `advantage` any value, 1 fails; `note` plain text allowed, 1 fails; `target` any text, 1 fails;
+  the `append` option not strict, 1 fails; the unique-id check on a list, 1 fails; `fixed` or
+  `choose` not needed, 1 fails; `count` above the list's length, 1 fails; a repeat in a list,
+  3 fail; an empty filter, 1 fails; a stat change of 0, 1 fails; a pattern longer than `from`,
+  1 fails; a recovery event any text, 1 fails; the prerequisite's `key` named `id`, 3 fail;
+  `grantBaseSchema` not strict, 1 fails.
+- The first run of that list found one gap: with the `append` option not strict, 15 of 15
+  passed, because the unknown-field test tried only an `add` effect. The test now tries every
+  effect, grant and prerequisite of its made-up data; the same change then fails 1.
+
+Differences from §3: none.
+
+Changed in an earlier ticket's test: ENG-02's `refuses a field it does not name` used
+`effects: []` as its unknown field, and failed once `effects` became a field (ENG-02 §9 said
+ENG-04 adds it). It now uses `effect: []`, still unknown; the rule it checks is unchanged.
+
+Found, not fixed:
+- The exported JSON Schema loses 8 of this ticket's checks, measured on `z.toJSONSchema`: no
+  item twice in a list (no `uniqueItems`), ids unique in `effects` and `grants`, `fixed` or
+  `choose`, a choice's `count` within its list, a filter's field, a stat change not 0, at least
+  one stat (no `minProperties`), a pattern no longer than `from`. It keeps the path pattern and
+  the `minItems` of lists. Added to the note on ENG-05 in `BACKLOG.md`.
+- A module cannot add grant kinds with `safeExtend` (§4, measured). Noted on ENG-24; fifth
+  edition's own kinds are noted on ENG-32.
+- No row checks a prerequisite against a character (SPEC §5.5, §8.2: a warning, never a block).
+  Noted for phases 2 and 4 in `BACKLOG.md`.
+
+Nothing for the changelog.

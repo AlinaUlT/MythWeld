@@ -161,7 +161,7 @@ describe('ENG-02 entity base', () => {
   });
 
   it('refuses a field it does not name, at every level', () => {
-    expect(issuePaths({ ...minimal, effects: [] })).toEqual(['']);
+    expect(issuePaths({ ...minimal, effect: [] })).toEqual(['']);
     expect(issuePaths({ ...minimal, rulset: 'any' })).toEqual(['']);
     expect(
       issuePaths({ ...minimal, source: { pack: 'tales', url: 'https://example.org' } }),

@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import { visibleTextSchema } from './entity-base';
+import { visibleTextSchema } from './text';
 
 /**
  * A formula as it is stored (SPEC §5.6): text such as `floor((@score - 10) / 2)`. ENG-07 parses

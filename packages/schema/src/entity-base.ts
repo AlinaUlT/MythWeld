@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { effectSchema } from './effect';
+import { grantSchema } from './grant';
 import {
   entityIdSchema,
   entityKeySchema,
@@ -7,18 +9,8 @@ import {
   parseEntityId,
   rulesetIdSchema,
 } from './ids';
-
-/** Text that shows something: not empty, not only spaces. */
-export const visibleTextSchema = z.string().regex(/\S/, 'Must hold a visible character.');
-
-export const localeSchema = z.enum(['en', 'ru']);
-export type Locale = z.infer<typeof localeSchema>;
-
-/** One text in each language it is known in; at least one (SPEC §5.2). */
-export const l10nSchema = z
-  .partialRecord(localeSchema, visibleTextSchema)
-  .refine((text) => Object.keys(text).length > 0, 'Needs at least one language.');
-export type L10n = z.infer<typeof l10nSchema>;
+import { prerequisiteSchema } from './prerequisite';
+import { l10nSchema, visibleTextSchema } from './text';
 
 /** Who translated the entity's texts (SPEC §5.2: four values, not the three of §3.3). */
 export const translationSchema = z.enum(['official', 'community', 'machine', 'reviewed']);
@@ -46,6 +38,23 @@ export const entityMetaSchema = z.strictObject({
 });
 export type EntityMeta = z.infer<typeof entityMetaSchema>;
 
+/** A list whose items' ids differ; a repeat is reported on the later item's `id`. */
+function listWithUniqueIds<T extends z.ZodType<{ id: string }>>(item: T) {
+  return z.array(item).superRefine((list, ctx) => {
+    const seen = new Set<string>();
+    for (const [index, entry] of list.entries()) {
+      if (seen.has(entry.id)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [index, 'id'],
+          message: `The id "${entry.id}" is used twice.`,
+        });
+      }
+      seen.add(entry.id);
+    }
+  });
+}
+
 // ENG-02: the fields every entity has. Objects are strict, so an unknown field is refused rather
 // than dropped; the id's type part must equal `type`. ENG-03 and ENG-24 extend this.
 export const entityBaseSchema = z
@@ -60,6 +69,9 @@ export const entityBaseSchema = z
     text: l10nSchema.optional(),
     tags: z.array(visibleTextSchema).optional(),
     source: entitySourceSchema,
+    effects: listWithUniqueIds(effectSchema).optional(),
+    grants: listWithUniqueIds(grantSchema).optional(),
+    prerequisites: z.array(prerequisiteSchema).optional(),
     meta: entityMetaSchema.optional(),
   })
   .superRefine((entity, ctx) => {

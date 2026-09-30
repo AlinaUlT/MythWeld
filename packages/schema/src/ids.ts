@@ -3,7 +3,10 @@ import { z } from 'zod';
 // Lowercase letters and digits, in groups joined by single hyphens: `srd-2024`, `savage-attacker`.
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 // camelCase, starting with a letter: `feat`, `damageType`, `sleightOfHand`.
-const CAMEL = /^[a-z][a-zA-Z0-9]*$/;
+const CAMEL_STEP = '[a-z][a-zA-Z0-9]*';
+const CAMEL = new RegExp(`^${CAMEL_STEP}$`);
+// camelCase steps joined by single dots, with no wildcard: `abilities.san.score`.
+const PATH = new RegExp(`^${CAMEL_STEP}(?:\\.${CAMEL_STEP})*$`);
 
 /** A pack's id: `srd-2014`, `srd-2024`, `hb-local`. */
 export const packIdSchema = z.string().regex(KEBAB);
@@ -26,6 +29,10 @@ export type EntityId = z.infer<typeof entityIdSchema>;
 
 /** A short key for formulas: `str`, `stealth`, `fighter`. One step of a formula path. */
 export const entityKeySchema = z.string().regex(CAMEL);
+
+/** A place in the computed character that an effect targets (SPEC §5.4), such as `init.bonus`. */
+export const computedPathSchema = z.string().regex(PATH);
+export type ComputedPath = z.infer<typeof computedPathSchema>;
 
 /**
  * An edition of the entity's system (`2014`, `2024`), or `any`. The core names no game: the

@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { entityBaseSchema, l10nSchema } from './entity-base';
+import { entityBaseSchema } from './entity-base';
 import { formulaSchema } from './formula';
 import { entityKeySchema } from './ids';
+import { l10nSchema } from './text';
 
 // ENG-03: the entity types the game-free core owns. Each is the base with `type` fixed and its own
 // fields added. `safeExtend` keeps the base's id-matches-type check; `extend` refuses to replace
