@@ -303,3 +303,32 @@ longer stops: S and M tickets by size, engine tickets that match approved golden
 into rows unless a row adds or drops a feature. The gate is green: lint checked 52 files;
 typecheck passed in all 5 packages; 6 test files, 18 tests passed, 0 failed, 778 ms. Found, not
 fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-07 Alina's design choices of 2026-09-30 · XS
+
+**Hat:** The design brief records Alina's choices of 2026-09-30
+**Where:** `docs/design/BRIEF.md` — Part 2 (the P4 prompt) and Part 5; `docs/tickets/BACKLOG.md`
+**Depends on:** OPS-03
+
+**What it should look like when done:**
+1. Part 5, row P4: V3 "Thumb". The name and the stats row sit at the top. Hit points, "Damage",
+   "Heal" and the tabs sit at the bottom, near the thumb.
+2. The P4 prompt in Part 2 describes V3, so a new design made from it matches the choice.
+3. Part 5 gains three rows. Base colours: not chosen; the base theme stays plain and calm, and
+   paid skins add personality; Lavender and Cream are rejected. Overall design: not chosen; the
+   app gets a first page instead of opening on a character sheet. Future skins: the six retro
+   looks.
+4. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** Alina chose from mockups on a design canvas. The mockups stay out of the
+repository (BRIEF Part 4); Part 5 links the canvas. V3 shows the modifier large and the score
+small, the reverse of the old P4 prompt; the new prompt follows V3. ADR 005 item 7 still names
+the ITS colours: it changes by a new ADR once Alina picks the base colours. The gate is green:
+lint checked 66 files; typecheck passed in all 5 packages; 10 test files, 59 tests passed,
+0 failed, 1.26 s. The first commit left this ticket text out; a second commit with the same id
+adds it. Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
