@@ -220,7 +220,7 @@ as a grid, one column per level, circles two per row; casting offers "Don't use 
 spells granted by a feature show their source, "1/LR" and "no spell slot".
 ADR 011: every ability, skill, feature, feat, spell and item opens and closes its description
 in place; tapping one shows a summary and "See full description", the exact text of its
-source, with the source named.
+source, with the source named. For a spell, both sit in the cast panel, above "Cast".
 ```
 
 ### P5 Roll dialog and breakdown · player

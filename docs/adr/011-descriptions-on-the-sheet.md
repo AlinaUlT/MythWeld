@@ -14,6 +14,9 @@ in `CLAUDE.md`, "Nothing she says is lost".
 2. **"See full description".** Tapping an entry, for example a spell, shows its short summary
    and a "See full description" control. It opens the exact text from the book or pack the
    entry was taken from, with that source named: the book, its version, its license.
+   For a spell, this sits in the cast panel itself: tapping a spell opens the panel, and before
+   "Cast" it shows what the spell does and "See full description", so the person knows what
+   they cast. There is no separate spell card on the sheet.
 3. **Only text the app may show.** The exact text comes from openly licensed books (SRD 5.1 and
    SRD 5.2.1 today) or from the person's own packs. For an entry with no text in its source, the
    control says so instead of showing anything else (`CLAUDE.md`, "Content and licensing").

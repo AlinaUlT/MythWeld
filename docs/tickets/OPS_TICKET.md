@@ -468,6 +468,8 @@ gate is green: lint checked 66 files; typecheck passed in all 5 packages; 59 tes
 **Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
 gate's counts.
 
-**What came out of it:** the first record made under OPS-11's rule. The gate is green: lint
+**What came out of it:** the first record made under OPS-11's rule. Alina then placed it: for a
+spell, the summary and "See full description" sit in the cast panel, above "Cast"; the separate
+spell card mockup was removed, and a second commit with this id records that. The gate is green: lint
 checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.50 s. Found,
 not fixed: nothing. Nothing for the changelog; a person sees no change.
