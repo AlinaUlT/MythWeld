@@ -61,6 +61,7 @@ Short answers, plain language, no analogies. Everything new is in English.
 **For an XS ticket** the checkpoint can be dropped, if every decision is already in the prompt and
 the ticket changes no number the engine computes. Replace the "Then stop and show me" paragraph
 with: "No checkpoint. Show me `git status --short` and the gate result before the commit."
+A document-only ticket (Markdown only) drops the checkpoint at any size (ADR 006).
 
 ---
 

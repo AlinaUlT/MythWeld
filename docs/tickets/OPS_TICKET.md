@@ -206,3 +206,28 @@ Differs from §3:
 Found, not fixed: the contrast limits above bind the phase 2 ticket that turns the colours into
 design tokens; they are written in the brief, and ADR 005 is not changed. Nothing for the
 changelog; a person sees no change.
+
+### OPS-04 Fewer stops · XS
+
+**Hat:** ADR 006 removes the stops that protect nothing
+**Where:** `docs/adr/006-fewer-stops.md` — new; `CLAUDE.md`, `PROMPTS.md`,
+`docs/tickets/README.md`, `docs/adr/002-technical-choices.md`, `docs/tickets/BACKLOG.md` — changed
+**Depends on:** Nothing
+
+**What it should look like when done:**
+1. ADR 006 records Alina's approval (2026-09-30) of two rules: a document-only ticket has no
+   checkpoint; her answers to a list of questions are recorded at once. It lists what still stops.
+2. `CLAUDE.md` ("The checkpoint"), `docs/tickets/README.md` (lifecycle step 4), ADR 002 ("What
+   does not change") and `PROMPTS.md` (prompt 2) name the exception and point to ADR 006.
+3. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** Alina approved both rules on 2026-09-30, "if nothing will crush final
+goal". The ADR says why nothing does: a document-only ticket changes no code and no computed
+number, and each change is one revertible commit. Kept on purpose: the checkpoint for code tickets
+of size S and M, any ticket that changes an engine number, and a document that makes a new
+decision for Alina (the phase 1 re-cut is the named example). The gate is green: lint checked 52
+files; typecheck passed; 6 test files, 18 tests passed, 0 failed, 798 ms. Found, not fixed:
+nothing. Nothing for the changelog; a person sees no change.

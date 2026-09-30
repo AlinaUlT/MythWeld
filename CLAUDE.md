@@ -45,7 +45,10 @@ them in the chat. Screenshots are not committed.
 **The checkpoint.** For an S or M ticket: after expanding it, stop and show §3 and §4 as a few
 short answers. Alina is approving the shape of the work, not reading a design document. The long
 version stays in the ticket file. An XS ticket has no checkpoint unless it changes a number the
-engine computes.
+engine computes. A document-only ticket (Markdown only: no code, no configuration, no content
+data) has no checkpoint at any size, and Alina's answers to a list of questions are written into
+the repository at once. A document that makes a new decision for her still stops
+([ADR 006](docs/adr/006-fewer-stops.md)).
 
 **Which file answers what.** Each fact has one owner, and no other file repeats it:
 

@@ -59,7 +59,7 @@ Only `BACKLOG.md` carries a status. A ticket file never says "done". Its §11 sa
 3. **Checked against the code as it is now**, not against the row. If the row and the code
    disagree, §4 follows the code, and the checkpoint says so.
 4. **Checkpoint** (S and M): §3 and §4 are shown as a few short answers. Work starts after
-   Alina's yes.
+   Alina's yes. A document-only ticket skips it (ADR 006).
 5. **Built.** §4 is done, and the quality gate in `CLAUDE.md` is green.
 6. **§11 filled.** It is never left empty.
 7. **✅ and the date in `BACKLOG.md`**, then the commit and the push.
