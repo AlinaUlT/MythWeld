@@ -71,7 +71,7 @@ split off an old row got a new id.
 |---|---|---|---|
 | **Core** | **schemas** | | |
 | ENG-01 | CI fails if `engine` imports React, DOM, Dexie or the network | XS | ✅ 2026-09-30 |
-| ENG-02 | The entity base has a core Zod schema, ids included | S | 🔲 |
+| ENG-02 | The entity base has a core Zod schema, ids included | S | ✅ 2026-09-30 |
 | ENG-03 | The core entity types have Zod schemas | S | 🔲 |
 | ENG-04 | Effects, grants, prerequisites have game-free Zod schemas | S | 🔲 |
 | ENG-24 | A system module adds its entity types to the schemas | S | 🔲 |
@@ -117,7 +117,9 @@ split off an old row got a new id.
 - **ENG-05** — the pack names its `system` and its edition (`ruleset`), and carries `homepage`,
   `repository`, `copyrightNotice` (ADR 003 item A2, ADR 004 item 3). No field says where a pack
   came from; the app sets that (ADR 003 item A7). The locale overlay schema is here too. The JSON
-  Schema is exported per system: the core's types plus the module's.
+  Schema is exported per system: the core's types plus the module's. Found by ENG-02: Zod's
+  refinements do not reach the JSON Schema (at least one language, http or https links, the id's
+  type equal to `type`); ENG-02 §11 has the measurement.
 - **ENG-06** — the core part of ADR 004's §5.8 row; the module's part is ENG-33. Packs and
   characters share the migration frame, which refuses a file with a newer `schemaVersion`
   (ADR 003 item A6).
@@ -172,6 +174,9 @@ split off an old row got a new id.
 | 7 | 7 | `POL` | Accessibility, performance, onboarding, optional Android |
 | RU | — | `RU` | Russian locale, glossary check, Russian overlays for SRD texts (ADR 000); placed when phase 3 closes |
 | SYS | — | `SYS` | More game systems: other D&D editions, Pathfinder, later others (ADR 004); placed when phase 2 closes |
+
+- **Phase 3** — found by ENG-02: 11 of 4,428 5e-database slugs do not fit the entity id's slug
+  pattern; the import maps them. ENG-02 §11 lists them.
 
 Phases L1–L6 (Foundry, game master tools, assistant, accounts, shared room) are in SPEC §12 and
 get rows only when Alina opens them. ADR 003 adds two more of that kind: the Fantasy Grounds

@@ -88,3 +88,171 @@ Found, not fixed:
   `BACKLOG.md` now says so.
 
 Nothing for the changelog.
+
+---
+
+### ENG-02 The entity base
+
+**Hat:** The entity base has a core Zod schema, ids included
+**Depends on:** ENG-01 (the engine's import rule allows `@grimoire/schema`)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.1, §5.2; ADR 003 items A1, A2; ADR 004 items 1, 3
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/schema/src/entity-base.ts` — new. The fields every entity has.
+- `packages/schema/src/ids.ts` — new: pack id, type name, slug, entity id, key, ruleset id.
+- `packages/schema/src/index.ts` — changes: exports both files.
+- `packages/schema/package.json` — changes: `zod` as a dependency; the typecheck script also
+  checks the tests.
+- `packages/schema/test/tsconfig.json`, `packages/schema/test/entity-base.test.ts` — new.
+
+#### 2. What is missing now
+
+- `packages/schema/src/index.ts` is `export {};`. No schema exists.
+- `grep -n zod pnpm-lock.yaml` prints nothing: Zod (SPEC §4.2, Zod 4) is not installed.
+- `packages/schema` has no `test/` folder; `pnpm test` runs 7 files, 22 tests, none for it.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/schema` exports `entityBaseSchema` and the type `EntityBase`, with the fields of
+   SPEC §5.2 except those listed in §9: `id`, `type`, `key?`, `ruleset`, `name`, `aliases?`,
+   `summary?`, `text?`, `tags?`, `source`, `meta?`.
+2. `entityIdSchema` accepts `<packId>:<type>/<slug>` (SPEC §5.1): `srd-2024:feat/alert`,
+   `hb-local:skill/occultism`, `hb-local:ability/san`, `srd-2014:damageType/fire`. Pack id and
+   slug are lowercase letters and digits in groups joined by single hyphens; the type is
+   camelCase. It refuses `SRD:feat/alert`, `srd:feat/Alert`, `srd:feat/a/b`, `srd:feat/`,
+   `:feat/a`, `srd:Feat/a`, `srd:feat/a--b`, `srd-:feat/a`, `srd feat/a`.
+3. `parseEntityId('srd-2024:feat/alert')` returns
+   `{ pack: 'srd-2024', type: 'feat', slug: 'alert' }`; a malformed id returns `undefined`.
+4. An entity whose id names another type than its `type` is refused, with the issue on `id`:
+   `hb-local:skill/occultism` with `type: 'ability'`.
+5. `name`, `summary`, `text` and each alias take `en` and `ru` only; at least one is present,
+   and a present one holds a visible character. `{}`, `{ de: 'x' }`, `{ en: '' }` and
+   `{ en: '  ' }` are refused.
+6. `ruleset` is an edition id of the system (`2014`, `2024`) or `any`. The core names no game:
+   a made-up edition `first-age` is accepted. `''` and `Any` are refused.
+7. `key` is camelCase, fit to be one step of a formula path (SPEC §5.6): `str`, `san`,
+   `sleightOfHand` are accepted; `Str`, `sleight-of-hand`, `1st`, `''` are refused.
+8. `meta.translation` takes exactly `official`, `community`, `machine`, `reviewed` (the four
+   values of SPEC §5.2, Alina's decision of 2026-09-27); anything else is refused.
+9. `meta.foundry` is refused (ADR 003 item A1). `meta.variantOf` must be an entity id;
+   `meta.manual` is a boolean.
+10. `source` has `pack` (a pack id), and optional `page`, `book`, `author`, `license` (ADR 003
+    item A2) and `links`. A link is an `http` or `https` URL; `javascript:alert(1)` and
+    `ftp://example.org` are refused.
+11. Any field not named here is refused, at the top level and inside `source` and `meta`.
+12. A valid entity parses to an object equal to its input: nothing is added or dropped.
+13. `z.toJSONSchema(entityBaseSchema)` runs without an error (ENG-05 exports the pack's).
+14. The quality gate is green.
+
+#### 4. How to do it
+
+1. `pnpm --filter @grimoire/schema add zod@^4.6.5` (the latest release, `npm view zod version`).
+2. `ids.ts`: one kebab pattern for pack id, slug and ruleset id; a camelCase pattern for the
+   type name and the key. `entityIdSchema = z.templateLiteral([packId, ':', typeName, '/',
+   slug])`, so its TypeScript type is `` `${string}:${string}/${string}` `` and the JSON Schema
+   keeps the pattern. `parseEntityId` splits a checked id.
+3. `entity-base.ts`: `localeSchema`, `l10nSchema`, `translationSchema`, `entitySourceSchema`,
+   `entityMetaSchema`, `entityBaseSchema`. Every object is `z.strictObject`. The id-matches-type
+   check is a `superRefine` on the base; ENG-03 extends the base, and the check comes along
+   (measured on Zod 4.6.5: `.extend()` on a refined object keeps its refinement).
+4. The tests of §7, and `test/tsconfig.json` as in `packages/engine/test`.
+
+Technical choices (ADR 002):
+- **Strict objects.** Zod's default drops an unknown field without a word, which loses data;
+  passing it through lets unchecked data into storage (ADR 003 item A6). Refusing does neither,
+  and a field added later is a widening, which no stored file can fail.
+- **Narrow patterns for ids.** A pattern widened later never breaks a stored id; a pattern
+  narrowed later can. ADR 002 item 2 picks the narrow one.
+- **`ruleset` stays required**, as SPEC §5.2 has it. A system with no editions writes `any`.
+  Making it optional later needs no migration; the other way would.
+- **`name` needs one language, not `en`.** SPEC §5.2 says "at least one language". A person's
+  own entry may have only a Russian name; the SRD packs carry both (CLAUDE.md, entity names).
+
+#### 5. Stored data
+
+Nothing stored changes. No pack or character is stored yet; `schemaVersion` starts with ENG-05
+and ENG-06.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/schema/test/entity-base.test.ts` — `describe('ENG-02 entity base')`: ids,
+  `parseEntityId`, id and type agree, `L10n`, `ruleset`, `key`, `meta`, `source`, unknown
+  fields, the round trip, the JSON Schema export.
+- Control values from: the ids of SPEC §5.1 and Appendix Д; the four translation values of
+  SPEC §5.2; ADR 003 items A1, A2. Test entities are made up; they hold no rules text.
+
+#### 8. Checked against the source
+
+SPEC §5.1 says SRD slugs match the slugs of 5e-database. Measured on 5e-bits/5e-srd-api at
+commit `e6edf9a`, `packages/5e-database/src/{2014,2024}/en/*.json`, every top-level `index`:
+see §11. No rules fact is used.
+
+#### 9. Not in this ticket
+
+- `effects`, `grants`, `prerequisites` on the base: ENG-04 adds them with their schemas.
+- The core entity types (`ability`, `skill`, …) and their own fields: ENG-03. A module's types,
+  and its edition list for `ruleset`: ENG-24.
+- `key` unique among a character's packs; an id's pack matching the pack that holds it: ENG-25.
+- The pack, `schemaVersion`, the JSON Schema file: ENG-05. Local entities of a character: ENG-06.
+- Size limits on text and lists: phase 5 (ADR 003 item A6).
+- Error messages a person reads on import: phase 5.
+- `meta.foundry`'s replacement, the Foundry exporter's mapping: phase L1 (ADR 003 item A1).
+
+#### 10. Rake check
+
+- **Everything is data; the core names no game.** No type list, edition list or stat name is
+  in the base. The test accepts a made-up edition and type.
+- **Ids are stable.** The id is its own field with a fixed pattern; `name` is separate, so a
+  rename never touches the id.
+- **Missing is not broken.** A schema refuses bad data at the door; it does not look anything
+  up. Missing references are ENG-25's.
+- **Entity names stay bilingual.** `name` holds `en` and `ru` side by side.
+- **Licensing.** Test data is made up; no SRD or book text.
+- **Nothing invisible.** A name of only spaces is refused; no invisible characters are written.
+
+#### 11. What came out of it
+
+Measured:
+- The new test file alone: `Tests 13 passed (13)`, 335 ms.
+- Lint: `Checked 58 files`, 0 errors (54 before).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all `Done`. `packages/schema` now also checks
+  `test/` (`tsc --listFilesOnly` lists `test/entity-base.test.ts`).
+- Test: `Test Files 8 passed (8)`, `Tests 35 passed (35)`, 889 ms (before: 7 files, 22 tests).
+- Build: `Done`.
+- The tests bite. Each guard removed on its own, 13 tests run each time: the id-matches-type
+  check, 1 fails; `strictObject` → `object`, 2 fail; any link protocol, 1 fails; the
+  at-least-one-language check, 1 fails; the visible-text pattern, 2 fail.
+- Zod 4.6.5 added to `packages/schema`: the lockfile has 10 lines added, 1 removed;
+  `pnpm install --frozen-lockfile` passes.
+
+Slugs of 5e-database, measured at `e6edf9a` over `src/2014/en` and `src/2024/en`: 4,428
+top-level `index` values; 4,417 fit the slug pattern, 11 do not:
+- 10 in `2014/en/5e-SRD-Features.json`, a triple hyphen:
+  `dragon-ancestor-black---acid-damage` and the same for blue, brass, bronze, copper, gold,
+  green, red, silver, white;
+- 1 in `2024/en/5e-SRD-Magic-Items.json`, parentheses: `stone-of-good-luck-(luckstone)`.
+
+The pattern stays narrow (ADR 002 items 2 and 3). SPEC §5.1's "SRD slugs match 5e-database"
+holds for 4,417 of 4,428; the import maps the other 11 (`---` → `-`, parentheses dropped).
+Measured: all 11 fit the pattern after that, and none then equals another `index` in its file.
+The intent of §5.1, an easy export mapping, is kept.
+
+Differences from §3: none.
+
+Found, not fixed:
+- The exported JSON Schema keeps the id pattern but loses three checks, measured on
+  `z.toJSONSchema(entityBaseSchema)`: "at least one language" (no `minProperties`), "http or
+  https only" (links become `format: uri`), and "the id's type equals `type`". A hand-written
+  pack can pass the JSON Schema and still be refused by Zod. Noted on ENG-05 in `BACKLOG.md`.
+- The 11 slugs above: noted for phase 3 in `BACKLOG.md`.
+
+Nothing for the changelog.
