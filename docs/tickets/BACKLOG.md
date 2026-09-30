@@ -70,7 +70,7 @@ split off an old row got a new id.
 | ID | Hat | Size | Status |
 |---|---|---|---|
 | **Core** | **schemas** | | |
-| ENG-01 | CI fails if `engine` imports React, DOM, Dexie or the network | XS | 🔲 |
+| ENG-01 | CI fails if `engine` imports React, DOM, Dexie or the network | XS | ✅ 2026-09-30 |
 | ENG-02 | The entity base has a core Zod schema, ids included | S | 🔲 |
 | ENG-03 | The core entity types have Zod schemas | S | 🔲 |
 | ENG-04 | Effects, grants, prerequisites have game-free Zod schemas | S | 🔲 |
@@ -135,7 +135,9 @@ split off an old row got a new id.
   ADR 005 item 3.3).
 - **ENG-31** — the package name and the `system` id are chosen here, checked against the rule on
   names in `CLAUDE.md`. `CLAUDE.md`'s layout, its dependency line and its golden-test path follow
-  the new package.
+  the new package. Found by ENG-01: a relative path can climb out of `packages/engine` into a
+  sibling package (`../../content/src/index.ts`), and ENG-01's lint rule cannot see that; the
+  core-to-module check here also covers a climb into the module by relative path.
 - **ENG-09, ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's
   schemas. Every rules fact in them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`).
 - **ENG-09** — golden A says mountain dwarf, but its numbers (+2 CON, +1 WIS, Dwarven Toughness)

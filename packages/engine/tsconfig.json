@@ -1,4 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src", "test"]
+  "compilerOptions": {
+    // ENG-01: the engine's code sees the language only. No DOM, no Node, so no network; the tests
+    // have their own test/tsconfig.json. Imports are limited in biome.json.
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src"]
 }

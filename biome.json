@@ -60,6 +60,53 @@
           }
         }
       }
+    },
+    {
+      "includes": ["packages/engine/src/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "**",
+                      "!./**",
+                      "!../**",
+                      "!@grimoire/schema",
+                      "**/apps/**",
+                      "**/node_modules/**"
+                    ],
+                    "message": "ENG-01: the engine is pure TypeScript. It imports only its own files and @grimoire/schema: no React, DOM, Dexie or network library, and no path into apps/ or node_modules/. A new pure dependency is added to this list in biome.json."
+                  }
+                ]
+              }
+            },
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "globalThis": "ENG-01: the engine does not reach the environment. Pass what it needs in as an argument.",
+                  "self": "ENG-01: the engine does not reach the environment. Pass what it needs in as an argument.",
+                  "window": "ENG-01: the engine does not use the DOM. Pass what it needs in as an argument.",
+                  "document": "ENG-01: the engine does not use the DOM. Pass what it needs in as an argument.",
+                  "navigator": "ENG-01: the engine does not use the DOM. Pass what it needs in as an argument.",
+                  "location": "ENG-01: the engine does not use the DOM. Pass what it needs in as an argument.",
+                  "localStorage": "ENG-01: the engine does not use storage. The app saves; the engine computes.",
+                  "sessionStorage": "ENG-01: the engine does not use storage. The app saves; the engine computes.",
+                  "indexedDB": "ENG-01: the engine does not use storage. The app saves; the engine computes.",
+                  "fetch": "ENG-01: the engine does not use the network.",
+                  "XMLHttpRequest": "ENG-01: the engine does not use the network.",
+                  "WebSocket": "ENG-01: the engine does not use the network.",
+                  "EventSource": "ENG-01: the engine does not use the network."
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

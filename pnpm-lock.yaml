@@ -105,6 +105,10 @@ importers:
       '@grimoire/schema':
         specifier: workspace:*
         version: link:../schema
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.4
+        version: 22.20.4
 
   packages/pdf:
     dependencies:
