@@ -149,7 +149,7 @@ Three things can change this order, and all are Alina's decision (SPEC §14):
 |---|---|---|---|
 | OPS-01 | ADR 003 and ADR 004 record the library packs and the game systems | XS | ✅ 2026-09-28 |
 | OPS-02 | ADR 005 records the product decisions of 2026-09-29 | XS | ✅ 2026-09-30 |
-| OPS-03 | The design brief for the screens exists | S | 🔲 |
+| OPS-03 | The design brief for the screens exists | S | 🚧 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. Alina's chosen results come back into it.
