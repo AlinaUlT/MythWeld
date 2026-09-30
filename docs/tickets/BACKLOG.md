@@ -218,6 +218,7 @@ Three things can change this order, and all are Alina's decision (SPEC §14):
 | OPS-04 | ADR 006 removes the stops that protect nothing | XS | ✅ 2026-09-30 |
 | OPS-05 | Phase 1 is re-cut to follow ADRs 003–005 | XS | ✅ 2026-09-30 |
 | OPS-06 | ADR 007 limits stops to Alina's decisions | XS | ✅ 2026-09-30 |
+| OPS-07 | The design brief records Alina's choices of 2026-09-30 | XS | ✅ 2026-09-30 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. Alina's chosen results come back into it.

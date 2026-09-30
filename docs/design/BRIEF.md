@@ -156,12 +156,14 @@ States: empty form; filled with Iren; a warning shown (for example a mix that ma
 
 ```text
 Design P4 "Character sheet" for Iren. Phone 360×800, dark and light.
-Pinned header: "Iren · Fighter 1", a [!1] choices badge; the hit point bar "12 / 12" with
-"Damage" and "Heal" buttons; a row "AC 17 · Init +3 · 30 ft · Prof +2".
-Tabs below the header, swiped sideways: Main · Combat · Spells · Equipment · Features · Notes.
+Pinned at the top: "Iren · Fighter 1", a "2024" badge, a [!1] choices badge; under it the row
+"AC 17 · Init +3 · 30 ft · Prof +2".
+Pinned at the bottom, above the bottom bar, near the thumb: the hit point bar "12 / 12" with
+"Damage" and "Heal" buttons; under it the tabs, swiped sideways:
+Main · Combat · Spells · Equipment · Features · Notes.
 Design the Main tab fully, and the Combat tab as a second frame:
-- Main: six ability tiles (score large, modifier below); the saves list; the skills list with a
-  proficiency dot; Passive Perception 13.
+- Main: six ability tiles in one row (modifier large, score small below); the saves as six
+  chips; the skills in two columns with a proficiency dot; Passive Perception 13.
 - Combat: the greatsword attack row (+5, 2d6+3 slashing, "Graze"); Second Wind with 2 use
   circles; conditions; death saves; concentration.
 Other tabs, as short sketches: Spells (slot circles per level, the prepared list, "Cast"),
@@ -356,7 +358,7 @@ in DM mode.
 | P1 First start | — | — | — |
 | P2 Characters list | — | — | — |
 | P3 Character creation | — | — | — |
-| P4 Character sheet | — | — | — |
+| P4 Character sheet | V3 "Thumb": name and the stats row pinned at the top; hit points, "Damage", "Heal" and the tabs pinned at the bottom; Main tab as in the P4 prompt | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "P4 · 3 palettes", column V3 | 2026-09-30 |
 | P5 Roll dialog and breakdown | — | — | — |
 | P6 Damage, healing and rests | — | — | — |
 | P7 Library and an entry's card | — | — | — |
@@ -369,3 +371,6 @@ in DM mode.
 | P14 Encounter builder | — | — | — |
 | P15 Generators | — | — | — |
 | P16 A player's view of a campaign | — | — | — |
+| Base colours | Not chosen. The base theme is plain and calm; personality comes from paid skins. Rejected: Lavender (3D52A0 · 7091E6 · 8697C4 · ADBBDA · EDE8F5) and Cream (F7F5E6 · 333A56 · 52658F · E8E8E8), which read as a clinic or government app. Sky (E2F0F9 · B0DDE4 · 286FB4 · FFFFFF · DF4C73) is still open | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "P4 · 3 palettes" | 2026-09-30 |
+| Overall design | Not chosen. The app does not open straight on a character sheet: it gets a first page, with room for the features of later phases. At least five options are drawn | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Overall design · 5 options" | 2026-09-30 |
+| Future skins | Six retro looks are kept as ideas for optional paid skins: Win95 shareware, 16-bit RPG menu, green-screen terminal, parchment overload, wood and leather, early homepage. Not the base design | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Retro and weird" | 2026-09-30 |
