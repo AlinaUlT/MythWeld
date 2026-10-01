@@ -5,9 +5,10 @@
 ## Context
 
 On 2026-10-01 the owner reviewed the "Our design v3" mockups and gave the requirements below,
-with three screenshots of a website's ability score calculator as the reference for item 7.
-From the reference, only the idea and the order of its parts are taken: no text, no images, no
-styling. Each item names the phase that builds it (ADR 007 item 4).
+with three screenshots of a website's ability score calculator as the reference for item 8.
+The same day the owner sent four screenshots of the same website's spell page as the reference
+for item 6. From the references, only the idea and the order of the parts are taken: no text,
+no images, no styling. Each item names the phase that builds it (ADR 007 item 4).
 
 ## Decision
 
@@ -18,7 +19,7 @@ styling. Each item names the phase that builds it (ADR 007 item 4).
    (for example "12 / 12 +5"), and as a part of the hit point bar in the same colour. The colour
    is set with the base colours (BRIEF Part 5). (Phase 2.)
 2. **The token always shows the level.** In the DM's change review, a level change shows on
-   the token as "1 → 2" (item 12). Where the level sits in the sheet's header is chosen from six
+   the token as "1 → 2" (item 13). Where the level sits in the sheet's header is chosen from six
    options on the design canvas (still open). (Phase 2; the review with the table link.)
 3. **Level-up and approval.** Outside a campaign, a level-up applies at once; nobody approves
    it. In a campaign, it waits for the DM's approval. ADR 010 item 7 otherwise stays: XP or
@@ -31,13 +32,22 @@ styling. Each item names the phase that builds it (ADR 007 item 4).
    "Wizard (2014)", "Wizard (2024)". (Phase 3.)
 5. **One entry per ruleset.** A spell that reads the same in 2014 and 2024 is still two
    entries, one marked 2014 and one marked 2024, each with its own id. (Phase 3.)
+6. **A spell's description, top to bottom**, in the window of ADR 012 and in "See full
+   description" (ADR 011):
+   - the name, and the other language's name under it; buttons: share, bookmark (item 17),
+     close; the homebrew copy and edit of ADR 012 sit in a "⋯" menu;
+   - **a small top part**: the type line (for example "Cantrip, Evocation") with the source,
+     and the properties (casting time, range, duration, components) in a compact box. It is kept
+     small so the text starts high on the screen;
+   - the text: dice are tappable and roll; terms such as conditions are tappable links;
+   - "Damage dice" by level (ADR 012), and the classes per ruleset (item 4).
 
 ### Making a character
 
-6. **Filled triangles open and close a step.** A step opens with a triangle pointing down and
+7. **Filled triangles open and close a step.** A step opens with a triangle pointing down and
    closes with one pointing up, filled, in the look of 🔻 and 🔺. They are drawn as icons, not
    emoji. This replaces the arrow of ADR 010 item 11. (Phase 4.)
-7. **The roll calculator.** After the person picks an ability score method (ADR 010 item 12),
+8. **The roll calculator.** After the person picks an ability score method (ADR 010 item 12),
    the step shows, top to bottom:
    - the total of the rolled scores;
    - a "Roll" button, which reads "Reroll" after the first roll;
@@ -48,11 +58,11 @@ styling. Each item names the phase that builds it (ADR 007 item 4).
    "Apply to abilities" turns on only when all six scores are rolled by the method's rules and
    each one is placed on an ability. The calculator is a step of making a character. Its columns
    come from the system's abilities, never from six names in code (D3). (Phase 4.)
-8. **Optional feats.** A rules option sets which feats a character may take: only its own
+9. **Optional feats.** A rules option sets which feats a character may take: only its own
    ruleset's; also the other ruleset's optional ones (for example a 2024 origin feat in a 2014
    game); or every feat, for homebrew. Picking a feat opens the library's Feats list (ADR 012)
    with filters, such as origin feats, feats of level 4 and up, and species feats. (Phase 4.)
-9. **Ability bonuses from two rulesets.** When options from different rulesets both raise
+10. **Ability bonuses from two rulesets.** When options from different rulesets both raise
    ability scores (for example a 2014 race with +2 and +1, and a 2024 background), a window shows
    the conflict, with a checkbox for each source: race and background.
    - Outside a campaign, the person ticks either one or both. It is a warning, never a block.
@@ -62,25 +72,25 @@ styling. Each item names the phase that builds it (ADR 007 item 4).
 
 ### The DM
 
-10. **The DM can do everything a player can, and more.** The DM's side has every player
+11. **The DM can do everything a player can, and more.** The DM's side has every player
     feature, plus the DM's rights. (The DM tools' phase.)
-11. **The DM can edit a change before approving it.** In the review (ADR 010 item 13), each
+12. **The DM can edit a change before approving it.** In the review (ADR 010 item 13), each
     value the player sent can be edited, for example "+24 gold" to "+34 gold". The DM's value
     replaces the player's. (The table link's phase.)
-12. **A tab of characters waiting for approval.** The DM's side has a tab that lists every
+13. **A tab of characters waiting for approval.** The DM's side has a tab that lists every
     character with changes waiting, and shows their count as a notification. (The table link's
     phase.)
-13. **Actors.** The DM creates an actor and gives it a type: PC, NPC, enemy, or a type the DM
+14. **Actors.** The DM creates an actor and gives it a type: PC, NPC, enemy, or a type the DM
     names. The idea comes from Foundry VTT's actors. (The DM tools' phase.)
 
 ### Start and the home page
 
-14. **Choosing the system.** Once the app has a second system (ADR 004 item 6), it opens with
+15. **Choosing the system.** Once the app has a second system (ADR 004 item 6), it opens with
     a preview: the app's name and the list of game systems. The person picks one. Systems never
     mix: a fifth-edition character never takes a Daggerheart or Pathfinder entry (ADR 004
     item 3). While fifth edition is the only system, the start page of ADR 008 item 2 stays.
-15. **Player or DM.** Next come two large squares with icons: Player and DM. (Phase 2.)
-16. **The home page's sections.** Then a page with these sections (ADR 008 item 1: no bottom
+16. **Player or DM.** Next come two large squares with icons: Player and DM. (Phase 2.)
+17. **The home page's sections.** Then a page with these sections (ADR 008 item 1: no bottom
     bar). They replace the parts of ADR 008 item 3. (Phase 2 for the page; each section fills as
     its phase lands.)
     - **Characters** (ADR 008 item 4).
@@ -96,15 +106,14 @@ styling. Each item names the phase that builds it (ADR 007 item 4).
     - **Bookmarks**: entries the person marks to keep at hand, such as spells, armor and magic
       items. Bookmarks stay on the device. (Phase 3.)
 
-    The DM's home page has the same sections, plus the DM's: approvals (item 12), actors (item
-    13) and campaigns (BRIEF P11).
+    The DM's home page has the same sections, plus the DM's: approvals (item 13), actors (item
+    14) and campaigns (BRIEF P11).
 
 ## Still open
 
 - Where the level sits in the sheet's header: six options on the design canvas, page
   "Our design v3".
 - What Quick rules holds: the owner's screenshot.
-- A better layout for the spell's description: the owner's screenshot.
 - The level-up screenshot the owner named; it did not arrive.
 - Whether "Reroll" in the roll calculator is unlimited.
 
@@ -112,12 +121,12 @@ styling. Each item names the phase that builds it (ADR 007 item 4).
 
 | Where | Was | Now |
 |---|---|---|
-| ADR 008 items 2 and 3, BRIEF P1 and P17 | Start page; a player page with My characters, the rulebook, Dice, My packs | A system preview once there are two systems; Player and DM squares; six sections (items 14–16) |
+| ADR 008 items 2 and 3, BRIEF P1 and P17 | Start page; a player page with My characters, the rulebook, Dice, My packs | A system preview once there are two systems; Player and DM squares; six sections (items 15–17) |
 | ADR 010 item 7 | In a campaign, the DM decides how level-up works | Outside a campaign, no approval; in a campaign, the DM approves (item 3) |
-| ADR 010 item 11 | An arrow | Filled triangles (item 6) |
-| ADR 010 item 13 | Approve with Yes or No | The DM can edit a value first (item 11) |
-| ADR 012 item 4 | Classes and subclasses with their sources | Also per ruleset (item 4) |
-| BRIEF P3 item 6 | Ability bonuses from race or background, pick one | A window with a checkbox for each (item 9) |
+| ADR 010 item 11 | An arrow | Filled triangles (item 7) |
+| ADR 010 item 13 | Approve with Yes or No | The DM can edit a value first (item 12) |
+| ADR 012 item 4 | Classes and subclasses with their sources; share, homebrew copy, edit, close | Also per ruleset (item 4); a small top part; share, bookmark, close, and "⋯" (item 6) |
+| BRIEF P3 item 6 | Ability bonuses from race or background, pick one | A window with a checkbox for each (item 10) |
 | BRIEF P1, P3, P4, P6, P7, P9, P11, P17 | — | Follow this ADR |
 | `BACKLOG.md` | — | Notes each item under its phase |
 

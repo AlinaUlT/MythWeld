@@ -283,7 +283,11 @@ markers. The window shows both names, source badges, share / homebrew copy / edi
 type line, a properties box, the full text with tappable terms and dice, "At higher levels",
 "Damage dice" by level (opens and closes), and classes and subclasses with their sources.
 ADR 013: classes and subclasses per edition, for example "Wizard (2014)", "Wizard (2024)"; a
-spell that reads the same in both editions is still two entries, marked 2014 and 2024.
+spell that reads the same in both editions is still two entries, marked 2014 and 2024. A
+spell's window: the name and the other language's name; share, bookmark, close, and "⋯" for
+homebrew copy and edit; a small top part (type line with the source, then casting time, range,
+duration and components in a compact box), so the text starts high; then the text with
+tappable dice and terms, "Damage dice", and the classes per edition.
 States: search with no results; a "Missing: <id>" chip inside a text.
 ```
 

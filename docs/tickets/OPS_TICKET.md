@@ -557,3 +557,31 @@ DM's call inside one. The level-up screenshot the owner named did not arrive; AD
 as open. The gate is green:
 lint checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.57 s.
 Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-16 The spell description's layout · XS
+
+**Hat:** ADR 013 records the spell description's layout
+**Where:** `docs/adr/013-temp-hp-creation-dm-tools-home-tabs.md`, `docs/design/BRIEF.md`,
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-15
+
+**What it should look like when done:**
+1. ADR 013 item 6 records the spell's description, top to bottom, with a small top part (type
+   line, source, casting time, range, duration, components), so the text starts high.
+2. The items after it are renumbered, with their cross-references; "A better layout for the
+   spell's description" leaves "Still open".
+3. BRIEF P7 and `BACKLOG.md` follow it.
+4. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** the reference was four screenshots of a website's spell page, two
+spells, the top and the bottom of each. The owner's change to it: the top part is smaller. The
+website's link, bookmark and close buttons map to share, bookmark (ADR 013 item 17) and close;
+ADR 012's homebrew copy and edit move into a "⋯" menu, so the title row keeps its room.
+The gate is green: lint checked 66 files; typecheck passed in all 5 packages; 59 tests passed,
+0 failed, 1.59 s.
+Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
