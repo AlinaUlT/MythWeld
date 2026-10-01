@@ -67,7 +67,7 @@ split off an old row got a new id.
 | ENG-05 | The content pack has a schema, exported as JSON Schema | S | ✅ 2026-10-01 |
 | ENG-06 | The core character document has a schema, with the migration frame | S | ✅ 2026-10-01 |
 | ENG-39 | A pack records the schema version of its system's module | S | ✅ 2026-10-01 |
-| ENG-25 | Packs are checked as they load into the content index | S | 🔲 |
+| ENG-25 | Packs are checked as they load into the content index | S | ✅ 2026-10-01 |
 | **Core** | **formulas, dice** | | |
 | ENG-07 | Formulas evaluate safely, returning the paths they read | M | 🔲 |
 | ENG-08 | Dice notation is rolled, in `d` or `к` | S | 🔲 |
@@ -102,13 +102,6 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-25** — ADR 003 item A3: a missing dependency gives a warning and `Missing: <id>`; a
-  dependency loop refuses the pack, with a message naming the loop; a pack never replaces another
-  pack's entry. Also: a duplicate `key` among active packs of one ruleset (SPEC §5.1, ADR 014
-  item 2); a pack of another system is not loaded for a character (ADR 004 item 3). ADR 014
-  items 3–4: the index finds the other ruleset's copy by type and key, and keeps names and
-  aliases per language. Found by ENG-06: a pack whose id is `character`, the pack id of a
-  character's own entities, is refused.
 - **ENG-08** — ADR 014 item 11: faces 2–1000, 1–999 dice per term, a fairness test.
 - **ENG-26** — ADR 005 item 5.6: who rolled, what for, the dice, the result, the breakdown; public,
   secret to the DM, or hidden by the DM. Only the shape; sending it belongs to the table-link
@@ -120,7 +113,10 @@ split off an old row got a new id.
   ADR 005 item 3.3). Found by ENG-24: an entity whose grants hold a module's kind is not
   assignable to the open `EntityBase` type (`TS2322`); ENG-24 §11 has the measurement. Found by
   ENG-06: species, classes and feats are in the module's `systemData`, so the core gets a
-  character's entities through the module.
+  character's entities through the module. Found by ENG-25: the content index holds packs only.
+  Here a character's own entities join them; a key path whose type and key have entries in two
+  rulesets reads the one the character has, else the rules base's (ADR 014 item 2; `withKey`
+  lists them); a choice whose filter finds fewer entries than its `count` is reported.
 - **ENG-28** — found by ENG-24: the defaults a system gives a stat (SPEC §5.3: the modifier
   formula, a save, a maximum) come with the module's steps here. ENG-03 §4 also named ENG-24;
   a schema adds nothing on parse, so ENG-24 §9 moved them here.
@@ -191,6 +187,9 @@ split off an old row got a new id.
 - **Phases 2, 4** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
   §8.2: a warning, never a block). The row is cut with the first phase that lets a person pick an
   entity with prerequisites.
+- **Phase 2** — found by ENG-25: a character's active pack that is not installed on the device
+  never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
+  on each of its entries.
 - **Phase 2** — found by OPS-08: ADR 008 replaces the SETUP-04 bottom bar with a start page, a
   player page and My characters. The phase 2 rows build that navigation instead of the bar.
 - **Phases 2–5** — added by OPS-22: each screen is built from its mockup in

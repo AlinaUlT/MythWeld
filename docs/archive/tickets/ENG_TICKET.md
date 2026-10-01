@@ -1477,3 +1477,232 @@ Found, not fixed:
   `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-25 Packs load into the content index
+
+**Hat:** Packs are checked as they load into the content index
+**Depends on:** ENG-05 (the pack, `dependsOn`), ENG-06 (`CHARACTER_PACK_ID`), ENG-24 (a system's
+entity union), ENG-39 (the pack's module version)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.1, §5.7, §8.2; ADR 003 item A3; ADR 004 item 3; ADR 014 items 2–4
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/content-index.ts` — new. `loadContentIndex`: the checks a pack
+passes as it loads, and the index built from the packs that load.
+- `packages/engine/src/version.ts` — new. `compareVersions`: semver precedence, for a
+  dependency's lowest version.
+- `packages/engine/src/index.ts` — changes: exports the two new files.
+- `packages/engine/test/content-index.test.ts` — new.
+
+#### 2. What is missing now
+
+- The engine exports nothing: `Object.keys(await import('@grimoire/engine'))` is `[]`.
+  `git grep -n -i -E "content.?index|loadPack|dependsOn" packages/*/src` finds one line,
+  `packages/schema/src/pack.ts:79`, the schema's `dependsOn` field.
+- The pack schema passes, measured on a made-up system's pack schema (`safeParse(...).success`):
+  - a pack `tales-extra` holding the entity `tales-core:ability/grit`, an id of another pack:
+    `true`;
+  - a pack whose id is `character`, the pack id of a character's own entities: `true`;
+  - a pack whose `dependsOn` names itself: `true`;
+  - a pack with two `ability` entities of key `grit`, both of edition `first-age`: `true`.
+- Nothing checks a dependency, a loop of dependencies, a pack's system against a character's, or
+  a key against another pack's; nothing looks an entry up by id, by key or by name.
+- `pnpm test`: `Test Files 14 passed (14)`, `Tests 116 passed (116)`; none for the engine but
+  ENG-01's purity and SETUP-02's smoke test.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/engine` exports `loadContentIndex`, `compareVersions`, and the types
+   `ContentIndex`, `LoadedContent`, `IndexedEntity`, `PackToLoad`, `PackRefusal`,
+   `LoadWarning`, `Lookup`.
+2. `loadContentIndex(system, packs)` takes the character's system id and its packs in order,
+   parsed by the system's pack schema. It returns `{ index, loaded, refused, warnings }`. Two
+   made-up packs with nothing wrong: `loaded` is both ids in the order given; `refused` and
+   `warnings` are `[]`; `index.entities` holds every entity, by pack, then in its pack's order.
+3. `index.get(id)` gives `{ ok: true, entity }` for a loaded entry. For any other id it gives
+   `{ ok: false, code: 'missing', id, message: 'Missing: <id>' }` and never throws.
+4. A pack is refused, and none of its entries loads, when (`code`):
+   - an earlier pack has its id (`repeatedPack`); the earlier pack's entries stay;
+   - its id is `character` (`reservedId`);
+   - its `system` is not the character's (`otherSystem`, with the pack's `system`);
+   - an entity's id names another pack (`foreignEntity`, with that id); `get` of that id still
+     gives the other pack's entry;
+   - it is on a loop of dependencies (`dependencyLoop`, with `loop`, the shortest loop through it,
+     from the pack back to the pack). `a → b → a` refuses both: `['tales-a', 'tales-b',
+     'tales-a']` and `['tales-b', 'tales-a', 'tales-b']`. A pack that needs itself:
+     `['tales-a', 'tales-a']`. With `a → b, a → c, b → a, c → b`, `c` is refused too:
+     `['tales-c', 'tales-b', 'tales-a', 'tales-c']`. The message names the loop:
+     `tales-a → tales-b → tales-a`.
+5. A pack loads with a warning when (`code`):
+   - a dependency is not loaded, because it was not given or was refused
+     (`missingDependency`); its ids give `missing`;
+   - a dependency is loaded at a lower version than asked (`olderDependency`, with `needed` and
+     `found`): `1.0.0-beta.1` or `1.1.0` found for `1.2.0` warns; `1.2.0` or `1.10.0` does not;
+   - an entity has the type and key of an earlier entity, of this pack or an earlier one, and
+     the two share a ruleset: the same edition, or either is `any` (`repeatedKey`, with the later
+     `entity` and the `kept` earlier one). The same key in another type, or in two different
+     editions, warns nothing (ADR 014 item 2).
+6. `index.withKey(type, key)` lists every entry of that type and key, in load order.
+   `index.copiesOf(id)` lists the entries of the same type and key in another edition, neither
+   being `any` (ADR 014 item 3); `[]` for an entry with no key, or an id not loaded.
+7. `index.names(locale)` maps each name and alias in that language, lowercased in it, to the ids
+   that have it, in load order, none twice (ADR 014 item 4). `names('en').get('climb')` lists both
+   editions' `Climb`; `names('ru').get('стойкость')` finds a Russian name; a language with no
+   names gives an empty map.
+8. `compareVersions(a, b)` is negative, `0` or positive by semver 2.0.0 precedence. It orders
+   that text's chain `1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-alpha.beta < 1.0.0-beta < 1.0.0-beta.2
+   < 1.0.0-beta.11 < 1.0.0-rc.1 < 1.0.0` and its `1.0.0 < 2.0.0 < 2.1.0 < 2.1.1`; `1.10.0` is
+   above `1.9.0`. A text `versionSchema` refuses throws `"1.0" is not a semver version.`
+9. Loading is pure: deep-frozen packs load, and loading the same packs twice gives equal results.
+10. The inferred entity type of the index is the system's entity union, not `IndexedEntity`.
+11. The quality gate is green.
+
+#### 4. How to do it
+
+1. `version.ts`: `compareVersions`, after the input passes `versionSchema`.
+2. `content-index.ts`: the types; the per-pack checks; the loop check on the packs that pass
+   them; the dependency checks on the packs that load; the maps by id, by type and key, by name.
+3. `index.ts`: export both.
+4. The tests of §7.
+
+Technical choices (ADR 002):
+- **The index is the engine's.** `compute(character, contentIndex, ruleset)` (SPEC §6.1) reads
+  it, so it lives where compute will. It reads only the fields every entity has (ENG-02): id,
+  type, key, ruleset, name, aliases. It names no game.
+- **Refused whole, or loaded with a warning.** A pack is refused when loading it could do harm:
+  replace another pack's entry (a repeated id, an entity of another pack's id), collide with a
+  character's own entities (`character`), mix systems, or depend on itself. Anything else that
+  is only missing loads, and warns (SPEC §8.2: missing is not broken).
+- **A pack holding another pack's id is checked here, not in the schema.** Every pack passes
+  through the loader before its entries can be looked up, the module's built-in packs included,
+  so the guarantee "a pack never replaces another pack's entry" holds here whatever made the
+  pack.
+- **A loop refuses the packs on it, not the packs that need them.** A pack that needs a pack on a
+  loop loads with `missingDependency`. A pack is on a loop when it can reach itself through its
+  dependencies, so every pack of a loop is found, even one reached only by a side path.
+- **A key is unique per type.** SPEC §5.1 says a key is unique among a character's packs. Every
+  formula path in SPEC §5.6 names its type's group first (`@abilities.dex.mod`,
+  `@skills.stealth.total`, `@classes.fighter.level`), so one key in two types never meets in a
+  path, and ADR 014 item 3 finds a copy by type and key. Within a type, two rulesets meet when
+  they are equal or either is `any`, since an `any` entry holds in every edition.
+- **The first of a repeated key is kept.** Both entries stay in the index and both are found by
+  `withKey`; the warning names the later one. Which entry a formula reads is compute's.
+- **A refusal or warning has a `code` and its data for the screen, and an English `message` for
+  logs**, as ENG-06's opener does. The screen shows `Missing: <id>` from its own i18n key.
+- **Names are lowercased in their own language**, so the Russian names fold by Russian rules.
+- **Version numbers are compared as text**: by length, then by digit, since a semver number has
+  no leading zero. A version of any length compares right, with no number type's limit.
+
+#### 5. Stored data
+
+Nothing stored changes. The loader reads parsed packs; no schema, no `schemaVersion` and no Dexie
+table changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/content-index.test.ts` — `describe('ENG-25 packs load into the content
+  index')`: the load with nothing wrong; `missing`; each refusal; each warning; the loops of §3
+  item 4; `withKey`, `copiesOf`, `names`; frozen input, equal results twice; the inferred type
+  (`expectTypeOf`, checked by `pnpm typecheck`). `describe('ENG-25 dependency versions')`:
+  `compareVersions` on semver 2.0.0's examples.
+- Control values from: the made-up system and packs of the test (ADR 004 item 4), parsed by
+  `packSchemaOf`; semver 2.0.0 item 11 (§8).
+
+#### 8. Checked against the source
+
+- **Semver precedence.** Source: Semantic Versioning 2.0.0, `semver.md` in the
+  `semver/semver` repository (semver.org's own text; semver.org itself is blocked from this
+  machine). Item 11: precedence compares major, minor, patch, then the pre-release identifiers;
+  "major, minor, and patch versions are always compared numerically"; "a pre-release version has
+  lower precedence than a normal version"; digit-only identifiers compare numerically, others "in
+  ASCII sort order"; "Numeric identifiers always have lower precedence than non-numeric
+  identifiers"; "A larger set of pre-release fields has a higher precedence than a smaller set,
+  if all of the preceding identifiers are equal". Its examples are §3 item 8's. Item 9: "Numeric
+  identifiers MUST NOT include leading zeroes", which `versionSchema` already enforces.
+- No rules fact of any game is used.
+
+#### 9. Not in this ticket
+
+- Which entry a key path reads across rulesets, the one the character has or else the rules
+  base's (ADR 014 item 2), and a character's own entities next to the packs' (`localEntities`):
+  gathering a character's entities, ENG-11. `withKey` gives it the candidates.
+- A choice whose filter finds fewer entries than its `count` (ENG-04 §4): which entries a filter
+  finds depends on the character's packs and its other choices, so it is checked where choices
+  are offered, ENG-11.
+- A skill's `ability` naming no stat (ENG-03 §9 named ENG-25): the skill's total reads that
+  stat's path, and a missing path is `0` with a warning (ENG-07), at compute.
+- The ids inside an entity (a grant's `fixed`, a prerequisite's `id`, `meta.variantOf`, a
+  module's own fields) are not scanned at load. Each one gives `missing` when it is looked up.
+- A character's active pack that is not installed on the device: the app looks packs up before
+  it loads them (phase 2).
+- Error texts a person reads: phase 5 for import, phase 2 for the sheet.
+
+#### 10. Rake check
+
+- **`packages/engine` is pure TypeScript.** The new files import only `@grimoire/schema` and each
+  other; ENG-01's lint and typecheck run on them.
+- **The core names no game.** No stat, type, system or edition name is written in the code; the
+  test system is made up. `any` is the core's word for every edition (`systemListsOf`).
+- **Missing is not broken.** An unknown id gives `missing`, never a throw; a missing dependency
+  warns. Only a pack that would do harm is refused.
+- **Ids are stable.** The index is keyed by id; nothing renames or rewrites an entry.
+- **`compute()` is pure.** Loading changes none of its arguments and gives the same result for
+  the same packs.
+- **Licensing.** Test data is made up; no SRD or book text.
+
+#### 11. What came out of it
+
+Measured:
+- `content-index.test.ts` alone: `Tests 16 passed (16)`, 729 ms (14 for loading, 2 for
+  versions).
+- Lint: `Checked 77 files`, 0 errors (74 before; 3 new files).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 15 passed (15)`, `Tests 132 passed (132)`, 2.33 s (before: 14 files,
+  116 tests, 2.09 s).
+- Build: `apps/web build: Done`.
+- The tests bite. Each guard removed on its own, the new test file run (16 tests): a repeated pack
+  id, 1 fails; `character`, 1; another system, 1; an entity of another pack, 1; the loop check, 2;
+  a missing dependency, 1; an older dependency, 1; a repeated key, 1; `any` meeting every
+  edition, 1; names lowercased, 1; a name's id once, 1; copies only in another edition, 1;
+  `missing` in place of a throw, 5; the input packs changed in place (reversed twice), 1;
+  version numbers by length, 2; a pre-release below its normal version, 1; digits below letters,
+  1; a longer pre-release above, 1; the version checked by `versionSchema`, 1. The loader's
+  return type widened to `LoadedContent<IndexedEntity>`: `pnpm typecheck` fails with `TS4104`
+  and `TS2344` on the two `expectTypeOf` lines.
+- One test did not bite at first: "digits below letters" passed with the guard removed, because
+  in plain text order digits already sort below letters. The chain gained identifiers whose text
+  order is the reverse of semver's (`99` before `--` and `1a`); with them, the guard's removal
+  fails 1 test.
+
+Differences from §3: none.
+
+Against the row:
+- The row names a duplicate `key` among active packs of one ruleset. The code checks one type's
+  keys (§4, against SPEC §5.1's letter), within a pack as well as between packs, and treats `any`
+  as meeting every edition.
+- Beyond the row, from the closed tickets that named ENG-25: an entity id of another pack (ENG-02
+  §9, ENG-05 §9) is refused; a dependency's lowest version (ENG-05 §4) warns when an older one is
+  loaded; a pack id given twice is refused, the other way one pack could replace another's
+  entries.
+- Moved out, with the reason in §9: a skill's `ability` naming no stat (ENG-03 §9) to compute's
+  missing path; a filter that finds fewer entries than its `count` (ENG-04 §4) to ENG-11.
+
+Found, not fixed:
+- The index holds the packs only. A character's own entities, which key path an entry of two
+  rulesets answers (ADR 014 item 2), and a filter that finds too few entries are decided where a
+  character's entities are gathered. Noted on ENG-11 in `BACKLOG.md`.
+- A character's active pack that is not installed on the device never reaches the loader, so
+  nothing says which pack is missing; its entries show `Missing: <id>` one by one. Noted on
+  phase 2 in `BACKLOG.md`.
+
+Nothing for the changelog.
