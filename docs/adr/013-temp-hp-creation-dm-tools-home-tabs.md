@@ -7,8 +7,9 @@
 On 2026-10-01 the owner reviewed the "Our design v3" mockups and gave the requirements below,
 with three screenshots of a website's ability score calculator as the reference for item 8.
 The same day the owner sent four screenshots of the same website's spell page as the reference
-for item 6, and ten screenshots of its DM screen reference for item 18. From the references, only the idea and the order of the parts are taken: no text,
-no images, no styling. Each item names the phase that builds it (ADR 007 item 4).
+for item 6, and ten screenshots of its DM screen reference for item 18. From the references,
+only the idea and the order of the parts are taken: no text, no images, no styling. Each item
+names the phase that builds it (ADR 007 item 4).
 
 ## Decision
 
@@ -18,9 +19,12 @@ no images, no styling. Each item names the phase that builds it (ADR 007 item 4)
    number pad, temporary hit points show as a number in their own colour next to the hit points
    (for example "12 / 12 +5"), and as a part of the hit point bar in the same colour. The colour
    is set with the base colours (BRIEF Part 5). (Phase 2.)
-2. **The token always shows the level.** In the DM's change review, a level change shows on
-   the token as "1 → 2" (item 13). Where the level sits in the sheet's header is chosen from six
-   options on the design canvas (still open). (Phase 2; the review with the table link.)
+2. **The level is the class line; level-up is in "⋯".** The class and its level next to the
+   name ("Fighter 1") is the level shown on the sheet; there is no separate level plate. In the
+   DM's change review, a level change shows on that line: "Fighter 1 → 2" (item 13). Level up
+   is the first entry of the sheet's "⋯" menu (ADR 008 item 4). The owner chose this on
+   2026-10-01, over the six level plates drawn on the design canvas. (Phase 2; the review with
+   the table link.)
 3. **Level-up and approval.** Outside a campaign, a level-up applies at once; nobody approves
    it. In a campaign, it waits for the DM's approval. ADR 010 item 7 otherwise stays: XP or
    milestone, and the DM can level characters. (Phase 4; the campaign part with the table link.)
@@ -124,8 +128,6 @@ no images, no styling. Each item names the phase that builds it (ADR 007 item 4)
 
 ## Still open
 
-- Where the level sits in the sheet's header: six options on the design canvas, page
-  "Our design v3".
 - The level-up screenshot the owner named; it did not arrive.
 - Whether "Reroll" in the roll calculator is unlimited.
 
@@ -134,7 +136,7 @@ no images, no styling. Each item names the phase that builds it (ADR 007 item 4)
 | Where | Was | Now |
 |---|---|---|
 | ADR 008 items 2 and 3, BRIEF P1 and P17 | Start page; a player page with My characters, the rulebook, Dice, My packs | A system preview once there are two systems; Player and DM squares; six sections (items 15–17) |
-| ADR 010 item 7 | In a campaign, the DM decides how level-up works | Outside a campaign, no approval; in a campaign, the DM approves (item 3) |
+| ADR 010 item 7 | A level-up button on the sheet; in a campaign, the DM decides how level-up works | Level up in the sheet's "⋯" menu (item 2); outside a campaign, no approval; in a campaign, the DM approves (item 3) |
 | ADR 010 item 11 | An arrow | Filled triangles (item 7) |
 | ADR 010 item 13 | Approve with Yes or No | The DM can edit a value first (item 12) |
 | ADR 012 item 4 | Classes and subclasses with their sources; share, homebrew copy, edit, close | Also per ruleset (item 4); a small top part; share, bookmark, close, and "⋯" (item 6) |

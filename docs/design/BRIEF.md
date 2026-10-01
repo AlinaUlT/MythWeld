@@ -230,15 +230,19 @@ background and the feats; for a spellcaster, the spellcasting ability, spell sav
 attack bonus together at the top of Spells and in the header row.
 Edit mode adds custom items and companions (familiar, pet, mount), custom sections, and custom
 stats, for example "Vitality = 8 + STR mod + DEX mod + CON mod = 14 (+2)".
-ADR 010: a level-up button in the header; a "Turn" tab listing everything the character can do,
+ADR 010: a level-up button (ADR 013: in the "⋯" menu); a "Turn" tab listing everything the character can do,
 grouped by action, bonus action, reaction, once per turn, always on, limited uses; spell slots
 as a grid, one column per level, circles two per row; casting offers "Don't use a spell slot";
 spells granted by a feature show their source, "1/LR" and "no spell slot".
 ADR 011: every ability, skill, feature, feat, spell and item opens and closes its description
 in place; tapping one shows a summary and "See full description", the exact text of its
 source, with the source named. For a spell, both sit in the cast panel, above "Cast".
-ADR 013: the token always shows the level; temporary hit points show as a coloured number next
-to the hit points ("12 / 12 +5") and a coloured part of the bar.
+ADR 013: the level is the class line next to the name ("Fighter 1"), with no separate plate;
+temporary hit points show as a coloured number next to the hit points ("12 / 12 +5") and a
+coloured part of the bar. The sheet's "⋯" menu, top to bottom: Level up ("Fighter 1 → 2"; in a
+campaign it waits for the DM); Link for the DM; Export (file, PDF); Copy; Transfer; Rules
+options (editions mixed, feats allowed); Change history (undo any change); Delete (with Undo).
+Rest and Edit stay as header buttons.
 ```
 
 ### P5 Roll dialog and breakdown · player
@@ -348,8 +352,8 @@ conditions); the table link status ("Off", "3 players connected", "Through relay
 ADR 009/010: a player's changes waiting for approval show per character: the name with an
 edit icon, one line per change ("HP 6 → 12", "+24 gold, +12 silver", "added spell …"), then
 "Approve changes?" Yes / No; "See all changes" when there are several.
-ADR 013: each sent value can be edited before approving ("+24 gold" to "+34 gold"); the token
-shows a level change as "1 → 2"; an approvals tab lists the characters waiting, with a count;
+ADR 013: each sent value can be edited before approving ("+24 gold" to "+34 gold"); a level
+change shows on the class line, "Wizard 3 → 4"; an approvals tab lists the characters waiting, with a count;
 "Create actor" with a type: PC, NPC, enemy, or one the DM names.
 ```
 
@@ -468,7 +472,7 @@ opens: P1 to P17 from this brief. Mark which screens belong to the Game master s
 | Overall design | The navigation of ADR 008: no bottom bar; a start page (Player or Game master); a player page with what a player needs before making a character; My characters with "+" in the corner. The five home-page options with a bottom bar are rejected. The look is still being drawn | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v1" | 2026-09-30 |
 | P17 Player page | — | — | — |
 | Temporary hit points, creation, DM tools, home sections | Recorded in ADR 013 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3" | 2026-10-01 |
-| Level in the sheet's header | Not chosen. Six options drawn: A–F | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", boards "Level A"–"Level F" | 2026-10-01 |
+| Level in the sheet's header | No level plate: the class line "Fighter 1" shows the level; Level up is in the sheet's "⋯" menu. The six plates A–F are rejected | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", boards "Sheet" and "Actions" | 2026-10-01 |
 | Library, dice, creation, levels, Turn tab, spells, DM review | Recorded in ADR 010 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3" | 2026-09-30 |
 | Sheet, dice, rulebook and campaign requirements | Recorded in ADR 009: dice panel on the sheet, features by source, About tab, spellcasting line, Inspiration stars, token frame, custom items, sections and stats, honest animated dice, several books at once, DM control in a campaign | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v2" | 2026-09-30 |
 | Future skins | Six retro looks are kept as ideas for optional paid skins: Win95 shareware, 16-bit RPG menu, green-screen terminal, parchment overload, wood and leather, early homepage. Not the base design | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Retro and weird" | 2026-09-30 |

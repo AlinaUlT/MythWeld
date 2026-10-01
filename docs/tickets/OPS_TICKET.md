@@ -614,3 +614,32 @@ phase 3 builds it. The website's comments section is not taken: the app has no s
 The gate is green: lint checked 66 files; typecheck passed in all 5 packages; 59 tests passed,
 0 failed, 1.49 s.
 Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-18 Level up in the sheet's "⋯" menu · XS
+
+**Hat:** ADR 013 records Level up in the sheet's "⋯" menu
+**Where:** `docs/adr/013-temp-hp-creation-dm-tools-home-tabs.md`, `docs/design/BRIEF.md`,
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-17
+
+**What it should look like when done:**
+1. ADR 013 item 2 records the owner's choice: the class line next to the name ("Fighter 1")
+   is the level; no separate level plate; Level up is the first entry of the sheet's "⋯" menu;
+   a level change in the DM's review shows as "Fighter 1 → 2".
+2. The six level plates leave "Still open"; BRIEF Part 5 marks them rejected.
+3. BRIEF P4 lists the sheet's "⋯" menu, top to bottom; P11 follows item 2.
+4. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** the owner pointed out that "Fighter 1" already states the level, and
+asked what else the "⋯" menu holds. Its entries are a layout choice (ADR 002): every entry is a
+feature that already exists elsewhere (ADR 008 item 4's Actions, the rules options of ADR 013
+item 9 and BRIEF P3, the core's undo of ADR 004). Rest and Edit stay header buttons, so no entry
+appears twice. A multiclass character's line ("Fighter 3 / Wizard 2") is drawn when phase 2
+builds the header. The gate is green: lint checked 66 files; typecheck passed in all 5
+packages; 59 tests passed, 0 failed, 1.60 s.
+Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
