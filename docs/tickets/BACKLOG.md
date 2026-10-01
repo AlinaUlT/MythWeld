@@ -75,7 +75,7 @@ split off an old row got a new id.
 | ENG-03 | The core entity types have Zod schemas | S | ✅ 2026-09-30 |
 | ENG-04 | Effects, grants, prerequisites have game-free Zod schemas | S | ✅ 2026-09-30 |
 | ENG-24 | A system module adds its entity types to the schemas | S | ✅ 2026-10-01 |
-| ENG-05 | The content pack has a schema, exported as JSON Schema | S | 🔲 |
+| ENG-05 | The content pack has a schema, exported as JSON Schema | S | ✅ 2026-10-01 |
 | ENG-06 | The core character document has a schema, with the migration frame | S | 🔲 |
 | ENG-25 | Packs are checked as they load into the content index | S | 🔲 |
 | **Core** | **formulas, dice** | | |
@@ -95,6 +95,7 @@ split off an old row got a new id.
 | ENG-31 | The fifth-edition module is a package the core cannot import | XS | 🔲 |
 | ENG-32 | The fifth-edition entity types have Zod schemas | M | 🔲 |
 | ENG-33 | The fifth-edition part of the character document has a schema | S | 🔲 |
+| ENG-38 | The fifth-edition pack's JSON Schema is published as a file | XS | 🔲 |
 | ENG-09 | 2014 fixtures: every SRD entity golden A or C needs | M | 🔲 |
 | ENG-10 | 2024 fixtures: every SRD entity golden B, B4, C or D needs | M | 🔲 |
 | ENG-13 | Check bonuses are computed: modifiers, proficiency, saves, skills, passives | M | 🔲 |
@@ -159,6 +160,8 @@ split off an old row got a new id.
   a granted spell's own uses, with no slot.
 - **ENG-33** — ADR 014 item 8: XP or milestone, inspiration as a count with a maximum, the
   ability score method's key and rolls, the ability bonus source, which feats may be taken.
+- **ENG-38** — found by ENG-05: SPEC §5.7's `/schema/pack.schema.json`, from
+  `packJsonSchemaOf` with ENG-32's entity union, kept in step with the schemas by a test.
 - **ENG-09, ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's
   schemas. Every rules fact in them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`).
 - **ENG-09** — golden A says mountain dwarf, but its numbers (+2 CON, +1 WIS, Dwarven Toughness)

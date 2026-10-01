@@ -17,7 +17,9 @@ export const translationSchema = z.enum(['official', 'community', 'machine', 're
 export type Translation = z.infer<typeof translationSchema>;
 
 /** A link a person opens themselves: http or https only, never `javascript:`. */
-const linkSchema = z.url({ protocol: /^https?$/, hostname: z.regexes.domain });
+export const linkSchema = z
+  .url({ protocol: /^https?$/, hostname: z.regexes.domain })
+  .meta({ pattern: '^[hH][tT][tT][pP][sS]?://' });
 
 /** Where an entity comes from (SPEC §5.2, widened by ADR 003 item A2). */
 export const entitySourceSchema = z.strictObject({
@@ -39,7 +41,7 @@ export const entityMetaSchema = z.strictObject({
 export type EntityMeta = z.infer<typeof entityMetaSchema>;
 
 /** A list whose items' ids differ; a repeat is reported on the later item's `id`. */
-function listWithUniqueIds<T extends z.ZodType<{ id: string }>>(item: T) {
+export function listWithUniqueIds<T extends z.ZodType<{ id: string }>>(item: T) {
   return z.array(item).superRefine((list, ctx) => {
     const seen = new Set<string>();
     for (const [index, entry] of list.entries()) {

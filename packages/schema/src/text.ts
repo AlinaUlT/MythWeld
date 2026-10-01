@@ -9,5 +9,6 @@ export type Locale = z.infer<typeof localeSchema>;
 /** One text in each language it is known in; at least one (SPEC §5.2). */
 export const l10nSchema = z
   .partialRecord(localeSchema, visibleTextSchema)
-  .refine((text) => Object.keys(text).length > 0, 'Needs at least one language.');
+  .refine((text) => Object.keys(text).length > 0, 'Needs at least one language.')
+  .meta({ minProperties: 1 });
 export type L10n = z.infer<typeof l10nSchema>;

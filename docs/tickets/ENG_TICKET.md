@@ -813,3 +813,210 @@ Found, not fixed:
   events are open. It now says the system's `usesDefSchema`, from `systemListsOf`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-05 The content pack
+
+**Hat:** The content pack has a schema, exported as JSON Schema
+**Depends on:** ENG-24 (a system's schemas, its entity union)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.7; ADR 003 items A2, A6, A7; ADR 004 item 3
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/schema/src/pack.ts` — new. The pack, the locale overlay, their
+`schemaVersion`s, and the JSON Schema export.
+- `packages/schema/src/ids.ts` — changes: `systemIdSchema`, `versionSchema`,
+  `entityIdPatternOf`.
+- `packages/schema/src/entity-base.ts` — changes: `linkSchema` and `listWithUniqueIds` are
+  exported; a JSON Schema keyword for the link.
+- `packages/schema/src/text.ts`, `grant.ts` — change: JSON Schema keywords for checks a
+  refinement makes.
+- `packages/schema/src/index.ts` — changes: exports `pack.ts`.
+- `packages/schema/package.json` — changes: `ajv` and `ajv-formats` for the tests.
+- `packages/schema/test/pack.test.ts` — new.
+
+#### 2. What is missing now
+
+- `grep -rn -i "ContentPack\|overlay\|schemaVersion\|semver" packages/schema/src/` prints
+  nothing. No pack, no overlay, no `schemaVersion`, no pack version.
+- No JSON Schema is exported for anything a person writes: the package's first line says "the
+  content pack's JSON Schema", and nothing makes it.
+- `z.toJSONSchema` drops 11 checks (ENG-02 §11: 3; ENG-04 §11: 8). A pack can pass the JSON Schema
+  and be refused by Zod.
+- `pnpm test`: `Test Files 11 passed (11)`, `Tests 70 passed (70)`; none for a pack.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/schema` exports `packSchemaOf`, `localeOverlaySchema`, `packJsonSchemaOf`,
+   `localeOverlayJsonSchema`, `PACK_SCHEMA_VERSION`, `LOCALE_OVERLAY_SCHEMA_VERSION`,
+   `systemIdSchema`, `versionSchema`, `packLicenseSchema`, and the types `PackLicense`,
+   `LocaleOverlay`.
+2. `packSchemaOf({ system, ruleset, entity })` builds a system's pack schema from its id, its
+   `rulesetSchema` and its entity union (ENG-24). A system id that is not kebab-case throws when
+   the schema is built.
+3. A pack has `id` (a pack id), `version` (semver: `1.0.0`, `2.1.0-beta.1`; refuses `1.0`,
+   `v1.0.0`, `01.0.0`), `schemaVersion` (exactly `PACK_SCHEMA_VERSION`, which is `1`), `system`
+   (exactly the system's id), `title` (L10n), `ruleset` (the system's editions or `any`),
+   `license`, `entities`; and optional `description` (L10n), `authors`, `homepage`,
+   `repository`, `copyrightNotice`, `dependsOn`.
+4. `license` needs `name` and `redistributable` (a boolean); it takes `spdx?`, `url?`,
+   `attribution?`.
+5. `homepage`, `repository` and `license.url` are http or https links; `javascript:alert(1)` is
+   refused.
+6. `authors` is a list of visible texts, at least one, none twice. `dependsOn` is a list of
+   `{ id, version? }`, at least one, no pack id twice; `version` is the lowest version needed, in
+   semver.
+7. Two entities with one id are refused on `entities.<n>.id`. An entity of a type the system does
+   not have is refused on `entities.<n>.type`.
+8. Another system's pack is refused on `system`; a newer or older `schemaVersion` is refused on
+   `schemaVersion`.
+9. No field says where a pack came from (ADR 003 item A7): `origin`, `builtIn`, `official` are
+   refused as unknown fields. Any field not named here is refused, inside `license` and
+   `dependsOn` too.
+10. A valid pack parses to an equal object. The SPEC Appendix Д pack, with `system` added and its
+    feat left out (fifth edition's type, ENG-32), passes the made-up system's pack schema.
+11. `localeOverlaySchema` has `schemaVersion` (exactly `LOCALE_OVERLAY_SCHEMA_VERSION`, `1`),
+    `packId`, `locale` (`en` or `ru`), `texts`: entity id → field name (camelCase) → visible
+    text, at least one field per entity. An entity id of another pack is refused on
+    `texts.<id>`. Unknown fields are refused.
+12. `packJsonSchemaOf(packSchema)` and `localeOverlayJsonSchema()` return draft 2020-12 JSON
+    Schema. A JSON Schema validator (Ajv, with formats) accepts every valid pack of the tests and
+    refuses, in the JSON Schema alone, these 8 of the 11 checks that were lost: a language
+    present, an http or https link, the id's type equal to `type`, no item twice in a list,
+    `fixed` or `choose`, a filter's field, a stat change not 0, at least one stat.
+13. The other checks a JSON Schema cannot hold are listed in the JSON Schema's own `description`:
+    ids unique in `entities`, `effects` and `grants`; a choice's `count` within its list; a pattern
+    no longer than `from`; an overlay's entity of its own pack. Zod stays the door.
+14. The quality gate is green.
+
+#### 4. How to do it
+
+1. `ids.ts`: `systemIdSchema` (the kebab pattern); `versionSchema` (semver 2.0.0's own pattern,
+   without build metadata); `entityIdPatternOf(type)`, the id pattern with the type part fixed.
+2. JSON Schema keywords for refinements, with `.meta()` beside each refinement: `minProperties: 1`
+   on L10n and on an ability score grant's `values`; a case-blind `^https?://` pattern on a link;
+   `uniqueItems: true` on `uniqueList`; `anyOf` of `required` for `fixed` or `choose` and for a
+   filter's field; `not: { const: 0 }` on a stat change.
+3. `pack.ts`: `packLicenseSchema`, `dependencySchema`, `packSchemaOf`, `localeOverlaySchema`.
+   `packJsonSchemaOf` calls `z.toJSONSchema(schema, { io: 'input', override })`; the override
+   sets the id pattern of each entity option whose `type` is a constant, and the root gets
+   `title` and the `description` of §3 item 13.
+4. `pnpm --filter @grimoire/schema add -D ajv ajv-formats` (Ajv 8.20.0 is already in the
+   lockfile).
+5. The tests of §7.
+
+Technical choices (ADR 002):
+- **The pack is built per system, not opened.** A pack is parsed against its system's entity
+  union, or its module types would be refused as unknown fields. ADR 004 item 3: a pack names one
+  system.
+- **`schemaVersion` is a literal of the current version.** The schema describes today's shape. A
+  file of another version goes through the migration frame first (ENG-06), which refuses a newer
+  one (ADR 003 item A6).
+- **The overlay gets a `schemaVersion`.** SPEC §5.7 gives it none, but an overlay is a stored file
+  like a pack (SPEC §5.8). Adding a required field later needs a migration; adding it now needs
+  none.
+- **An overlay's text values are plain strings in one language**, keyed by field name, as SPEC
+  §5.7 has them. The field names are checked for shape only; which fields an entity has is its
+  type's.
+- **A dependency's `version` is the lowest one needed.** SPEC §5.7 says only `version?: string`.
+  A semver version is the narrowest form; a range syntax can be added later without breaking a
+  stored pack (ADR 002 item 2). How it is checked against an installed pack is ENG-25's.
+- **Checks a refinement makes are written into the JSON Schema where JSON Schema can say them**,
+  as metadata next to the refinement, so the two cannot drift apart. The id's type check needs
+  the entity's `type`, so the export adds it per type option.
+- **`io: 'input'`.** The JSON Schema is for people who write a pack. With no default or transform
+  in the schemas the output is the same today; a default added later would otherwise be marked
+  required.
+- **Ajv for the test.** The proof that the exported file works is a real validator reading it.
+  Test-only; nothing ships.
+
+#### 5. Stored data
+
+The pack and the overlay get their first stored shape: `schemaVersion: 1` each. No pack or
+overlay is stored yet, so nothing migrates. The migration frame is ENG-06.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/schema/test/pack.test.ts` — `describe('ENG-05 content pack')`: a made-up system's pack
+  and the Appendix Д pack round trip; each field; system, `schemaVersion`, unknown fields and the
+  "where from" fields refused; repeated entity ids; the overlay; the JSON Schema read by Ajv,
+  accepting valid packs and refusing the 8 recovered checks; the `description` listing the rest.
+- Control values from: SPEC §5.7's field list; Appendix Д; ADR 003 items A2, A7; the semver 2.0.0
+  specification's examples. The made-up system holds no rules text.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is used. The version pattern is semver.org's suggested regular
+expression, without build metadata.
+
+#### 9. Not in this ticket
+
+- The migration frame, refusing a newer `schemaVersion` with a message: ENG-06.
+- Missing dependencies, dependency loops, an entity id of another pack, a `key` unique in a
+  ruleset, a pack of another system not loaded: ENG-25.
+- The fifth-edition pack schema and its file `/schema/pack.schema.json` (SPEC §5.7): the module
+  does not exist yet. ENG-32 builds its entity union; the file is written with it (noted on its
+  row in `BACKLOG.md`).
+- `.gmpack`, size limits, import messages: phase 5.
+- Splitting SRD packs by type, the precache list: phase 3.
+
+#### 10. Rake check
+
+- **Everything is data; the core names no game.** `pack.ts` names no system, edition or type; the
+  test system is made up.
+- **Content and licensing.** Every pack carries `license` with `redistributable`, required. No
+  field says where a pack came from; the app sets that (ADR 003 item A7), and the test refuses
+  `origin`, `builtIn` and `official`.
+- **A stored-shape change needs a migration.** The first shape is version 1; the frame is ENG-06.
+- **Ids are stable.** Entity ids are unique in a pack.
+- **Licensing.** Test data is made up, plus Appendix Д's homebrew; no SRD or book text.
+
+#### 11. What came out of it
+
+Measured:
+- The new test file alone: `Tests 12 passed (12)`, 895 ms.
+- Lint: `Checked 70 files`, 0 errors (68 before).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 12 passed (12)`, `Tests 82 passed (82)`, 1.60 s (before: 11 files,
+  70 tests). ENG-02 to ENG-24's 70 tests pass unchanged.
+- Build: `Done`.
+- Ajv 8.20.0 and ajv-formats 3.0.1 added to `packages/schema` as dev dependencies: the lockfile
+  has 19 lines added, 0 removed; `pnpm install --frozen-lockfile` passes.
+- The tests bite. Each guard removed on its own, 12 tests run each time: each of the 8 JSON
+  Schema keywords (`minProperties` on L10n, the link pattern, `uniqueItems`, `fixed` or `choose`,
+  a filter's field, `not: { const: 0 }`, `minProperties` on a stat change), 1 fails each; the
+  id-per-type override, 1; `schemaVersion` any whole number, 1; `system` any id, 1; entity ids
+  not unique, 2; the overlay's own-pack check, 2; `license` not strict, 1; the system id check,
+  1; `+` build metadata allowed in a version, 1.
+
+Differences from §3:
+- §3 item 11: a field name that is not camelCase is refused on `texts.<id>.<field>`, the path Zod
+  gives a record key; §3 named no path for it.
+- `linkSchema`, `listWithUniqueIds` and `entityIdPatternOf` are exported too: `pack.ts` uses
+  them, and the package exports every file whole.
+- The open schemas' own JSON Schema now carries the 7 keywords of §4 item 2 (ENG-24 §11 measured
+  it byte for byte unchanged; it changes here on purpose). Zod's parse is unchanged: the keywords
+  are metadata.
+- `strictRequired` is off in the test's Ajv: it flags `anyOf: [{ required: ['fixed'] }, …]`, a
+  valid pattern, because the branch does not repeat the property. Every other strict check is on.
+
+The first run found a bug, fixed before the commit: the id's JSON Schema is one object shared by
+every entity option, so setting its pattern in place gave all three core types the pattern of
+`ability`, and Ajv refused every valid pack. The override now writes a new object.
+
+The overlay's JSON Schema is 856 bytes.
+
+Found, not fixed:
+- No row writes the fifth-edition pack's JSON Schema file (`/schema/pack.schema.json`, SPEC
+  §5.7): it needs ENG-32's entity union. New row ENG-38 in `BACKLOG.md`.
+
+Nothing for the changelog.

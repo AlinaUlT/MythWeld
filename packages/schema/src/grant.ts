@@ -13,7 +13,8 @@ export function uniqueList<T extends z.ZodType>(item: T) {
   return z
     .array(item)
     .min(1)
-    .refine((list) => new Set(list).size === list.length, 'Holds an item twice.');
+    .refine((list) => new Set(list).size === list.length, 'Holds an item twice.')
+    .meta({ uniqueItems: true });
 }
 
 /** `UsesDef` whose recovery events are checked by `recoveryEvent`. */
@@ -46,7 +47,8 @@ const chooseFilterSchema = z
     (filter) =>
       filter.type !== undefined || filter.tag !== undefined || filter.category !== undefined,
     'Needs `type`, `tag` or `category`.',
-  );
+  )
+  .meta({ anyOf: [{ required: ['type'] }, { required: ['tag'] }, { required: ['category'] }] });
 
 /** A choice a person makes: `count` items from a list or from what a filter finds. */
 function chooseOf<T extends z.ZodType>(item: T) {
@@ -79,6 +81,8 @@ function givesSomething(grant: { fixed?: unknown; choose?: unknown }): boolean {
   return grant.fixed !== undefined || grant.choose !== undefined;
 }
 const GIVES_NOTHING = 'Needs `fixed`, `choose` or both.';
+/** `givesSomething` as JSON Schema. */
+const GIVES_SOMETHING_JSON = { anyOf: [{ required: ['fixed'] }, { required: ['choose'] }] };
 
 const entityGrantSchema = grantBaseSchema
   .safeExtend({
@@ -86,7 +90,8 @@ const entityGrantSchema = grantBaseSchema
     fixed: uniqueList(entityIdSchema).optional(),
     choose: chooseEntitiesSchema.optional(),
   })
-  .refine(givesSomething, GIVES_NOTHING);
+  .refine(givesSomething, GIVES_NOTHING)
+  .meta(GIVES_SOMETHING_JSON);
 
 const abilityScoreGrantSchema = z.discriminatedUnion('mode', [
   grantBaseSchema.safeExtend({
@@ -95,9 +100,13 @@ const abilityScoreGrantSchema = z.discriminatedUnion('mode', [
     values: z
       .record(
         entityKeySchema,
-        z.int().refine((change) => change !== 0, 'Must not be 0.'),
+        z
+          .int()
+          .refine((change) => change !== 0, 'Must not be 0.')
+          .meta({ not: { const: 0 } }),
       )
-      .refine((values) => Object.keys(values).length > 0, 'Needs at least one stat.'),
+      .refine((values) => Object.keys(values).length > 0, 'Needs at least one stat.')
+      .meta({ minProperties: 1 }),
   }),
   grantBaseSchema
     .safeExtend({
@@ -126,7 +135,8 @@ export function coreGrantSchemasOf<
       choose: chooseKeysSchema.optional(),
       level: lists.proficiencyLevel.optional(),
     })
-    .refine(givesSomething, GIVES_NOTHING);
+    .refine(givesSomething, GIVES_NOTHING)
+    .meta(GIVES_SOMETHING_JSON);
   const resourceGrantSchema = grantBaseSchema.safeExtend({
     kind: z.literal('resource'),
     key: entityKeySchema,

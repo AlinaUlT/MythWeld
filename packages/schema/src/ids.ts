@@ -11,6 +11,19 @@ const PATH = new RegExp(`^${CAMEL_STEP}(?:\\.${CAMEL_STEP})*$`);
 /** A pack's id: `srd-2014`, `srd-2024`, `hb-local`. */
 export const packIdSchema = z.string().regex(KEBAB);
 
+/** A game system's id, which its packs and characters name. The core lists none. */
+export const systemIdSchema = z.string().regex(KEBAB);
+
+/**
+ * A version in semver 2.0.0 form, without build metadata: `1.0.0`, `2.1.0-beta.1`. The pattern is
+ * semver.org's own.
+ */
+export const versionSchema = z
+  .string()
+  .regex(
+    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?$/,
+  );
+
 /** An entity type's name as it appears in ids: `feat`, `damageType`. The list is not fixed here. */
 export const entityTypeNameSchema = z.string().regex(CAMEL);
 
@@ -26,6 +39,11 @@ export const entityIdSchema = z.templateLiteral([
   slugSchema,
 ]);
 export type EntityId = z.infer<typeof entityIdSchema>;
+
+/** The entity id's pattern with its type part fixed: what a JSON Schema checks per type. */
+export function entityIdPatternOf(type: string): string {
+  return `^${KEBAB.source.slice(1, -1)}:${type}\\/${KEBAB.source.slice(1, -1)}$`;
+}
 
 /** A short key for formulas: `str`, `stealth`, `fighter`. One step of a formula path. */
 export const entityKeySchema = z.string().regex(CAMEL);
