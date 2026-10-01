@@ -1,4 +1,5 @@
 import type { EntityId, EntityPartId } from '@grimoire/schema';
+import { STAT_FIELDS } from './effects';
 import { evaluateNumber, type FormulaWarning } from './formula';
 import { type GatherableEntity, type Gathered, isCoreKind } from './gather';
 import { type BreakdownStep, STAT_TYPE, type Stats } from './stats';
@@ -13,6 +14,9 @@ export const LEVEL_PATH = 'level';
 
 /** The path a modifier formula reads as the stat's own score (SPEC §5.6 `@score`). */
 const SCORE_PATH = 'score';
+
+/** The first step of a condition's level, `conditions.<key>.level` (SPEC §5.6). */
+const CONDITIONS_PATH = 'conditions';
 
 /** What a stat takes from its system when it lacks the field (SPEC §5.3). */
 export interface StatDefaults {
@@ -42,6 +46,9 @@ export type ValueReader = (path: string) => number;
 
 /** How one path is computed: from other paths, read through `read`. */
 export type DerivedStep = (read: ValueReader) => Derived;
+
+/** What comes after a path's own step: ENG-17's effects and override. `read` gives other paths. */
+export type Finish = (path: string, own: Derived, read: ValueReader) => Derived;
 
 /** What a module's steps are made from. */
 export interface DeriveInput<C, E extends GatherableEntity> {
@@ -85,9 +92,10 @@ export function statsOf<E extends GatherableEntity>(
 }
 
 /**
- * Computes the derived values: `level`, each stat's `abilities.<key>.mod`, each resource's
- * `resources.<key>.max`, then each path the module's `steps` give. `base` is the base phase's
- * result, which every step may read. Pure.
+ * Computes the derived values: `level`, each stat's score and maximum (the base phase's, `base`),
+ * its `abilities.<key>.mod`, each resource's `resources.<key>.max`, each condition's
+ * `conditions.<key>.level`, then each path the module's `steps` give. `finish` runs on each path
+ * but `level` after its own step (ENG-17); without it, a path is its step's. Pure.
  */
 export function computeDerived<E extends GatherableEntity>(input: {
   level: number;
@@ -96,19 +104,28 @@ export function computeDerived<E extends GatherableEntity>(input: {
   defaults: StatDefaults;
   base: Stats;
   steps: Readonly<Record<string, DerivedStep>>;
+  finish?: Finish;
 }): DerivedValues {
   const { level, gathered, stats, defaults, base } = input;
+  const finish: Finish = input.finish ?? ((_, own) => own);
   const warnings: DerivedWarning[] = [];
-  const values = new Map<string, number>(Object.entries(base.values));
-  const breakdown = new Map<string, readonly BreakdownStep[]>(Object.entries(base.breakdown));
-  values.set(LEVEL_PATH, level);
-  breakdown.set(LEVEL_PATH, [{ kind: 'level', value: level, change: level }]);
+  const values = new Map<string, number>([[LEVEL_PATH, level]]);
+  const breakdown = new Map<string, readonly BreakdownStep[]>([
+    [LEVEL_PATH, [{ kind: 'level', value: level, change: level }]],
+  ]);
 
-  // The core's steps: each stat's modifier, from its own formula or its system's.
+  // The core's steps: each stat's score and maximum as the base phase left them, so later
+  // phases reach them; its modifier, from its own formula or its system's.
   const steps = new Map<string, DerivedStep>();
   const order = [LEVEL_PATH];
   for (const { key, entity } of stats) {
     const path = `abilities.${key}`;
+    for (const field of STAT_FIELDS) {
+      const at = `${path}.${field}`;
+      const value = base.values[at] ?? 0;
+      const parts = base.breakdown[at] ?? [];
+      steps.set(at, () => ({ value, steps: parts }));
+    }
     const own = ownField(entity, 'modFormula');
     const formula = typeof own === 'string' ? own : defaults.modFormula;
     const of = typeof own === 'string' ? 'stat' : 'system';
@@ -168,6 +185,18 @@ export function computeDerived<E extends GatherableEntity>(input: {
     order.push(path);
   }
 
+  // Each condition's level, as gathering found it (ENG-11): 0, with no step, when not had.
+  for (const [key, { id, level: conditionLevel }] of Object.entries(gathered.conditions)) {
+    const path = `${CONDITIONS_PATH}.${key}.level`;
+    const label = names.get(id) ?? {};
+    const parts: BreakdownStep[] =
+      conditionLevel === 0
+        ? []
+        : [{ kind: 'condition', source: id, label, value: conditionLevel, change: conditionLevel }];
+    steps.set(path, () => ({ value: conditionLevel, steps: parts }));
+    order.push(path);
+  }
+
   // The module's steps, after the core's. A path the core gives stays the core's.
   for (const [path, step] of Object.entries(input.steps)) {
     if (values.has(path) || steps.has(path)) {
@@ -207,7 +236,8 @@ export function computeDerived<E extends GatherableEntity>(input: {
       return 0;
     }
     computing.add(path);
-    const result = step((each) => valueAt(each, path));
+    const read: ValueReader = (each) => valueAt(each, path);
+    const result = finish(path, step(read), read);
     computing.delete(path);
     values.set(path, result.value);
     breakdown.set(path, result.steps);

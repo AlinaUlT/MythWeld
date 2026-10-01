@@ -191,7 +191,7 @@ describe('ENG-29 resource maximums', () => {
       'resources.luck.max': 2,
       'resources.grip.max': 3, // grit mod
       'resources.days.max': 6, // level 2 × 3
-      'resources.knack.max': 5, // climb total before ENG-17's effects: grit 3 + 2 × 1
+      'resources.knack.max': 6, // climb total: grit 3 + 2 × 1 + `nimble` 2 - weary 1 (ENG-17)
       'resources.echo.max': 3, // luck 2 + later 1, given after it
       'resources.later.max': 1,
     });
@@ -262,7 +262,7 @@ describe('ENG-29 resource maximums', () => {
     expect(codes(result)).toEqual([{ code: 'pathTaken', path: 'resources.luck.max' }]);
   });
 
-  it("values: the stats, then each resource in the order its key is first given, then the module's", () => {
+  it("values: the stats, each resource in the order its key is first given, the conditions, the module's", () => {
     const { values } = computed(
       ashWith(
         talent('first', [
@@ -272,11 +272,13 @@ describe('ENG-29 resource maximums', () => {
         talent('second', [['aim', '1']]),
       ),
     );
-    expect(Object.keys(values).slice(9, 14)).toEqual([
+    expect(Object.keys(values).slice(9, 16)).toEqual([
       'abilities.nerve.mod',
       'resources.luck.max', // the warden gives it first
       'resources.zest.max',
       'resources.aim.max',
+      'conditions.weary.level', // ENG-17
+      'conditions.lost.level',
       'skills.all.bonus',
     ]);
   });

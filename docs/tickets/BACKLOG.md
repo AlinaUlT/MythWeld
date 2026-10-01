@@ -78,7 +78,7 @@ split off an old row got a new id.
 | ENG-12 | Stat scores are computed in the base phase | S | ✅ 2026-10-01 |
 | ENG-28 | `compute()` runs the derived-value steps a system module supplies | S | ✅ 2026-10-01 |
 | ENG-29 | Resource maximums are computed from their formulas | XS | ✅ 2026-10-01 |
-| ENG-17 | Derived-phase effects, toggles, overrides apply with a breakdown | M | 🔲 |
+| ENG-17 | Derived-phase effects, toggles, overrides apply with a breakdown | M | ✅ 2026-10-01 |
 | ENG-18 | A formula cycle stops with a message naming the paths | S | 🔲 |
 | ENG-30 | Tracker actions return a log entry that undoes them | S | 🔲 |
 | **Fifth edition** | **its own package** | | |
@@ -102,15 +102,6 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-17** — found by ENG-12: `Computed.values` and `.breakdown` hold the base phase's stats,
-  and `activeEffects` (`effects.ts`) gives the effects switched on; this ticket adds its phases
-  to them, and a manual edit's step to the breakdown. Left to it: a base-phase effect on a target
-  that is not a stat's score or maximum, and an effect on a stat's score or maximum whose own
-  phase is `derived` or `final`. Found by ENG-28: a path is computed when first read
-  (`valueAt` in `derived.ts`), so a path's derived effects apply there, after its step and
-  before any reader gets it. `conditions.<key>.level` is not yet in `values`; `weary`'s effect
-  reads it. The totals in `derived.test.ts` are before derived effects and overrides; here they
-  become ENG-27's expected values, written beside each one.
 - **ENG-18** — found by ENG-28: a path read while it is being computed reads 0 with a `cycle`
   warning naming that path and the path that read it. The paths in progress are the `computing`
   set in `derived.ts`, in the order they began; this ticket names the whole loop, its effects'
@@ -152,6 +143,11 @@ split off an old row got a new id.
   skill step or the core reads it.
 - **ENG-13 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true. The
   full goldens A–D are green by ENG-19.
+- **ENG-13, ENG-14, ENG-34** — found by ENG-17: an effect whose op gives no number (`append`,
+  `advantage`, `disadvantage`, `note`, a `set` with a text) on a path that is not a number value
+  (`ac.formulas`, `defenses.*`, `roll.*`, `skills.<key>.ability`) is left alone by the phases,
+  with no warning. The ticket that computes such a list, roll or text reads its effects through
+  `activeEffects` (`effects.ts`) and warns for its own targets.
 - **ENG-16** — ADR 014 item 6: a spell's current dice for the character's level, with a breakdown.
   Found by ENG-08: SPEC §5.6 shows a roll formula with its average, and no function gives it; a
   term that keeps some dice has no simple average (`2d20kh1`'s is 13.825). A count of dice that
@@ -222,6 +218,11 @@ split off an old row got a new id.
   `recordRoll`. `rollRecordSchema` refuses an unknown field and carries no version of its own, so
   the table that keeps the log gives each record one; the table link does the same for what it
   sends.
+- **Phase 2** — found by ENG-17: a stored switch (`state.toggles`) stays after its entity is
+  removed and warns `toggleGone` on every compute, so removing an entity drops its switches. An
+  override applies only when its value is a number on a number path (`overrideNotANumber`
+  otherwise), so the override editor stores a number there. The breakdown's kind `override` is
+  shown as "Manual edit" (SPEC §6.1 step 7).
 - **Phase 2** — found by ENG-25: a character's active pack that is not installed on the device
   never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
   on each of its entries.

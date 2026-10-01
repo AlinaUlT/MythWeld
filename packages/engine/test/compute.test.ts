@@ -375,6 +375,7 @@ describe('ENG-11 gathering a character’s entities', () => {
     };
     const base = variant(brook, {
       localEntities: [tinker],
+      state: { ...brook.state, toggles: {} }, // its lucky charm is gone, so is its switch
       systemData: { level: 1, calling: tinker.id, talents: [] },
     });
     expect(
@@ -582,6 +583,7 @@ describe('ENG-11 gathering a character’s entities', () => {
       abilities: { base: {} },
       choices,
       state: { conditions: [], toggles: {} },
+      overrides: [],
       localEntities: [] as Card[],
     });
     const dealer: SystemModule<ReturnType<typeof player>> = {

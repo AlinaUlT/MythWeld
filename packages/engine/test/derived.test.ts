@@ -22,8 +22,8 @@ import { talesModule } from './tales-module.ts';
 
 // Tales, the made-up test system (ENG-27). Every expected value below is worked out by hand from
 // Tales' rules (`tales/system.ts`), its data (`tales/content.ts`, `tales/characters.ts`) and the
-// variants written here; ENG-27's `tales/expected.ts` gives the values derived-phase effects and
-// overrides do not change (those are ENG-17's).
+// variants written here; ENG-27's `tales/expected.ts` gives Ash's and Brook's. Since ENG-17 the
+// values include the effects and overrides; a total's own step, before them, is written beside it.
 
 /** The value of an opener's result, or a failed test naming why it did not open. */
 function opened<T>(result: { ok: true; value: T } | { ok: false; message: string }): T {
@@ -93,17 +93,9 @@ function withSteps(more: (input: Parameters<Module['derive']>[0]) => Record<stri
 }
 
 describe('ENG-28 derived values a system module supplies', () => {
-  it("Ash: level, modifiers, knack levels as ENG-27's; totals before ENG-17's effects", () => {
+  it("Ash: level, modifiers, knack levels and totals as ENG-27's", () => {
     const { values, warnings } = computed(ash);
-    for (const path of [
-      'level',
-      'abilities.grit.mod',
-      'abilities.wits.mod',
-      'abilities.nerve.mod',
-      'skills.climb.prof',
-      'skills.sneak.prof',
-      'skills.steady.prof',
-    ]) {
+    for (const path of Object.keys(ashExpected.values)) {
       expect(values[path], path).toBe(ashExpected.values[path]);
     }
     expect(values).toEqual({
@@ -118,33 +110,26 @@ describe('ENG-28 derived values a system module supplies', () => {
       'abilities.nerve.max': 8,
       'abilities.nerve.mod': 1, // 4 - 3, its own formula
       'resources.luck.max': 2, // nerve mod 1 + 1 (ENG-29)
-      'skills.all.bonus': 0,
+      'conditions.weary.level': 1, // stored (ENG-17)
+      'conditions.lost.level': 0, // not had
+      'skills.all.bonus': -1, // weary's `tired`: -1 × weary's level 1 (ENG-17)
       'skills.climb.prof': 1, // warden `climber`
-      'skills.climb.bonus': 0,
-      'skills.climb.total': 5, // first-age climb on grit: 3 + 2 × 1 (ENG-27's 6 adds ENG-17's effects)
+      'skills.climb.bonus': 2, // `nimble`: wits mod 2 (ENG-17)
+      'skills.climb.total': 6, // first-age climb on grit: 3 + 2 × 1 + 2 - 1 (before effects: 5)
       'skills.sneak.prof': 1, // warden `pick-knack`
-      'skills.sneak.bonus': 0,
-      'skills.sneak.total': 4, // wits 2 + 2 × 1
+      'skills.sneak.bonus': 1, // `shadow` (ENG-17)
+      'skills.sneak.total': 4, // wits 2 + 2 × 1 + 1 - 1 (before effects: 4)
       'skills.steady.prof': 0,
       'skills.steady.bonus': 0,
-      'skills.steady.total': 1, // nerve 1 + 2 × 0 (ENG-27's 0 adds weary's -1)
-      'skills.steady.passive': 6, // 5 + 1 (ENG-27's 5)
+      'skills.steady.total': 0, // nerve 1 + 2 × 0 + 0 - 1 (before effects: 1)
+      'skills.steady.passive': 5, // 5 + 0 (before effects: 6)
     });
     expect(warnings).toEqual([]);
   });
 
-  it("Brook: level, modifiers, knack levels and the climb total as ENG-27's", () => {
+  it("Brook: level, modifiers, knack levels and totals as ENG-27's", () => {
     const { values, warnings } = computed(brook);
-    for (const path of [
-      'level',
-      'abilities.grit.mod',
-      'abilities.wits.mod',
-      'abilities.nerve.mod',
-      'skills.climb.prof',
-      'skills.sneak.prof',
-      'skills.steady.prof',
-      'skills.climb.total',
-    ]) {
+    for (const path of Object.keys(brookExpected.values)) {
       expect(values[path], path).toBe(brookExpected.values[path]);
     }
     expect(values).toMatchObject({
@@ -153,9 +138,9 @@ describe('ENG-28 derived values a system module supplies', () => {
       'abilities.wits.mod': 4, // floor(8 / 2)
       'abilities.nerve.mod': 5, // 8 - 3
       'skills.climb.total': 4, // second-age climb on wits: 4 + 2 × 0
-      'skills.sneak.total': 4, // wits 4 + 2 × 0 (ENG-27's 9 is the override, ENG-17's)
-      'skills.steady.total': 5, // nerve 5 + 2 × 0 (ENG-27's 7 adds `will` 2)
-      'skills.steady.passive': 10, // 5 + 5 (ENG-27's 12)
+      'skills.sneak.total': 9, // the override (before it: wits 4 + 2 × 0 = 4)
+      'skills.steady.total': 7, // nerve 5 + 2 × 0 + `will` 2 (before effects: 5)
+      'skills.steady.passive': 12, // 5 + 7 (before effects: 10)
     });
     expect(warnings.map(({ code }) => code)).toEqual(['missing']);
   });
@@ -183,12 +168,12 @@ describe('ENG-28 derived values a system module supplies', () => {
     expect(breakdown['skills.climb.total']).toEqual([
       { kind: 'path', path: 'abilities.grit.mod', value: 3, change: 3 },
       { kind: 'path', path: 'skills.climb.prof', value: 1, change: 2 },
-      { kind: 'path', path: 'skills.climb.bonus', value: 0, change: 0 },
-      { kind: 'path', path: 'skills.all.bonus', value: 0, change: 0 },
+      { kind: 'path', path: 'skills.climb.bonus', value: 2, change: 2 }, // `nimble` (ENG-17)
+      { kind: 'path', path: 'skills.all.bonus', value: -1, change: -1 }, // weary (ENG-17)
     ]);
     expect(breakdown['skills.steady.passive']).toEqual([
       { kind: 'rule', rule: 'passiveBase', value: 5, change: 5 },
-      { kind: 'path', path: 'skills.steady.total', value: 1, change: 1 },
+      { kind: 'path', path: 'skills.steady.total', value: 0, change: 0 },
     ]);
   });
 
@@ -212,7 +197,7 @@ describe('ENG-28 derived values a system module supplies', () => {
     });
     const { values, breakdown } = computed(character);
     expect(values['skills.climb.prof']).toBe(3); // `expert` 3 over warden `climber` 1
-    expect(values['skills.climb.total']).toBe(9); // grit 3 + 2 × 3
+    expect(values['skills.climb.total']).toBe(10); // grit 3 + 2 × 3 + `nimble` 2 - weary 1
     expect(breakdown['skills.climb.prof']).toEqual([
       {
         kind: 'grant',
@@ -357,7 +342,7 @@ describe('ENG-28 derived values a system module supplies', () => {
         },
       })),
     );
-    expect(result.values['skills.swim.total']).toBe(0);
+    expect(result.values['skills.swim.total']).toBe(-1); // 0 + 2 × 0 + 0 - weary 1
     expect(result.values.lost).toBe(0);
     expect(codes(result)).toEqual([
       { code: 'missingPath', path: 'abilities.luck.mod', for: 'skills.swim.total' },

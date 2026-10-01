@@ -6,6 +6,7 @@ export * from './dice';
 export * from './effects';
 export * from './formula';
 export * from './gather';
+export * from './phases';
 export * from './roll';
 export * from './stats';
 export * from './version';

@@ -62,7 +62,7 @@ export type GrantOf<E extends GatherableEntity> = NonNullable<E['grants']>[numbe
 
 /**
  * What the core reads of a character: its rules base, base stat scores, choices, conditions,
- * toggles and own entities.
+ * toggles, overrides and own entities.
  */
 export interface CharacterCore<E extends GatherableEntity> {
   readonly ruleset: string;
@@ -73,6 +73,12 @@ export interface CharacterCore<E extends GatherableEntity> {
     readonly conditions: readonly { readonly id: string; readonly level?: number }[];
     readonly toggles: Readonly<Partial<Record<string, boolean>>>;
   };
+  /** Values changed by hand, one per path (SPEC §5.8): they win over every rule (ENG-17). */
+  readonly overrides: readonly {
+    readonly path: string;
+    readonly value: number | boolean | string;
+    readonly note?: string;
+  }[];
   readonly localEntities: readonly E[];
 }
 

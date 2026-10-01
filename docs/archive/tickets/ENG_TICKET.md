@@ -3345,3 +3345,276 @@ Found, not fixed:
   two classes give is checked by the mechanics that give one. Noted on phase 3 in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-17 Derived-phase effects, toggles and overrides
+
+**Hat:** Derived-phase effects, toggles, overrides apply with a breakdown
+**Depends on:** ENG-07 (`parseFormula`, `evaluateNumber`), ENG-11 (`gather`, `conditions`), ENG-12
+(`activeEffects`, `phaseOf`, the op order, `computeStats`), ENG-28 (`computeDerived`, its
+path-by-path reader), ENG-29 (`resources.<key>.max`), ENG-27 (Tales, Ash and Brook)
+**Size:** M
+**Screen:** No
+**SPEC:** §6.1 steps 3, 6 and 7; §5.4 (effects, their phases and targets); §5.6
+(`@conditions.<key>.level`); §5.8 (`overrides`, `state.toggles`); §6.2 (breakdown); §8.2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/phases.ts` — new: SPEC §6.1 steps 6 and 7. The effects left to
+each computed path, in phase order, then its override; the stored switches that name nothing; the
+targets and overrides that name no value.
+- `packages/engine/src/effects.ts` — changes: the op order (`NUMBER_OPS`), working out an
+  effect's number (its `when` and `value`) and `EffectWarning` move here from `stats.ts`, so
+  both phases share them.
+- `packages/engine/src/stats.ts` — changes: uses `effects.ts`'s evaluation; `BreakdownStep` gains
+  the kinds `override` and `condition`; the loop that applies sorted effects is exported.
+- `packages/engine/src/derived.ts` — changes: the base phase's values become steps, so effects and
+  overrides reach them; `conditions.<key>.level` is a core value; `computeDerived` takes the
+  `finish` that phases give.
+- `packages/engine/src/compute.ts` — changes: runs the phases; `ComputeWarning` gains theirs.
+- `packages/engine/src/gather.ts` — changes: `CharacterCore` reads `overrides`.
+- `packages/engine/src/index.ts` — changes: exports `phases.ts`.
+- `packages/engine/test/phases.test.ts` — new: `describe('ENG-17 …')`.
+- `packages/engine/test/derived.test.ts` — changes: its totals become ENG-27's, written beside
+  each one.
+- `packages/engine/test/stats.test.ts`, `compute.test.ts` — changes: the effects ENG-12 left now
+  apply; a variant no longer carries a switch for a talent it drops; the made-up card player has
+  `overrides`.
+
+#### 2. What is missing now
+
+Measured with `compute()` on ENG-27's characters:
+- Ash: `skills.climb.total` 5, `skills.sneak.total` 4, `skills.steady.total` 1,
+  `skills.steady.passive` 6, `skills.all.bonus` 0, `skills.climb.bonus` 0, `skills.sneak.bonus` 0.
+  ENG-27 expects 6, 4, 0 and 5: `nimble`, `shadow` and `weary`'s `tired` are not applied.
+- Brook: `skills.sneak.total` 4, `skills.steady.total` 5, `skills.steady.passive` 10. ENG-27
+  expects 9 (the override), 7 and 12: `will` and the override are not applied.
+- 22 paths each; none starts with `conditions.`. `weary`'s value `-@conditions.weary.level` has no
+  path to read.
+- `grep -rn "overrides" packages/engine/src` finds nothing: `CharacterCore` does not read them.
+- A stored switch for an effect the character does not have gives no warning (ENG-06 §9).
+- `pnpm test`: `Test Files 24 passed (24)`, `Tests 245 passed (245)`.
+
+#### 3. What it should look like when done
+
+1. **Every computed path but `level` is finished when it is computed** (SPEC §6.1 steps 6–7):
+   its own steps (the base phase's for a stat's score and maximum, the core's or the module's step
+   for the rest), then the effects left to it, then its override. Every reader of the path,
+   another step or an effect's formula, gets the finished value.
+2. **The effects left to a path:** every effect `activeEffects` gives (its toggle on, not
+   situational; ENG-12) whose `target` is the path, but a base-phase effect on a stat's score or
+   maximum, which is the base phase's (ENG-12). A phase is the effect's own, else ENG-12's
+   default (`base` for a stat's score or maximum, `derived` for every other target).
+3. **Order:** by phase, `base`, `derived`, `final`; then by priority (ENG-12's: `mul` 10, `add` 20,
+   `min` 30, `max` 40, `set` 50, or the effect's own); then in gathering order.
+4. **Formulas.** A `derived` or `final` effect's `when` and `value` read any computed path,
+   computing it first (ENG-28's reader): Ash's `nimble` reads `@abilities.wits.mod`. A `base`
+   effect on another target keeps the base-phase rule (SPEC §5.6, ENG-12): a formula that names a
+   path but `level` and the module's `basePath` is not applied, with `notInBasePhase`. A formula
+   that does not parse: not applied, with a `formula` warning. Its other warnings are passed on as
+   `formula` warnings, and its value is used. A path nothing gives reads 0 with ENG-28's
+   `missingPath`; a loop reads 0 with ENG-28's `cycle`.
+5. **Ops**, as ENG-12: `mul`, `add`, `min`, `max` and a `set` with a number apply. Another op (a
+   `set` with a yes/no or a text, `append`, `advantage`, `disadvantage`, `note`) on a computed
+   path is not applied, with `notANumber`; on a path that is not computed it gives no warning: it
+   names a list or a roll, which its own ticket reads (§9).
+6. **An override** (`overrides`, SPEC §5.8) of a computed path replaces its value after every
+   effect, with a breakdown step `{ kind: 'override', value, change, note? }`: `change` is the
+   value less the value before it, `note` the stored note. The screen calls the kind "Manual
+   edit" (phase 2). A stat's maximum does not cap it. An override whose value is a yes/no or a
+   text, on a number path, is not applied, with `overrideNotANumber`.
+7. **`conditions.<key>.level`** is a value for each condition key `byKey` names: gathering's level
+   (ENG-11), 0 when the character does not have it. A level above 0 has one step
+   `{ kind: 'condition', source, label }`, the condition's id and name; a 0 has none.
+8. **`level` takes no effect and no override:** gathering and the base phase have read it already
+   (ENG-11, ENG-12). One aimed at it is not applied, with `fixedPath`, `by` the effect's part or
+   `override`.
+9. **Warnings, never a block** (SPEC §8.2):
+   - `noTarget`: an effect of a number op whose target no computed path is (a typo, or a value
+     the character does not have); not applied.
+   - `overrideNoPath`: an override of a path that is not computed; not applied.
+   - `toggleGone`: a stored switch whose `<entityId>#<effectId>` names no effect with a toggle of
+     an entity the character has (ENG-06 §9); not used.
+10. **Order of `values`:** `level`; each stat's `score`, `max`, `mod`; each resource's `max`; each
+    condition's `level`; then the module's paths. A module step for a condition's level is not
+    used, with ENG-28's `pathTaken`.
+11. **Tales:** `compute()` gives every value of ENG-27's `expected.ts`: Ash `skills.climb.total`
+    6, `skills.sneak.total` 4, `skills.steady.total` 0, `skills.steady.passive` 5; Brook
+    `skills.sneak.total` 9 (the override), `skills.steady.total` 7, `skills.steady.passive` 12;
+    and the rest as before. Besides: Ash `skills.all.bonus` -1, `skills.climb.bonus` 2,
+    `skills.sneak.bonus` 1, `conditions.weary.level` 1, `conditions.lost.level` 0; Brook
+    `skills.steady.bonus` 2, `conditions.weary.level` 0, `conditions.lost.level` 1. Ash gets no
+    warning; Brook only ENG-11's `missing`.
+12. Every path's breakdown adds up to its value. `compute()` stays pure: ENG-11's frozen-input test
+    runs the phases too.
+13. The quality gate is green.
+
+#### 4. How to do it
+
+1. `effects.ts`: `NUMBER_OPS`, `NumberOp`, `numberChangeOf`, `applied`; `EffectWarning`;
+   `effectNumber(active, reader, warn)`, ENG-12's checks in ENG-12's order.
+2. `stats.ts`: the base phase calls `effectNumber`; `StatWarning` takes `EffectWarning`;
+   `applyEffects(steps, total, sorted)` is the loop `withEffects` ran; the two new step kinds.
+3. `gather.ts`: `CharacterCore.overrides`.
+4. `phases.ts`: `phasesOf(character, gathered, basePhase)` gives `finish(path, own, read)` and
+   `end()`: the effects by target, the overrides by path, `fixedPath` and `toggleGone` at the
+   start; each path's effects worked out, sorted and applied, then its override, when it is
+   finished; `noTarget` and `overrideNoPath` for what no path finished.
+5. `derived.ts`: base paths as steps; `conditions.<key>.level`; `finish` called inside the reader,
+   while the path is still in progress, so a loop through an effect is caught.
+6. `compute.ts`: `phasesOf`, `finish`, the warnings.
+7. The tests of §7.
+
+Technical choices (ADR 002):
+- **A path is finished when it is computed**, not in a pass after every step. A total reads its
+  bonus; ENG-28's reader computes a path when it is first read, so the bonus's effects and its
+  override are applied there, and no reader sees an unfinished value (BACKLOG note, found by
+  ENG-28).
+- **A `base` effect on a target other than a stat's score or maximum applies first**, under the
+  base-phase rule. The phases are an order; the rule keeps its formula from reading what the base
+  phase does not know. Refusing it would drop content that only asked to come early.
+- **`final` effects come after `derived` ones and before the override.** SPEC §6.1 step 7 makes
+  overrides the final phase; an effect that asks for `final` is placed last among effects, and the
+  override still wins (`CLAUDE.md`, "Manual overrides always win").
+- **The cap stays the base phase's** (SPEC §6.1 step 4). A derived or final effect or an override
+  on a stat's score is not capped; one on its maximum changes the maximum, not the score already
+  capped. Content that raises the cap does it in the base phase, that target's default.
+- **`level` is fixed.** Grants' `atLevel` and base-phase formulas read the module's level before any
+  effect; letting `@level` read another number later would give two levels in one character.
+- **Another op on a path that is not computed gives no warning.** `append` on `defenses.resist` and
+  `advantage` on `roll.init` are content for lists and rolls (SPEC §5.4), which are not number
+  paths. On a number path they cannot apply, so they warn, as ENG-12's do.
+- **A number op on a target that is not computed warns (`noTarget`).** SPEC §5.4 builds the target
+  catalogue from what the character has; an effect outside it changes nothing, and a typo must
+  not pass silently.
+- **An override that is not a number warns.** Every value is a number (ENG-28); a later ticket that
+  computes a path of text (a skill's stat, SPEC §5.4) reads such overrides.
+- **Condition levels are the core's values.** SPEC §5.6 names `@conditions.<key>.level` in the core's
+  formula language, and ENG-11 gathers the levels.
+- **The phases plug into the reader.** `computeDerived` takes a `finish` function, so `derived.ts`
+  stays the walk and `phases.ts` holds steps 6 and 7; `derived.ts` alone still runs with none.
+- **One evaluation of an effect.** The formula rules (parse, base-phase check, `when`, warnings)
+  move to `effects.ts`, used by both phases, so they cannot drift apart.
+
+#### 5. Stored data
+
+Nothing stored changes. `compute()` now reads `overrides`, which ENG-06's character schema has, and
+reads `state.toggles` for the switch check; no schema, no `schemaVersion`, no Dexie table changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/phases.test.ts` — `describe('ENG-17 derived-phase effects, toggles and
+  overrides')`: §3 items 1–12 on Ash and Brook and on variants: ENG-27's values and the
+  breakdowns; the order of phases and priorities; a derived effect and an override on a stat's
+  score and maximum; formulas reading module paths, conditions, missing paths and loops; a base
+  effect on another target, allowed and refused; formula warnings and `when`; each op on a
+  computed path and on one that is not; toggles on, off and by default; `toggleGone` for each way
+  a switch names nothing; overrides that are not numbers, of a missing path, of `level`; the order
+  of `values`.
+- `derived.test.ts` — Ash's full list of values and the breakdowns become ENG-27's, with ENG-28's
+  totals before the effects written beside them.
+- `stats.test.ts`, `compute.test.ts` — ENG-11's and ENG-12's tests: the effects ENG-12 left out
+  now apply (written beside the values that change).
+- Control values from: ENG-27's `tales/expected.ts` for Ash and Brook; Tales' rules and each
+  variant's data, worked out by hand and checked with `python3`, not by the new code.
+
+#### 8. Checked against the source
+
+Nothing to check. No rule of a real game is used: Tales is made up, and the phases are SPEC §6.1's.
+The op order is ENG-12's (its §8 read Foundry's mode numbers).
+
+#### 9. Not in this ticket
+
+- Naming every path of a loop: ENG-18.
+- Lists: `append` on `ac.formulas`, `defenses.*`, `prof.*` (SPEC §5.4): fifth edition's tickets
+  that compute them (ENG-13, ENG-14).
+- `advantage` and `disadvantage` on `roll.*`, and what a situational effect shows: ENG-34 and
+  phase 2. A `note` effect on the sheet: phase 2.
+- A path of text (`skills.<key>.ability` by `set`): ENG-13 decides how a skill's stat is chosen.
+- Switching a toggle, making or removing an override, the words "Manual edit": phase 2.
+- Fifth edition's derived values and its effects' targets: ENG-13 to ENG-16.
+
+#### 10. Rake check
+
+- **Manual overrides always win.** The override is the last step of its path, after every phase,
+  never capped; the breakdown names it with its own kind.
+- **`compute()` is pure.** The phases read the frozen inputs; ENG-11's frozen-input test runs them.
+- **A number with no breakdown entry is a bug.** Each effect and each override is a step; every
+  path's steps add up to its value, in every test.
+- **Formulas never run code.** Every effect formula goes through ENG-07's parser and walker.
+- **Missing is not broken.** A target or an override path not computed, a switch for nothing, a
+  value that is not a number, a missing path, a loop: each is a warning; nothing throws.
+- **The core names no game.** The core names SPEC §5.6's `level` and `conditions.<key>.level`
+  and its own `abilities.` paths; every other path is the module's or a pack's.
+- **Everything is data.** No stat, skill or condition key is in the code.
+- **`packages/engine` is pure TypeScript.** `phases.ts` imports only `@grimoire/schema` and the
+  engine's own files.
+- **Licensing.** Test data is made up.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- Before: `compute()` gave Ash and Brook 22 paths each, none under `conditions.`; Ash
+  `skills.climb.total` 5, `skills.steady.total` 1, `skills.steady.passive` 6; Brook
+  `skills.sneak.total` 4, `skills.steady.total` 5, `skills.steady.passive` 10. `pnpm test`:
+  `Test Files 24 passed (24)`, `Tests 245 passed (245)`, 4.17 s.
+- After: 24 paths each. Ash `skills.all.bonus` -1, `skills.climb.bonus` 2, `skills.climb.total` 6,
+  `skills.sneak.bonus` 1, `skills.sneak.total` 4, `skills.steady.total` 0, `skills.steady.passive`
+  5, `conditions.weary.level` 1, `conditions.lost.level` 0, no warning. Brook `skills.sneak.total`
+  9, `skills.steady.bonus` 2, `skills.steady.total` 7, `skills.steady.passive` 12,
+  `conditions.weary.level` 0, `conditions.lost.level` 1, only `missing`. Every value of ENG-27's
+  `expected.ts` is met for both.
+- `phases.test.ts` alone: `Tests 14 passed (14)`, 889 ms.
+- Lint: `Checked 104 files`, no fixes, no error (102 before; 2 new files).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 25 passed (25)`, `Tests 259 passed (259)`, 4.32 s.
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The tests bite. Each change made on its own, the 11 engine test files run (141 tests): a stored
+  switch never checked, 1 fails; base-phase effects on a stat applied again by the phases, 11;
+  effects on `level` let through, 1; an override of `level` let through, 1; a base effect
+  reading through the derived reader, 1; priority before phase, 1; no sort, 1; overrides not
+  applied, 5; an override that is not a number applied, 1; its note dropped, 2; `noTarget` for
+  every op, 1; no `noTarget`, 1; no `overrideNoPath`, 1; the phases doing nothing, 20; `finish`
+  run after the path leaves the set in progress, 1; a step for a level of 0, 1; no condition
+  levels, 39; the base phase's values filled in before the walk (so effects miss them), 2; the
+  base-phase rule not checked, 2; `when` ignored, 2; a formula that does not parse applied, 2.
+- One mutation was first written wrong (it broke the file, so no test ran); rewritten, it fails 1
+  test.
+
+Differences from §3: none.
+
+Against the row and its note:
+- Each point of the note is done: `values` and `breakdown` take the phases (§3 item 1);
+  `activeEffects` is reused (item 2); a manual edit is its own step (item 6); a base-phase effect
+  on another target applies first, and a derived or final one on a stat's score or maximum
+  applies after the cap (items 2–4); a path's effects apply in ENG-28's `valueAt`, before any
+  reader (item 1); `conditions.<key>.level` is a value (item 7); `derived.test.ts`'s totals are
+  ENG-27's, with the totals before the effects written beside them.
+- ENG-06 §9's two warnings are here: `toggleGone` and `overrideNoPath`.
+- Re-cut inside the engine: the evaluation of one effect moved from `stats.ts` to `effects.ts`,
+  with `NUMBER_OPS`, `NumberOp` and `EffectWarning`; `NumberOp` is still exported by the package.
+- Tests of earlier tickets that changed, each with the reason written beside it: ENG-12's `odd`
+  test (its derived `later` effect now applies: wits 11); ENG-28's knack test (climb total 10)
+  and missing-path test (swim total -1, weary's -1); ENG-29's `knack` maximum (6) and the order of
+  `values` (the conditions come before the module's paths). Two variants built from Brook drop
+  its stored switch with its talent, so they get no `toggleGone`.
+
+Found, not fixed:
+- An effect whose op gives no number, on a path that is not a number value (`append` on
+  `ac.formulas`, `advantage` on `roll.init`, a `set` with a text on `skills.<key>.ability`), is
+  left alone by the phases, with no warning. Noted on ENG-13, ENG-14 and ENG-34 in `BACKLOG.md`:
+  the ticket that computes such a list, roll or text reads its effects through `activeEffects`.
+- A stored switch stays after its entity is removed, and warns `toggleGone` on every compute; an
+  override of a number path that holds a yes/no or a text never applies. Noted on phase 2 in
+  `BACKLOG.md`: removing an entity on the sheet drops its switches, and the override editor
+  stores a number for a number path.
+
+Nothing for the changelog.

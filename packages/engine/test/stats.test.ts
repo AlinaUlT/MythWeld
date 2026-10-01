@@ -201,6 +201,7 @@ describe('ENG-12 stat scores in the base phase', () => {
           abilities: { base: { grit: 3, wits: 3, nerve: 3 } },
           choices: { [part]: chosen },
           localEntities: [tinker],
+          state: { ...brook.state, toggles: {} }, // its lucky charm is gone, so is its switch
           systemData: { level: 1, calling: tinker.id, talents: [] },
         }),
       );
@@ -470,7 +471,8 @@ describe('ENG-12 stat scores in the base phase', () => {
       [{ id: 'lucky', kind: 'abilityScore', mode: 'fixed', values: { luck: 1, wits: 1 } }],
     );
     const result = computed(ashWith([odd], { abilities: { base: { grit: 6, wits: 5, luck: 3 } } }));
-    expect(scores(result)).toEqual({ grit: 7, wits: 6, nerve: 0 });
+    // wits: 5 + `lucky` 1 in the base phase; ENG-17 then applies `later` 5 (`early`, `modded` too)
+    expect(scores(result)).toEqual({ grit: 7, wits: 11, nerve: 0 });
     const part = (id: string) => `character:talent/odd#${id}`;
     const target = 'abilities.wits.score';
     expect(codes(result)).toEqual([
