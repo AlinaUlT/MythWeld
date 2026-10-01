@@ -8,10 +8,10 @@ import {
   entityPartIdSchema,
   packIdSchema,
   parseEntityId,
-  systemIdSchema,
   uuidSchema,
 } from './ids';
 import { type Migration, openerOf } from './migration';
+import { checkSystemIdAndVersion } from './system';
 import { visibleTextSchema } from './text';
 
 // ENG-06: the core part of a character (ADR 004's row for SPEC §5.8), and one field, `systemData`,
@@ -31,9 +31,6 @@ export const CHARACTER_PACK_ID = 'character';
 
 /** The actor kind a new character gets: a player's character (ADR 014 item 8). */
 export const DEFAULT_ACTOR_KIND = 'pc';
-
-/** A version of a stored shape: a whole number from 1. */
-const schemaVersionSchema = z.int().positive();
 
 /** What a person picked for one grant: keys or entity ids, at least one, none twice. */
 const choiceSchema = uniqueList(z.union([entityKeySchema, entityIdSchema]));
@@ -85,14 +82,7 @@ export function characterSchemaOf<
   E extends z.ZodType<{ id: string }>,
   D extends z.ZodType,
 >(parts: { system: S; systemSchemaVersion: V; edition: R; entity: E; systemData: D }) {
-  if (!systemIdSchema.safeParse(parts.system).success) {
-    throw new Error(`The system id "${parts.system}" is not kebab-case.`);
-  }
-  if (!schemaVersionSchema.safeParse(parts.systemSchemaVersion).success) {
-    throw new Error(
-      `The system's schema version ${parts.systemSchemaVersion} is not a whole number from 1.`,
-    );
-  }
+  checkSystemIdAndVersion(parts);
   if (parts.edition.safeParse('any').success) {
     throw new Error("A character's ruleset is one edition: its schema must refuse `any`.");
   }

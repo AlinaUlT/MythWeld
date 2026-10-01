@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { entityBaseSchemaOf } from './entity-base';
 import { coreEntitySchemasOf } from './entity-types';
 import { coreGrantSchemasOf, type UsesDef, uniqueList, usesDefSchemaOf } from './grant';
-import { entityKeySchema, entityTypeNameSchema, rulesetIdSchema } from './ids';
+import { entityKeySchema, entityTypeNameSchema, rulesetIdSchema, systemIdSchema } from './ids';
 import { prerequisiteSchemaOf } from './prerequisite';
 
 // ENG-24: a system module adds its grant kinds and entity types to the core's schemas, and gives
@@ -25,6 +25,27 @@ const systemListsSchema = z.strictObject({
   proficiencyLevels: uniqueList(z.number().positive()),
   recoveryEvents: uniqueList(entityKeySchema),
 });
+
+/** A version of a stored shape: a whole number from 1. */
+export const schemaVersionSchema = z.int().positive();
+
+/**
+ * Throws when a system's id is not kebab-case, or the version of its module's shape is not a whole
+ * number from 1. The pack's and the character's schemas are built only after this check.
+ */
+export function checkSystemIdAndVersion(parts: {
+  system: string;
+  systemSchemaVersion: number;
+}): void {
+  if (!systemIdSchema.safeParse(parts.system).success) {
+    throw new Error(`The system id "${parts.system}" is not kebab-case.`);
+  }
+  if (!schemaVersionSchema.safeParse(parts.systemSchemaVersion).success) {
+    throw new Error(
+      `The system's schema version ${parts.systemSchemaVersion} is not a whole number from 1.`,
+    );
+  }
+}
 
 /**
  * A system's editions (`ruleset`, with `any`; `edition`, without it, for a character's one rules

@@ -4,16 +4,19 @@ import {
   LOCALE_OVERLAY_SCHEMA_VERSION,
   localeOverlayJsonSchema,
   localeOverlaySchema,
+  type Migration,
   PACK_SCHEMA_VERSION,
   packJsonSchemaOf,
+  packOpenerOf,
   packSchemaOf,
+  type StoredObject,
   systemEntitySchemaOf,
   systemListsOf,
   systemSchemasOf,
 } from '@grimoire/schema';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { z } from 'zod';
 
 // A made-up system: two editions, `lore` proficiencies, uses back each scene, a `boon` grant kind
@@ -33,6 +36,7 @@ const talentSchema = tales.entityBaseSchema.safeExtend({
 });
 const talesPackSchema = packSchemaOf({
   system: 'tales',
+  systemSchemaVersion: 1,
   ruleset: tales.rulesetSchema,
   entity: systemEntitySchemaOf(tales, [talentSchema]),
 });
@@ -59,6 +63,7 @@ const fullPack = {
   version: '2.1.0-beta.1',
   schemaVersion: 1,
   system: 'tales',
+  systemSchemaVersion: 1,
   title: { en: 'Tales core', ru: 'Основа сказаний' },
   description: { en: 'A made-up test pack.' },
   ruleset: 'first-age',
@@ -89,13 +94,14 @@ const fullPack = {
   ],
 };
 
-// SPEC Appendix Д, with `system` added and its feat left out: `feat` is fifth edition's type
-// (ENG-32), which the made-up system does not have.
+// SPEC Appendix Д, with `system` and `systemSchemaVersion` added and its feat left out: `feat` is
+// fifth edition's type (ENG-32), which the made-up system does not have.
 const appendixPack = {
   id: 'hb-local',
   version: '1.0.0',
   schemaVersion: 1,
   system: 'tales',
+  systemSchemaVersion: 1,
   title: { ru: 'Мой хоумбрю', en: 'My homebrew' },
   ruleset: 'any',
   license: { name: 'Personal', redistributable: false },
@@ -180,8 +186,12 @@ describe('ENG-05 content pack', () => {
   });
 
   it('needs the fields of SPEC §5.7, and takes the rest as optional', () => {
-    const { id, version, schemaVersion, system, title, ruleset, license, entities } = fullPack;
-    const bare = { id, version, schemaVersion, system, title, ruleset, license, entities };
+    const { id, version, schemaVersion, system, systemSchemaVersion } = fullPack;
+    const { title, ruleset, license, entities } = fullPack;
+    const bare = {
+      ...{ id, version, schemaVersion, system, systemSchemaVersion },
+      ...{ title, ruleset, license, entities },
+    };
     expect(issuePaths(talesPackSchema, bare)).toEqual([]);
     for (const field of Object.keys(bare)) {
       const { [field]: _left, ...without } = bare as Record<string, unknown>;
@@ -220,7 +230,12 @@ describe('ENG-05 content pack', () => {
     }
     expect(issuePaths(talesPackSchema, packWith({ ruleset: '2014' }))).toEqual(['ruleset']);
     expect(() =>
-      packSchemaOf({ system: 'Tales', ruleset: tales.rulesetSchema, entity: talentSchema }),
+      packSchemaOf({
+        system: 'Tales',
+        systemSchemaVersion: 1,
+        ruleset: tales.rulesetSchema,
+        entity: talentSchema,
+      }),
     ).toThrow('The system id "Tales" is not kebab-case.');
   });
 
@@ -348,5 +363,91 @@ describe('ENG-05 content pack', () => {
     expect(localeOverlaySchema.safeParse(otherPack).success).toBe(false);
     expect(jsonValidOverlay(otherPack)).toBe(true);
     expect(localeOverlayJsonSchema().description).toContain('`packId`');
+  });
+});
+
+describe("ENG-39 a pack carries the version of its module's shape", () => {
+  const { systemSchemaVersion: _left, ...unversioned } = fullPack;
+
+  it("takes the module's version, and refuses any other", () => {
+    expect(talesPackSchema.parse(fullPack).systemSchemaVersion).toBe(1);
+    expect(issuePaths(talesPackSchema, unversioned)).toEqual(['systemSchemaVersion']);
+    for (const systemSchemaVersion of [2, 0, '1', null]) {
+      expect(
+        issuePaths(talesPackSchema, packWith({ systemSchemaVersion })),
+        String(systemSchemaVersion),
+      ).toEqual(['systemSchemaVersion']);
+    }
+  });
+
+  it('throws when the version cannot be right, in the words a character uses', () => {
+    const parts = { system: 'tales', ruleset: tales.rulesetSchema, entity: talentSchema };
+    for (const systemSchemaVersion of [0, 1.5]) {
+      expect(() => packSchemaOf({ ...parts, systemSchemaVersion })).toThrow(
+        `The system's schema version ${systemSchemaVersion} is not a whole number from 1.`,
+      );
+    }
+  });
+
+  it('puts the version in the JSON Schema as a required constant', () => {
+    expect(packJsonSchema.properties?.systemSchemaVersion).toEqual({ type: 'number', const: 1 });
+    expect(packJsonSchema.required).toContain('systemSchemaVersion');
+    expect(jsonValidPack(unversioned)).toBe(false);
+    expect(jsonValidPack(packWith({ systemSchemaVersion: 2 }))).toBe(false);
+  });
+
+  it('types the version by the number given', () => {
+    expectTypeOf<z.infer<typeof talesPackSchema>['systemSchemaVersion']>().toEqualTypeOf<1>();
+  });
+
+  it("opens through the core's chain and the module's", () => {
+    // The module's version 2 renames a talent's `tier` to `rank`.
+    const rankedTalentSchema = tales.entityBaseSchema.safeExtend({
+      type: z.literal('talent'),
+      rank: z.int().min(1).max(3),
+    });
+    const rankedPackSchema = packSchemaOf({
+      system: 'tales',
+      systemSchemaVersion: 2,
+      ruleset: tales.rulesetSchema,
+      entity: systemEntitySchemaOf(tales, [rankedTalentSchema]),
+    });
+    const renameTier = vi.fn<Migration>((file) => ({
+      ...file,
+      entities: (file.entities as StoredObject[]).map(({ tier, ...entity }) =>
+        tier === undefined ? entity : { ...entity, rank: tier },
+      ),
+    }));
+    const openRanked = packOpenerOf(rankedPackSchema, [renameTier]);
+    const { tier, ...rankedTalent } = { ...talent, rank: talent.tier };
+
+    expect(openRanked(fullPack)).toEqual({
+      ok: true,
+      value: {
+        ...fullPack,
+        systemSchemaVersion: 2,
+        entities: [fullPack.entities[0], rankedTalent],
+      },
+      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+    });
+    expect(tier).toBe(2);
+    expect(renameTier).toHaveBeenCalledOnce();
+
+    renameTier.mockClear();
+    expect(openRanked(packWith({ systemSchemaVersion: 3 }))).toMatchObject({
+      ok: false,
+      code: 'newer',
+      field: 'systemSchemaVersion',
+      found: 3,
+      current: 2,
+    });
+    const opened = openRanked(unversioned);
+    expect(opened.ok === false && opened.code === 'invalid' && opened.message).toContain(
+      '→ at systemSchemaVersion',
+    );
+    expect(renameTier).not.toHaveBeenCalled();
+    expect(() => packOpenerOf(rankedPackSchema, [])).toThrow(
+      'The schema\'s "systemSchemaVersion" is 2, but its migrations lead to version 1.',
+    );
   });
 });

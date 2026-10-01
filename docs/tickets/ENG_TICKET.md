@@ -1294,3 +1294,184 @@ Found, not fixed:
   ENG-24 §9 planned.
 
 Nothing for the changelog.
+
+---
+
+### ENG-39 The module's version on a pack
+
+**Hat:** A pack records the schema version of its system's module
+**Depends on:** ENG-05 (the pack), ENG-06 (the migration frame, a character's `systemSchemaVersion`)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.7, §5.8 (migrations); ADR 003 item A6; ADR 004 item 3 and its §5.8 row
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/schema/src/pack.ts` — changes: `packSchemaOf` takes the module's
+`systemSchemaVersion`; `packOpenerOf` takes the module's migrations.
+- `packages/schema/src/system.ts` — changes: `schemaVersionSchema` (moved from `character.ts`) and
+  `checkSystemIdAndVersion`, which both builders call.
+- `packages/schema/src/character.ts` — changes: calls `checkSystemIdAndVersion` in place of its
+  own two checks.
+- `packages/schema/test/pack.test.ts` — changes: the made-up packs gain the field; a new
+  `describe` for ENG-39.
+- `packages/schema/test/migration.test.ts` — changes: the ENG-06 pack opener gets the module's
+  (empty) list of steps.
+
+#### 2. What is missing now
+
+- A pack's entities are the module's types (ENG-24), but its only version is `schemaVersion`, the
+  core's. `packSchemaOf({ system, ruleset, entity })` takes no version for the module.
+- Measured: a made-up pack with `systemSchemaVersion: 1` is refused at the root:
+  `Unrecognized key: "systemSchemaVersion"`.
+- `packOpenerOf(packSchema)` takes one argument (`packOpenerOf.length` is `1`) and runs one
+  chain, the core's. A module has no place to give a pack its steps.
+- A character carries both versions (ENG-06): `characterSchemaOf` takes `systemSchemaVersion`,
+  `characterOpenerOf` the module's migrations.
+- `pnpm test`: `Test Files 14 passed (14)`, `Tests 111 passed (111)`; `pack.test.ts` has 12.
+
+#### 3. What it should look like when done
+
+1. `packSchemaOf({ system, systemSchemaVersion, ruleset, entity })`. A pack has the required
+   field `systemSchemaVersion`, exactly the number given, after `system`.
+2. Refused on the path `systemSchemaVersion`: the field missing, `2`, `0`, `'1'`, `null`.
+3. `packSchemaOf` throws `The system's schema version <n> is not a whole number from 1.` for `0`
+   and `1.5`: the text `characterSchemaOf` uses. The system id check keeps its text:
+   `The system id "Tales" is not kebab-case.`
+4. `packOpenerOf(packSchema, systemMigrations)` opens a pack through two chains: the core's
+   (`schemaVersion`, `PACK_MIGRATIONS`) and the module's (`systemSchemaVersion`,
+   `systemMigrations`). A current pack opens with
+   `from: { schemaVersion: 1, systemSchemaVersion: 1 }`.
+5. A made-up module at version 2, whose step renames a talent's `tier` to `rank`:
+   - a version 1 pack opens in the version 2 shape, with
+     `from: { schemaVersion: 1, systemSchemaVersion: 1 }`;
+   - a version 3 pack is refused as `newer` on `systemSchemaVersion`, `found: 3`, `current: 2`,
+     before any step runs;
+   - a pack with no `systemSchemaVersion` runs no step and is refused on that path;
+   - the opener built with no step throws
+     `The schema's "systemSchemaVersion" is 2, but its migrations lead to version 1.`
+6. The pack's JSON Schema has `systemSchemaVersion` as `{ "type": "number", "const": 1 }`, in
+   `required`. A validator refuses a pack without it, or with `2`, and accepts the made-up packs.
+   Nothing else in the exported JSON Schemas changes.
+7. The inferred type of `systemSchemaVersion` is the number given (`1`), not `number`.
+8. `PACK_SCHEMA_VERSION` stays `1`; `PACK_MIGRATIONS` stays empty (§5).
+9. The quality gate is green.
+
+#### 4. How to do it
+
+1. `system.ts`: `schemaVersionSchema`, moved from `character.ts`; `checkSystemIdAndVersion`.
+2. `character.ts`: call it, in place of its two checks.
+3. `pack.ts`: `packSchemaOf` takes `systemSchemaVersion` and calls the check; `packOpenerOf`
+   takes `systemMigrations`.
+4. The tests of §7.
+
+Technical choices (ADR 002):
+- **One version per module, for its packs and its characters.** The module's shape is one thing:
+  its entity types sit in a pack's `entities` and in a character's `localEntities`, its own part
+  in a character's `systemData`. One number says which shape of the module a file has, whichever
+  file it is. A module gives its one version to `packSchemaOf` and to `characterSchemaOf`.
+- **Each opener gets its own steps.** A character's step changes `localEntities` and
+  `systemData`; a pack's step changes `entities`. A module version that changes only `systemData`
+  has a pack step that returns the pack as it is. Both lists are counted against the one version,
+  so a module that bumps it and forgets the pack's step fails when the pack opener is built.
+- **The field is required.** One spelling per state; making a field optional later needs no
+  migration, the reverse does (ADR 002 item 2), as ENG-06 did for a character.
+- **The two checks are written once.** The system id and the module's version are checked by one
+  function that both builders call, so a pack and a character are refused in the same words.
+
+#### 5. Stored data
+
+The pack's stored shape changes: version 1 gains the required field `systemSchemaVersion`.
+`PACK_SCHEMA_VERSION` stays `1` and no migration is added, because no version 1 pack exists
+outside this repository's test files:
+- `packages/content` builds no pack (`src/index.ts` is `export {};`);
+- the Dexie database has no tables (`this.version(1).stores({})`, SETUP-06);
+- no screen imports a pack (phase 5);
+- the pack's JSON Schema is not published (ENG-38).
+
+A migration would convert files that were never written. The character's and the overlay's
+shapes do not change.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/schema/test/pack.test.ts` — `describe("ENG-39 a pack carries the version of its
+  module's shape")`: the version taken, the others refused; the throw for a version that cannot
+  be right; the JSON Schema's constant; the inferred type (`expectTypeOf`, checked by
+  `pnpm typecheck`); a module's step on an older pack, a newer pack, a pack with no version, an
+  opener with a step missing. The ENG-05 tests now need the field among the required ones.
+- `packages/schema/test/migration.test.ts` — the ENG-06 pack opener tests, with the module's empty
+  list and the module's version in `from`.
+- Control values from: ENG-06 §3 (the character's version, the frame's messages); the made-up
+  system and packs of the tests (ADR 004 item 4).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is used.
+
+#### 9. Not in this ticket
+
+- The fifth-edition module's version and its steps: ENG-33, which gives the same number to its
+  packs.
+- The published `pack.schema.json`: ENG-38.
+- The Appendix Д pack's new field in golden E: ENG-22.
+- Loading packs into the content index, their dependencies and their system: ENG-25.
+- A locale overlay's version of the module's shape: §11.
+
+#### 10. Rake check
+
+- **A stored-shape change needs a migration.** The pack's version 1 gains a field with no
+  migration, because no version 1 pack exists (§5). From here, each module step is counted
+  against the module's version when the opener is built.
+- **The core names no game.** `pack.ts` names no system; the module's version and steps are
+  arguments. No `if (system === …)` is written.
+- **Missing is not broken.** Not touched: the schema checks shape only.
+- **Licensing.** Test data is made up; no SRD or book text.
+
+#### 11. What came out of it
+
+Measured:
+- `pack.test.ts` alone: `Tests 17 passed (17)`, 983 ms (12 before; 5 new for ENG-39).
+- Lint: `Checked 74 files`, 0 errors (74 before: no new file).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 14 passed (14)`, `Tests 116 passed (116)`, 1.70 s (before: 14 files,
+  111 tests, 1.75 s). ENG-02 to ENG-06's tests pass, with the field added to their made-up packs.
+- Build: `apps/web build: Done`.
+- The exported JSON Schemas: `packJsonSchemaOf` of the made-up pack, `localeOverlayJsonSchema()`,
+  and `z.toJSONSchema` of `entityBaseSchema` and `coreEntitySchema`, written to one file before
+  and after: 383,315 bytes before, 383,429 after. `diff` shows two changes only: the property
+  `"systemSchemaVersion": { "type": "number", "const": 1 }`, and `"systemSchemaVersion"` in the
+  pack's `required`.
+- The tests bite. Each guard removed on its own, with the pack, migration and character test
+  files run (46 tests): the field left out of the pack, 13 fail and the migration file does not
+  load (`The schema's "systemSchemaVersion" is not one number literal.`); the field as any whole
+  number, 3 fail and the migration file does not load; the module's chain left out of the opener,
+  2 fail; the version check left out of the shared function, 2 fail (one pack test, one
+  character test); the pack's call to the shared check left out, 2 fail. The field's type widened
+  to `number`: `pnpm typecheck` fails with `TS2344` on the `expectTypeOf` line.
+
+Differences from §3: none.
+
+Against the row:
+- The row is XS. The pack's stored shape changes, so §5 is needed, and by `TEMPLATE.md` the ticket
+  is not XS. It is written in the full form, and the row is now S.
+- The code also moves the system id check and the module version check into one function,
+  `checkSystemIdAndVersion`, which `characterSchemaOf` now calls too. The messages are the same;
+  ENG-06's character tests pass unchanged.
+
+Found, not fixed:
+- A locale overlay keys its texts by field name, and a module's entity types may add text
+  fields. The overlay carries only the core's `schemaVersion`. When a module renames a text
+  field, a stored overlay keeps the old name, and its text is no longer shown. Noted on phase 5
+  in `BACKLOG.md`, the phase that stores imported overlays.
+- Golden E's Appendix Д pack needs `systemSchemaVersion` as well as `system`. Noted on ENG-22 in
+  `BACKLOG.md`.
+- The fifth-edition module gives its one version to its packs too. Noted on ENG-33 in
+  `BACKLOG.md`.
+
+Nothing for the changelog.

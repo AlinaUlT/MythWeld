@@ -7,10 +7,10 @@ import {
   entityKeySchema,
   packIdSchema,
   parseEntityId,
-  systemIdSchema,
   versionSchema,
 } from './ids';
 import { type Migration, openerOf } from './migration';
+import { checkSystemIdAndVersion } from './system';
 import { l10nSchema, localeSchema, visibleTextSchema } from './text';
 
 // ENG-05: a pack is parsed against one system's entity union (ADR 004 item 3), so the pack schema
@@ -18,6 +18,9 @@ import { l10nSchema, localeSchema, visibleTextSchema } from './text';
 // migration frame first (`packOpenerOf`, ENG-06). No field says where a pack came from: the app
 // sets that when it installs the pack (ADR 003 item A7), so such a field is refused like any
 // unknown one.
+// ENG-39: a pack's entities are the module's types, so a pack carries the module's
+// `systemSchemaVersion` too: the same number a character carries (ENG-06), one per module. Each
+// opener gets the module's own steps for its kind of file.
 
 /** The stored shape of a pack. A change to it needs a migration (SPEC §5.8). */
 export const PACK_SCHEMA_VERSION = 1;
@@ -49,21 +52,22 @@ const dependencySchema = z.strictObject({
 
 /**
  * A system's content pack (SPEC §5.7, widened by ADR 003 item A2 and ADR 004 item 3): its
- * `system` id, its `rulesetSchema` and its entity union (`systemEntitySchemaOf`).
+ * `system` id, the version of its module's shape, its `rulesetSchema` and its entity union
+ * (`systemEntitySchemaOf`). Throws when the id or the version cannot be right.
  */
 export function packSchemaOf<
   const S extends string,
+  const V extends number,
   R extends z.ZodType<string>,
   E extends z.ZodType<{ id: string }>,
->(parts: { system: S; ruleset: R; entity: E }) {
-  if (!systemIdSchema.safeParse(parts.system).success) {
-    throw new Error(`The system id "${parts.system}" is not kebab-case.`);
-  }
+>(parts: { system: S; systemSchemaVersion: V; ruleset: R; entity: E }) {
+  checkSystemIdAndVersion(parts);
   return z.strictObject({
     id: packIdSchema,
     version: versionSchema,
     schemaVersion: z.literal(PACK_SCHEMA_VERSION),
     system: z.literal(parts.system),
+    systemSchemaVersion: z.literal(parts.systemSchemaVersion),
     title: l10nSchema,
     description: l10nSchema.optional(),
     ruleset: parts.ruleset,
@@ -108,9 +112,18 @@ export const localeOverlaySchema = z
   });
 export type LocaleOverlay = z.infer<typeof localeOverlaySchema>;
 
-/** The migration frame for a system's packs: a newer pack is refused, an older one migrated. */
-export function packOpenerOf<S extends z.ZodType>(packSchema: S) {
-  return openerOf(packSchema, [{ field: 'schemaVersion', migrations: PACK_MIGRATIONS }]);
+/**
+ * The migration frame for a system's packs: the core's steps on `schemaVersion`, then the module's
+ * `systemMigrations` on `systemSchemaVersion`. A newer pack is refused, an older one migrated.
+ */
+export function packOpenerOf<S extends z.ZodType>(
+  packSchema: S,
+  systemMigrations: readonly Migration[],
+) {
+  return openerOf(packSchema, [
+    { field: 'schemaVersion', migrations: PACK_MIGRATIONS },
+    { field: 'systemSchemaVersion', migrations: systemMigrations },
+  ]);
 }
 
 /** Opens a locale overlay through the migration frame. */

@@ -77,7 +77,7 @@ split off an old row got a new id.
 | ENG-24 | A system module adds its entity types to the schemas | S | ✅ 2026-10-01 |
 | ENG-05 | The content pack has a schema, exported as JSON Schema | S | ✅ 2026-10-01 |
 | ENG-06 | The core character document has a schema, with the migration frame | S | ✅ 2026-10-01 |
-| ENG-39 | A pack records the schema version of its system's module | XS | 🔲 |
+| ENG-39 | A pack records the schema version of its system's module | S | ✅ 2026-10-01 |
 | ENG-25 | Packs are checked as they load into the content index | S | 🔲 |
 | **Core** | **formulas, dice** | | |
 | ENG-07 | Formulas evaluate safely, returning the paths they read | M | 🔲 |
@@ -168,7 +168,8 @@ split off an old row got a new id.
 - **ENG-33** — ADR 014 item 8: XP or milestone, inspiration as a count with a maximum, the
   ability score method's key and rolls, the ability bonus source, which feats may be taken.
   ENG-06 left it SPEC §5.8's fifth-edition fields, in `systemData`, with its own
-  `systemSchemaVersion` and migrations (ENG-06 §9).
+  `systemSchemaVersion` and migrations (ENG-06 §9). Found by ENG-39: the same version goes to
+  the module's packs, with a pack step for each version (ENG-39 §4).
 - **ENG-38** — found by ENG-05: SPEC §5.7's `/schema/pack.schema.json`, from
   `packJsonSchemaOf` with ENG-32's entity union, kept in step with the schemas by a test.
 - **ENG-09, ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's
@@ -188,8 +189,8 @@ split off an old row got a new id.
   ability increases from the race, the background or both; `both` warns, never blocks; the
   default is the rules base's source. Its §8 reads both SRDs for other bonuses of one kind given
   in two places (ADR 005 item 3.4, still in force for those); each one found becomes a new row.
-- **ENG-22** — the Appendix Д pack gains the `system` field (ADR 004 item 3); no expected value
-  changes.
+- **ENG-22** — the Appendix Д pack gains the `system` field (ADR 004 item 3) and the module's
+  `systemSchemaVersion` (ENG-39); no expected value changes.
 - **ENG-37** — ADR 005 item 3.6; the fixture states its ability bonus source (ADR 014 item 1).
   The ticket stops to show the character and its hand-computed values to the owner (golden
   values are hers); the test is written only after her yes. No golden F value is written before
@@ -213,6 +214,10 @@ split off an old row got a new id.
 
 - **Phase 3** — found by ENG-02: 11 of 4,428 5e-database slugs do not fit the entity id's slug
   pattern; the import maps them. ENG-02 §11 lists them.
+- **Phase 5** — found by ENG-39: a locale overlay keys its texts by field name, but carries only
+  the core's `schemaVersion`. When a module renames a text field, a stored overlay keeps the old
+  name and its text is no longer shown. The row that stores imported overlays gives them the
+  module's version, or ties each to its pack's.
 - **Phases 2, 4** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
   §8.2: a warning, never a block). The row is cut with the first phase that lets a person pick an
   entity with prerequisites.

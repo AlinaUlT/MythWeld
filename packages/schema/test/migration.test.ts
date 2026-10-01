@@ -53,15 +53,18 @@ const tales = systemSchemasOf(talesLists, []);
 const openTalesPack = packOpenerOf(
   packSchemaOf({
     system: 'tales',
+    systemSchemaVersion: 1,
     ruleset: tales.rulesetSchema,
     entity: systemEntitySchemaOf(tales, []),
   }),
+  [],
 );
 const pack = {
   id: 'tales-core',
   version: '1.0.0',
   schemaVersion: 1,
   system: 'tales',
+  systemSchemaVersion: 1,
   title: { en: 'Tales core' },
   ruleset: 'any',
   license: { name: 'Made up for a test', redistributable: false },
@@ -211,7 +214,11 @@ describe('ENG-06 the openers of packs and overlays', () => {
   it('open the current version, with no migration yet', () => {
     expect(PACK_MIGRATIONS).toEqual([]);
     expect(LOCALE_OVERLAY_MIGRATIONS).toEqual([]);
-    expect(openTalesPack(pack)).toEqual({ ok: true, value: pack, from: { schemaVersion: 1 } });
+    expect(openTalesPack(pack)).toEqual({
+      ok: true,
+      value: pack,
+      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+    });
     expect(openLocaleOverlay(overlay)).toEqual({
       ok: true,
       value: overlay,
