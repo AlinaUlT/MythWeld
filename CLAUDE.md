@@ -23,8 +23,8 @@ Size is XS / S / M. Anything bigger is split in `BACKLOG.md` **before** coding.
 
 **The steps for a ticket, in order:**
 `git pull --rebase` → expand the ticket (if it is still a row) → do §4 → quality gate green →
-fill §11 → ✅ and the date **in `BACKLOG.md`** → commit whose first line starts with the ticket id
-→ `git push`.
+fill §11 → move the ticket to `docs/archive/tickets/` → ✅ and the date **in `BACKLOG.md`** →
+commit whose first line starts with the ticket id → `git push`.
 
 **The quality gate:** `pnpm lint && pnpm typecheck && pnpm test`. A ticket that touches
 `apps/web` also runs `pnpm e2e`. Commit only when the whole gate is green. Do not close a ticket
@@ -61,16 +61,17 @@ names inside code, test data, the next ticket. In doubt, it is not a stop
 | A decision that changes the spec | `docs/adr/NNN-title.md` |
 | What a person can already see | [`docs/CHANGELOG.md`](docs/CHANGELOG.md) |
 | How the screens should look, and the designs the owner chose | [`docs/design/BRIEF.md`](docs/design/BRIEF.md); the mockups to build from: [`docs/design/mockups/`](docs/design/mockups/README.md) |
-| Installing, running, testing, deploying | `docs/RUNNING.md` — written by `SETUP-09`; does not exist before it |
+| Installing, running, testing, deploying | [`docs/RUNNING.md`](docs/RUNNING.md) |
 | The hand-computed golden characters | SPEC §6.7 → `packages/engine/test/golden/` |
 | Russian terms | `packages/content/glossary.ru.json` (seeded from SPEC Appendix B) |
 | Copy-paste prompts for new chats (the owner) | [`PROMPTS.md`](PROMPTS.md) |
 | Open tickets of one theme, expanded | `docs/tickets/<AREA>_TICKET.md` |
-| A closed theme's tickets and what each one learned | `docs/archive/tickets/<AREA>_TICKET.md` |
+| Closed tickets and what each one learned | `docs/archive/tickets/<AREA>_TICKET.md` |
 | Ticket → files → commits | Search the ticket id in the code, and `git log --grep=<id>` |
 
 **`docs/archive/` is not for working from.** Open a file there only if the owner names it, or if a
-ticket builds on a closed ticket's §11.
+ticket builds on a closed ticket's §11 (a "found by" note or a "§11 has the measurement" points
+there).
 
 ---
 

@@ -5,29 +5,8 @@ Every prompt starts from `CLAUDE.md`, because a new chat remembers nothing.
 
 ---
 
-## 1 · The very first chat — an empty repository
-
-Use this once, when the repository holds only `docs/SPEC.md`, `CLAUDE.md`, `PROMPTS.md`,
-`docs/adr/000-working-rules.md`, `docs/tickets/` and `docs/CHANGELOG.md`.
-
-```
-Grimoire project. Read CLAUDE.md first, then docs/adr/000-working-rules.md.
-docs/SPEC.md is the full specification, in Russian. Where it disagrees with CLAUDE.md or
-ADR 000, those two win.
-
-Read SPEC sections 1–6 and 12 once. If anything in sections 2–6 contradicts itself or
-CLAUDE.md, list it as short questions and stop. Do not guess.
-
-If nothing contradicts: the ticket is SETUP-01. It is a row in docs/tickets/BACKLOG.md,
-phase 0. Create docs/tickets/SETUP_TICKET.md with the theme header from
-docs/tickets/TEMPLATE.md, and expand SETUP-01 there in the full form. Then stop and show
-me §3 and §4 as a few short answers.
-
-After my yes: do §4 → the quality gate from CLAUDE.md green → fill §11 → ✅ and the date in
-BACKLOG.md → one commit, first line starting with SETUP-01, no attribution lines → push.
-
-Short answers, plain language, no analogies. Everything new is in English.
-```
+Prompt 1 (the very first chat, on an empty repository) was used once and is removed. The
+numbers of the others stay, because ADR 006 and ADR 007 cite them.
 
 ---
 
@@ -46,10 +25,11 @@ git pull --rebase first. Then expand <ID> from docs/tickets/TEMPLATE.md into the
 in number order. Check the plan against the code as it is now, not against the row. If they
 disagree, fix §4 and say so in §11.
 
-Then build it without stopping: do §4 → the quality gate green → fill §11 → ✅ and the date in
-BACKLOG.md → one commit starting with <ID> → push. Show me the test count and the time from the
-gate. If the ticket changes a screen, build it from its boards in docs/design/mockups/ and its
-row in docs/design/BRIEF.md Part 5, and show me the screenshots next to those boards.
+Then build it without stopping: do §4 → the quality gate green → fill §11 → move the ticket to
+docs/archive/tickets/ → ✅ and the date in BACKLOG.md → one commit starting with <ID> → push.
+Show me the test count and the time from the gate. If the ticket changes a screen, build it
+from its boards in docs/design/mockups/ and its row in docs/design/BRIEF.md Part 5, and show
+me the screenshots next to those boards.
 
 Stop only for a decision that is mine (ADR 007): a golden value that looks wrong, the SPEC and
 the SRD disagreeing, licensing, a feature or scope change, money. Anything marked [ПРОВЕРИТЬ] is
@@ -78,7 +58,8 @@ When the work is done and only the closing steps are left.
 ```
 Grimoire project. Read CLAUDE.md and ticket <ID> in docs/tickets/<AREA>_TICKET.md.
 Run the quality gate and show me the result. If it is green: fill §11 from what the ticket
-did (measured numbers, differences from §3, found-not-fixed), ✅ and the date in BACKLOG.md,
+did (measured numbers, differences from §3, found-not-fixed), move the ticket to
+docs/archive/tickets/, ✅ and the date in BACKLOG.md,
 one line in docs/CHANGELOG.md if a person can see the change, then one commit starting with
 <ID> and push.
 ```
@@ -125,7 +106,6 @@ which of the three is wrong: the code, the golden value, or my expectation.
 
 | Prompt | Number | Reads |
 |---|---|---|
-| First chat | 1 | `CLAUDE.md`, ADR 000, SPEC §1–6 and §12, `BACKLOG.md` |
 | Expand and build | 2 | `CLAUDE.md`, one row, one theme header, the SPEC sections it names |
 | Continue | 3 | `CLAUDE.md`, one ticket |
 | Close and commit | 4 | `CLAUDE.md`, one ticket |

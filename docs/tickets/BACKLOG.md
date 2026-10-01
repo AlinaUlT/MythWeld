@@ -11,9 +11,11 @@ nowhere else. The expanded tickets live in `docs/tickets/<AREA>_TICKET.md`. How 
 | **Size** | XS up to 1 h · S 1–3 h · M half a day. |
 | **Status** | 🔲 not started · 🚧 in work · ✅ with the date · ❌ cancelled with a reason |
 
-**Rows are written when a phase opens, not earlier.** Phases 0 and 1 are cut into rows now,
-before the first line of code, so this cut is a first guess. Re-cut it when the work shows it is
-wrong, and say so in the ticket's §11. Phases 2–7 are cut when the phase before them closes.
+**Rows are written when a phase opens, not earlier.** A cut is a first guess: re-cut it when the
+work shows it is wrong, and say so in the ticket's §11.
+
+**Notes under a table are for open rows only.** When a row closes, its note is deleted; the
+ticket in `docs/archive/tickets/` holds it.
 
 **A phase closes** when all its rows are closed **and** that stage's "Готово, когда" list in
 SPEC §12 has been shown true in the chat. The list is not copied here; SPEC §12 owns it.
@@ -38,19 +40,6 @@ Gate: SPEC §12 stage 0, with the English-only screenshot from ADR 000.
 | SETUP-07 | The app installs to the home screen and opens offline | S | ✅ 2026-09-28 |
 | SETUP-08 | Every push to `main` deploys to a public link | S | ✅ 2026-09-28 |
 | SETUP-09 | `docs/RUNNING.md` and `docs/adr/001-platform.md` exist | XS | ✅ 2026-09-28 |
-
-- **SETUP-01** — Vite + React 19 + TypeScript strict in `apps/web`; empty `schema`, `engine`,
-  `content`, `pdf` packages; Biome. `foundry` is not created until phase L1.
-- **SETUP-04** — Tailwind v4, shadcn/ui, lucide-react; the tabs Characters · Library · Dice ·
-  Settings; dark theme by default.
-- **SETUP-05** — i18next with an `en` locale only (ADR 000); a lint rule that fails on a string
-  literal in JSX.
-  **Built before SETUP-04** (the owner, 2026-09-27; option A in SETUP-04 §4), so the tab labels are
-  i18n keys from the start.
-- **SETUP-08** — **needs the owner.** Cloudflare Pages (or GitHub Pages) needs an account. A chat
-  cannot create an account or sign in. SPA fallback to `index.html`.
-- **SETUP-09** — the phase's last ticket. Its §11 carries the proof of the stage 0 gate: the link
-  opened on the owner's phone, installed, and opened again with the network off.
 
 ---
 
@@ -113,25 +102,6 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-02** — `meta.translation` takes the four values of SPEC §5.2 (`official`, `community`,
-  `machine`, `reviewed`); §3.3 lists only three. The owner's decision, 2026-09-27. `source` gains
-  `book`, `author`, `license`; `meta.foundry` is left out (ADR 003 items A1, A2).
-- **ENG-24** — found by ENG-04: a module adds grant kinds, and lists the values the core checks
-  only for shape (proficiency categories and levels, recovery events). `safeExtend` cannot widen
-  the base's `grants`; ENG-04 §4 has the measurement.
-- **ENG-05** — the pack names its `system` and its edition (`ruleset`), and carries `homepage`,
-  `repository`, `copyrightNotice` (ADR 003 item A2, ADR 004 item 3). No field says where a pack
-  came from; the app sets that (ADR 003 item A7). The locale overlay schema is here too. The JSON
-  Schema is exported per system: the core's types plus the module's. Found by ENG-02: Zod's
-  refinements do not reach the JSON Schema (at least one language, http or https links, the id's
-  type equal to `type`); ENG-02 §11 has the measurement. ENG-04 adds 8 more; ENG-04 §11 lists
-  them.
-- **ENG-06** — the core part of ADR 004's §5.8 row; the module's part is ENG-33. Packs and
-  characters share the migration frame, which refuses a file with a newer `schemaVersion`
-  (ADR 003 item A6). ADR 014 item 8: the actor's kind.
-- **ENG-39** — found by ENG-06: a pack holds the module's entity types but carries only the
-  core's `schemaVersion`. `packSchemaOf` takes the module's `systemSchemaVersion` and
-  `packOpenerOf` its migrations, as ENG-06 did for a character (ENG-06 §11).
 - **ENG-25** — ADR 003 item A3: a missing dependency gives a warning and `Missing: <id>`; a
   dependency loop refuses the pack, with a message naming the loop; a pack never replaces another
   pack's entry. Also: a duplicate `key` among active packs of one ruleset (SPEC §5.1, ADR 014
@@ -309,6 +279,4 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-24 | The whole design canvas is kept in the repository | XS | ✅ 2026-10-01 |
 | OPS-25 | Every ticket that builds a screen names its mockup boards | XS | ✅ 2026-10-01 |
 | OPS-26 | ADR 015 makes every look a skin's data | XS | ✅ 2026-10-01 |
-
-- **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
-  style of ADR 005 item 7, and a prompt per screen. The owner's chosen results come back into it.
+| OPS-27 | Closed tickets leave the files a new chat reads | XS | ✅ 2026-10-01 |

@@ -62,9 +62,12 @@ Only `BACKLOG.md` carries a status. A ticket file never says "done". Its §11 sa
    only for a decision that is the owner's (ADR 007).
 5. **Built.** §4 is done, and the quality gate in `CLAUDE.md` is green.
 6. **§11 filled.** It is never left empty.
-7. **✅ and the date in `BACKLOG.md`**, then the commit and the push.
-8. **The theme closes** when every row of it is ✅ or ❌. Its `<AREA>_TICKET.md` moves whole to
-   `docs/archive/tickets/`. `OPS` never closes.
+7. **Moved to the archive.** The closed ticket, word for word, moves from
+   `docs/tickets/<AREA>_TICKET.md` to the end of `docs/archive/tickets/<AREA>_TICKET.md`. The open
+   file keeps only the theme header and the open tickets, so a new chat reads little.
+8. **✅ and the date in `BACKLOG.md`**; its note under the table, if any, is deleted (the ticket
+   holds it now). Then the commit and the push.
+9. **The theme closes** when every row of it is ✅ or ❌. `OPS` never closes.
 
 **A phase closes** when every row in it is closed **and** that stage's "Готово, когда" list in
 SPEC §12 has been shown true in the chat. The proof goes into the §11 of the phase's last
@@ -76,7 +79,7 @@ ticket.
 
 With these four, one search for the id finds the ticket, its code and its commits:
 
-1. The ticket heading in `<AREA>_TICKET.md`.
+1. The ticket heading in `<AREA>_TICKET.md` (open, or in `docs/archive/tickets/` once closed).
 2. A comment at the main place in the code: `// ENG-07: missing paths read as 0 with a warning.`
    One comment per ticket, at the spot a reader would look first. Not on every line.
 3. The test: the `describe` block names the id, for example `describe('ENG-07 formula paths', …)`.
