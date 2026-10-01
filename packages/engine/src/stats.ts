@@ -39,7 +39,8 @@ export type BreakdownStep = {
 } & (
   | { kind: 'base' }
   | { kind: 'default'; of: 'stat' | 'system' }
-  | { kind: 'grant'; part: EntityPartId; source: EntityId; label: L10n }
+  /** A grant's number; `formula` when the grant gives it as one (a resource's maximum). */
+  | { kind: 'grant'; part: EntityPartId; source: EntityId; label: L10n; formula?: string }
   | { kind: 'effect'; part: EntityPartId; source: EntityId; label: L10n; op: NumberOp }
   | { kind: 'cap' }
   /** The character's level, as its module counts it. */

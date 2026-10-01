@@ -117,6 +117,7 @@ describe('ENG-28 derived values a system module supplies', () => {
       'abilities.nerve.score': 4,
       'abilities.nerve.max': 8,
       'abilities.nerve.mod': 1, // 4 - 3, its own formula
+      'resources.luck.max': 2, // nerve mod 1 + 1 (ENG-29)
       'skills.all.bonus': 0,
       'skills.climb.prof': 1, // warden `climber`
       'skills.climb.bonus': 0,

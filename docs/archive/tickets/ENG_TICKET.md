@@ -3247,3 +3247,101 @@ Found, not fixed:
   are the `computing` set, in the order they began. Noted on ENG-18.
 
 Nothing for the changelog.
+
+---
+
+### ENG-29 Resource maximums · XS
+
+**Hat:** Resource maximums are computed from their formulas
+**Where:** `packages/engine/src/derived.ts` — changes: a core step for each resource key the
+character has gives `resources.<key>.max`; `compute.ts` — changes: hands `gathered` to
+`computeDerived`; `stats.ts` — changes: a `grant` breakdown step may carry its `formula`;
+`gather.ts` — changes: `ResourceGiven`'s comment; `packages/engine/test/resources.test.ts` — new;
+`derived.test.ts` — changes: Ash's full list of values gains `resources.luck.max`
+**Depends on:** ENG-11 (`resources` and `grants`, one row per grant), ENG-28 (`computeDerived`,
+its path-by-path reader, `pathTaken`), ENG-27 (Tales: Ash's `luck`, Brook's `focus`)
+**Screen:** No
+
+**What it should look like when done:**
+1. Each resource key the character has (the `resource` grants gathering gives, ENG-11) gives one
+   path `resources.<key>.max` in `values`: its grant's `uses.max`, evaluated with ENG-07's
+   `evaluateNumber`, reading every computed path through ENG-28's reader (`@level`, a stat's
+   modifier, a module's path, another resource's maximum).
+2. Its breakdown is one `grant` step per grant that gives the key, in gathering order: `part`,
+   `source`, `label` (the source's name), `formula` (the grant's `uses.max`), `value` (what the
+   formula gave), `change` (how much it raised the maximum).
+3. **Two grants of one key give one resource.** Its maximum is the highest of their results. The
+   first step's `change` is its value; each later step's is what it adds above the highest before
+   it, 0 when it is not higher. No warning.
+4. A formula that does not parse gives 0. Each formula warning is passed on as a
+   `resourceFormula` warning with the key, the part and the formula's own warning. A path nothing
+   gives reads 0, with ENG-28's `missingPath` for `resources.<key>.max`; a resource read while it
+   is being computed reads 0, with ENG-28's `cycle`.
+5. **Order of `values`:** `level`; each stat's `score`, `max`, `mod`; each resource's `max`, in
+   the order its key is first given; then the module's paths. A module step for the maximum of a
+   key the character has is not used, with `pathTaken`; one for a key it does not have is the
+   module's path.
+6. **Tales** (ENG-27's expected values): Ash `resources.luck.max` 2 (nerve mod 1 + 1), Brook
+   `resources.focus.max` 6 (level 3 × 2); neither gets a new warning. Brook has no
+   `resources.breath.max`: its `blessing` boon does not gather Deep Lungs (ENG-11).
+7. Every path's breakdown adds up to its value. `compute()` stays pure.
+8. The quality gate is green.
+
+**Choices (ADR 002):**
+- **The core computes it, not the module.** `resource` is a core grant kind and `uses.max` a core
+  formula (ENG-04); the core owns resources as data (ADR 004 item 1). Every system's resources
+  are computed alike, and a module's step for the path is refused like any other core path.
+- **A key is one resource; two grants give the highest maximum.** The trackers keep the uses
+  spent per key (`state.resources`, SPEC §5.8), so a key has one maximum. The highest does not
+  depend on the order a module names its entities, and a second source never lowers what the
+  first gave. Content that means two sources to add up says so with a derived-phase `add` on
+  `resources.<key>.max` (SPEC §5.4, ENG-17). To reverse: change the fold in the one step.
+- **No warning for a shared key.** Two sources of one resource is content, not a mistake; the
+  breakdown names every grant and which one gave the number.
+- **`resources` stays one row per grant**, as ENG-11 gives it, so each grant's label and recovery
+  are still there for the trackers and rests (noted on ENG-30 and ENG-21).
+- **The maximum is what the formula gives**, below 0 or not whole included: a floor and rounding
+  are the formula's to write (`max(1, …)`, `floor(…)`). Noted on ENG-30.
+- **A `grant` step may carry its `formula`**, so the sheet can show how a grant's number came out.
+  ENG-28's knack steps have none.
+
+**Tests:** `packages/engine/test/resources.test.ts` — `describe('ENG-29 resource maximums')`:
+Ash's and Brook's maximums and breakdowns; two and three grants of one key, the highest first,
+last and in between; a formula reading a stat, `@level`, a module's path and another resource; a
+formula that does not parse, one that is not finite, one reading a missing path, one reading
+itself; a module's step for a taken and a free resource path; the order of `values`.
+`derived.test.ts` — Ash's full list of values gains `resources.luck.max` 2. Control numbers:
+ENG-27's `tales/expected.ts` for Ash and Brook; Tales' rules and each variant's data, worked out
+by hand.
+**What came out of it:**
+
+Measured:
+- Before: `compute()` gave Ash 21 paths and Brook 21, none under `resources.`;
+  `grep -rn "resources\." packages/engine/src` found one line, `gather.ts:332`, the gathered row.
+  `pnpm test`: `Test Files 23 passed (23)`, `Tests 238 passed (238)`, 3.87 s.
+- After: Ash 22 paths, with `resources.luck.max` 2; Brook 22, with `resources.focus.max` 6.
+- `resources.test.ts` alone: `Tests 7 passed (7)`, 782 ms.
+- Lint: `Checked 102 files`, no fixes, no error (101 before; 1 new file).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 24 passed (24)`, `Tests 245 passed (245)`, 4.08 s.
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The tests bite. Each change made on its own in `derived.ts`, the `resources`, `derived`,
+  `compute`, `stats` and `test-system` tests run (56 tests): the last grant wins, 3 fail; the
+  first grant wins, 2; the grants add up, 3; each step's change is its value, 3; no `formula` on
+  the step, 5; formula warnings dropped, 1; an empty label, 5; resources left out of the order of
+  `values`, 8; the formula reads 0 for every path, 7; a module's step may take a resource's
+  path, 1.
+
+Differences from §3: none.
+
+Against the row and its note: the note left open what two grants of one key give. One resource,
+with the highest of their maximums (Choices).
+
+Found, not fixed:
+- A maximum is the formula's number, which can be below 0 or not whole; `Computed.resources`
+  keeps one row per grant, each with its own recovery. Noted on ENG-30 and ENG-21 in
+  `BACKLOG.md`.
+- Two grants of one key give the highest maximum. Whether that fits a fifth-edition resource that
+  two classes give is checked by the mechanics that give one. Noted on phase 3 in `BACKLOG.md`.
+
+Nothing for the changelog.

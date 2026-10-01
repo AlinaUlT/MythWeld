@@ -77,7 +77,7 @@ split off an old row got a new id.
 | ENG-11 | `compute()` gathers every entity a character has, grants included | M | ✅ 2026-10-01 |
 | ENG-12 | Stat scores are computed in the base phase | S | ✅ 2026-10-01 |
 | ENG-28 | `compute()` runs the derived-value steps a system module supplies | S | ✅ 2026-10-01 |
-| ENG-29 | Resource maximums are computed from their formulas | XS | 🔲 |
+| ENG-29 | Resource maximums are computed from their formulas | XS | ✅ 2026-10-01 |
 | ENG-17 | Derived-phase effects, toggles, overrides apply with a breakdown | M | 🔲 |
 | ENG-18 | A formula cycle stops with a message naming the paths | S | 🔲 |
 | ENG-30 | Tracker actions return a log entry that undoes them | S | 🔲 |
@@ -102,8 +102,6 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-29** — found by ENG-11: `Computed.resources` lists every `resource` grant, so two grants
-  may give one key; this ticket decides what that gives.
 - **ENG-17** — found by ENG-12: `Computed.values` and `.breakdown` hold the base phase's stats,
   and `activeEffects` (`effects.ts`) gives the effects switched on; this ticket adds its phases
   to them, and a manual edit's step to the breakdown. Left to it: a base-phase effect on a target
@@ -124,6 +122,10 @@ split off an old row got a new id.
   core-to-module check here also covers a climb into the module by relative path.
 - **ENG-30, ENG-36** — ADR 014 item 10: a log entry carries who, when, a label and before/after
   values; it can wait unapplied, and its "after" value can be edited before it applies.
+- **ENG-30, ENG-21** — found by ENG-29: a resource key has one maximum, `resources.<key>.max`, the
+  highest its grants give; it is the formula's number, which can be below 0 or not whole, and
+  ENG-30 decides what spending does then. `Computed.resources` keeps one row per grant, each with
+  its own recovery; ENG-21 decides which ones a key given twice follows on a rest.
 - **ENG-32** — found by ENG-04: also fifth edition's grant kinds `spell` and `item`, built on
   ENG-04's `grantBaseSchema` and `chooseEntitiesSchema`, and on the system's `usesDefSchema`
   from ENG-24's `systemListsOf`. ADR 014 items 5–7: a `rule` has a topic; a spell's `scaling`;
@@ -188,6 +190,10 @@ split off an old row got a new id.
 
 - **Phase 3** — found by ENG-02: 11 of 4,428 5e-database slugs do not fit the entity id's slug
   pattern; the import maps them. ENG-02 §11 lists them.
+- **Phase 3** — found by ENG-29: two `resource` grants of one key give one resource, with the
+  highest of their maximums. Mechanics that give one key from two classes (a multiclass) check
+  in their §8 what the SRD says for that case; uses that add up are an effect `add` on
+  `resources.<key>.max`.
 - **Phase 3** — found by ENG-12: a stat's maximum caps its score after every base-phase effect
   (SPEC §6.1 step 4), so an item whose mechanics put a score above the maximum must raise
   `abilities.<key>.max` too (SPEC §5.4's belt, `max 21`). The mechanics' §8 checks which items

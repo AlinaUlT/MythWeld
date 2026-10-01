@@ -106,7 +106,10 @@ export interface ProficiencyGiven {
   from: EntityPartId;
 }
 
-/** A resource a `resource` grant gives. Its maximum is computed later (ENG-29). */
+/**
+ * A resource a `resource` grant gives. Its maximum is the value `resources.<key>.max`: the highest
+ * of its key's grants' (ENG-29).
+ */
 export interface ResourceGiven {
   key: string;
   label: L10n;

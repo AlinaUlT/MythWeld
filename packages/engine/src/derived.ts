@@ -1,5 +1,6 @@
+import type { EntityId, EntityPartId } from '@grimoire/schema';
 import { evaluateNumber, type FormulaWarning } from './formula';
-import type { GatherableEntity, Gathered } from './gather';
+import { type GatherableEntity, type Gathered, isCoreKind } from './gather';
 import { type BreakdownStep, STAT_TYPE, type Stats } from './stats';
 
 // ENG-28: SPEC §6.1 step 5, the derived values. The core gives the character's level and each
@@ -54,6 +55,7 @@ export interface DeriveInput<C, E extends GatherableEntity> {
 /** Something the derived step met. `code` and its data are for the screen; `message` is for logs. */
 export type DerivedWarning = { message: string } & (
   | { code: 'modFormula'; key: string; of: 'stat' | 'system'; warning: FormulaWarning }
+  | { code: 'resourceFormula'; key: string; part: EntityPartId; warning: FormulaWarning }
   | { code: 'missingPath'; path: string; for: string }
   | { code: 'cycle'; path: string; for: string }
   | { code: 'pathTaken'; path: string }
@@ -83,17 +85,19 @@ export function statsOf<E extends GatherableEntity>(
 }
 
 /**
- * Computes the derived values: `level`, each stat's `abilities.<key>.mod`, then each path the
- * module's `steps` give. `base` is the base phase's result, which every step may read. Pure.
+ * Computes the derived values: `level`, each stat's `abilities.<key>.mod`, each resource's
+ * `resources.<key>.max`, then each path the module's `steps` give. `base` is the base phase's
+ * result, which every step may read. Pure.
  */
 export function computeDerived<E extends GatherableEntity>(input: {
   level: number;
+  gathered: Gathered<E>;
   stats: readonly StatOf<E>[];
   defaults: StatDefaults;
   base: Stats;
   steps: Readonly<Record<string, DerivedStep>>;
 }): DerivedValues {
-  const { level, stats, defaults, base } = input;
+  const { level, gathered, stats, defaults, base } = input;
   const warnings: DerivedWarning[] = [];
   const values = new Map<string, number>(Object.entries(base.values));
   const breakdown = new Map<string, readonly BreakdownStep[]>(Object.entries(base.breakdown));
@@ -125,6 +129,43 @@ export function computeDerived<E extends GatherableEntity>(input: {
       return { value, steps: [{ kind: 'formula', formula, of, value, change: value }] };
     });
     order.push(`${path}.score`, `${path}.max`, `${path}.mod`);
+  }
+
+  // ENG-29: each resource's maximum, from every `resource` grant of its key. A key is one
+  // resource, so two grants give the highest of their maximums, whatever their order; each grant
+  // is a step, its change what it adds above the highest before it.
+  const names = new Map(gathered.entities.map(({ entity }) => [entity.id, entity.name]));
+  const byKey = new Map<string, { part: EntityPartId; source: EntityId; formula: string }[]>();
+  for (const { part, source, grant } of gathered.grants) {
+    if (!isCoreKind(grant, 'resource')) continue;
+    const given = byKey.get(grant.key) ?? [];
+    byKey.set(grant.key, given);
+    given.push({ part, source, formula: grant.uses.max });
+  }
+  for (const [key, given] of byKey) {
+    const path = `resources.${key}.max`;
+    steps.set(path, (read) => {
+      let max: number | undefined;
+      const parts = given.map(({ part, source, formula }): BreakdownStep => {
+        const result = evaluateNumber(formula, read);
+        for (const warning of result.warnings) {
+          warnings.push({
+            code: 'resourceFormula',
+            key,
+            part,
+            warning,
+            message: `${warning.message} (the maximum of the resource "${key}", given by ${part}).`,
+          });
+        }
+        const value = result.value;
+        const change = max === undefined ? value : Math.max(value - max, 0);
+        max = max === undefined ? value : Math.max(max, value);
+        const label = names.get(source) ?? {};
+        return { kind: 'grant', part, source, label, formula, value, change };
+      });
+      return { value: max ?? 0, steps: parts };
+    });
+    order.push(path);
   }
 
   // The module's steps, after the core's. A path the core gives stays the core's.

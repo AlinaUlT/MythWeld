@@ -42,8 +42,8 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
   basePath?(character: C, path: string): FormulaValue | undefined;
   /**
    * The system's derived values (SPEC §6.1 step 5): computed path → its step. A step reads any
-   * other path, the core's or the module's. The core gives `level` and each stat's
-   * `abilities.<key>.score`, `.max` and `.mod`.
+   * other path, the core's or the module's. The core gives `level`, each stat's
+   * `abilities.<key>.score`, `.max` and `.mod`, and each resource's `resources.<key>.max`.
    */
   derive(input: DeriveInput<C, E>): Readonly<Record<string, DerivedStep>>;
 }
@@ -79,7 +79,7 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
   });
   const stats = statsOf(gathered, defaults);
   const steps = system.derive({ character, gathered, stats });
-  const derived = computeDerived({ level, stats, defaults, base, steps });
+  const derived = computeDerived({ level, gathered, stats, defaults, base, steps });
   return {
     ...gathered,
     values: derived.values,
