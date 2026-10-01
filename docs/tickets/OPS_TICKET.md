@@ -706,3 +706,28 @@ undo, the change history, the DM's grouped review, the DM's edit and a waiting l
 (item 10). Phase 1 keeps its rows; 13 row notes now point at ADR 014. The gate is green: lint
 checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.82 s.
 Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-21 The current design, kept open · XS
+
+**Hat:** The design brief records the current design, kept open
+**Where:** `docs/design/BRIEF.md`, `docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-20
+
+**What it should look like when done:**
+1. BRIEF says it is open: the first round ended on 2026-10-01; later phases bring more rounds.
+2. Part 5 names, for every screen drawn, the current design and its boards on page
+   "Our design v3"; the screens not drawn yet say so.
+3. One row lists what is still open in the design.
+4. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** the owner closed the first design round on 2026-10-01 ("looks amazing
+for now") and asked that the design file stay open for later rounds. 10 of the 17 screens now
+have a current design on the canvas (P1–P7, P9, P11 in part, P17); P8, P10, P12–P16 are not
+drawn. P5 is drawn but was never reviewed on its own, and the row says so. The gate is green:
+lint checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.61 s.
+Found, not fixed: nothing. Nothing for the changelog; a person sees no change.

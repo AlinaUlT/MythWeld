@@ -8,6 +8,11 @@ and keeping what the owner chose.
 2. Then paste **one screen's prompt** (Part 2) or an extra prompt (Part 3).
 3. When a design is right, write what you chose into **Part 5**.
 
+**Status: open.** The first design round ran from 2026-09-30 to 2026-10-01 and ended with the
+owner's "looks amazing for now". Part 5 holds the current design, screen by screen; it is not
+final. Each later phase brings its own design round, and its changes are written here the same
+way. What the design changes in the engine is in ADR 014.
+
 **Who owns what:** the features come from SPEC §7 and ADR 005; the navigation from ADR 008; the
 colours and fonts from ADR 005 item 7. The base block carries a copy of them so it can be pasted
 in one piece. If this file and those ever differ, SPEC §7 and the ADRs win.
@@ -455,25 +460,27 @@ opens: P1 to P17 from this brief. Mark which screens belong to the Game master s
 | Item | Chosen | Link or notes | Date |
 |---|---|---|---|
 | Heading font (X1) | — | — | — |
-| P1 Start page | — | — | — |
-| P2 Characters list | — | — | — |
-| P3 Character creation | — | — | — |
+| P1 Start page | Current: once there are two systems, a preview with the app's name and the systems ("Systems"); then two squares with icons, Player and DM ("Start"). ADR 008, ADR 013 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", boards "Systems", "Start" | 2026-10-01 |
+| P2 Characters list | Current: the list with "+" in the top corner; a swipe or "⋯" opens Actions. ADR 008 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", board "Characters" | 2026-10-01 |
+| P3 Character creation | Current: steps that open and close with a turning circle arrow, "Change" kept; score methods; the roll calculator; a feat picked from the library's Feats list; the window for ability bonuses from two editions. ADR 010, ADR 013 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", boards "Create", "Methods", "Roller", "Feats", "Conflict" | 2026-10-01 |
 | P4 Character sheet | V3 "Thumb": name and the stats row pinned at the top; hit points, "Damage", "Heal" and the tabs pinned at the bottom; Main tab as in the P4 prompt | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "P4 · 3 palettes", column V3 | 2026-09-30 |
-| P5 Roll dialog and breakdown | — | — | — |
-| P6 Damage, healing and rests | — | — | — |
-| P7 Library and an entry's card | — | — | — |
-| P8 My packs and the homebrew editor | — | — | — |
-| P9 Dice | — | — | — |
-| P10 Settings and the theme editor | — | — | — |
-| P11 Campaigns and a campaign's page | — | — | — |
-| P12 Initiative tracker | — | — | — |
-| P13 Bestiary and a monster's card | — | — | — |
-| P14 Encounter builder | — | — | — |
-| P15 Generators | — | — | — |
-| P16 A player's view of a campaign | — | — | — |
+| P5 Roll dialog and breakdown | Drawn, not yet reviewed on its own | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", board "Roll" | 2026-10-01 |
+| P6 Damage, healing and rests | Current: one number pad with Damage, Heal and Temp HP; temporary hit points as a green number and a green part of the bar; rests. ADR 010, ADR 013 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", boards "Keypad", "TempHP", "Rest" | 2026-10-01 |
+| P7 Library and an entry's card | Current: topics, search, Filter / Sources / Export, groups and a legend; an entry in a floating window with a small top part, tappable dice and terms, classes per edition, no "Damage dice" list. ADR 012, ADR 013 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", boards "Library", "Entry" | 2026-10-01 |
+| P8 My packs and the homebrew editor | Not drawn yet; designed with phase 5 | — | — |
+| P9 Dice | Current: the dice page and the half-screen dice panel on the sheet, any count, custom dice. The throw that looks real is designed with the dice phase. ADR 009, ADR 010, ADR 013 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", boards "Dice", "SheetDice" | 2026-10-01 |
+| P10 Settings and the theme editor | Not drawn yet | — | — |
+| P11 Campaigns and a campaign's page | Current for the DM's side: the DM's home with Approvals and their count, Actors, Campaigns, and every player section; the approvals list; the grouped review with edits before approving; a new actor with a type. The campaign's own page is not drawn yet. ADR 013 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", boards "DMHome", "Approvals", "DMReview", "Actor" | 2026-10-01 |
+| P12 Initiative tracker | Not drawn yet | — | — |
+| P13 Bestiary and a monster's card | Not drawn yet | — | — |
+| P14 Encounter builder | Not drawn yet | — | — |
+| P15 Generators | Not drawn yet | — | — |
+| P16 A player's view of a campaign | Not drawn yet | — | — |
 | Base colours | Not chosen. The base theme is plain and calm; personality comes from paid skins. Rejected: Lavender (3D52A0 · 7091E6 · 8697C4 · ADBBDA · EDE8F5) and Cream (F7F5E6 · 333A56 · 52658F · E8E8E8), which read as a clinic or government app. Sky (E2F0F9 · B0DDE4 · 286FB4 · FFFFFF · DF4C73) is still open | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "P4 · 3 palettes" | 2026-09-30 |
-| Overall design | The navigation of ADR 008: no bottom bar; a start page (Player or Game master); a player page with what a player needs before making a character; My characters with "+" in the corner. The five home-page options with a bottom bar are rejected. The look is still being drawn | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v1" | 2026-09-30 |
-| P17 Player page | — | — | — |
+| Overall design | The navigation of ADR 008: no bottom bar; a start page (Player or Game master); a player page with what a player needs before making a character; My characters with "+" in the corner. The five home-page options with a bottom bar are rejected. The look: page "Our design v3" is the current one (2026-10-01); v1 and v2 are earlier rounds | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), pages "Our design v1" to "v3" | 2026-10-01 |
+| P17 Player page | Current: six sections, Characters, Sources, Library, Dice roll, Quick rules, Bookmarks; Quick rules as topics, a topic window, and a rule window over it with the rest dimmed. ADR 013 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", boards "Player", "Sources", "QuickRules", "QuickRule" | 2026-10-01 |
+| P4 Character sheet, since 2026-10-01 | Current: the class line is the level; "⋯" with Level up first; the Turn tab; the dice button and panel; slot grid and casting; features by source; About; edit mode, custom stats, the token. ADR 009–011, ADR 013 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", boards "Sheet", "Turn", "SheetDice", "Spells", "Cast", "Features", "About", "Add", "Stat", "Token", "Actions", "LevelUp" | 2026-10-01 |
+| Still open in the design | Base colours and the heading font; the level-up screen (the owner's screenshot); a multiclass character's class line; the Bookmarks page; P8, P10, P12–P16 and a campaign's page. The temporary hit point green (2F7A4A, 5.25 : 1 on white) is a placeholder until the base colours | — | 2026-10-01 |
 | Temporary hit points, creation, DM tools, home sections | Recorded in ADR 013 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3" | 2026-10-01 |
 | Level in the sheet's header | No level plate: the class line "Fighter 1" shows the level; Level up is in the sheet's "⋯" menu. The six plates A–F are rejected | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", boards "Sheet" and "Actions" | 2026-10-01 |
 | Library, dice, creation, levels, Turn tab, spells, DM review | Recorded in ADR 010 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3" | 2026-09-30 |

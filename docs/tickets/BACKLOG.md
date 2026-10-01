@@ -273,6 +273,7 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-18 | ADR 013 records Level up in the sheet's "⋯" menu | XS | ✅ 2026-10-01 |
 | OPS-19 | ADR 013 takes the owner's three corrections to the mockups | XS | ✅ 2026-10-01 |
 | OPS-20 | ADR 014 records what the design decisions change in the engine | S | ✅ 2026-10-01 |
+| OPS-21 | The design brief records the current design, kept open | XS | ✅ 2026-10-01 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. The owner's chosen results come back into it.
