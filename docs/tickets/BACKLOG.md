@@ -69,7 +69,7 @@ split off an old row got a new id.
 | ENG-39 | A pack records the schema version of its system's module | S | ✅ 2026-10-01 |
 | ENG-25 | Packs are checked as they load into the content index | S | ✅ 2026-10-01 |
 | **Core** | **formulas, dice** | | |
-| ENG-07 | Formulas evaluate safely, returning the paths they read | M | 🔲 |
+| ENG-07 | Formulas evaluate safely, returning the paths they read | M | ✅ 2026-10-01 |
 | ENG-08 | Dice notation is rolled, in `d` or `к` | S | 🔲 |
 | ENG-26 | A roll result has the shape the table link will send | XS | 🔲 |
 | **Core** | **compute, tested on the made-up system** | | |
@@ -102,7 +102,9 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-08** — ADR 014 item 11: faces 2–1000, 1–999 dice per term, a fairness test.
+- **ENG-08** — ADR 014 item 11: faces 2–1000, 1–999 dice per term, a fairness test. Found by
+  ENG-07: SPEC §5.6's roll formulas mix dice with formula terms (`1d10 + @classes.fighter.level`,
+  `2d20kh1`); ENG-07's parser refuses a dice term (`unexpected`), so nothing reads them yet.
 - **ENG-26** — ADR 005 item 5.6: who rolled, what for, the dice, the result, the breakdown; public,
   secret to the DM, or hidden by the DM. Only the shape; sending it belongs to the table-link
   phase. ADR 014 item 12: the person's own roll modifiers, labelled.
@@ -117,6 +119,9 @@ split off an old row got a new id.
   Here a character's own entities join them; a key path whose type and key have entries in two
   rulesets reads the one the character has, else the rules base's (ADR 014 item 2; `withKey`
   lists them); a choice whose filter finds fewer entries than its `count` is reported.
+- **ENG-12** — found by ENG-07: SPEC §5.6's base-phase rule (a base formula reads only levels,
+  class levels and choices) is checked against the formula's `paths`, every path its text names,
+  not only the paths one evaluation read.
 - **ENG-28** — found by ENG-24: the defaults a system gives a stat (SPEC §5.3: the modifier
   formula, a save, a maximum) come with the module's steps here. ENG-03 §4 also named ENG-24;
   a schema adds nothing on parse, so ENG-24 §9 moved them here.
@@ -184,6 +189,10 @@ split off an old row got a new id.
   the core's `schemaVersion`. When a module renames a text field, a stored overlay keeps the old
   name and its text is no longer shown. The row that stores imported overlays gives them the
   module's version, or ties each to its pack's.
+- **Phase 5** — found by ENG-07: a pack's formulas are only text to the schema, which cannot
+  import the engine, so a formula past ENG-07's limits, or one that does not parse, loads and
+  warns only when it is evaluated. The import checks (ADR 003 item A6) parse each formula with
+  `parseFormula`.
 - **Phases 2, 4** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
   §8.2: a warning, never a block). The row is cut with the first phase that lets a person pick an
   entity with prerequisites.

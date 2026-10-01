@@ -100,7 +100,9 @@
                   "fetch": "ENG-01: the engine does not use the network.",
                   "XMLHttpRequest": "ENG-01: the engine does not use the network.",
                   "WebSocket": "ENG-01: the engine does not use the network.",
-                  "EventSource": "ENG-01: the engine does not use the network."
+                  "EventSource": "ENG-01: the engine does not use the network.",
+                  "eval": "ENG-07: formulas never run code (SPEC §5.6). Parse the formula and walk its tree.",
+                  "Function": "ENG-07: formulas never run code (SPEC §5.6). Parse the formula and walk its tree."
                 }
               }
             }

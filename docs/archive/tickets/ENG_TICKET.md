@@ -1706,3 +1706,257 @@ Found, not fixed:
   phase 2 in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-07 Formulas
+
+**Hat:** Formulas evaluate safely, returning the paths they read
+**Depends on:** ENG-03 (`formulaSchema`), ENG-04 (`computedPathSchema`)
+**Size:** M
+**Screen:** No
+**SPEC:** §5.6, §4.2 (the formulas row), §8.2; ADR 003 item A6
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/formula.ts` — new. `parseFormula`: text to a frozen tree, with
+the length and depth limits. `evaluateFormula`, `evaluateNumber`, `evaluateCondition`: the tree
+walked against a reader of paths.
+- `packages/engine/src/index.ts` — changes: exports the new file.
+- `biome.json` — changes: `eval` and `Function` join the globals the engine may not name.
+- `packages/engine/test/formula.test.ts` — new.
+- `packages/engine/test/purity.test.ts` — changes: a second `describe` for the new globals.
+
+#### 2. What is missing now
+
+- `git grep -n -i formula packages/engine/src` finds one line, the comment at the top of
+  `index.ts`. Nothing parses or evaluates a formula. `packages/schema/src/formula.ts` keeps a
+  formula as text with a visible character and says ENG-07 parses it.
+- The engine names `new Function` and `Function(…)` with no lint error. Measured on a file in
+  `packages/engine/src` with `eval('1')`, `new Function('return 1')`, `Function('return 1')`:
+  `biome lint` reports line 1 only (`lint/security/noGlobalEval`).
+- `pnpm test`: `Test Files 15 passed (15)`, `Tests 132 passed (132)`; none for a formula.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/engine` exports `parseFormula`, `evaluateFormula`, `evaluateNumber`,
+   `evaluateCondition`, `FORMULA_LIMITS`, and the types `FormulaValue`, `FormulaNode`,
+   `ParsedFormula`, `FormulaError`, `FormulaWarning`, `FormulaReader`, `FormulaResult`.
+2. The language is SPEC §5.6's: numbers (`3`, `2.5`), `+ - * /`, unary `-` `+` `!`, brackets,
+   `< <= > >= == !=`, `&& ||`, `?:`, the functions `floor ceil round min max abs clamp if`, and
+   paths `@` + a computed path (`@stats.grit.score`). Also a text in single quotes (`'heavy'`) and
+   `true`, `false`, so a path's text or yes/no value can be compared. Precedence and grouping as
+   in JavaScript: `2 + 3 * 4` is 14, `(2 + 3) * 4` is 20, `10 - 4 - 3` is 3, `24 / 4 / 3` is 2,
+   `@level > 10 ? 3 : @level > 4 ? 2 : 1` with level 5 is 2.
+3. Every reference SPEC §5.6 lists parses as a path (`@abilities.dex.mod`, `@prof`,
+   `@classes.fighter.table.secondWindUses` …), and so do the formulas SPEC §5.3 and §5.4 give
+   (`floor((@score - 10) / 2)`, `-2 * @conditions.exhaustion.level`, `+@prof`,
+   `10 + @abilities.dex.mod + @abilities.con.mod`, `@conditions.exhaustion.level >= 2`).
+4. The functions, with level 5: `floor((9 - 10) / 2)` is -1; `ceil(7 / 2)` 4; `round(2.5)` 3,
+   `round(-2.5)` -2, `round(2.4)` 2 (a half goes up); `abs(-4)` 4; `min(3, @level, 4)` 3;
+   `max(1, @level)` 5; `clamp(@level * 3, 1, 12)` 12, `clamp(-4, 1, 12)` 1, `clamp(7, 1, 12)` 7;
+   `if(@gear.worn, 1, 2)` 1 when worn. `min` and `max` take one value or more, `clamp` and `if`
+   three, the others one.
+5. `evaluateFormula(formula, read)` takes the text or a parsed formula and a reader, a function
+   from a path (without `@`) to its value, or `undefined` when the path is missing. It returns
+   `{ value, reads, warnings }` and never throws.
+6. A missing path reads as `0` with a warning `missingPath` naming it: `@nothing.here + 2` is 2.
+   A value that is not a finite number, a yes/no or a text (`NaN`, an object, a function) reads as
+   `0` with `notAValue`. A plain object as the reader's store, `@constructor` gives `0` and
+   `notAValue`, never the object's function.
+7. `reads` lists each path the evaluation read, in the order first read, once each; the reader is
+   called once per path. `@level + @stats.grit.score * @level` is 80, reads `['level',
+   'stats.grit.score']`, two calls. A branch not taken is not read: with `gear.worn` true,
+   `@gear.worn ? @level : @nothing.here` is 5, reads `['gear.worn', 'level']`, no warning; the
+   same for `if(…)` and for `&&`, `||` stopping early.
+8. A parsed formula's `paths` lists every path its text names, in order, once each, taken or not:
+   `['gear.worn', 'level', 'nothing.here']` for the formula of item 7.
+9. Kinds of value: arithmetic gives a number; a comparison, `!`, `&&`, `||` give `true` or
+   `false` (`0 || 3` is `true`); `?:` and `if` give the branch's value. A yes/no counts as 1 or 0
+   in arithmetic (`@gear.worn + 1` is 2 when worn). A text in arithmetic or in `<` warns
+   `wrongType` and counts as 0. `==` and `!=` compare two texts as text, a text and a number as
+   unequal, anything else as numbers. As a condition, `0`, `false` and `''` are false; any other
+   value is true.
+10. A result that is not a finite number warns `notFinite` and gives 0: `1 / 0`, `0 / 0`, a
+    number written with 400 digits. `-0` gives `0`.
+11. `evaluateNumber` gives a number: a yes/no as 1 or 0, a text as 0 with `wrongType`.
+    `evaluateCondition` gives `true` or `false` by item 9.
+12. `parseFormula(text)` gives `{ ok: true, formula }` or `{ ok: false, error }`, never a throw.
+    `error` has a `code`, `at` (the place in the text, from 0) and an English `message`:
+    - `unexpected`, with `found` (the text found, `''` at the end): `2 +` at 3; `2 + * 3` `*` at
+      4; `(2 + 3` at 6; `2 + 3)` `)` at 5; `2 # 3` `#` at 2; `@level = 5` `=` at 7; `@level & 1`
+      `&` at 7; `1d10 + 2` `d10` at 1; an empty or blank text at 0; `'open` at 5 (no closing
+      quote); `"x"` `"` at 0;
+    - `unknownName`, with `name`: `1 + prof` at 4, its message pointing to `@prof`; `sqrt(4)`;
+      `constructor(1)`, `toString(1)`, `__proto__(1)`;
+    - `argumentCount`, with `name`, `found`, `min`, `max`: `floor(1, 2)`, `clamp(1, 2)`, `min()`,
+      `if(1, 2)`;
+    - `badPath`, with `path`: `@stats..score` (at the `@`), `@Level`, `@level.`, `@`, `@1x`,
+      `@a_b`;
+    - `tooLong`, with `length` and `limit`: a text of 1,001 characters, at 1,000. 1,000
+      characters parse: `' ' + '1+'.repeat(499) + '1'` gives 500.
+    - `tooDeep`, with `limit`: 33 nested brackets, at the 33rd `(` (32); 32 parse. The same for
+      33 unary `-` and 33 nested `floor(`. A long chain of one operator stays shallow: 499 `+`
+      parse.
+13. Evaluating a formula that does not parse gives `0` (`false` for a condition), `reads` `[]`, the
+    parse error as its one warning, and never calls the reader.
+14. A parsed formula, its tree and its `paths` are frozen. The same formula with the same reader
+    gives equal results twice.
+15. `FORMULA_LIMITS` is `{ length: 1000, depth: 32 }`.
+16. In `packages/engine/src`, naming `eval` or `Function` fails lint: `eval('1')`,
+    `new Function('return 1')`, `Function('return 1')` each give `noRestrictedGlobals` with the
+    message `ENG-07: …`.
+17. The quality gate is green.
+
+#### 4. How to do it
+
+1. `formula.ts`: the tokens (numbers, texts, names, paths, operators), then a precedence-climbing
+   parser that builds frozen nodes, collects `paths` and counts depth; then the walker with its
+   reads, warnings and the checks of items 6, 9 and 10.
+2. `index.ts`: export it.
+3. `biome.json`: `eval` and `Function` in the engine's `deniedGlobals`.
+4. The tests of §7.
+
+Technical choices (ADR 002):
+- **Its own parser, not jsep.** SPEC §4.2 allows either. The language is small (§3 item 2); a
+  library would be the engine's first outside dependency (ENG-01's lint allows only
+  `@grimoire/schema`), and jsep's tree has nodes this language must refuse (members, arrays,
+  `this`, calls on any expression). The parser knows only what §3 lists.
+- **No code runs.** The tree is walked by a `switch` over six node kinds. A function is looked up
+  in a `Map` of the eight names, so `constructor` or `__proto__` is never found on an object's
+  prototype. Lint stops the engine from naming `eval` or `Function` at all.
+- **The limits.** 1,000 characters, about 20 times the longest formula SPEC gives (44
+  characters: `10 + @abilities.dex.mod + @abilities.con.mod`). Depth 32: each bracket, function
+  argument, unary operand, `?:` part, and an operator's right side opens a level, and the parser
+  stops before it goes deeper, so a hostile pack cannot exhaust the stack. A chain of one
+  operator (`1 + 1 + …`) is a loop, not a level. Raising either is one number in
+  `FORMULA_LIMITS`.
+- **A path is a computed path.** The text after `@` must pass `computedPathSchema` (ENG-04), the
+  same pattern an effect's target has; the parser does not repeat the pattern.
+- **Text and yes/no literals.** SPEC §5.6 names `@armor.group` and `@armor.worn`, a text and a
+  yes/no. Comparing them needs `'…'`, `true` and `false`. A text has no escapes and only single
+  quotes, which need no escaping inside JSON.
+- **Never a throw.** A formula that does not parse, a missing path, a value of a wrong kind, a
+  division by 0: each gives 0 (or false) and a warning with a `code` and its data, for the screen,
+  and an English `message`, for logs, as ENG-25 does. Missing is not broken (SPEC §8.2).
+- **`reads` and `paths` are both given.** `reads` (what this evaluation read) is SPEC §5.6's list
+  for the breakdown; `paths` (every path the text names) is what a cycle check (ENG-18) and the
+  base-phase check (SPEC §5.6) need, since a branch not taken today is taken tomorrow.
+- **Each path is read once per evaluation.** The result is the same even when the reader is
+  not, and a missing path warns once.
+- **`&&` and `||` give `true` or `false`,** not one of their operands as JavaScript does, so a
+  condition's value is always a yes/no.
+- **`round` takes a half up** (2.5 → 3, −2.5 → −2), as JavaScript's `Math.round`. No rule of
+  SPEC uses `round` yet; a rule that rounds otherwise uses `floor` or `ceil`.
+- **Parsing is separate from evaluating.** `compute()` can parse a formula once and evaluate it
+  many times; whether it keeps a cache is for the benchmark (ENG-23) to show.
+
+#### 5. Stored data
+
+Nothing stored changes. A formula is stored as text, as before (ENG-03); no schema, no
+`schemaVersion` and no Dexie table changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/formula.test.ts` — `describe('ENG-07 formulas evaluate safely')`: the
+  values of §3 items 2–4 and 9–11; missing and wrong values; `reads`, `paths`, branches not
+  taken, one call per path; every parse error of item 12 with its `code`, `at` and data; the
+  limits at their edges; frozen trees, equal results twice; the reader never called for a
+  formula that does not parse.
+- `packages/engine/test/purity.test.ts` — `describe('ENG-07 formulas never run code')`: lint
+  fails on `eval`, `new Function` and `Function` in the engine.
+- Control values from: the arithmetic of each formula, computed with `python3` (`math.floor`,
+  `math.ceil`, `min`, `max`; `math.floor(x + 0.5)` for a half going up), not by the new code; the
+  positions with Python's `str.index`; the lengths with `len`. Paths and values are made up; the
+  only formulas of a game are SPEC §5.3–§5.6's, and only parsed.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is used. The language comes from SPEC §5.6; the formulas parsed
+in §3 item 3 come from SPEC §5.3 and §5.4 and are not evaluated.
+
+#### 9. Not in this ticket
+
+- Dice in a formula (SPEC §5.6's roll formulas, `1d10 + @classes.fighter.level`, `2d20kh1`):
+  dice notation is ENG-08's. Here a dice term does not parse (`unexpected`).
+- What a path means and where its value comes from: `compute()` gives the reader (ENG-11,
+  ENG-12, ENG-28); the contextual `@score`, `@self.*`, `@item.*` are paths its reader answers.
+  Which entry a key path reads across rulesets (ADR 014 item 2): ENG-11.
+- The base-phase rule (a base formula reads only levels, class levels and choices): ENG-12 checks
+  a formula's `paths` against it.
+- A cycle between formulas and its message: ENG-18, from `paths` and `reads`.
+- Showing a formula's result in the breakdown: ENG-17.
+- Error texts a person reads, and the formula editor: phase 5.
+- A cache of parsed formulas: ENG-23's benchmark decides.
+
+#### 10. Rake check
+
+- **Formulas never run code.** No `eval`, no `new Function`: the tree is walked; lint now refuses
+  both names in the engine; functions are found in a `Map`, never on an object.
+- **Formulas have a length and a depth limit.** 1,000 characters, depth 32, checked while
+  parsing, before the stack can grow.
+- **A missing path gives `0` plus a warning, not an exception.** Every failure is a warning with a
+  value; `parseFormula` and the `evaluate…` functions never throw.
+- **`packages/engine` is pure TypeScript.** The new file imports only `@grimoire/schema`; ENG-01's
+  lint and typecheck run on it.
+- **The core names no game.** No stat, skill or path name is written in the code; the test's
+  paths are made up, and SPEC's game formulas are only parsed.
+- **`compute()` is pure.** The walker changes nothing it is given and reads each path once.
+- **Licensing.** Test data is made up; no SRD or book text.
+
+#### 11. What came out of it
+
+Measured:
+- `formula.test.ts` alone: `Tests 18 passed (18)`, 1.52 s.
+- Lint: `Checked 79 files`, 0 errors (77 before; 2 new files).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 16 passed (16)`, `Tests 151 passed (151)`, 3.43 s (before: 15 files, 132
+  tests, 2.76 s): 18 new in `formula.test.ts`, 1 new in `purity.test.ts`.
+- Build: `apps/web build: Done`.
+- The tests bite. Each guard removed on its own, `formula.test.ts` run (18 tests): the depth
+  limit, 1 fails; the length limit, 1; `?:` grouped to the right, 1; operators grouped to the
+  left, 3; the path checked by `computedPathSchema`, 1; functions found in a `Map` (an object in
+  its place), 1; nodes frozen, 1; each path read once, 2; the missing-path warning, 2; only values
+  accepted from the reader, 1; the finite check, 2; `-0` as `0`, 1; the warning for a text in
+  arithmetic, 2; `&&` and `||` giving a yes/no, 1; `&&` stopping early, 1; a branch not taken not
+  read, 2; a text and a number unequal, 1. The two `biome.json` lines removed: `purity.test.ts`
+  fails 1 of 5.
+- One test did not bite at first: with `?:` grouped to the left,
+  `@level > 10 ? 3 : @level > 4 ? 2 : 1` still gave 2, since both groupings give 2 there.
+  `@gear.worn ? 0 : 1 ? 2 : 3` was added: 0 grouped to the right, 3 to the left (`python3`).
+  With it, the change fails 1 test.
+- The never-throws test: its first form, 5,000 texts of random pieces, parsed 0 of them, so the
+  walker was never tried. It now builds 5,000 formulas from the language and damages every second
+  one by one piece put in or one character taken out. A first generator gave functions a random
+  number of values: 1,108 of its 2,500 whole formulas failed, every one with `argumentCount` and
+  no other code. With each function's own count, all 2,500 parse; 1,110 of the 2,500 damaged ones
+  parse and 1,390 do not. None throws, and every value is a finite number, a yes/no or a text,
+  through all three `evaluate…` functions.
+
+Differences from §3:
+- Item 12: a blank text (`'   '`) fails at its end, 3, not at 0. The parser reports where a value
+  was expected, which for a blank text is its end. An empty text fails at 0.
+- Item 12 gained three cases: `1.` and `.5` (`unexpected` `.` at 1 and at 0) and `floor + 1`
+  (`unexpected` `+` at 6: a function's name needs its bracket).
+- Item 2 gained `@gear.worn ? 0 : 1 ? 2 : 3`, which is 0 (above).
+
+Against the row: as the row says. Beyond it, the parsed formula's `paths` (every path its text
+names, for ENG-12 and ENG-18), and the lint check on `eval` and `Function` in the engine.
+
+Found, not fixed:
+- A roll formula (SPEC §5.6) mixes dice with formula terms: `1d10 + @classes.fighter.level`. This
+  parser refuses a dice term (`unexpected`). Noted on ENG-08 in `BACKLOG.md`.
+- SPEC §5.6's base-phase rule (a base formula reads only levels, class levels and choices) needs
+  a check against a formula's `paths`. No row names it. Noted on ENG-12 in `BACKLOG.md`.
+- A pack's formulas are only text to the schema (ENG-03), and the schema package cannot import
+  the engine. A formula past the limits, or one that does not parse, loads and is found only when
+  it is evaluated, as a warning. ADR 003 item A6 puts the limits in the import checks. Noted on
+  phase 5 in `BACKLOG.md`.
+
+Nothing for the changelog.

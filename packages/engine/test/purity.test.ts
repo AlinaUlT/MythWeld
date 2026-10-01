@@ -116,3 +116,22 @@ export const top = Math.max(1, 2);
     expect(result.lines).toEqual([1, 2, 3, 4, 5]);
   });
 });
+
+describe('ENG-07 formulas never run code', () => {
+  it('fails lint on eval and Function in the engine', () => {
+    const { output } = run(
+      'biome',
+      ['lint', '--vcs-enabled=false', '--max-diagnostics=50', 'packages/engine/src/Sample.ts'],
+      `export const a = eval('1');
+export const b = new Function('return 1');
+export const c = Function('return 1');
+export const d = Math.max(1, 2);
+`,
+    );
+    // eval (1), new Function (2), Function called (3); line 4 is plain ES2022.
+    expect(linesOf(output, /Sample\.ts:(\d+):\d+ lint\/style\/noRestrictedGlobals/g)).toEqual([
+      1, 2, 3,
+    ]);
+    expect(output.match(/ENG-07: formulas never run code/g)).toHaveLength(3);
+  });
+});
