@@ -70,7 +70,7 @@ split off an old row got a new id.
 | ENG-25 | Packs are checked as they load into the content index | S | ✅ 2026-10-01 |
 | **Core** | **formulas, dice** | | |
 | ENG-07 | Formulas evaluate safely, returning the paths they read | M | ✅ 2026-10-01 |
-| ENG-08 | Dice notation is rolled, in `d` or `к` | S | 🔲 |
+| ENG-08 | Dice notation is rolled, in `d` or `к` | S | ✅ 2026-10-01 |
 | ENG-26 | A roll result has the shape the table link will send | XS | 🔲 |
 | **Core** | **compute, tested on the made-up system** | | |
 | ENG-27 | The made-up test system exists as core test data | S | 🔲 |
@@ -102,9 +102,6 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-08** — ADR 014 item 11: faces 2–1000, 1–999 dice per term, a fairness test. Found by
-  ENG-07: SPEC §5.6's roll formulas mix dice with formula terms (`1d10 + @classes.fighter.level`,
-  `2d20kh1`); ENG-07's parser refuses a dice term (`unexpected`), so nothing reads them yet.
 - **ENG-26** — ADR 005 item 5.6: who rolled, what for, the dice, the result, the breakdown; public,
   secret to the DM, or hidden by the DM. Only the shape; sending it belongs to the table-link
   phase. ADR 014 item 12: the person's own roll modifiers, labelled.
@@ -152,6 +149,10 @@ split off an old row got a new id.
 - **ENG-13 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true. The
   full goldens A–D are green by ENG-19.
 - **ENG-16** — ADR 014 item 6: a spell's current dice for the character's level, with a breakdown.
+  Found by ENG-08: SPEC §5.6 shows a roll formula with its average, and no function gives it; a
+  term that keeps some dice has no simple average (`2d20kh1`'s is 13.825). A count of dice that
+  grows with level is not notation: a term's count is digits, so the dice are written from the
+  computed count.
 - **ENG-20** — ADR 014 item 7: casting with "use a slot: no".
 - **ENG-19** — ability increase source, subclass level, multiclass rounding, exhaustion, rests,
   inspiration (SPEC §6.3 table). Golden C and golden D close here. ADR 014 item 8: inspiration's
@@ -192,10 +193,15 @@ split off an old row got a new id.
 - **Phase 5** — found by ENG-07: a pack's formulas are only text to the schema, which cannot
   import the engine, so a formula past ENG-07's limits, or one that does not parse, loads and
   warns only when it is evaluated. The import checks (ADR 003 item A6) parse each formula with
-  `parseFormula`.
+  `parseFormula`. Found by ENG-08: a roll formula with `parseRoll`, since `parseFormula` refuses
+  dice.
 - **Phases 2, 4** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
   §8.2: a warning, never a block). The row is cut with the first phase that lets a person pick an
   entity with prerequisites.
+- **Phase 2** — found by ENG-08: the engine has no random source of its own (lint refuses
+  `Math.random` in it). The dice panel passes `fairDie(randomSourceOf((a) =>
+  crypto.getRandomValues(a)))` to `rollFormula`; "I roll myself" (SPEC §6.5) passes the faces
+  the person typed as the die.
 - **Phase 2** — found by ENG-25: a character's active pack that is not installed on the device
   never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
   on each of its entries.

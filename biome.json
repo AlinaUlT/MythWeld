@@ -63,6 +63,7 @@
     },
     {
       "includes": ["packages/engine/src/**"],
+      "plugins": ["./biome/no-math-random.grit"],
       "linter": {
         "rules": {
           "style": {

@@ -342,7 +342,7 @@ describe('ENG-07 formulas evaluate safely', () => {
       ['2 # 3', { code: 'unexpected', found: '#', at: 2 }],
       ['@level = 5', { code: 'unexpected', found: '=', at: 7 }],
       ['@level & 1', { code: 'unexpected', found: '&', at: 7 }],
-      ['1d10 + 2', { code: 'unexpected', found: 'd10', at: 1 }],
+      ['1d10 + 2', { code: 'diceNotAllowed', term: '1d10', at: 0 }],
       ['', { code: 'unexpected', found: '', at: 0 }],
       ['   ', { code: 'unexpected', found: '', at: 3 }],
       ["'open", { code: 'unexpected', found: '', at: 5 }],

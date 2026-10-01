@@ -135,3 +135,20 @@ export const d = Math.max(1, 2);
     expect(output.match(/ENG-07: formulas never run code/g)).toHaveLength(3);
   });
 });
+
+describe('ENG-08 the engine has no randomness of its own', () => {
+  it('fails lint on Math.random in the engine', () => {
+    const { status, output } = run(
+      'biome',
+      ['lint', '--vcs-enabled=false', '--max-diagnostics=50', 'packages/engine/src/Sample.ts'],
+      `export const a = Math.random();
+export const b = Math.random;
+export const c = Math.max(1, 2);
+`,
+    );
+    expect(status).toBe(1);
+    // Math.random called (1), Math.random taken (2); line 3 is plain ES2022.
+    expect(linesOf(output, /Sample\.ts:(\d+):\d+ plugin/g)).toEqual([1, 2]);
+    expect(output.match(/ENG-08: the engine has no randomness of its own/g)).toHaveLength(2);
+  });
+});

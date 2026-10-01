@@ -1,0 +1,7 @@
+// ENG-08: the engine has no randomness of its own. A roll takes its numbers from the source the
+// caller passes in, which in the app is the platform's secure one (ADR 014 item 11).
+language js
+
+`Math.random` as $use where {
+  register_diagnostic(span=$use, message="ENG-08: the engine has no randomness of its own. Dice take a RandomSource as an argument; the app passes crypto.getRandomValues.")
+}

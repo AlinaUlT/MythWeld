@@ -1,4 +1,5 @@
 import { computedPathSchema } from '@grimoire/schema';
+import { DICE_LIMITS, type DiceTerm, type DieSource, rollDice } from './dice';
 
 // ENG-07: a formula is parsed into a frozen tree, and the tree is walked; no code ever runs (SPEC
 // §5.6). The parser stops at a length and a depth limit, so a pack's formula cannot exhaust the
@@ -15,41 +16,62 @@ export type FormulaValue = number | boolean | string;
 type UnaryOp = '-' | '+' | '!';
 type BinaryOp = '||' | '&&' | '==' | '!=' | '<' | '<=' | '>' | '>=' | '+' | '-' | '*' | '/';
 
-/** One part of a parsed formula. `at` is where it starts in the text, from 0. */
-export type FormulaNode =
+/** A dice term of a roll formula; `text` is the term as written, such as `2к6`. */
+export interface DiceNode extends DiceTerm {
+  readonly kind: 'dice';
+  readonly at: number;
+  readonly text: string;
+}
+
+/** The parts of a tree whose leaves may also be `D`. */
+type NodeOf<D> =
   | { readonly kind: 'literal'; readonly at: number; readonly value: FormulaValue }
   | { readonly kind: 'path'; readonly at: number; readonly path: string }
   | {
       readonly kind: 'unary';
       readonly at: number;
       readonly op: UnaryOp;
-      readonly operand: FormulaNode;
+      readonly operand: NodeOf<D>;
     }
   | {
       readonly kind: 'binary';
       readonly at: number;
       readonly op: BinaryOp;
-      readonly left: FormulaNode;
-      readonly right: FormulaNode;
+      readonly left: NodeOf<D>;
+      readonly right: NodeOf<D>;
     }
   | {
       readonly kind: 'choice';
       readonly at: number;
-      readonly test: FormulaNode;
-      readonly then: FormulaNode;
-      readonly otherwise: FormulaNode;
+      readonly test: NodeOf<D>;
+      readonly then: NodeOf<D>;
+      readonly otherwise: NodeOf<D>;
     }
   | {
       readonly kind: 'call';
       readonly at: number;
       readonly name: string;
-      readonly args: readonly FormulaNode[];
-    };
+      readonly args: readonly NodeOf<D>[];
+    }
+  | D;
+
+/** One part of a parsed formula. `at` is where it starts in the text, from 0. */
+export type FormulaNode = NodeOf<never>;
+
+/** One part of a parsed roll formula: a part of a formula, or a dice term. */
+export type RollNode = NodeOf<DiceNode>;
 
 /** A formula that parsed: its text, its tree, and every path the text names, in order. */
 export interface ParsedFormula {
   readonly text: string;
   readonly root: FormulaNode;
+  readonly paths: readonly string[];
+}
+
+/** A roll formula that parsed. A plain formula is one too: it has no dice. */
+export interface ParsedRoll {
+  readonly text: string;
+  readonly root: RollNode;
   readonly paths: readonly string[];
 }
 
@@ -61,6 +83,14 @@ export type FormulaError = { at: number; message: string } & (
   | { code: 'badPath'; path: string }
   | { code: 'tooLong'; length: number; limit: number }
   | { code: 'tooDeep'; limit: number }
+  | { code: 'diceNotAllowed'; term: string }
+  | {
+      code: 'diceCount' | 'diceFaces' | 'diceKeep';
+      term: string;
+      found: number;
+      min: number;
+      max: number;
+    }
 );
 
 /** Something an evaluation met: a parse error, or a value it had to replace. */
@@ -71,6 +101,7 @@ export type FormulaWarning =
       | { code: 'notAValue'; path: string }
       | { code: 'wrongType'; at: number }
       | { code: 'notFinite'; at: number }
+      | { code: 'badFace'; at: number; term: string; count: number }
     ));
 
 /** A path's value, given the path without `@`; `undefined` when the path is missing. */
@@ -83,7 +114,23 @@ export interface FormulaResult<V extends FormulaValue> {
   warnings: readonly FormulaWarning[];
 }
 
-export type ParseResult = { ok: true; formula: ParsedFormula } | { ok: false; error: FormulaError };
+export type ParseResult<F = ParsedFormula> =
+  | { ok: true; formula: F }
+  | { ok: false; error: FormulaError };
+
+/** A dice term as rolled: the term, each die's face in the order rolled, which were kept, the sum. */
+export interface DiceRoll extends DiceTerm {
+  at: number;
+  text: string;
+  results: readonly number[];
+  kept: readonly boolean[];
+  total: number;
+}
+
+/** A roll formula's number, the paths read, what it met, and each dice term it rolled, in order. */
+export interface RollResult extends FormulaResult<number> {
+  dice: readonly DiceRoll[];
+}
 
 // --- The functions -------------------------------------------------------------------------------
 
@@ -116,7 +163,7 @@ const IF_ARITY: Arity = { min: 3, max: 3 };
 
 // --- Tokens --------------------------------------------------------------------------------------
 
-type TokenKind = 'number' | 'text' | 'name' | 'path' | 'op' | 'end';
+type TokenKind = 'number' | 'text' | 'name' | 'path' | 'dice' | 'op' | 'end';
 
 interface Token {
   kind: TokenKind;
@@ -140,6 +187,9 @@ const NAME_START = /[A-Za-z_]/;
 const NAME_PART = /[A-Za-z0-9_]/;
 const PATH_PART = /[A-Za-z0-9_.]/;
 const SPACE = /\s/;
+// A dice term: a count (1 when none), `d` or `к`, the faces, and `kh` or `kl` with a count (1 when
+// none). Letters in either case. Sticky, so it matches only where a token starts.
+const DICE = /([0-9]*)[dк]([0-9]+)(?:k([hl])([0-9]*))?/iy;
 
 function unexpected(found: string, at: number): Refusal {
   const what = found === '' ? 'the end of the formula' : `"${found}"`;
@@ -164,7 +214,12 @@ function tokensOf(text: string): Token[] {
     }
     let length: number;
     let kind: TokenKind;
-    if (DIGIT.test(char)) {
+    DICE.lastIndex = at;
+    const dice = DICE.exec(text);
+    if (dice !== null) {
+      kind = 'dice';
+      length = dice[0].length;
+    } else if (DIGIT.test(char)) {
       kind = 'number';
       length = runOf(text, at, DIGIT);
       if (text[at + length] === '.' && DIGIT.test(text[at + length + 1] ?? '')) {
@@ -218,7 +273,7 @@ const BINARY: ReadonlyMap<string, number> = new Map([
   ['/', 7],
 ]);
 
-function frozen<N extends FormulaNode>(node: N): N {
+function frozen<N extends RollNode>(node: N): N {
   return Object.freeze(node);
 }
 
@@ -227,9 +282,12 @@ class Parser {
   readonly paths = new Set<string>();
 
   private readonly tokens: readonly Token[];
+  /** Whether dice terms are allowed: in a roll formula only. */
+  private readonly rolls: boolean;
 
-  constructor(tokens: readonly Token[]) {
+  constructor(tokens: readonly Token[], rolls: boolean) {
     this.tokens = tokens;
+    this.rolls = rolls;
   }
 
   private peek(): Token {
@@ -266,14 +324,14 @@ class Parser {
     return depth + 1;
   }
 
-  whole(): FormulaNode {
+  whole(): RollNode {
     const root = this.expression(0, 0);
     const rest = this.peek();
     if (rest.kind !== 'end') throw unexpected(rest.text, rest.at);
     return root;
   }
 
-  private expression(weakest: number, depth: number): FormulaNode {
+  private expression(weakest: number, depth: number): RollNode {
     let left = this.prefix(depth);
     for (;;) {
       const token = this.peek();
@@ -295,7 +353,7 @@ class Parser {
     }
   }
 
-  private prefix(depth: number): FormulaNode {
+  private prefix(depth: number): RollNode {
     const token = this.take();
     switch (token.kind) {
       case 'number':
@@ -304,6 +362,8 @@ class Parser {
         return frozen({ kind: 'literal', at: token.at, value: token.text.slice(1, -1) });
       case 'path':
         return this.path(token);
+      case 'dice':
+        return this.dice(token);
       case 'name':
         return this.name(token, depth);
       case 'op':
@@ -322,7 +382,7 @@ class Parser {
     }
   }
 
-  private path(token: Token): FormulaNode {
+  private path(token: Token): RollNode {
     const path = token.text.slice(1);
     if (!computedPathSchema.safeParse(path).success) {
       throw new Refusal({
@@ -336,7 +396,7 @@ class Parser {
     return frozen({ kind: 'path', at: token.at, path });
   }
 
-  private name(token: Token, depth: number): FormulaNode {
+  private name(token: Token, depth: number): RollNode {
     const name = token.text;
     if (name === 'true' || name === 'false') {
       return frozen({ kind: 'literal', at: token.at, value: name === 'true' });
@@ -353,7 +413,7 @@ class Parser {
     }
     this.expect('(');
     const inner = this.deeper(depth, token.at);
-    const args: FormulaNode[] = [];
+    const args: RollNode[] = [];
     if (!this.isOp(')')) {
       args.push(this.expression(0, inner));
       while (this.isOp(',')) {
@@ -375,15 +435,74 @@ class Parser {
       });
     }
     if (name === IF) {
-      const [test, then, otherwise] = args as [FormulaNode, FormulaNode, FormulaNode];
+      const [test, then, otherwise] = args as [RollNode, RollNode, RollNode];
       return frozen({ kind: 'choice', at: token.at, test, then, otherwise });
     }
     return frozen({ kind: 'call', at: token.at, name, args: Object.freeze(args) });
   }
+
+  private dice(token: Token): DiceNode {
+    const { text: term, at } = token;
+    if (!this.rolls) {
+      throw new Refusal({
+        code: 'diceNotAllowed',
+        term,
+        at,
+        message: `"${term}" at ${at} is a dice term; dice are allowed only in a roll formula.`,
+      });
+    }
+    DICE.lastIndex = 0;
+    const [, counted, sided, which, kept] = DICE.exec(term) as RegExpExecArray;
+    const count = counted === '' ? 1 : Number(counted);
+    const faces = Number(sided);
+    const outside = (found: number, { min, max }: { min: number; max: number }) =>
+      found < min || found > max;
+    if (outside(count, DICE_LIMITS.count)) {
+      const { min, max } = DICE_LIMITS.count;
+      throw new Refusal({
+        code: 'diceCount',
+        term,
+        found: count,
+        min,
+        max,
+        at,
+        message: `"${term}" at ${at} rolls ${count} dice; a term rolls ${min} to ${max}.`,
+      });
+    }
+    if (outside(faces, DICE_LIMITS.faces)) {
+      const { min, max } = DICE_LIMITS.faces;
+      throw new Refusal({
+        code: 'diceFaces',
+        term,
+        found: faces,
+        min,
+        max,
+        at,
+        message: `"${term}" at ${at} has dice of ${faces} faces; a die has ${min} to ${max}.`,
+      });
+    }
+    if (which === undefined) return frozen({ kind: 'dice', at, text: term, count, faces });
+    const keeps = kept === '' ? 1 : Number(kept);
+    if (outside(keeps, { min: 1, max: count })) {
+      throw new Refusal({
+        code: 'diceKeep',
+        term,
+        found: keeps,
+        min: 1,
+        max: count,
+        at,
+        message: `"${term}" at ${at} keeps ${keeps} of ${count} dice; it keeps 1 to ${count}.`,
+      });
+    }
+    const keep = Object.freeze({
+      which: which.toLowerCase() === 'h' ? ('highest' as const) : ('lowest' as const),
+      count: keeps,
+    });
+    return frozen({ kind: 'dice', at, text: term, count, faces, keep });
+  }
 }
 
-/** Parses a formula, or says why it does not parse. Never throws. */
-export function parseFormula(text: string): ParseResult {
+function parse(text: string, rolls: boolean): ParseResult<ParsedRoll> {
   const limit = FORMULA_LIMITS.length;
   if (text.length > limit) {
     return {
@@ -398,7 +517,7 @@ export function parseFormula(text: string): ParseResult {
     };
   }
   try {
-    const parser = new Parser(tokensOf(text));
+    const parser = new Parser(tokensOf(text), rolls);
     const root = parser.whole();
     const paths = Object.freeze([...parser.paths]);
     return { ok: true, formula: Object.freeze({ text, root, paths }) };
@@ -406,6 +525,17 @@ export function parseFormula(text: string): ParseResult {
     if (thrown instanceof Refusal) return { ok: false, error: thrown.error };
     throw thrown;
   }
+}
+
+/** Parses a formula, or says why it does not parse. A dice term is refused. Never throws. */
+export function parseFormula(text: string): ParseResult {
+  // Dice are refused here, so the tree has none.
+  return parse(text, false) as ParseResult;
+}
+
+/** Parses a roll formula: a formula whose values may also be dice terms (SPEC §5.6). */
+export function parseRoll(text: string): ParseResult<ParsedRoll> {
+  return parse(text, true);
 }
 
 // --- The walker ----------------------------------------------------------------------------------
@@ -440,9 +570,11 @@ class Walk {
   readonly warnings: FormulaWarning[] = [];
 
   private readonly read: FormulaReader;
+  private readonly dice: (node: DiceNode) => number;
 
-  constructor(read: FormulaReader) {
+  constructor(read: FormulaReader, dice: (node: DiceNode) => number) {
     this.read = read;
+    this.dice = dice;
   }
 
   get reads(): string[] {
@@ -485,11 +617,11 @@ class Walk {
     return value;
   }
 
-  private numberAt(node: FormulaNode): number {
+  private numberAt(node: RollNode): number {
     return this.number(this.value(node), node.at);
   }
 
-  value(node: FormulaNode): FormulaValue {
+  value(node: RollNode): FormulaValue {
     switch (node.kind) {
       case 'literal':
         return typeof node.value === 'number' ? this.finite(node.value, node.at) : node.value;
@@ -509,10 +641,12 @@ class Walk {
       }
       case 'binary':
         return this.binary(node.op, node.left, node.right, node.at);
+      case 'dice':
+        return this.dice(node);
     }
   }
 
-  private binary(op: BinaryOp, left: FormulaNode, right: FormulaNode, at: number): FormulaValue {
+  private binary(op: BinaryOp, left: RollNode, right: RollNode, at: number): FormulaValue {
     switch (op) {
       case '&&':
         return truthOf(this.value(left)) && truthOf(this.value(right));
@@ -552,6 +686,9 @@ function sameValue(a: FormulaValue, b: FormulaValue): boolean {
   return Number(a) === Number(b);
 }
 
+// Never called: `parseFormula` refuses dice, and a `ParsedFormula`'s type has none.
+const NO_DICE = (): number => 0;
+
 /**
  * Evaluates a formula against `read`. Never throws: a formula that does not parse gives 0 with
  * its error as the one warning, and the reader is not called.
@@ -563,7 +700,7 @@ export function evaluateFormula(
   const parsed =
     typeof formula === 'string' ? parseFormula(formula) : { ok: true as const, formula };
   if (!parsed.ok) return { value: 0, reads: [], warnings: [parsed.error] };
-  const walk = new Walk(read);
+  const walk = new Walk(read, NO_DICE);
   const value = walk.value(parsed.formula.root);
   return { value, reads: walk.reads, warnings: walk.warnings };
 }
@@ -585,4 +722,37 @@ export function evaluateCondition(
 ): FormulaResult<boolean> {
   const result = evaluateFormula(formula, read);
   return { ...result, value: truthOf(result.value) };
+}
+
+/**
+ * Rolls a roll formula: evaluates it to a number as `evaluateNumber` does, rolling each dice term
+ * it reaches with `die`; a term in a branch not taken is not rolled. A face that is not one counts
+ * as 0, with a warning. Never throws: a formula that does not parse gives 0 with its error as the
+ * one warning, and neither the reader nor the die is called.
+ */
+export function rollFormula(
+  formula: string | ParsedRoll,
+  read: FormulaReader,
+  die: DieSource,
+): RollResult {
+  const parsed = typeof formula === 'string' ? parseRoll(formula) : { ok: true as const, formula };
+  if (!parsed.ok) return { value: 0, reads: [], warnings: [parsed.error], dice: [] };
+  const dice: DiceRoll[] = [];
+  const walk: Walk = new Walk(read, (node) => {
+    const { results, kept, total, badFaces } = rollDice(node, die);
+    const { at, text, count, faces, keep } = node;
+    if (badFaces > 0) {
+      walk.warnings.push({
+        code: 'badFace',
+        at,
+        term: text,
+        count: badFaces,
+        message: `${badFaces} of the dice of "${text}" at ${at} gave no face from 1 to ${faces}; 0 is used for each.`,
+      });
+    }
+    dice.push({ at, text, count, faces, ...(keep && { keep }), results, kept, total });
+    return total;
+  });
+  const value = walk.number(walk.value(parsed.formula.root), 0);
+  return { value, reads: walk.reads, warnings: walk.warnings, dice };
 }

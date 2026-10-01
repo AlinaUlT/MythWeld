@@ -1960,3 +1960,252 @@ Found, not fixed:
   phase 5 in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-08 Dice
+
+**Hat:** Dice notation is rolled, in `d` or `к`
+**Depends on:** ENG-07 (`parseFormula`, the formula language and its walker)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.6 (roll formulas), §6.5 (`d` and `к`), §4.2 (the dice row); ADR 014 item 11
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/dice.ts` — new. `DICE_LIMITS`; the random source a caller
+passes in (`RandomSource`, `randomSourceOf`); a die drawn from it without bias (`DieSource`,
+`fairDie`); one term rolled, with what it keeps (`rollDice`).
+- `packages/engine/src/formula.ts` — changes: a dice term is a token and a node of the formula
+  language; `parseRoll` parses a roll formula; `rollFormula` walks one, rolling each term it
+  reaches; `parseFormula` refuses a dice term with its own code.
+- `packages/engine/src/index.ts` — changes: exports `dice.ts`.
+- `biome/no-math-random.grit` — new: `Math.random` in the engine fails lint.
+- `biome.json` — changes: the engine's override runs that plugin.
+- `packages/engine/test/dice.test.ts` — new.
+- `packages/engine/test/purity.test.ts` — changes: a `describe` for `Math.random`.
+- `packages/engine/test/formula.test.ts` — changes: one line, `1d10 + 2` now refused as dice.
+
+#### 2. What is missing now
+
+- `git grep -n -i "dice\|roll" packages/engine/src` finds one line, the comment at the top of
+  `index.ts`. Nothing parses or rolls a dice term.
+- Measured with `parseFormula` on the SPEC's roll formulas:
+  `1d10 + @classes.fighter.level` → `unexpected` `d10` at 1; `2d20kh1` → `unexpected` `d20kh1`
+  at 1; `2к6+3` → `unexpected` `к` at 1; `d20` → `unknownName` `d20` at 0.
+- The engine can name `Math.random` with no lint error; `crypto` is not in its types
+  (`lib: ["ES2022"]`, `types: []`), and `globalThis` is refused (ENG-01).
+- `pnpm test`: `Test Files 16 passed (16)`, `Tests 151 passed (151)`, 2.64 s.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/engine` exports `DICE_LIMITS`, `randomSourceOf`, `fairDie`, `rollDice`,
+   `parseRoll`, `rollFormula`, and the types `RandomSource`, `DieSource`, `DiceTerm`, `DiceKeep`,
+   `RolledDice`, `DiceNode`, `RollNode`, `ParsedRoll`, `DiceRoll`, `RollResult`.
+2. A dice term is `[count]d<faces>[kh[n] | kl[n]]`. The letter is `d` or `к` (SPEC §6.5):
+   `2к6+3` rolls as `2d6+3`. No count means 1 (`d20`, `к8`). `kh` keeps the highest `n` dice,
+   `kl` the lowest; no `n` means 1. Letters are read in either case (`2D6`, `2К6`, `4d6KH3`).
+3. `parseRoll` accepts the formula language of ENG-07 with dice terms as values:
+   `1d10 + @classes.fighter.level` (paths `['classes.fighter.level']`), `2d20kh1`,
+   `-1d4`, `max(1, 1d4 - 3)`, `(2d6) * 2`, `@gear.worn ? 1d6 : 1d8`.
+4. Limits, `DICE_LIMITS` = `{ count: { min: 1, max: 999 }, faces: { min: 2, max: 1000 } }`.
+   `999d6`, `1d2`, `1d1000`, `37d6`, `3d7` parse. Refused, never thrown, each with `at` (the
+   term's start), `term` (its text) and an English message:
+   - `diceCount` with `found`, `min`, `max`: `0d6`, `1000d6`;
+   - `diceFaces` with `found`, `min`, `max`: `1d1`, `1d0`, `1d1001`;
+   - `diceKeep` with `found`, `min` 1, `max` the dice rolled: `2d20kh3`, `2d20kh0`, `2d20kl3`.
+5. `parseFormula` refuses a dice term with `diceNotAllowed` and `term`, before any limit:
+   `1d10 + 2` at 0, `2 + к6` at 4, `0d6` at 0. Text that is no dice term keeps ENG-07's errors:
+   `2d` (`unexpected` `d` at 1), `2к` (`unexpected` `к` at 1), `d` (`unknownName`).
+6. `rollFormula(formula, read, die)` takes the text or a `ParsedRoll`, the reader of ENG-07 and a
+   die source, a function from a number of faces to a face. It returns `{ value, reads,
+   warnings, dice }` and never throws. `value` is a number (a yes/no as 1 or 0). With a die that
+   gives 4 then 5, `2d6 + 3` is 12 and `dice` is `[{ at: 0, text: '2d6', count: 2, faces: 6,
+   results: [4, 5], kept: [true, true], total: 9 }]`.
+7. `kh` and `kl` keep by value; between equal dice the earlier one is kept. `2d20kh1` with 7
+   and 15 is 15, `kept` `[false, true]`; `2d20kl1` is 7; `2d20kh1` with 9 and 9 keeps the
+   first; `4d6kh3` with 3, 4, 1, 1 is 8, `kept` `[true, true, true, false]`.
+8. A term in a branch not taken is not rolled, as a path is not read:
+   `@gear.worn ? 1d6 : 1d8` asks the die once, for 6 faces; `0 && 1d6` asks it never.
+9. A face that is not a whole number from 1 to the die's faces (`7` or `0` on a d6, `2.5`,
+   `NaN`) counts as 0, with one `badFace` warning for the term naming how many dice gave none.
+10. A roll formula that does not parse gives `0`, `reads` `[]`, `dice` `[]`, the parse error as
+    its one warning, and never calls the reader or the die.
+11. `fairDie(random)` draws a whole number below 2^32 and keeps it only below the largest
+    multiple of the faces that fits, so every face has exactly as many numbers (python3):
+    3 faces keep below 4,294,967,295; 6 and 7 faces below 4,294,967,292; 20 below
+    4,294,967,280; 1000 below 4,294,967,000; 2 faces keep every number. A number at or above
+    the line, or one that is not a whole number from 0 to 2^32 − 1, is drawn again; after 16
+    such draws in a row the die gives 0, so the roll warns (item 9) and never hangs.
+12. `randomSourceOf(fill)` serves the numbers `fill` writes into a `Uint32Array`, in order, 256
+    at a time: the app passes `(a) => crypto.getRandomValues(a)`.
+13. A statistical test proves every face equally likely: `fairDie` over Node's
+    `crypto.getRandomValues` through `randomSourceOf`, chi-square against the uniform count,
+    below the threshold where p = 10⁻⁹ (scipy `chi2.ppf`, cut to two decimals): d2 37.32,
+    d6 50.69, d7 53.34, d20 81.55, d1000 1290.82. The same test, run on a die with a remainder
+    bias (an 8-bit number modulo 100), fails it: d100's threshold 207.89.
+14. A parsed roll formula, its tree and its `paths` are frozen. The same formula, reader and
+    die faces give equal results twice.
+15. In `packages/engine/src`, `Math.random` fails lint with the message `ENG-08: …`.
+16. The quality gate is green.
+
+#### 4. How to do it
+
+1. `dice.ts`: `DICE_LIMITS`; `RandomSource`, `randomSourceOf`; `DieSource`, `fairDie`;
+   `DiceTerm`, `DiceKeep`, `rollDice(term, die)` giving `{ results, kept, total, badFaces }`.
+2. `formula.ts`: the node types become generic over a dice node (`FormulaNode` has none,
+   `RollNode` has `DiceNode`); the tokenizer reads a dice term before a number or a name; the
+   parser takes a mode: plain refuses a term, roll checks it against `DICE_LIMITS`.
+   `parseRoll`; the walker takes a dice handler; `rollFormula` rolls through it and records each
+   term; `badFace` joins `FormulaWarning`.
+3. `index.ts`: export `dice.ts`.
+4. `biome/no-math-random.grit` and the engine override in `biome.json`.
+5. The tests of §7; ENG-07's `1d10 + 2` line takes the new code.
+
+Technical choices (ADR 002):
+- **Its own dice, on ENG-07's parser, not `@dice-roller/rpg-dice-roller`.** SPEC §4.2 names that
+  library; this departs from the letter and keeps the intent (dice in the formulas, a fair roll).
+  Measured with `npm view` and its package 5.5.1: it depends on `mathjs` (14.9.1, 9,307,013
+  bytes unpacked) and `random-js`; its default engine is `nativeMath`, `Math.random()`; its own
+  arithmetic goes through `mathjs`'s `evaluate`. Its notation has no `@paths`, no `?:`, no `&&`,
+  so SPEC §5.6's `1d10 + @classes.fighter.level` would need the paths written into the text
+  first, losing `reads`, and `@gear.worn ? 1d6 : 1d8` could not be written at all. ENG-01's lint
+  lets the engine import only `@grimoire/schema`. A dice term is a small addition to a parser
+  that already knows the rest.
+- **The random source is passed in.** The engine cannot see `crypto` and must not reach the
+  environment (ENG-01), so the caller gives the numbers: the app, `crypto.getRandomValues`
+  (ADR 014 item 11); a test, Node's same function or a script. Lint refuses `Math.random` in the
+  engine, so no roll can fall back to it.
+- **A die source between the numbers and the roll.** `rollFormula` asks a `DieSource` for each
+  face; `fairDie` makes one from the random numbers. A test scripts exact faces, and SPEC §6.5's
+  "I roll myself" mode (phase 2) can give the faces a person typed.
+- **No remainder bias:** rejection, as in item 11. The worst die is d997: 966 of 2^32 numbers
+  are drawn again, p ≈ 2.25 × 10⁻⁷ per draw; 16 such draws in a row with a working source have
+  p ≈ 4.3 × 10⁻¹⁰⁷ (python3). The cap is there for a broken source, which must never hang a
+  roll; its 0 shows as a warning, not as a silent face.
+- **A bad face is 0 with a warning,** as a missing path is (SPEC §8.2): the roll still has a
+  value, and the screen can say what went wrong.
+- **The term is checked while parsing,** so a limit is a parse error with its place, like the
+  length and depth limits of ENG-07. Raising a limit is one number in `DICE_LIMITS`.
+- **Its own error code in a plain formula.** `diceNotAllowed` says what is wrong where ENG-07's
+  `unexpected` `d10` did not. This changes one line of ENG-07's test.
+- **Types keep the two kinds apart.** A `ParsedFormula` can be rolled (it has no dice); a
+  `ParsedRoll` cannot be given to `evaluateFormula`, so no screen evaluates dice by mistake.
+- **Letters in either case; `kh` and `kl` only.** SPEC §5.6 names `kh`; `kl` is its mirror.
+  Drop, reroll and exploding dice are left until a ticket needs them.
+- **The term's text is kept as written** (`2к6`); the screen writes `d` or `к` by language from
+  `count` and `faces`, through an i18n key.
+- **256 numbers per `fill`.** One call per die would cost a call into the platform per face; 256
+  × 4 bytes is far under `getRandomValues`'s 65,536-byte limit.
+
+#### 5. Stored data
+
+Nothing stored changes. A roll formula is stored as text, as any formula (ENG-03); no schema, no
+`schemaVersion` and no Dexie table changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/dice.test.ts`:
+  - `describe('ENG-08 dice notation is rolled')`: the notation of §3 items 2–5 with every error's
+    `code`, `at` and data; the rolls of items 6–10 with a scripted die; frozen trees, equal
+    results twice; a `@ts-expect-error` line showing a `ParsedRoll` refused by
+    `evaluateFormula`; a seeded run of 2,000 roll formulas, half damaged, that never throws.
+  - `describe('ENG-08 every face is equally likely')`: the lines of item 11 with scripted
+    numbers; `randomSourceOf` in order across a refill; the chi-square test of item 13.
+- `packages/engine/test/purity.test.ts` — `describe('ENG-08 the engine has no randomness of its
+  own')`: lint fails on `Math.random` in the engine.
+- Control values from: python3 (`2**32 % faces`, the arithmetic of each roll, positions with
+  `str.index`), scipy 1.17.1 `chi2.ppf(1 - 1e-9, df)` for the thresholds; never from the new
+  code. Paths and values are made up.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is used. The notation is SPEC §5.6's (`1d10 + …`, `2d20kh1`) and
+§6.5's (`d` and `к`); the limits and the fairness are ADR 014 item 11's. What advantage or a
+critical hit does with dice is fifth edition's (ENG-34).
+
+#### 9. Not in this ticket
+
+- Advantage, disadvantage, critical dice: ENG-34, which can write `2d20kh1` and double a term's
+  dice in the tree.
+- The roll result the table link sends (who rolled, what for, public or secret, the person's own
+  modifiers): ENG-26, built on `RollResult`.
+- The average SPEC §5.6 shows next to a roll formula, and a count of dice that grows with level
+  (`ceil(@level / 2)d6`): noted on ENG-16, the first ticket that shows a roll formula's number.
+- The dice panel, the app's `crypto.getRandomValues`, "I roll myself", the roll log, `1к20` or
+  `1d20` by language: phase 2 (SPEC §6.5; ADR 009, ADR 010).
+- The honest animated roll and dice skins: the dice phase (ADR 009 item 10, ADR 005 item 11).
+- Ability score methods that roll (ADR 010 item 12): ENG-33 stores them, phase 4 rolls them.
+- A pack's roll formula checked on import: phase 5's import checks (the note in `BACKLOG.md`).
+
+#### 10. Rake check
+
+- **`packages/engine` is pure TypeScript.** `dice.ts` imports nothing; the numbers come in as an
+  argument; lint refuses `Math.random`, and ENG-01's rules still run on the new file.
+- **Formulas never run code; they have length and depth limits.** A dice term is a leaf of the
+  same walked tree; the limits of ENG-07 hold, and a term has its own.
+- **Missing is not broken.** A refused term is a parse error with a code; a bad face is 0 with a
+  warning; a broken source cannot hang a roll. Nothing throws.
+- **`compute()` is pure.** Rolling is not part of `compute()`; `rollFormula` changes nothing it is
+  given, and the same faces give the same result.
+- **The core names no game.** No die, stat or rule of a game is written in the code; test paths
+  are made up.
+- **The dice parser accepts both `d` and `к`.** Item 2.
+- **Licensing.** No rules text; the test data is made up.
+
+#### 11. What came out of it
+
+Measured:
+- `dice.test.ts` alone: `Tests 23 passed (23)`, 943 ms.
+- Lint: `Checked 82 files`, 0 errors (79 before; 3 new files).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 17 passed (17)`, `Tests 175 passed (175)`, 2.97 s (before: 16 files, 151
+  tests, 2.64 s): 23 new in `dice.test.ts`, 1 new in `purity.test.ts`; one line of
+  `formula.test.ts` changed.
+- Build: `apps/web build: Done`.
+- `dice.test.ts` run 20 times in a row: 20 passed, 0 failed.
+- The chi-square on the secure source, 5 runs each, against its threshold: d2 0.04 to 2.04
+  (37.32); d6 1.34 to 7.06 (50.69); d7 3.77 to 11.64 (53.34); d20 9.18 to 22.49 (81.55); d1000
+  913.05 to 1,083.92 (1,290.82). The 8-bit biased d100: 3,797.2 to 3,946.5 (threshold 207.89;
+  python3's mean for that bias, 3,858.7).
+- The never-throws run: 2,000 roll formulas; all 1,000 built ones parse; 464 of the 1,000
+  damaged ones parse; 2,229 dice terms rolled, each checked for its count, its faces, what it
+  kept and its total.
+- The tests bite. Each guard removed or changed on its own, the three test files run (47
+  tests): no rejection line, 3 fail; the line off by one (`<=`), 1; no whole-number check on the
+  random number, 1; the cap at 15 draws, 1; a face off by one, 6; a refill on every draw, 1; no
+  face check, 2; ties keeping the later die, 1; highest and lowest swapped, 4; a total of every
+  die, kept or not, 4; dice allowed in a plain formula, 2; no count limit, 1; no faces limit, 3;
+  no keep limit, 2; no default count, 3; no default keep, 1; letters in one case only, 3; no `к`,
+  5; `keep` not frozen, 1; no `badFace` warning, 2; the lint plugin removed from `biome.json`, 1.
+- The lint rule catches `Math.random` written out. `Math['random']` is flagged by
+  `useLiteralKeys`, whose fix writes it out; `const { random } = Math` is not caught (measured in
+  a scratch directory). The rule guards against a slip, not against code written to hide.
+
+Differences from §3:
+- Item 13: the thresholds are cut, not rounded, to two decimals, so d20's 81.559 is 81.55 and
+  d100's 207.898 is 207.89 (stricter by less than 0.01).
+- Item 4 gained `0d1` (the count is checked before the faces) and terms that start later in the
+  text: `1 + 0d6` at 4, `@level + 2d20kl3` at 9. Item 5 gained `D20`. Item 8 gained
+  `if(@gear.worn, 2d4, 1d100)`. Item 9 gained `-1` and infinity.
+
+Against the row: as the row says. Beyond it: lint refuses `Math.random` in the engine, and a
+plain formula refuses a dice term with its own code.
+
+Found, not fixed:
+- SPEC §5.6 shows a roll formula with its average. No function gives it, and a term that keeps
+  some dice is not `count × (faces + 1) / 2`: `2d20kh1`'s average is 13.825, not 10.5 (python3).
+  A count that grows with level (`ceil(@level / 2)d6`) is not notation either; a term's count is
+  digits. Noted on ENG-16 in `BACKLOG.md`.
+- The engine cannot see `crypto`. Until the app passes `crypto.getRandomValues`, nothing rolls
+  with the secure source outside the tests. Noted on phase 2 in `BACKLOG.md`.
+- Phase 5's import checks parse a pack's formulas with `parseFormula`, which refuses dice; a roll
+  formula needs `parseRoll`. Added to that note in `BACKLOG.md`.
+
+Nothing for the changelog.
