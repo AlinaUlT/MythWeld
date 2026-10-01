@@ -126,6 +126,8 @@ the lower half, one under another: "Player" (your characters and your rulebook) 
 "Game master" (campaigns, party, encounters), the second marked "Later". A gear in the top
 corner opens Settings.
 Action: tapping "Player" opens the player page (P17).
+ADR 013: "Player" and "DM" are two large squares with icons. Once there is a second game
+system, a preview comes first: the app's name and the list of systems; systems never mix.
 One state only.
 ```
 
@@ -145,6 +147,9 @@ Actions: tap "My characters" to open the list (P2); tap a chapter to open it; ta
 turn a book or pack on or off.
 ADR 010: "⋯" on "Books in use" adds packs (downloaded, imported, the person's own); a link
 "All sources" lists every book and pack on the device with its license.
+ADR 013: the page's sections are Characters, Sources (SRD 5.1 and SRD 5.2.1 built in, plus the
+person's packs), Library, Dice roll, Quick rules, Bookmarks. The DM's page has the same, plus
+approvals with a count, actors and campaigns.
 One state only.
 ```
 
@@ -175,7 +180,8 @@ On screen: one scrolling form, in this order:
 3. Content packs: checkboxes "SRD 2014", "SRD 2024", "My packs". A switch "Mix editions".
 4. Name, and a portrait picker.
 5. Race (2014) or Species (2024); Background.
-6. When editions are mixed: "Ability bonuses come from:" Race or Background (pick one).
+6. When a race and a background from different editions both raise abilities: a window with
+   a checkbox for each; either or both, with a warning; in a campaign the DM decides (ADR 013).
 7. Classes and levels (add a class with a level).
 8. Ability scores: six number fields, any numbers.
 9. Equipment: add items.
@@ -183,6 +189,12 @@ A bar pinned at the bottom shows the live numbers: AC, hit points, initiative.
 ADR 010: each step opens with an arrow to show what was chosen and closes with it; "Change"
 stays. Ability scores offer standard array, point buy, 4d6, and custom methods built from
 dice, rerolls, drops, a shared bonus roll, a cap or a pool.
+ADR 013: steps open and close with filled triangles (the look of 🔻 and 🔺, drawn as icons). The
+roll calculator: the total, "Roll" ("Reroll" after), six rolled scores each with "Choose
+ability", a table per ability (rolled, bonuses, final, modifier); "Apply to abilities" turns on
+when all six are rolled by the method and placed. Picking a feat opens the library's Feats list
+with filters (origin, level 4 and up, species); a rules option allows the other edition's
+optional feats, or all feats.
 Warnings appear inline in amber; nothing blocks "Create".
 States: empty form; filled with Iren; a warning shown (for example a mix that may not fit).
 ```
@@ -221,6 +233,8 @@ spells granted by a feature show their source, "1/LR" and "no spell slot".
 ADR 011: every ability, skill, feature, feat, spell and item opens and closes its description
 in place; tapping one shows a summary and "See full description", the exact text of its
 source, with the source named. For a spell, both sit in the cast panel, above "Cast".
+ADR 013: the token always shows the level; temporary hit points show as a coloured number next
+to the hit points ("12 / 12 +5") and a coloured part of the bar.
 ```
 
 ### P5 Roll dialog and breakdown · player
@@ -245,6 +259,8 @@ Design P6, three frames. Phone 360×800, dark and light.
 3. "Long rest": before confirming, a list of exactly what will be restored (hit points, slots,
    uses); "Confirm" and "Cancel".
 Each frame ends with the "Undo" message after applying.
+ADR 013: temporary hit points show in their own colour next to the hit points and as a part of
+the bar in that colour.
 ```
 
 ### P7 Library and an entry's card · both modes
@@ -266,6 +282,8 @@ spells) with a kind icon, name, source badge, school, and V S M, concentration a
 markers. The window shows both names, source badges, share / homebrew copy / edit / close, a
 type line, a properties box, the full text with tappable terms and dice, "At higher levels",
 "Damage dice" by level (opens and closes), and classes and subclasses with their sources.
+ADR 013: classes and subclasses per edition, for example "Wizard (2014)", "Wizard (2024)"; a
+spell that reads the same in both editions is still two entries, marked 2014 and 2024.
 States: search with no results; a "Missing: <id>" chip inside a text.
 ```
 
@@ -293,6 +311,7 @@ history below.
 A "Skins" row: basic skins free; the owner's skins with a star mark.
 ADR 010: any count of dice in one roll (for example 37d6), and an edit mode that adds custom
 dice with any number of faces.
+ADR 013: the roll looks like a real throw on a table.
 States: before the first roll; after a roll; history full.
 ```
 
@@ -321,6 +340,9 @@ conditions); the table link status ("Off", "3 players connected", "Through relay
 ADR 009/010: a player's changes waiting for approval show per character: the name with an
 edit icon, one line per change ("HP 6 → 12", "+24 gold, +12 silver", "added spell …"), then
 "Approve changes?" Yes / No; "See all changes" when there are several.
+ADR 013: each sent value can be edited before approving ("+24 gold" to "+34 gold"); the token
+shows a level change as "1 → 2"; an approvals tab lists the characters waiting, with a count;
+"Create actor" with a type: PC, NPC, enemy, or one the DM names.
 ```
 
 ### P12 Initiative tracker · DM · free
@@ -437,6 +459,8 @@ opens: P1 to P17 from this brief. Mark which screens belong to the Game master s
 | Base colours | Not chosen. The base theme is plain and calm; personality comes from paid skins. Rejected: Lavender (3D52A0 · 7091E6 · 8697C4 · ADBBDA · EDE8F5) and Cream (F7F5E6 · 333A56 · 52658F · E8E8E8), which read as a clinic or government app. Sky (E2F0F9 · B0DDE4 · 286FB4 · FFFFFF · DF4C73) is still open | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "P4 · 3 palettes" | 2026-09-30 |
 | Overall design | The navigation of ADR 008: no bottom bar; a start page (Player or Game master); a player page with what a player needs before making a character; My characters with "+" in the corner. The five home-page options with a bottom bar are rejected. The look is still being drawn | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v1" | 2026-09-30 |
 | P17 Player page | — | — | — |
+| Temporary hit points, creation, DM tools, home sections | Recorded in ADR 013 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3" | 2026-10-01 |
+| Level in the sheet's header | Not chosen. Six options drawn: A–F | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3", boards "Level A"–"Level F" | 2026-10-01 |
 | Library, dice, creation, levels, Turn tab, spells, DM review | Recorded in ADR 010 | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v3" | 2026-09-30 |
 | Sheet, dice, rulebook and campaign requirements | Recorded in ADR 009: dice panel on the sheet, features by source, About tab, spellcasting line, Inspiration stars, token frame, custom items, sections and stats, honest animated dice, several books at once, DM control in a campaign | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Our design v2" | 2026-09-30 |
 | Future skins | Six retro looks are kept as ideas for optional paid skins: Win95 shareware, 16-bit RPG menu, green-screen terminal, parchment overload, wood and leather, early homepage. Not the base design | [Design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg), page "Retro and weird" | 2026-09-30 |

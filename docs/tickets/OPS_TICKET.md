@@ -527,3 +527,33 @@ website's comments section is not taken: the app has no server for it. The gate 
 lint checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.75 s.
 Found, not fixed:
 nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-15 The owner's requests of 2026-10-01 · XS
+
+**Hat:** ADR 013 records the owner's requests of 2026-10-01
+**Where:** `docs/adr/013-temp-hp-creation-dm-tools-home-tabs.md` — new; `docs/design/BRIEF.md`,
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-14
+
+**What it should look like when done:**
+1. ADR 013 records each request: temporary hit points, the level on the token, level-up
+   approval, spells per ruleset, filled triangles, the roll calculator, optional feats, the
+   ability bonus conflict, the DM's rights, edits, approvals tab and actors, the system preview,
+   the Player and DM squares, and the home page's six sections.
+2. It lists what is still open, the six level options and the screenshots still to come
+   included.
+3. BRIEF P1, P3, P4, P6, P7, P9, P11, P17 and Part 5, and `BACKLOG.md`, follow it.
+4. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** the reference for the roll calculator was three screenshots of a
+website's ability score calculator; the ADR takes the order of its parts, not its text or look.
+BRIEF P3 item 6 said "pick one"; the owner's rule is either or both outside a campaign, and the
+DM's call inside one. The level-up screenshot the owner named did not arrive; ADR 013 lists it
+as open. The gate is green:
+lint checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.57 s.
+Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
