@@ -604,3 +604,212 @@ Found, not fixed:
   Noted for phases 2 and 4 in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-24 A system module adds its types
+
+**Hat:** A system module adds its entity types to the schemas
+**Depends on:** ENG-04 (grants, prerequisites, the measurement on `safeExtend`)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.2 (`Ruleset`, `EntityType`), §5.5; ADR 004 items 1, 3, 4
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/schema/src/system.ts` — new. The three steps a module takes to define
+its schemas.
+- `packages/schema/src/grant.ts` — changes: `usesDefSchemaOf`, `coreGrantSchemasOf`;
+  `uniqueList` is exported.
+- `packages/schema/src/prerequisite.ts` — changes: `prerequisiteSchemaOf`.
+- `packages/schema/src/entity-base.ts` — changes: `entityBaseSchemaOf`.
+- `packages/schema/src/entity-types.ts` — changes: `coreEntitySchemasOf`.
+- `packages/schema/src/index.ts` — changes: exports `system.ts`.
+- `packages/schema/test/system.test.ts` — new.
+
+#### 2. What is missing now
+
+- A module cannot add a grant kind. Measured again on Zod 4.6.5: `entityBaseSchema.safeExtend`
+  with a `grants` list that also takes a `spell` kind fails typecheck: `error TS2322: Type
+  'ZodOptional<ZodArray<ZodDiscriminatedUnion<[…]>>>' is not assignable to type 'never'`.
+- A module cannot add an entity type: `coreEntitySchema` is a fixed union of `ability`, `skill`,
+  `condition`; its comment says "A module's types join this list in ENG-24".
+- No list of a system is checked. `ruleset`, a proficiency's `category` and `level`, and a
+  recovery's `on` take any value of the right shape: `grantSchema` accepts
+  `category: 'anything'`, `level: 0.25`. `ids.ts` says "the module narrows this to its own
+  editions"; nothing does.
+- `pnpm test`: `Test Files 10 passed (10)`, `Tests 59 passed (59)`; none for a system.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/schema` exports `systemListsOf`, `systemSchemasOf`, `systemEntitySchemaOf` and the
+   type `GrantKindSchema`. A module defines its schemas in three steps: its lists; then its grant
+   kinds and the base; then its entity types and the union by `type`.
+2. `systemListsOf` takes `editions`, `proficiencyCategories`, `proficiencyLevels` and
+   `recoveryEvents`, and returns each as a schema, plus a `usesDefSchema` with the system's
+   recovery events.
+3. An entity's `ruleset` takes only the system's editions and `any`. A made-up system with
+   `first-age` and `second-age` refuses `2014`, `third-age` and `Any` on `ruleset`, in the
+   core's types and in the module's.
+4. A proficiency grant's `category` and a proficiency prerequisite's `category` take only the
+   system's categories: `skill` is refused on `grants.0.category` and on
+   `prerequisites.0.category`.
+5. A proficiency grant's `level` takes only the system's levels: with `1, 2, 3`, the values
+   `0.5`, `4` and `0` are refused on `grants.0.level`.
+6. A recovery's `on` takes only the system's events, both in the core's `resource` grant and in a
+   module's kind built with the system's `usesDefSchema`: `dawn` is refused on
+   `grants.<n>.uses.recovery.0.on`.
+7. `systemSchemasOf(lists, grantKinds)` adds the module's kinds to the core's four, and an
+   entity's `grants` takes them. A kind nobody defined (`spell`) is refused on
+   `grants.<n>.kind`; the core's own `grantSchema` refuses the module's kind on `kind`.
+8. `systemEntitySchemaOf(schemas, entityTypes)` picks by `type` among the core's three types and
+   the module's, in that order. The base's checks hold in a module's type: an id naming another
+   type (on `id`), an unknown field, a grant id used twice (on `grants.1.id`), an unknown type
+   (on `type`).
+9. A list that cannot be right throws, and the message names the list: an empty list, an item
+   twice, `any` as an edition, an edition outside the pack-id pattern, a category or event that
+   is not camelCase, a level of 0 or less, a field not named here.
+10. A grant kind or entity type that is taken, has no literal name, or is not camelCase throws
+    when the system is defined, not when a pack is parsed: `The grant kind "entity" is given
+    twice.`, `Each entity type needs a literal \`type\`.`, `The entity type "Talent" is not a
+    camelCase name.`
+11. Two systems stay apart: each refuses the other's categories, levels and kinds. The core's
+    own schemas stay open, and their JSON Schema is the same as before, byte for byte.
+12. The types follow the lists. For a made-up system, `z.infer` gives `type` as its five names,
+    `ruleset` as `'first-age' | 'second-age' | 'any'`, a proficiency's `category` and `level` as
+    its values, its kind in the grant's `kind`. A module type built on the core's open base is a
+    type error. `pnpm typecheck` checks these.
+13. `z.toJSONSchema` of a system's union gives one option per type, each with
+    `additionalProperties: false` and `ruleset` as an `enum`; categories and levels are `enum`s.
+14. The quality gate is green.
+
+#### 4. How to do it
+
+1. `grant.ts`: `usesDefSchemaOf(recoveryEvent)`; `coreGrantSchemasOf({ proficiencyCategory,
+   proficiencyLevel, usesDef })` returns the four kinds. The open `usesDefSchema` and
+   `grantSchema` are built by them from the open key schemas.
+2. `prerequisite.ts`: `prerequisiteSchemaOf(proficiencyCategory)`; the open one takes
+   `entityKeySchema`.
+3. `entity-base.ts`: `entityBaseSchemaOf({ ruleset, grant, prerequisite })`; the open base takes
+   the open schemas.
+4. `entity-types.ts`: `coreEntitySchemasOf(base)` returns the three core types on that base.
+5. `system.ts`: `systemListsOf` checks the lists with a Zod schema and turns them into enums;
+   `systemSchemasOf` builds the grant union, the prerequisites, the base and the core types;
+   `systemEntitySchemaOf` builds the union by `type`. A shared check refuses a taken, missing or
+   badly shaped name, reading each option's literal values from Zod's `propValues`.
+6. The tests of §7.
+
+Technical choices (ADR 002):
+- **The base is built, not extended.** `safeExtend` takes only a field whose type is narrower
+  than the base's (§2, measured); a list with more grant kinds is wider. So each schema that holds
+  a system's list is a function of that list, and the core's open schemas are the same functions
+  given open keys. One code path serves both, which §3 item 11 proves.
+- **Three steps, not one call.** A module's grant kind may need the system's `usesDefSchema`
+  (fifth edition's `spell` grant, SPEC §5.5), and a module's entity type needs the base built
+  with every grant kind. Each step is a plain call typed by its arguments, so the module keeps
+  each schema as its own constant and exports it.
+- **Names are checked when the system is defined.** Measured on Zod 4.6.5: a repeated
+  discriminator value throws only on the first parse (its option map is built lazily). A module's
+  mistake would then look like a person's pack failing.
+- **`any` is not an edition.** ENG-02 made `any` the value for an entity of every edition; every
+  system has it, so a list cannot hold it.
+- **The core's three types are in every system's union.** ADR 004 item 1: stats and skills are
+  the core's. A module type named `ability` throws.
+- **A choice filter's `category` stays a key.** Its values are a field of a module's types, one
+  list per type (a feat's category is not an item's), so no single system list can check it.
+
+#### 5. Stored data
+
+Nothing stored changes. No pack or character is stored yet, and the open schemas export the same
+JSON Schema as before.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/schema/test/system.test.ts` — `describe('ENG-24 system schemas')`: a made-up
+  system's types parse to equal objects; editions, categories, levels and recovery events by its
+  lists; the module's grant kind; the base's checks in the module's types; refused lists; taken,
+  missing and badly shaped names; two systems side by side, the core's schemas open; the inferred
+  types (`expectTypeOf`, checked by `pnpm typecheck`); the JSON Schema export.
+- Control values from: the made-up system of the test itself (ADR 004 item 4: no content from a
+  real game); the open-schema JSON Schema measured before the change.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is used. Fifth edition's lists (SPEC §5.5's six proficiency
+categories, the levels `0.5 | 1 | 2`, its rests) are not written here; ENG-32 writes them.
+
+#### 9. Not in this ticket
+
+- Fifth edition's lists, its grant kinds `spell` and `item`, its entity types: ENG-32, with this
+  ticket's three steps.
+- The pack's `system` field and the JSON Schema file per system: ENG-05.
+- A pack of another system not loaded for a character; `key` unique within a ruleset: ENG-25.
+- The defaults a system gives a stat (SPEC §5.3: the modifier formula, a save, a maximum of 20):
+  ENG-03 §4 named ENG-24 and ENG-28. Parsing adds nothing, so no schema holds them; they come
+  with the module's compute steps, ENG-28 (noted on its row in `BACKLOG.md`).
+- Effect targets a module adds: ENG-17, ENG-28.
+- The package rule that the core cannot import a module: ENG-31.
+- The made-up test system as shared core test data: ENG-27. This ticket's system lives in its
+  test file only.
+
+#### 10. Rake check
+
+- **Everything is data; the core names no game.** `system.ts` holds no edition, category,
+  level, event, kind or type of any game; the lists are the module's arguments. The test system
+  is made up.
+- **Each system's rules live in its own module.** The core gets a system's lists as data; no
+  `if (system === …)` is written.
+- **Missing is not broken.** A schema checks shape against the system's lists; it looks nothing
+  up. A module's own mistake throws when it is defined, before any person's data is read.
+- **A stored-shape change needs a migration.** Nothing is stored yet; the open schemas' JSON
+  Schema is unchanged, measured.
+- **Licensing.** Test data is made up; no SRD or book text.
+
+#### 11. What came out of it
+
+Measured:
+- The new test file alone: `Tests 11 passed (11)`, 460 ms.
+- Lint: `Checked 68 files`, 0 errors (66 before).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 11 passed (11)`, `Tests 70 passed (70)`, 1.30 s (before: 10 files,
+  59 tests).
+- Build: `Done`.
+- The open schemas did not change: `z.toJSONSchema` of `entityBaseSchema`, `grantSchema`,
+  `prerequisiteSchema`, `coreEntitySchema`, `usesDefSchema`, the three core types and
+  `effectSchema`, written to one file before and after: 202,149 bytes each, `cmp` finds no
+  difference. ENG-02 to ENG-04's 37 tests pass unchanged.
+- The tests bite. Each guard removed on its own, 11 tests run each time: the repeated-name
+  check, 1 fails; the camelCase check, 1; the literal-name check, 1; `any` refused as an edition,
+  1; a list's no-repeat and at-least-one check, 1; the lists' strict object, 1; `ruleset` left
+  open, 2; a grant's `category` left open, 3; a prerequisite's `category` left open, 1; `level`
+  left open, 3; recovery events left open, 1; the module's grant kinds dropped, 8; the module's
+  entity types dropped, 8. The `@ts-expect-error` line removed: `pnpm typecheck` fails with
+  `Type 'string' is not assignable to type '"any" | "first-age" | "second-age"'`.
+
+Differences from §3: none.
+
+Against the row: the row names grant kinds, proficiency categories and levels, and recovery
+events. The code adds two more places for the same lists: the edition list for `ruleset`, which
+ENG-02 §9 gave to this ticket and `ids.ts` promised; and a proficiency prerequisite's `category`,
+which is the same list as a proficiency grant's. The row's hat, entity types, is item 8.
+
+The first type test found a gap, fixed before the commit: with one generic for the whole list
+object, `systemSchemasOf` typed `ruleset`, `category` and `level` as `string` and `number`
+(`expectTypeOf` failed 3 times). Each list's schema is now its own generic.
+
+Found, not fixed:
+- An entity whose grants hold a module's kind is not assignable to the open `EntityBase` type:
+  measured, `TS2322` for a system with a `boon` kind; with no module kind it is assignable.
+  ENG-11 gathers grants for any system, so its types take the system's entity type, or treat a
+  module's kinds as unknown to the core. Noted on ENG-11 in `BACKLOG.md`.
+- The defaults a system gives a stat: noted on ENG-28 in `BACKLOG.md` (§9).
+- ENG-32's note in `BACKLOG.md` said its kinds use ENG-04's `usesDefSchema`, whose recovery
+  events are open. It now says the system's `usesDefSchema`, from `systemListsOf`.
+
+Nothing for the changelog.

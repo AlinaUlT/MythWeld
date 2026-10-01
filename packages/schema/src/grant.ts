@@ -6,28 +6,33 @@ import { l10nSchema, visibleTextSchema } from './text';
 // ENG-04: the core's grant kinds name no game. SPEC §5.5's `feature` and `feat` kinds are one
 // `entity` kind; `spell` and `item` carry fifth edition's fields and are its module's (ENG-32).
 // Where a list of values is a system's (a proficiency's category and level, a recovery's event),
-// only the shape is checked here.
+// only the shape is checked here; a system narrows it with its own list (`system.ts`).
 
 /** A list with at least one item and no item twice. */
-function uniqueList<T extends z.ZodType>(item: T) {
+export function uniqueList<T extends z.ZodType>(item: T) {
   return z
     .array(item)
     .min(1)
     .refine((list) => new Set(list).size === list.length, 'Holds an item twice.');
 }
 
+/** `UsesDef` whose recovery events are checked by `recoveryEvent`. */
+export function usesDefSchemaOf<E extends z.ZodType<string>>(recoveryEvent: E) {
+  return z.strictObject({
+    max: formulaSchema,
+    recovery: z
+      .array(
+        z.strictObject({
+          on: recoveryEvent,
+          amount: z.union([z.literal('all'), formulaSchema]),
+        }),
+      )
+      .min(1),
+  });
+}
+
 /** How many times a thing can be used, and when uses come back (SPEC §5.3 `UsesDef`). */
-export const usesDefSchema = z.strictObject({
-  max: formulaSchema,
-  recovery: z
-    .array(
-      z.strictObject({
-        on: entityKeySchema,
-        amount: z.union([z.literal('all'), formulaSchema]),
-      }),
-    )
-    .min(1),
-});
+export const usesDefSchema = usesDefSchemaOf(entityKeySchema);
 export type UsesDef = z.infer<typeof usesDefSchema>;
 
 /** Picks entities by their fields instead of listing them. */
@@ -83,16 +88,6 @@ const entityGrantSchema = grantBaseSchema
   })
   .refine(givesSomething, GIVES_NOTHING);
 
-const proficiencyGrantSchema = grantBaseSchema
-  .safeExtend({
-    kind: z.literal('proficiency'),
-    category: entityKeySchema,
-    fixed: uniqueList(entityKeySchema).optional(),
-    choose: chooseKeysSchema.optional(),
-    level: z.number().positive().optional(),
-  })
-  .refine(givesSomething, GIVES_NOTHING);
-
 const abilityScoreGrantSchema = z.discriminatedUnion('mode', [
   grantBaseSchema.safeExtend({
     kind: z.literal('abilityScore'),
@@ -117,18 +112,42 @@ const abilityScoreGrantSchema = z.discriminatedUnion('mode', [
     }),
 ]);
 
-const resourceGrantSchema = grantBaseSchema.safeExtend({
-  kind: z.literal('resource'),
-  key: entityKeySchema,
-  label: l10nSchema,
-  uses: usesDefSchema,
-});
+/** The core's grant kinds, with a system's lists where a value is the system's. */
+export function coreGrantSchemasOf<
+  C extends z.ZodType<string>,
+  L extends z.ZodType<number>,
+  U extends z.ZodType<UsesDef>,
+>(lists: { proficiencyCategory: C; proficiencyLevel: L; usesDef: U }) {
+  const proficiencyGrantSchema = grantBaseSchema
+    .safeExtend({
+      kind: z.literal('proficiency'),
+      category: lists.proficiencyCategory,
+      fixed: uniqueList(entityKeySchema).optional(),
+      choose: chooseKeysSchema.optional(),
+      level: lists.proficiencyLevel.optional(),
+    })
+    .refine(givesSomething, GIVES_NOTHING);
+  const resourceGrantSchema = grantBaseSchema.safeExtend({
+    kind: z.literal('resource'),
+    key: entityKeySchema,
+    label: l10nSchema,
+    uses: lists.usesDef,
+  });
+  return [
+    entityGrantSchema,
+    proficiencyGrantSchema,
+    abilityScoreGrantSchema,
+    resourceGrantSchema,
+  ] as const;
+}
 
 /** What an entity gives, and the choices it asks for (SPEC §5.5). */
-export const grantSchema = z.discriminatedUnion('kind', [
-  entityGrantSchema,
-  proficiencyGrantSchema,
-  abilityScoreGrantSchema,
-  resourceGrantSchema,
-]);
+export const grantSchema = z.discriminatedUnion(
+  'kind',
+  coreGrantSchemasOf({
+    proficiencyCategory: entityKeySchema,
+    proficiencyLevel: z.number().positive(),
+    usesDef: usesDefSchema,
+  }),
+);
 export type Grant = z.infer<typeof grantSchema>;

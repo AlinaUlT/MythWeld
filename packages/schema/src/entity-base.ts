@@ -55,33 +55,47 @@ function listWithUniqueIds<T extends z.ZodType<{ id: string }>>(item: T) {
   });
 }
 
+/** The base of a system's entities: its editions, its grant kinds, its prerequisites. */
+export function entityBaseSchemaOf<
+  R extends z.ZodType<string>,
+  G extends z.ZodType<{ id: string }>,
+  P extends z.ZodType,
+>(parts: { ruleset: R; grant: G; prerequisite: P }) {
+  return z
+    .strictObject({
+      id: entityIdSchema,
+      type: entityTypeNameSchema,
+      key: entityKeySchema.optional(),
+      ruleset: parts.ruleset,
+      name: l10nSchema,
+      aliases: z.array(l10nSchema).optional(),
+      summary: l10nSchema.optional(),
+      text: l10nSchema.optional(),
+      tags: z.array(visibleTextSchema).optional(),
+      source: entitySourceSchema,
+      effects: listWithUniqueIds(effectSchema).optional(),
+      grants: listWithUniqueIds(parts.grant).optional(),
+      prerequisites: z.array(parts.prerequisite).optional(),
+      meta: entityMetaSchema.optional(),
+    })
+    .superRefine((entity, ctx) => {
+      const parts = parseEntityId(entity.id);
+      if (parts !== undefined && parts.type !== entity.type) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['id'],
+          message: `The id names type "${parts.type}", but the entity's type is "${entity.type}".`,
+        });
+      }
+    });
+}
+
 // ENG-02: the fields every entity has. Objects are strict, so an unknown field is refused rather
-// than dropped; the id's type part must equal `type`. ENG-03 and ENG-24 extend this.
-export const entityBaseSchema = z
-  .strictObject({
-    id: entityIdSchema,
-    type: entityTypeNameSchema,
-    key: entityKeySchema.optional(),
-    ruleset: rulesetIdSchema,
-    name: l10nSchema,
-    aliases: z.array(l10nSchema).optional(),
-    summary: l10nSchema.optional(),
-    text: l10nSchema.optional(),
-    tags: z.array(visibleTextSchema).optional(),
-    source: entitySourceSchema,
-    effects: listWithUniqueIds(effectSchema).optional(),
-    grants: listWithUniqueIds(grantSchema).optional(),
-    prerequisites: z.array(prerequisiteSchema).optional(),
-    meta: entityMetaSchema.optional(),
-  })
-  .superRefine((entity, ctx) => {
-    const parts = parseEntityId(entity.id);
-    if (parts !== undefined && parts.type !== entity.type) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['id'],
-        message: `The id names type "${parts.type}", but the entity's type is "${entity.type}".`,
-      });
-    }
-  });
+// than dropped; the id's type part must equal `type`. ENG-03 extends this; a system's base is
+// built by `entityBaseSchemaOf` with its own lists (`system.ts`).
+export const entityBaseSchema = entityBaseSchemaOf({
+  ruleset: rulesetIdSchema,
+  grant: grantSchema,
+  prerequisite: prerequisiteSchema,
+});
 export type EntityBase = z.infer<typeof entityBaseSchema>;

@@ -74,7 +74,7 @@ split off an old row got a new id.
 | ENG-02 | The entity base has a core Zod schema, ids included | S | ✅ 2026-09-30 |
 | ENG-03 | The core entity types have Zod schemas | S | ✅ 2026-09-30 |
 | ENG-04 | Effects, grants, prerequisites have game-free Zod schemas | S | ✅ 2026-09-30 |
-| ENG-24 | A system module adds its entity types to the schemas | S | 🔲 |
+| ENG-24 | A system module adds its entity types to the schemas | S | ✅ 2026-10-01 |
 | ENG-05 | The content pack has a schema, exported as JSON Schema | S | 🔲 |
 | ENG-06 | The core character document has a schema, with the migration frame | S | 🔲 |
 | ENG-25 | Packs are checked as they load into the content index | S | 🔲 |
@@ -141,7 +141,11 @@ split off an old row got a new id.
   from any real game (ADR 004 item 4). Its expected values are computed by hand from its own
   rules; they are test data, not goldens. ENG-28 adds its derived-value steps.
 - **ENG-11** — an entity of the other edition gives a warning, never a block (SPEC §5.8,
-  ADR 005 item 3.3).
+  ADR 005 item 3.3). Found by ENG-24: an entity whose grants hold a module's kind is not
+  assignable to the open `EntityBase` type (`TS2322`); ENG-24 §11 has the measurement.
+- **ENG-28** — found by ENG-24: the defaults a system gives a stat (SPEC §5.3: the modifier
+  formula, a save, a maximum) come with the module's steps here. ENG-03 §4 also named ENG-24;
+  a schema adds nothing on parse, so ENG-24 §9 moved them here.
 - **ENG-31** — the package name and the `system` id are chosen here, checked against the rule on
   names in `CLAUDE.md`. `CLAUDE.md`'s layout, its dependency line and its golden-test path follow
   the new package. Found by ENG-01: a relative path can climb out of `packages/engine` into a
@@ -150,8 +154,9 @@ split off an old row got a new id.
 - **ENG-30, ENG-36** — ADR 014 item 10: a log entry carries who, when, a label and before/after
   values; it can wait unapplied, and its "after" value can be edited before it applies.
 - **ENG-32** — found by ENG-04: also fifth edition's grant kinds `spell` and `item`, built on
-  ENG-04's `grantBaseSchema`, `chooseEntitiesSchema` and `usesDefSchema`. ADR 014 items 5–7: a
-  `rule` has a topic; a spell's `scaling`; a granted spell's own uses, with no slot.
+  ENG-04's `grantBaseSchema` and `chooseEntitiesSchema`, and on the system's `usesDefSchema`
+  from ENG-24's `systemListsOf`. ADR 014 items 5–7: a `rule` has a topic; a spell's `scaling`;
+  a granted spell's own uses, with no slot.
 - **ENG-33** — ADR 014 item 8: XP or milestone, inspiration as a count with a maximum, the
   ability score method's key and rolls, the ability bonus source, which feats may be taken.
 - **ENG-09, ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's
