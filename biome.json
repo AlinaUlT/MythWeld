@@ -62,6 +62,26 @@
       }
     },
     {
+      "includes": ["packages/schema/src/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@grimoire/system-*", "**/system-*/**"],
+                    "message": "ENG-31: the core knows no game (ADR 004 item 2). @grimoire/schema and @grimoire/engine never import a system module (@grimoire/system-<id>, in packages/system-<id>/), by name or by a relative path. The module imports the core, never the other way."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["packages/engine/src/**"],
       "plugins": ["./biome/no-math-random.grit"],
       "linter": {
@@ -81,6 +101,10 @@
                       "**/node_modules/**"
                     ],
                     "message": "ENG-01: the engine is pure TypeScript. It imports only its own files and @grimoire/schema: no React, DOM, Dexie or network library, and no path into apps/ or node_modules/. A new pure dependency is added to this list in biome.json."
+                  },
+                  {
+                    "group": ["@grimoire/system-*", "**/system-*/**"],
+                    "message": "ENG-31: the core knows no game (ADR 004 item 2). @grimoire/schema and @grimoire/engine never import a system module (@grimoire/system-<id>, in packages/system-<id>/), by name or by a relative path. The module imports the core, never the other way."
                   }
                 ]
               }

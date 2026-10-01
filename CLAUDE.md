@@ -62,7 +62,7 @@ names inside code, test data, the next ticket. In doubt, it is not a stop
 | What a person can already see | [`docs/CHANGELOG.md`](docs/CHANGELOG.md) |
 | How the screens should look, and the designs the owner chose | [`docs/design/BRIEF.md`](docs/design/BRIEF.md); the mockups to build from: [`docs/design/mockups/`](docs/design/mockups/README.md) |
 | Installing, running, testing, deploying | [`docs/RUNNING.md`](docs/RUNNING.md) |
-| The hand-computed golden characters | SPEC §6.7 → `packages/engine/test/golden/` |
+| The hand-computed golden characters | SPEC §6.7 → `packages/system-5e/test/golden/` |
 | Russian terms | `packages/content/glossary.ru.json` (seeded from SPEC Appendix B) |
 | Copy-paste prompts for new chats (the owner) | [`PROMPTS.md`](PROMPTS.md) |
 | Open tickets of one theme, expanded | `docs/tickets/<AREA>_TICKET.md` |
@@ -104,10 +104,11 @@ rules in a new function.
   breakdown. A number shown on screen with no breakdown entry is a bug.
 - **Manual overrides always win** (§6.1 step 7). They apply in the `final` phase, and the
   breakdown labels them as a manual edit.
-- **Each system's rules live in its own module** (ADR 004). Inside the fifth-edition module,
-  2014/2024 differences live in `rulesets/2014.ts` and `rulesets/2024.ts` (§6.3). Never scatter
-  `if (ruleset === '2024')` or `if (system === …)` checks through other code. The multiclass
-  half-caster rounding (2014 down, 2024 up) sits in one place.
+- **Each system's rules live in its own module** (ADR 004). A module is its own package; the
+  core (`schema`, `engine`) never imports one, and lint checks this (`ENG-31`). Inside the
+  fifth-edition module, 2014/2024 differences live in `rulesets/2014.ts` and `rulesets/2024.ts`
+  (§6.3). Never scatter `if (ruleset === '2024')` or `if (system === …)` checks through other
+  code. The multiclass half-caster rounding (2014 down, 2024 up) sits in one place.
 - **Formulas never run code** (§5.6). No `eval`, no `new Function`. Formulas have a length limit
   and a depth limit. A missing path gives `0` plus a warning, not an exception. Formulas in the
   `base` phase read only levels, class levels and choices.
@@ -210,14 +211,16 @@ Three exceptions. They are data, not wording:
 ```
 apps/web            the PWA (React) — the only place with UI
 packages/schema     Zod schemas, TS types, the pack's JSON Schema
-packages/engine     formulas, effects, the compute pipeline, dice, rests
+packages/engine     formulas, effects, the compute pipeline, dice, trackers; it names no game
+packages/system-5e  the fifth-edition module, system id `5e`: its types, values, rests, rulesets
 packages/content    SRD import, hand-written mechanics, glossary, built packs
 packages/pdf        own PDF template and form filling
 packages/foundry    (phase L1) mapping to Foundry dnd5e and back
 docs/               SPEC.md, adr/, tickets/, CHANGELOG.md, RUNNING.md
 ```
 
-Dependencies point one way: `schema ← engine ← pdf, foundry ← apps/web`.
+Dependencies point one way: `schema ← engine ← system-5e ← content, pdf, foundry ← apps/web`.
+Every system module is a `packages/system-<id>` package named `@grimoire/system-<id>`.
 
 ---
 

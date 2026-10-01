@@ -14,13 +14,19 @@ cpSync(join(repo, 'biome.json'), join(dir, 'biome.json'));
 cpSync(join(repo, 'biome'), join(dir, 'biome'), { recursive: true });
 cpSync(join(repo, 'tsconfig.base.json'), join(dir, 'tsconfig.base.json'));
 mkdirSync(join(dir, 'packages/engine/src'), { recursive: true });
+mkdirSync(join(dir, 'packages/schema/src'), { recursive: true });
 cpSync(join(repo, 'packages/engine/tsconfig.json'), join(dir, 'packages/engine/tsconfig.json'));
 symlinkSync(join(repo, 'packages/engine/node_modules'), join(dir, 'packages/engine/node_modules'));
 
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-function run(command: string, args: string[], source: string) {
-  writeFileSync(join(dir, 'packages/engine/src/Sample.ts'), source);
+function run(
+  command: string,
+  args: string[],
+  source: string,
+  file = 'packages/engine/src/Sample.ts',
+) {
+  writeFileSync(join(dir, file), source);
   const result = spawnSync(join(bin, command), args, { cwd: dir, encoding: 'utf8' });
   return { status: result.status, output: result.stdout + result.stderr };
 }
@@ -150,5 +156,49 @@ export const c = Math.max(1, 2);
     // Math.random called (1), Math.random taken (2); line 3 is plain ES2022.
     expect(linesOf(output, /Sample\.ts:(\d+):\d+ plugin/g)).toEqual([1, 2]);
     expect(output.match(/ENG-08: the engine has no randomness of its own/g)).toHaveLength(2);
+  });
+});
+
+// A relative path from a file in packages/<core>/src climbs two steps to reach packages/.
+const moduleImports = `import { rules } from '@grimoire/system-5e';
+import type { Rules } from '@grimoire/system-5e';
+export { steps } from '@grimoire/system-5e/src/steps.ts';
+export const later = () => import('@grimoire/system-tales');
+import { climb } from '../../system-5e/src/index.ts';
+import { deep } from '../../../packages/system-5e/src/rulesets/2024.ts';
+import { linked } from '../node_modules/@grimoire/system-5e/src/index.ts';
+import { own } from './system.ts';
+import { named } from './system-lists.ts';
+export const all = [rules, climb, deep, linked, own, named];
+export type Both = Rules;
+`;
+
+/** The lines of `file` that lint refuses with the message starting `id`. */
+function refused(file: string, source: string, id: string) {
+  const { status, output } = run(
+    'biome',
+    ['lint', '--vcs-enabled=false', '--max-diagnostics=100', '--reporter=github', file],
+    source,
+    file,
+  );
+  const lines = linesOf(output, new RegExp(`line=(\\d+),[^\\n]*::${id}:`, 'g'));
+  return { status, lines };
+}
+
+describe('ENG-31 the core cannot import a system module', () => {
+  it('fails lint when the schema package imports a module, by name or by a climb', () => {
+    const result = refused('packages/schema/src/Sample.ts', moduleImports, 'ENG-31');
+    expect(result.status).toBe(1);
+    // By name (1), as a type (2), a re-export from a path inside it (3), another module by a
+    // dynamic import (4), a climb into its folder (5), a deeper climb (6), a path through
+    // node_modules (7). Its own system.ts (8) and system-lists.ts (9) stay allowed.
+    expect(result.lines).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  });
+
+  it('fails lint when the engine imports a module, and keeps the engine to ENG-01', () => {
+    const file = 'packages/engine/src/Sample.ts';
+    expect(refused(file, moduleImports, 'ENG-31').lines).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    // A name not on the engine's list (1–4) and a path into node_modules (7) break ENG-01 too.
+    expect(refused(file, moduleImports, 'ENG-01').lines).toEqual([1, 2, 3, 4, 7]);
   });
 });

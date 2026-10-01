@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // The module's rules are pure TypeScript, as the engine's are (D2, ENG-01): its code sees the
+    // language only. The tests have their own test/tsconfig.json.
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src"]
+}

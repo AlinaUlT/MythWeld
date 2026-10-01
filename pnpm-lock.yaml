@@ -132,6 +132,15 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1(ajv@8.20.0)
 
+  packages/system-5e:
+    dependencies:
+      '@grimoire/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@grimoire/schema':
+        specifier: workspace:*
+        version: link:../schema
+
 packages:
 
   '@apideck/better-ajv-errors@0.3.7':

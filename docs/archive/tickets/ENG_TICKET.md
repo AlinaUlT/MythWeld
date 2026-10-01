@@ -4158,3 +4158,103 @@ Found, not fixed:
   in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-31 The fifth-edition package · XS
+
+**Hat:** The fifth-edition module is a package the core cannot import
+**Where:** `packages/system-5e/` — new: `package.json`, `tsconfig.json`, `src/index.ts`,
+`test/tsconfig.json`, `test/system.test.ts`; `biome.json` — the engine's import list gains a
+second pattern, and a new override covers `packages/schema/src/**`;
+`packages/engine/test/purity.test.ts` — a sample can sit in any package; `CLAUDE.md` — the
+layout, the dependency line, the golden-test path, the module invariant; `pnpm-lock.yaml`
+**Depends on:** ENG-01 (the import rule and its test), ENG-24 (`systemIdSchema`), ADR 004 item 2
+**Screen:** No
+
+**What it should look like when done:**
+1. A workspace package `@grimoire/system-5e` lives in `packages/system-5e`. It depends on
+   `@grimoire/schema` and `@grimoire/engine`, never the other way. Its `tsconfig.json` is the
+   engine's: `lib: ["ES2022"]`, `types: []`.
+2. It exports `FIFTH_EDITION_SYSTEM = '5e'`, the `system` id its packs and characters name.
+   The id passes the core's `systemIdSchema`.
+3. Names (`CLAUDE.md`: no "D&D" in names, "5E compatible" is the only phrase for fifth edition):
+   `system-5e` and `5e` hold no "D&D" or "dnd"; ADR 004's example `dnd5e` is not used. Every
+   system module is a `packages/system-<id>` package named `@grimoire/system-<id>`, so one lint
+   pattern covers every module to come.
+4. `pnpm lint` fails when a file in `packages/schema/src` or `packages/engine/src` imports a module:
+   by name (`@grimoire/system-5e`, a path inside it, a later `@grimoire/system-<id>`), by
+   `import type`, `export … from` or a dynamic `import()`, or by a relative path that climbs into
+   `packages/system-<id>/`. The message starts with `ENG-31`.
+5. The engine keeps every ENG-01 refusal: `react`, `dexie`, `../../../apps/…` still fail with
+   the `ENG-01` message (a second override replaces the engine's list, measured, so the pattern
+   joins the engine's own list).
+6. Its own files stay allowed in the core: `./system.ts` and a file named `./system-lists.ts`.
+7. `CLAUDE.md`'s layout lists the package, its dependency line reads
+   `schema ← engine ← system-5e ← content, pdf, foundry ← apps/web`, and its golden-test path
+   is `packages/system-5e/test/golden/`.
+8. The quality gate is green; CI runs the same lint (SETUP-03), so CI fails in each case of
+   item 4.
+
+**Tests:** `packages/engine/test/purity.test.ts` — `describe('ENG-31 the core cannot import a
+system module')`: one sample linted as a file of `packages/schema/src` and of
+`packages/engine/src`; the ENG-01 tests unchanged. `packages/system-5e/test/system.test.ts` —
+`describe('ENG-31 the fifth-edition module')`: the id. Control numbers: the line numbers of the
+refused lines in the sample, written by hand.
+**What came out of it:**
+
+Measured, with the package in place and the old `biome.json`:
+- A file in `packages/schema/src` and one in `packages/engine/src`, each importing
+  `../../system-5e/src/index.ts`: lint `Checked 2 files`, no error; the engine's `tsc` exit 0.
+  The climb ENG-01 found was open.
+
+After:
+- The same two files: lint `Found 2 errors`, each `× ENG-31: the core knows no game …`.
+- Lint: `Checked 116 files`, 0 errors (111 before).
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done` (5 before).
+- Test: `Test Files 30 passed (30)`, `Tests 288 passed (288)`, 4.66 s (before: 29 files,
+  285 tests). The two changed files alone: 9 passed.
+- The module's `tsconfig.json` refuses `document` (TS2584) and `process` (TS2591), exit 1.
+- The tests bite. Each guard removed on its own, 8 tests in `purity.test.ts` each time: the
+  `packages/schema/src/**` override, 1 fails; the engine's ENG-31 pattern, 1; `**/system-*/**`,
+  2; `@grimoire/system-*`, 2; the pattern moved into one override for both packages instead of
+  the engine's own list, 1. In a scratch copy, that shared override placed after the engine's
+  replaced the engine's whole list: `react` and `../../../apps/…` passed lint.
+
+Differences from §3:
+- `@grimoire/system-*/**` was dropped from the pattern: `**/system-*/**` already refuses a path
+  inside a module by name. Removed, the 8 tests still pass; item 4 holds without it.
+
+Technical choices (ADR 002):
+- **The id is `5e`, the package `@grimoire/system-5e`.** ADR 004 item 3's example `dnd5e` is
+  "D&D" in letters, and `CLAUDE.md` allows no "D&D" in names; a pack file carries its `system`
+  id to whoever it is shared with. `5e` follows the one allowed phrase, "5E compatible". ADR 004
+  is left as written; `CLAUDE.md`'s layout names the id.
+- **`packages/system-<id>` for every module.** One pattern then covers every module to come,
+  with no list to keep. A core file named `system-<x>.ts` stays allowed (`./system-lists.ts`
+  in the test); a core folder named `system-<x>/` would be refused.
+- **Lint, the ENG-01 way (ADR 004 item 2).** A Biome override replaces the rule's whole list for
+  a file, so the engine's override carries the ENG-31 pattern as a second entry; `schema`, which
+  had no import rule, gets an override with the pattern alone. An import the engine's ENG-01
+  list also refuses (`@grimoire/system-5e`) reports both messages.
+- **A bare folder (`../../system-5e`) is left to typecheck.** The pattern does not match it, but
+  the package has no `index.ts` at its root, so `tsc` refuses it: `TS2307: Cannot find module
+  '../../system-5e'`, measured.
+- **`apps/web` does not depend on the module yet.** The first code that uses the module adds it.
+- **`CLAUDE.md`'s engine line drops rests:** ADR 004 item 1 gives a module its actions, rests
+  among them; the module's line names them.
+
+Found, not fixed:
+- Lint does not hold the module's code to the engine's purity rules. A file in
+  `packages/system-5e/src` importing `dexie` and using `Math.random()` and `globalThis` gives one
+  lint error, `noGlobalEval` for its `eval`, from Biome's recommended set. New row ENG-41, before
+  ENG-32 writes code there.
+- A core file can still climb into another sibling package: `export * from
+  '../../content/src/index.ts'` in `packages/schema/src` or `packages/engine/src` passes lint,
+  measured. `content` holds nothing today; once it imports the module, that climb reaches the
+  module with no error. New note for phase 3 in `BACKLOG.md`.
+- SPEC §4 (layout, dependency line), §6.3 (`packages/engine/src/rulesets/`) and Appendix A
+  (`packages/engine/test/golden`) still name the engine. The SPEC is not edited; `CLAUDE.md`
+  says it wins.
+
+Nothing for the changelog.
