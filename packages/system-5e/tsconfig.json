@@ -3,6 +3,8 @@
   "compilerOptions": {
     // The module's rules are pure TypeScript, as the engine's are (D2, ENG-01): its code sees the
     // language only. The tests have their own test/tsconfig.json.
+    // ENG-42: packages/engine/test/purity.test.ts types a sample with this file, as with every
+    // packages/system-* module's, and fails if a DOM, Node or network name gets through.
     "lib": ["ES2022"],
     "types": []
   },

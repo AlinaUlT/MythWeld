@@ -4347,3 +4347,64 @@ Found, not fixed:
   `lib: ["ES2022"]` and `types: []` stay. New row ENG-42.
 
 Nothing for the changelog.
+
+### ENG-42 The module's typecheck test · XS
+
+**Hat:** A test holds the module's tsconfig to the language alone
+**Where:** `packages/engine/test/purity.test.ts` — ENG-01's typecheck test runs on every
+`packages/system-*` module too; `packages/system-5e/tsconfig.json` — the ticket's comment
+**Depends on:** ENG-01 (the engine's typecheck test), ENG-31 (the package and its tsconfig)
+**Screen:** No
+
+**What it should look like when done:**
+1. Today a 6-line file in `packages/system-5e/src` naming `document`, `window`, `process`,
+   `fetch`, `localStorage` and `Math.max` fails `tsc -p packages/system-5e/tsconfig.json` on
+   lines 1–5 (TS2584, TS2304, TS2591, TS2304, TS2304), exit 1 (measured). But with
+   `"lib": ["ES2022", "DOM"]` in that tsconfig, the gate stays green: typecheck `Done`,
+   `Tests 292 passed (292)` (measured). After: that change fails `pnpm test`.
+2. A test types the same 6-line sample as `packages/<module>/src/Sample.ts` with the module's own
+   `tsconfig.json`, for each `packages/system-*` folder, and expects errors on lines 1–5 and none
+   on line 6.
+3. The test fails if no `packages/system-*` folder is found, or if `system-5e` is missing.
+4. ENG-01's engine typecheck test keeps its sample and its expected lines.
+5. The quality gate is green.
+
+**Tests:** `packages/engine/test/purity.test.ts` — `describe('ENG-42 a system module's code sees
+the language alone')`. Control numbers: the line numbers of the sample's lines that name
+something outside ES2022, written by hand.
+**What came out of it:**
+
+Measured before: §3 item 1. The 6-line sample fails `tsc` on lines 1–5, exit 1; with
+`"lib": ["ES2022", "DOM"]` in the module's tsconfig, typecheck `Done` and `Tests 292 passed
+(292)`.
+
+After:
+- Lint: `Checked 116 files`, no errors.
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done`.
+- Test: `Test Files 30 passed (30)`, `Tests 294 passed (294)`, 4.71 s (before: 30 files, 292
+  tests). `purity.test.ts` alone: 14 passed (before: 12).
+- The test bites. Each break on its own, then reverted:
+  - `"lib": ["ES2022", "DOM"]` in `packages/system-5e/tsconfig.json`: the ENG-42 typecheck test
+    fails, `expected [ 3 ] to deeply equal [ 1, 2, 3, 4, 5 ]` (only `process` is refused).
+  - `"types": ["node"]`, with `@types/node` linked into the module's `node_modules/@types`: it
+    fails, `expected [ 1, 2 ]` (Node's types let `process`, `fetch` and `localStorage` through).
+  - The folder filter matching nothing: "finds the modules" fails; 13 tests run.
+
+Differences from §3: none.
+
+Technical choices (ADR 002):
+- **Every `packages/system-*` folder, read from disk**, not `system-5e` by name. A module to come
+  is held with no edit, as ENG-41's lint pattern holds it. A module folder with no
+  `tsconfig.json` stops the whole test file as it loads (`cpSync` throws), which is wanted: every
+  module has its own.
+- **The module's own `node_modules` is linked in**, as the engine's is: a type package the module
+  installs would really load (the second break shows it).
+- **One sample for the engine and the modules.** ENG-01's test reads it from the shared constant;
+  its expected lines did not change.
+- **The test sits in `packages/engine/test/purity.test.ts`**, beside ENG-01's, as ENG-41's did:
+  that file already copies the configs into a scratch folder where a sample can sit in any
+  package.
+
+Found, not fixed: nothing.
+
+Nothing for the changelog.

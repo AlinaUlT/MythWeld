@@ -1,5 +1,14 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -18,6 +27,18 @@ mkdirSync(join(dir, 'packages/schema/src'), { recursive: true });
 mkdirSync(join(dir, 'packages/system-5e/src'), { recursive: true });
 cpSync(join(repo, 'packages/engine/tsconfig.json'), join(dir, 'packages/engine/tsconfig.json'));
 symlinkSync(join(repo, 'packages/engine/node_modules'), join(dir, 'packages/engine/node_modules'));
+
+// Every system module, with its own tsconfig and node_modules, as the engine's above.
+const modules = readdirSync(join(repo, 'packages')).filter((name) => name.startsWith('system-'));
+for (const name of modules) {
+  const from = join(repo, 'packages', name);
+  const to = join(dir, 'packages', name);
+  mkdirSync(join(to, 'src'), { recursive: true });
+  cpSync(join(from, 'tsconfig.json'), join(to, 'tsconfig.json'));
+  if (existsSync(join(from, 'node_modules'))) {
+    symlinkSync(join(from, 'node_modules'), join(to, 'node_modules'));
+  }
+}
 
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
@@ -52,10 +73,25 @@ function lint(source: string, file = 'packages/engine/src/Sample.ts') {
   };
 }
 
-function typecheck(source: string) {
-  const { status, output } = run('tsc', ['-p', 'packages/engine/tsconfig.json'], source);
+/** Types `source` as `<pkg>/src/Sample.ts` with that package's own tsconfig. */
+function typecheck(source: string, pkg = 'packages/engine') {
+  const { status, output } = run(
+    'tsc',
+    ['-p', `${pkg}/tsconfig.json`],
+    source,
+    `${pkg}/src/Sample.ts`,
+  );
   return { status, lines: linesOf(output, /Sample\.ts\((\d+),\d+\): error TS/g) };
 }
+
+// Lines 1–5 each name something outside the language; line 6 is plain ES2022.
+const outsideTheLanguage = `export const page = document.title;
+export const tab = window.name;
+export const env = process.env;
+export const get = fetch('/pack.json');
+export const saved = localStorage.getItem('hp');
+export const top = Math.max(1, 2);
+`;
 
 const badImports = `import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -114,15 +150,8 @@ describe('ENG-01 engine purity', () => {
   });
 
   it('fails typecheck on DOM, Node and network names', () => {
-    const result = typecheck(`export const page = document.title;
-export const tab = window.name;
-export const env = process.env;
-export const get = fetch('/pack.json');
-export const saved = localStorage.getItem('hp');
-export const top = Math.max(1, 2);
-`);
+    const result = typecheck(outsideTheLanguage);
     expect(result.status).not.toBe(0);
-    // Lines 1–5 each name something outside the language; line 6 is plain ES2022.
     expect(result.lines).toEqual([1, 2, 3, 4, 5]);
   });
 });
@@ -282,5 +311,17 @@ export const f = Math.max(1, 2);
     expect(result.globals).toEqual([]);
     expect(result.plugin).toEqual([]);
     expect(result.status).toBe(0);
+  });
+});
+
+describe("ENG-42 a system module's code sees the language alone", () => {
+  it('finds the modules, the fifth-edition one among them', () => {
+    expect(modules).toContain('system-5e');
+  });
+
+  it.each(modules)('fails typecheck in %s on DOM, Node and network names', (name) => {
+    const result = typecheck(outsideTheLanguage, `packages/${name}`);
+    expect(result.status).not.toBe(0);
+    expect(result.lines).toEqual([1, 2, 3, 4, 5]);
   });
 });
