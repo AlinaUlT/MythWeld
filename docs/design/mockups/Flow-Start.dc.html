@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Start</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#dcdcd8}
+button,input{font-family:inherit;font-size:inherit;color:inherit;margin:0}
+button:disabled{opacity:0.4}
+input::placeholder{color:#5E6269}
+a{color:#1C1D20}a:hover{color:#1C1D20}
+</style>
+</helmet>
+<div style="width: 360px; height: 800px; box-sizing: border-box; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #F5F5F3; color: #1C1D20; font-family: Inter, system-ui, sans-serif; font-size: 15px; line-height: 1.35">
+<div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 24px">
+<span style="font-size: 40px; font-weight: 800; letter-spacing: -0.02em">Grimoire</span>
+<span style="font-size: 14px; color: #5E6269; margin-top: 4px">5E compatible · works with no network</span>
+</div>
+<div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; padding: 0 16px 36px">
+<a href="Flow-Player.dc.html" style="height: 150px; box-sizing: border-box; background: #FFFFFF; border: 1px solid #E2E2DE; border-radius: 14px; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; text-decoration: none; color: inherit"><span style="display: flex; justify-content: space-between; align-items: flex-start"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" style="flex-shrink: 0; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.75" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"></path></svg></span><span style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 30px; font-weight: 800">Player</span><span style="font-size: 14px; color: #5E6269">Your characters, rulebooks, dice</span></span></a>
+<div style="height: 150px; box-sizing: border-box; background: #FFFFFF; border: 1px solid #E2E2DE; border-radius: 14px; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; color: #5E6269; text-decoration: none; color: inherit"><span style="display: flex; justify-content: space-between; align-items: flex-start"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" style="flex-shrink: 0; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.75" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"></path><path d="M9 4v14M15 6v14"></path></svg><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border: 1px solid #5E6269; border-radius: 6px; font-size: 12px; font-weight: 600; color: #5E6269; flex-shrink: 0">Later</span></span><span style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 30px; font-weight: 800">DM</span><span style="font-size: 14px; color: #5E6269">Campaigns, initiative, monsters</span></span></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 360, "height": 800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

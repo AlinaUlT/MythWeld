@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>First start</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&amp;family=Cormorant+Garamond:wght@500;700&amp;family=EB+Garamond:wght@500;700&amp;family=Inter:wght@400;500;600;700&amp;family=Lora:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0f13}
+button,input{font-family:inherit;font-size:inherit;color:inherit;margin:0}
+input::placeholder{color:#97a1b9}
+a{color:#61afef}a:hover{color:#61afef}
+</style>
+</helmet>
+<div style="width: 360px; height: 800px; box-sizing: border-box; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #1a1e24; color: #bccad8; font-family: Inter, system-ui, sans-serif; font-size: 15px; line-height: 1.35">
+<div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 40px 20px 0">
+<span style="align-self: flex-start; height: 26px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #97a1b9; border-radius: 13px; font-size: 12px; font-weight: 600; color: #97a1b9; letter-spacing: 0.04em">5E compatible</span>
+<h1 style="margin: 0; font-family: {{hf}}; font-size: 52px; font-weight: 700; line-height: 1.05; color: #c14343">Grimoire</h1>
+<p style="margin: 0; font-size: 16px; line-height: 24px; color: #bccad8">Character sheets that show where every number comes from. A rules library. Your own homebrew. Works with no network.</p>
+</div>
+<div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; padding: 24px 16px 28px">
+<h2 style="margin: 0 0 4px; font-family: {{hf}}; font-size: 22px; font-weight: 700; color: #bccad8">How will you use it?</h2>
+<button style="width: 100%; height: 76px; box-sizing: border-box; display: flex; align-items: center; gap: 14px; padding: 0 12px 0 14px; border: 1px solid #2f3b4d; border-radius: 14px; background: transparent; color: #bccad8; text-align: left"><span style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #863737; color: #e5ebee"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" style="flex-shrink: 0; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.75" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"></path></svg></span><span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 600">I play</span><span style="font-size: 13px; color: #97a1b9">Characters, dice and the library</span></span><span style="color: #97a1b9; display: flex"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" style="flex-shrink: 0; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.75" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg></span></button>
+<button style="width: 100%; height: 76px; box-sizing: border-box; display: flex; align-items: center; gap: 14px; padding: 0 12px 0 14px; border: 1px solid #2f3b4d; border-radius: 14px; background: transparent; color: #bccad8; text-align: left"><span style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #863737; color: #e5ebee"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" style="flex-shrink: 0; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.75" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"></path><path d="M9 4v14M15 6v14"></path></svg></span><span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 600">I run games</span><span style="font-size: 13px; color: #97a1b9">Campaigns, initiative and monsters</span></span><span style="color: #97a1b9; display: flex"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" style="flex-shrink: 0; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.75" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg></span></button>
+<button style="width: 100%; height: 76px; box-sizing: border-box; display: flex; align-items: center; gap: 14px; padding: 0 12px 0 14px; border: 1px solid #2f3b4d; border-radius: 14px; background: transparent; color: #bccad8; text-align: left"><span style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #863737; color: #e5ebee"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" style="flex-shrink: 0; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.75" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 13.8c2.1.8 3.5 3 3.5 6.2"></path></svg></span><span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 600">Both</span><span style="font-size: 13px; color: #97a1b9">Every tab, for players and game masters</span></span><span style="color: #97a1b9; display: flex"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" style="flex-shrink: 0; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.75" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg></span></button>
+<p style="margin: 6px 0 0; text-align: center; font-size: 13px; color: #97a1b9">You can change this in Settings.</p>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"headingFont": {"editor": "enum", "options": ["EB Garamond", "Alegreya", "Lora", "Cormorant Garamond"], "default": "EB Garamond"}, "$preview": {"width": 360, "height": 800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const f = this.props.headingFont ?? 'EB Garamond';
+    return { hf: f + ', Georgia, serif' };
+  }
+}
+</script>
+</body>
+</html>

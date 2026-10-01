@@ -11,8 +11,36 @@
   },
   "pages": [
     {
+      "id": "first-look",
+      "name": "First look"
+    },
+    {
+      "id": "p4-palettes",
+      "name": "P4 · 3 palettes"
+    },
+    {
       "id": "retro",
       "name": "Retro and weird"
+    },
+    {
+      "id": "overall",
+      "name": "Overall design · 5 options"
+    },
+    {
+      "id": "player-flow",
+      "name": "Player flow"
+    },
+    {
+      "id": "reference",
+      "name": "Reference, improved"
+    },
+    {
+      "id": "ours-v1",
+      "name": "Our design v1"
+    },
+    {
+      "id": "ours-v2",
+      "name": "Our design v2"
     },
     {
       "id": "ours-v3",
@@ -20,6 +48,155 @@
     }
   ],
   "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "EB Garamond"
+    },
+    "Font-Alegreya.dc.html": {
+      "x": 440,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Alegreya"
+    },
+    "Font-Lora.dc.html": {
+      "x": 880,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Lora"
+    },
+    "Font-Cormorant.dc.html": {
+      "x": 1320,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Cormorant Garamond"
+    },
+    "Layout-A.dc.html": {
+      "x": 0,
+      "y": 1440,
+      "w": 360,
+      "h": 1577,
+      "title": "A · Tiles"
+    },
+    "Layout-B.dc.html": {
+      "x": 440,
+      "y": 1440,
+      "w": 360,
+      "h": 1678,
+      "title": "B · Grouped by ability"
+    },
+    "Layout-C.dc.html": {
+      "x": 880,
+      "y": 1440,
+      "w": 360,
+      "h": 1001,
+      "title": "C · Compact"
+    },
+    "Layout-A-Light.dc.html": {
+      "x": 1320,
+      "y": 1440,
+      "w": 360,
+      "h": 1577,
+      "title": "A · Tiles, light theme"
+    },
+    "P1-First-start.dc.html": {
+      "x": 0,
+      "y": 3498,
+      "w": 360,
+      "h": 800,
+      "title": "P1 · First start"
+    },
+    "P2-Characters.dc.html": {
+      "x": 440,
+      "y": 3498,
+      "w": 360,
+      "h": 800,
+      "title": "P2 · Characters"
+    },
+    "P5-Breakdown.dc.html": {
+      "x": 880,
+      "y": 3498,
+      "w": 360,
+      "h": 800,
+      "title": "P5 · Where a number comes from"
+    },
+    "P4-Lavender-V1.dc.html": {
+      "x": 0,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Lavender · V1 Classic",
+      "page": "p4-palettes"
+    },
+    "P4-Lavender-V2.dc.html": {
+      "x": 440,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Lavender · V2 Cards",
+      "page": "p4-palettes"
+    },
+    "P4-Lavender-V3.dc.html": {
+      "x": 880,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Lavender · V3 Thumb",
+      "page": "p4-palettes"
+    },
+    "P4-Cream-V1.dc.html": {
+      "x": 0,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Cream · V1 Classic",
+      "page": "p4-palettes"
+    },
+    "P4-Cream-V2.dc.html": {
+      "x": 440,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Cream · V2 Cards",
+      "page": "p4-palettes"
+    },
+    "P4-Cream-V3.dc.html": {
+      "x": 880,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Cream · V3 Thumb",
+      "page": "p4-palettes"
+    },
+    "P4-Sky-V1.dc.html": {
+      "x": 0,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "Sky · V1 Classic",
+      "page": "p4-palettes"
+    },
+    "P4-Sky-V2.dc.html": {
+      "x": 440,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "Sky · V2 Cards",
+      "page": "p4-palettes"
+    },
+    "P4-Sky-V3.dc.html": {
+      "x": 880,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "Sky · V3 Thumb",
+      "page": "p4-palettes"
+    },
     "Retro-Win95.dc.html": {
       "x": 0,
       "y": 260,
@@ -67,6 +244,553 @@
       "h": 800,
       "title": "Early homepage",
       "page": "retro"
+    },
+    "O1-Home.dc.html": {
+      "x": 0,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "1 · Dashboard · Home",
+      "page": "overall"
+    },
+    "O1-Sheet.dc.html": {
+      "x": 0,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "1 · Dashboard · Sheet",
+      "page": "overall"
+    },
+    "O2-Home.dc.html": {
+      "x": 440,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "2 · Tiles · Home",
+      "page": "overall"
+    },
+    "O2-Sheet.dc.html": {
+      "x": 440,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "2 · Tiles · Sheet",
+      "page": "overall"
+    },
+    "O3-Home.dc.html": {
+      "x": 880,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "3 · Search first · Home",
+      "page": "overall"
+    },
+    "O3-Sheet.dc.html": {
+      "x": 880,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "3 · Search first · Sheet",
+      "page": "overall"
+    },
+    "O4-Home.dc.html": {
+      "x": 1320,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "4 · Gallery · Home",
+      "page": "overall"
+    },
+    "O4-Sheet.dc.html": {
+      "x": 1320,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "4 · Gallery · Sheet",
+      "page": "overall"
+    },
+    "O5-Home.dc.html": {
+      "x": 1760,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "5 · Journal · Home",
+      "page": "overall"
+    },
+    "O5-Sheet.dc.html": {
+      "x": 1760,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "5 · Journal · Sheet",
+      "page": "overall"
+    },
+    "O4-Menu.dc.html": {
+      "x": 1320,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "4 · Gallery · Menu",
+      "page": "overall"
+    },
+    "Flow-Start.dc.html": {
+      "x": 0,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "1 · Start",
+      "page": "player-flow",
+      "is_interactive": true
+    },
+    "Flow-Player.dc.html": {
+      "x": 440,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "2 · Player",
+      "page": "player-flow",
+      "is_interactive": true
+    },
+    "Flow-Characters.dc.html": {
+      "x": 880,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "3 · My characters (swipe)",
+      "page": "player-flow",
+      "is_interactive": true
+    },
+    "Flow-Sheet-Main.dc.html": {
+      "x": 1320,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "4 · Sheet, Main",
+      "page": "player-flow",
+      "is_interactive": true
+    },
+    "Flow-Sheet-Features.dc.html": {
+      "x": 1760,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "5 · Sheet, Features (try Use)",
+      "page": "player-flow",
+      "is_interactive": true
+    },
+    "Flow-Actions.dc.html": {
+      "x": 2200,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "6 · Actions (⋯ or swipe)",
+      "page": "player-flow",
+      "is_interactive": true
+    },
+    "Flow-Create.dc.html": {
+      "x": 440,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "From Player: Create a character",
+      "page": "player-flow",
+      "is_interactive": true
+    },
+    "Flow-Rulebooks.dc.html": {
+      "x": 880,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "From Player: Rulebooks",
+      "page": "player-flow",
+      "is_interactive": true
+    },
+    "R-Start.dc.html": {
+      "x": 0,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "1 · Start: system, then Player or DM",
+      "page": "reference",
+      "is_interactive": true
+    },
+    "R-Hub.dc.html": {
+      "x": 440,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "2 · Player hub (round menu, labelled)",
+      "page": "reference",
+      "is_interactive": true
+    },
+    "R-Characters.dc.html": {
+      "x": 880,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "3 · My characters (+ in the corner)",
+      "page": "reference",
+      "is_interactive": true
+    },
+    "R-Sheet.dc.html": {
+      "x": 1320,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "4 · Sheet (one scroll, HP and sections at the bottom)",
+      "page": "reference",
+      "is_interactive": true
+    },
+    "R-Features.dc.html": {
+      "x": 1760,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "5 · Features (try Use)",
+      "page": "reference",
+      "is_interactive": true
+    },
+    "R-Edit.dc.html": {
+      "x": 2200,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "6 · Edit mode",
+      "page": "reference",
+      "is_interactive": true
+    },
+    "R-Roll.dc.html": {
+      "x": 1320,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Roll result",
+      "page": "reference",
+      "is_interactive": true
+    },
+    "R-Weapon.dc.html": {
+      "x": 1760,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Weapon card",
+      "page": "reference",
+      "is_interactive": true
+    },
+    "R-Rest.dc.html": {
+      "x": 2200,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Rest",
+      "page": "reference",
+      "is_interactive": true
+    },
+    "R-Actions.dc.html": {
+      "x": 880,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Actions (⋯ or swipe More)",
+      "page": "reference",
+      "is_interactive": true
+    },
+    "R-Library.dc.html": {
+      "x": 0,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Rulebooks",
+      "page": "reference",
+      "is_interactive": true
+    },
+    "R-Dice.dc.html": {
+      "x": 440,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Dice",
+      "page": "reference",
+      "is_interactive": true
+    },
+    "G-Start.dc.html": {
+      "x": 0,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "1 · Start: Player or Game master",
+      "page": "ours-v1",
+      "is_interactive": true
+    },
+    "G-Player.dc.html": {
+      "x": 440,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "2 · Player: what you need before making a character",
+      "page": "ours-v1",
+      "is_interactive": true
+    },
+    "G-Characters.dc.html": {
+      "x": 880,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "3 · My characters: + in the corner",
+      "page": "ours-v1",
+      "is_interactive": true
+    },
+    "G-Sheet.dc.html": {
+      "x": 1320,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "4 · Sheet (V3)",
+      "page": "ours-v1",
+      "is_interactive": true
+    },
+    "G-Features.dc.html": {
+      "x": 1760,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "5 · Features (try Use)",
+      "page": "ours-v1",
+      "is_interactive": true
+    },
+    "G-Edit.dc.html": {
+      "x": 2200,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "6 · Edit mode: tap a number",
+      "page": "ours-v1",
+      "is_interactive": true
+    },
+    "G-Dice.dc.html": {
+      "x": 0,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "From Player: Dice",
+      "page": "ours-v1",
+      "is_interactive": true
+    },
+    "G-Classes.dc.html": {
+      "x": 440,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "From Player: a rulebook chapter",
+      "page": "ours-v1",
+      "is_interactive": true
+    },
+    "G-Create.dc.html": {
+      "x": 880,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "From +: New character",
+      "page": "ours-v1",
+      "is_interactive": true
+    },
+    "G-Roll.dc.html": {
+      "x": 1320,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "From the sheet: a roll",
+      "page": "ours-v1",
+      "is_interactive": true
+    },
+    "G-Rest.dc.html": {
+      "x": 1760,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "From the sheet: Rest",
+      "page": "ours-v1",
+      "is_interactive": true
+    },
+    "G-Actions.dc.html": {
+      "x": 2200,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "From ⋯ or a swipe: Actions",
+      "page": "ours-v1",
+      "is_interactive": true
+    },
+    "V2-Start.dc.html": {
+      "x": 0,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Start",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Player.dc.html": {
+      "x": 440,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Player: several books at once",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Characters.dc.html": {
+      "x": 880,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "My characters",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Sheet.dc.html": {
+      "x": 1320,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Sheet: token, Inspiration, dice button",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-SheetDice.dc.html": {
+      "x": 1760,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Dice on the sheet: half screen",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Features.dc.html": {
+      "x": 2200,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Features by source (try Use)",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-About.dc.html": {
+      "x": 2640,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "About tab",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Classes.dc.html": {
+      "x": 0,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "A chapter",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Dice.dc.html": {
+      "x": 440,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Dice page",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Create.dc.html": {
+      "x": 880,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "New character",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Roll.dc.html": {
+      "x": 1320,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "A roll",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Rest.dc.html": {
+      "x": 1760,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Rest",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Actions.dc.html": {
+      "x": 2200,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Actions",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Spells.dc.html": {
+      "x": 2640,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Spells for a caster (sample)",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Add.dc.html": {
+      "x": 0,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "Edit mode: add to the sheet",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Stat.dc.html": {
+      "x": 440,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "A custom stat: Vitality",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Token.dc.html": {
+      "x": 880,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "Portrait and token",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-Campaign.dc.html": {
+      "x": 1320,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "In a campaign: waiting for the DM",
+      "page": "ours-v2",
+      "is_interactive": true
+    },
+    "V2-DMReview.dc.html": {
+      "x": 1760,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "DM side (later): approve changes",
+      "page": "ours-v2",
+      "is_interactive": true
     },
     "V3-Player.dc.html": {
       "x": 0,
@@ -385,12 +1109,94 @@
     }
   },
   "order": [
+    "Main.dc.html",
+    "Font-Alegreya.dc.html",
+    "Font-Lora.dc.html",
+    "Font-Cormorant.dc.html",
+    "Layout-A.dc.html",
+    "Layout-B.dc.html",
+    "Layout-C.dc.html",
+    "Layout-A-Light.dc.html",
+    "P1-First-start.dc.html",
+    "P2-Characters.dc.html",
+    "P5-Breakdown.dc.html",
+    "P4-Lavender-V1.dc.html",
+    "P4-Lavender-V2.dc.html",
+    "P4-Lavender-V3.dc.html",
+    "P4-Cream-V1.dc.html",
+    "P4-Cream-V2.dc.html",
+    "P4-Cream-V3.dc.html",
+    "P4-Sky-V1.dc.html",
+    "P4-Sky-V2.dc.html",
+    "P4-Sky-V3.dc.html",
     "Retro-Win95.dc.html",
     "Retro-RPG.dc.html",
     "Retro-Terminal.dc.html",
     "Retro-Parchment.dc.html",
     "Retro-Wood.dc.html",
     "Retro-Homepage.dc.html",
+    "O1-Home.dc.html",
+    "O1-Sheet.dc.html",
+    "O2-Home.dc.html",
+    "O2-Sheet.dc.html",
+    "O3-Home.dc.html",
+    "O3-Sheet.dc.html",
+    "O4-Home.dc.html",
+    "O4-Sheet.dc.html",
+    "O5-Home.dc.html",
+    "O5-Sheet.dc.html",
+    "O4-Menu.dc.html",
+    "Flow-Start.dc.html",
+    "Flow-Player.dc.html",
+    "Flow-Characters.dc.html",
+    "Flow-Sheet-Main.dc.html",
+    "Flow-Sheet-Features.dc.html",
+    "Flow-Actions.dc.html",
+    "Flow-Create.dc.html",
+    "Flow-Rulebooks.dc.html",
+    "R-Start.dc.html",
+    "R-Hub.dc.html",
+    "R-Characters.dc.html",
+    "R-Sheet.dc.html",
+    "R-Features.dc.html",
+    "R-Edit.dc.html",
+    "R-Roll.dc.html",
+    "R-Weapon.dc.html",
+    "R-Rest.dc.html",
+    "R-Actions.dc.html",
+    "R-Library.dc.html",
+    "R-Dice.dc.html",
+    "G-Start.dc.html",
+    "G-Player.dc.html",
+    "G-Characters.dc.html",
+    "G-Sheet.dc.html",
+    "G-Features.dc.html",
+    "G-Edit.dc.html",
+    "G-Dice.dc.html",
+    "G-Classes.dc.html",
+    "G-Create.dc.html",
+    "G-Roll.dc.html",
+    "G-Rest.dc.html",
+    "G-Actions.dc.html",
+    "V2-Start.dc.html",
+    "V2-Player.dc.html",
+    "V2-Characters.dc.html",
+    "V2-Sheet.dc.html",
+    "V2-SheetDice.dc.html",
+    "V2-Features.dc.html",
+    "V2-About.dc.html",
+    "V2-Classes.dc.html",
+    "V2-Dice.dc.html",
+    "V2-Create.dc.html",
+    "V2-Roll.dc.html",
+    "V2-Rest.dc.html",
+    "V2-Actions.dc.html",
+    "V2-Spells.dc.html",
+    "V2-Add.dc.html",
+    "V2-Stat.dc.html",
+    "V2-Token.dc.html",
+    "V2-Campaign.dc.html",
+    "V2-DMReview.dc.html",
     "V3-Player.dc.html",
     "V3-Sources.dc.html",
     "V3-Library.dc.html",
@@ -428,6 +1234,51 @@
     "V3-Actor.dc.html"
   ],
   "notes": {
+    "row1": {
+      "x": 0,
+      "y": 0,
+      "text": "1. Heading font: one sheet, four fonts",
+      "kind": "title1",
+      "maxW": 1680
+    },
+    "row2": {
+      "x": 0,
+      "y": 1180,
+      "text": "2. Sheet, Main tab: three layouts",
+      "kind": "title1",
+      "maxW": 1680
+    },
+    "row3": {
+      "x": 0,
+      "y": 3238,
+      "text": "3. More screens",
+      "kind": "title1",
+      "maxW": 1680
+    },
+    "pal-lavender": {
+      "x": 0,
+      "y": 0,
+      "text": "Lavender: 3D52A0 · 7091E6 · 8697C4 · ADBBDA · EDE8F5",
+      "kind": "title1",
+      "maxW": 1160,
+      "page": "p4-palettes"
+    },
+    "pal-cream": {
+      "x": 0,
+      "y": 1180,
+      "text": "Cream: F7F5E6 · 333A56 · 52658F · E8E8E8",
+      "kind": "title1",
+      "maxW": 1160,
+      "page": "p4-palettes"
+    },
+    "pal-sky": {
+      "x": 0,
+      "y": 2360,
+      "text": "Sky: E2F0F9 · B0DDE4 · 286FB4 · FFFFFF · DF4C73",
+      "kind": "title1",
+      "maxW": 1160,
+      "page": "p4-palettes"
+    },
     "retro-title": {
       "x": 0,
       "y": 0,
@@ -435,6 +1286,102 @@
       "kind": "title1",
       "maxW": 1160,
       "page": "retro"
+    },
+    "overall-home": {
+      "x": 0,
+      "y": 0,
+      "text": "Home: the first page, five options",
+      "kind": "title1",
+      "maxW": 2080,
+      "page": "overall"
+    },
+    "overall-sheet": {
+      "x": 0,
+      "y": 1180,
+      "text": "The sheet (V3 Thumb) in each option",
+      "kind": "title1",
+      "maxW": 2080,
+      "page": "overall"
+    },
+    "overall-extra": {
+      "x": 0,
+      "y": 2360,
+      "text": "Option 4: its menu, where later features live",
+      "kind": "title1",
+      "maxW": 2080,
+      "page": "overall"
+    },
+    "flow-1": {
+      "x": 0,
+      "y": 0,
+      "text": "Player flow: press Play and tap through",
+      "kind": "title1",
+      "maxW": 2560,
+      "page": "player-flow"
+    },
+    "flow-2": {
+      "x": 440,
+      "y": 1180,
+      "text": "Also from the Player page",
+      "kind": "title1",
+      "maxW": 800,
+      "page": "player-flow"
+    },
+    "ref-1": {
+      "x": 0,
+      "y": 0,
+      "text": "Your reference app's structure, redrawn: press Play and tap through",
+      "kind": "title1",
+      "maxW": 2560,
+      "page": "reference"
+    },
+    "ref-2": {
+      "x": 0,
+      "y": 1180,
+      "text": "Opened from the hub and the sheet",
+      "kind": "title1",
+      "maxW": 2560,
+      "page": "reference"
+    },
+    "ours-1": {
+      "x": 0,
+      "y": 0,
+      "text": "Our design v1: same ideas and parts, our own layout. Press Play",
+      "kind": "title1",
+      "maxW": 2560,
+      "page": "ours-v1"
+    },
+    "ours-2": {
+      "x": 0,
+      "y": 1180,
+      "text": "Opened from the Player page, the list and the sheet",
+      "kind": "title1",
+      "maxW": 2560,
+      "page": "ours-v1"
+    },
+    "v2-1": {
+      "x": 0,
+      "y": 0,
+      "text": "Our design v2 (ADR 009): the main flow. Press Play",
+      "kind": "title1",
+      "maxW": 2960,
+      "page": "ours-v2"
+    },
+    "v2-2": {
+      "x": 0,
+      "y": 1180,
+      "text": "Opened from the pages above",
+      "kind": "title1",
+      "maxW": 2960,
+      "page": "ours-v2"
+    },
+    "v2-3": {
+      "x": 0,
+      "y": 2360,
+      "text": "Edit mode, custom stats, token, campaign",
+      "kind": "title1",
+      "maxW": 2960,
+      "page": "ours-v2"
     },
     "v3-0": {
       "x": 0,

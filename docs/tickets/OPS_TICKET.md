@@ -801,3 +801,34 @@ references hold text without an open license; ADRs 008, 012 and 013 say in words
 from each. The gate, run again after rebasing onto ENG-24 and ENG-05, is green: lint checked
 70 files; typecheck passed in all 5 packages; 82 tests passed, 0 failed, 1.68 s.
 Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-24 The whole design canvas in the repository · XS
+
+**Hat:** The whole design canvas is kept in the repository
+**Where:** `docs/design/mockups/` — 82 boards added, `canvas.json` and `README.md` changed;
+`docs/design/BRIEF.md`, `docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-23
+
+**What it should look like when done:**
+1. Every board of the design canvas, all nine pages, is in `docs/design/mockups/`, and
+   `canvas.json` indexes all of them.
+2. The README names each page, its files and what it is, and says how to rebuild the canvas
+   from the folder if the canvas is lost.
+3. No code changes. The quality gate stays green.
+
+**Tests:** none new. Control numbers: 123 boards in `canvas.json`, 123 `*.dc.html` files, no
+board without its file, no link between boards pointing at a missing file; the files per page
+counted against the canvas index; a rebuild of the `V3-*` boards with the full index gave the
+same files and the same index; the gate's counts.
+
+**What came out of it:** the owner asked whether other chats can see the canvas and what was
+done in this one. They cannot see this chat; they see the repository, and the canvas only through
+its link, on the owner's account. OPS-22 kept the current page and the skins (41 boards); the
+other seven pages (82 boards, 1.6 MB) were only on the canvas. Checked before adding them, as in
+OPS-22: no personal name, no tool name, no trademark, no hidden character, and no text longer
+than a sentence that is not ours. The folder is now 2.6 MB. The earlier pages were not rebuilt
+from their scripts; the README says so. The gate is green: lint checked 70 files; typecheck
+passed in all 5 packages; 82 tests passed, 0 failed, 1.71 s.
+Found, not fixed: nothing. Nothing for the changelog; a person sees no change.

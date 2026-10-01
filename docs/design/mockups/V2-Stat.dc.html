@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Custom stat</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600;700&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#dcdcd8}
+button,input{font-family:inherit;font-size:inherit;color:inherit;margin:0}
+button:disabled{opacity:0.4}
+input::placeholder{color:#5E6269}
+a{color:#1C1D20}a:hover{color:#1C1D20}
+</style>
+</helmet>
+<div style="width: 360px; height: 800px; box-sizing: border-box; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #F5F5F3; color: #1C1D20; font-family: Inter, system-ui, sans-serif; font-size: 15px; line-height: 1.35">
+<header style="height: 60px; flex-shrink: 0; display: flex; align-items: center; gap: 4px; padding: 0 4px"><a href="V2-Add.dc.html" aria-label="Back" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; text-decoration: none; color: inherit"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" style="flex-shrink: 0; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.75" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a><h1 style="margin: 0; flex-grow: 1; font-family: 'EB Garamond', Georgia, serif; font-size: 28px; font-weight: 700">New stat</h1><button style="height: 40px; padding: 0 16px; margin-right: 8px; border: 0; border-radius: 10px; background: #1C1D20; color: #FFFFFF; font-weight: 700">Save</button></header><main style="flex-grow: 1; min-height: 0; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 12px"><label style="font-size: 13px; font-weight: 600">Name<input value="Vitality" style="display: block; width: 100%; margin-top: 6px; height: 48px; box-sizing: border-box; border: 1px solid #5E6269; border-radius: 12px; padding: 0 14px; font-size: 16px; background: #FFFFFF; color: #1C1D20"></label><div style="font-size: 13px; font-weight: 600">Score formula</div><div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center"><span style="height: 36px; padding: 0 12px; border-radius: 10px; display: flex; align-items: center; font-weight: 700; background: #EDECE8">8</span><span style="font-size: 18px; color: #5E6269">+</span><span style="height: 36px; padding: 0 12px; border-radius: 10px; display: flex; align-items: center; font-weight: 700; background: #1C1D20; color: #FFFFFF">STR mod</span><span style="font-size: 18px; color: #5E6269">+</span><span style="height: 36px; padding: 0 12px; border-radius: 10px; display: flex; align-items: center; font-weight: 700; background: #1C1D20; color: #FFFFFF">DEX mod</span><span style="font-size: 18px; color: #5E6269">+</span><span style="height: 36px; padding: 0 12px; border-radius: 10px; display: flex; align-items: center; font-weight: 700; background: #1C1D20; color: #FFFFFF">CON mod</span><span style="height: 36px; padding: 0 10px; border-radius: 10px; border: 1px dashed #5E6269; display: flex; align-items: center; color: #5E6269">+ add</span></div><div style="box-sizing: border-box; background: #FFFFFF; border: 1px solid #E2E2DE; border-radius: 14px; padding: 14px; display: flex; align-items: center; gap: 12px"><span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; color: #5E6269">For Iren</span><span>8 + 3 + 1 + 2 = <b>14</b></span></span><span style="display: flex; flex-direction: column; align-items: center"><b style="font-size: 30px">+2</b><span style="font-size: 12px; color: #5E6269">modifier</span></span></div><div style="font-size: 13px; font-weight: 600">How it is used</div><div style="font-size: 14px">A bonus to any check, save or attack roll, equal to the proficiency bonus.</div><div style="padding: 10px 12px; border-radius: 10px; background: #FBF1D9; color: #6B4A00; font-size: 13px">Open question: "equal to the proficiency bonus" is the size of the bonus, or the number of uses?</div><label style="display: flex; align-items: center; gap: 10px; min-height: 44px"><span style="width: 20px; height: 20px; box-sizing: border-box; border-radius: 50%; border: 2px solid #1C1D20; display: flex; align-items: center; justify-content: center"></span><span>Bonus size = proficiency bonus (+2)</span></label><label style="display: flex; align-items: center; gap: 10px; min-height: 44px"><span style="width: 20px; height: 20px; box-sizing: border-box; border-radius: 50%; border: 2px solid #1C1D20; display: flex; align-items: center; justify-content: center"></span><span>Uses = proficiency bonus (2), bonus = Vitality +2</span></label></main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 360, "height": 800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

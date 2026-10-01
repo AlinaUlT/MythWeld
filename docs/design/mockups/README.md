@@ -1,9 +1,10 @@
-# Mockups — the current design, as files
+# Mockups — the whole design canvas, as files
 
-The screens the owner chose, saved in the repository so that every chat can open them and build
-from them (the owner's decision, 2026-10-01). They are the same files as the design canvas,
-[page "Our design v3"](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg). If the two ever
-differ, the newer date in `docs/design/BRIEF.md` Part 5 wins, and the other is brought in line.
+Every board of the design canvas, all nine pages, saved in the repository so that every chat
+can open them and build from them (the owner's decision, 2026-10-01). A new chat does not see the
+chats before it; it sees this folder. The canvas itself is a private page on the owner's account:
+[the design canvas](https://claude.ai/artifact/RatMY6p7o1XaSFsSew2qSg). If the two ever differ,
+the newer date in `docs/design/BRIEF.md` Part 5 wins, and the other is brought in line.
 
 - **What each screen must do:** `docs/design/BRIEF.md` (Part 2 per screen, Part 5 the choices)
   and ADRs 008–013. **What it changes in the engine:** ADR 014.
@@ -47,9 +48,22 @@ differ, the newer date in `docs/design/BRIEF.md` Part 5 wins, and the other is b
 | | `V3-DMReview` | Grouped changes; the DM edits a value before approving |
 | | `V3-Actor` | A new actor with a type |
 
-`Retro-*` are six looks kept as ideas for paid skins, not the base design (BRIEF Part 5,
-"Future skins"). `canvas.json` is the canvas's index for these two pages: each board's place
-and title.
+### The other pages
+
+| Canvas page | Files | What it is |
+|---|---|---|
+| Retro and weird | `Retro-*` (6) | Six looks kept as ideas for paid skins, not the base design (BRIEF Part 5, "Future skins") |
+| Our design v2 | `V2-*` (19) | The second round, replaced by v3 |
+| Our design v1 | `G-*` (12) | The first round of our own design, replaced by v2 |
+| Reference, improved | `R-*` (12) | Our redraw of the ideas in the owner's reference app; only ideas and parts were kept (ADR 008 item 7) |
+| Player flow | `Flow-*` (8) | The navigation that became ADR 008 |
+| Overall design · 5 options | `O1-*` to `O5-*` (11) | Five home pages with a bottom bar, all rejected |
+| P4 · 3 palettes | `P4-*` (9) | Three colour sets for the sheet; Lavender and Cream rejected, Sky open |
+| First look | `Main`, `Font-*`, `Layout-*`, `P1-*`, `P2-*`, `P5-*` (11) | The very first boards: fonts, layouts, first screens |
+
+Together: 123 boards. `canvas.json` is the canvas's index: its nine pages, each board's place
+and title, and the row titles. Only `V3-*` is the current design; the rest is history, kept so
+that no round is lost.
 
 ## The tokens these mockups use
 
@@ -107,7 +121,14 @@ python3 generator/gen14.py canvas.json
 ```
 
 `gen14.py` alone is enough when only the boards of `gen13.py` and `gen14.py` change. The other
-scripts hold the shared pieces (colours, icons, the sheet's header and dock). A change
+scripts hold the shared pieces (colours, icons, the sheet's header and dock), and drew the
+earlier pages; those pages are kept as files and were not rebuilt to check them. A change
 to a board is made in its generator, regenerated, published to the canvas, and committed here
 in the same ticket. `generator/shot.cjs` renders boards side by side into a PNG for the chat
 (set `CHROMIUM_PATH` if Playwright's own browser is not installed); the PNG is not committed.
+
+## If the canvas is ever lost
+
+The canvas can be rebuilt from this folder alone. A chat that can publish artifacts publishes
+`canvas.json`, with every `*.dc.html` file beside it, to a new design canvas, and writes the new
+link into BRIEF Part 5 and this file.
