@@ -1,7 +1,8 @@
-// ENG-08: the engine has no randomness of its own. A roll takes its numbers from the source the
-// caller passes in, which in the app is the platform's secure one (ADR 014 item 11).
+// ENG-08: the engine has no randomness of its own, nor has a system module (ENG-41). A roll takes
+// its numbers from the source the caller passes in, which in the app is the platform's secure one
+// (ADR 014 item 11).
 language js
 
 `Math.random` as $use where {
-  register_diagnostic(span=$use, message="ENG-08: the engine has no randomness of its own. Dice take a RandomSource as an argument; the app passes crypto.getRandomValues.")
+  register_diagnostic(span=$use, message="ENG-08: the engine and the system modules have no randomness of their own. Dice take a RandomSource as an argument; the app passes crypto.getRandomValues.")
 }

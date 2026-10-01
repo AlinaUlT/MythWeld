@@ -4258,3 +4258,92 @@ Found, not fixed:
   says it wins.
 
 Nothing for the changelog.
+
+---
+
+### ENG-41 The module's purity lint · XS
+
+**Hat:** Lint holds the fifth-edition module to the engine's purity rules
+**Where:** `biome.json` — the engine's denied globals and its `Math.random` plugin cover
+`packages/system-*/src/**` too, and a new override gives the modules their own import list;
+`biome/no-math-random.grit` and the ENG-01 global messages name the modules;
+`packages/engine/test/purity.test.ts` — a sample can sit in `packages/system-5e/src`;
+`packages/system-5e/src/index.ts` — the ticket's comment
+**Depends on:** ENG-01 (the engine's rules and their test), ENG-31 (the package), ADR 004 item 1
+("compute steps (pure TypeScript)")
+**Screen:** No
+
+**What it should look like when done:**
+1. Today a 10-line file in `packages/system-5e/src` importing `dexie`, `react` and
+   `../../../apps/…`, and using `Math.random()`, `globalThis`, `document`, `fetch`, `eval` and
+   `new Function`, gives lint `Found 1 error`: `noGlobalEval` on the `eval` line (measured).
+   After: every one of those lines is refused.
+2. `pnpm lint` fails when a file in `packages/system-<id>/src` imports anything but its own
+   files (`./…`, `../…`), `@grimoire/schema`, `@grimoire/engine` and `zod`: a UI, storage,
+   network or any other library, another `@grimoire/…` package (`@grimoire/content`,
+   `@grimoire/web`, another module), a path into `apps/` or `node_modules/`; by `import`,
+   `import type`, `export … from` or a dynamic `import()`. The message starts with `ENG-41`.
+3. The same file fails lint on every global the engine refuses (`globalThis`, `self`, the DOM,
+   storage and network names: `ENG-01`; `eval`, `Function`: `ENG-07`) and on `Math.random`
+   (`ENG-08`). One list in `biome.json` serves the engine and the modules; its messages name
+   both.
+4. A module file importing `@grimoire/schema`, `@grimoire/engine`, `zod`, `./rulesets/2024.ts`
+   and `../shared.ts` and using `Math.max` passes lint.
+5. The engine keeps every ENG-01, ENG-07, ENG-08 and ENG-31 refusal: the existing tests in
+   `purity.test.ts` pass with only the reworded messages changed.
+6. The quality gate is green; CI runs the same lint (SETUP-03).
+
+**Tests:** `packages/engine/test/purity.test.ts` — `describe('ENG-41 a system module is held to
+the engine's purity rules')`: an import sample, the engine's globals sample, `eval`/`Function`,
+`Math.random` and an allowed sample, each linted as `packages/system-5e/src/Sample.ts`. Control
+numbers: the line numbers of the refused lines in each sample, written by hand.
+**What came out of it:**
+
+Measured before, a 10-line file in `packages/system-5e/src` (`dexie`, `react`,
+`../../../apps/…`, `Math.random()`, `globalThis`, `document`, `fetch`, `eval`, `new Function`):
+lint `Found 1 error`, `noGlobalEval` on line 9.
+
+After:
+- The same file: `Found 10 errors`; every line but the plain `export` (line 4) is refused,
+  `eval` twice (`noGlobalEval` and the ENG-07 message).
+- Lint: `Checked 116 files`, 0 errors.
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done`.
+- Test: `Test Files 30 passed (30)`, `Tests 292 passed (292)`, 3.91 s (before: 30 files, 288
+  tests). `purity.test.ts` alone: 12 passed.
+- The tests bite. Each guard removed on its own, 12 tests in `purity.test.ts` each time: the
+  module's import override, 1 fails; `packages/system-*/src/**` dropped from the shared
+  globals override, 2; the `Math.random` plugin dropped from it, 2; each entry of the module's
+  list (`!zod`, `!@grimoire/engine`, `!@grimoire/schema`, `!./**`, `!../**`, `**/apps/**`,
+  `**/node_modules/**`), 1 each.
+
+Differences from §3: none. The test for the globals counts the rule's lines and the message
+text, not the message as a title: Biome prints `noRestrictedGlobals`' own message as a note
+under "Do not use the global variable …", in both reporters.
+
+Technical choices (ADR 002):
+- **`packages/system-*/src/**`, not `packages/system-5e/src/**`.** Every module to come is held
+  to the same rules with no edit, as ENG-31's one pattern refuses every module in the core.
+- **One list of denied globals for the engine and the modules.** The engine's override was split:
+  its imports stay its own; its globals and the `Math.random` plugin moved to an override that
+  includes both folders. Biome merges overrides that set different rules (measured: the ENG-01
+  import tests still pass). The ENG-01 and ENG-08 messages now name "the engine and the system
+  modules"; the ENG-08 test's text changed with it. Reversing it: copy the globals list back into
+  the engine's override and into the module's.
+- **The module's own import list**, since a list replaces the engine's for a file (ENG-31 §11):
+  the engine's entries plus `!@grimoire/engine` and `!zod` (`zod` for ENG-32's schemas; the
+  package does not depend on it yet). Every other `@grimoire/…` package is refused by `**`,
+  another module included, so the module never imports `content`, `pdf`, `foundry` or the app.
+- **The tests sit in `packages/engine/test/purity.test.ts`**, beside ENG-01's and ENG-31's: they
+  test `biome.json`, and that file already copies it into a scratch folder where a sample can sit
+  in any package.
+
+Found, not fixed:
+- A module file may climb into a sibling package: `export * from '../../content/src/index.ts'`,
+  `'../../system-tales/src/index.ts'` and `'../../engine/src/compute.ts'` in
+  `packages/system-5e/src` pass lint, measured; `!../**` allows them. The engine has the same
+  gap (ENG-31). Added to the phase 3 note in `BACKLOG.md`.
+- No test holds the module's `tsconfig.json` to the language alone, as ENG-01's typecheck test
+  holds the engine's. `pnpm typecheck` refuses `document` in the module only while its
+  `lib: ["ES2022"]` and `types: []` stay. New row ENG-42.
+
+Nothing for the changelog.

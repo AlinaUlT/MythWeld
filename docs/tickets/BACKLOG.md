@@ -84,7 +84,8 @@ split off an old row got a new id.
 | ENG-40 | A content key never reads a field every object has | XS | ✅ 2026-10-01 |
 | **Fifth edition** | **its own package** | | |
 | ENG-31 | The fifth-edition module is a package the core cannot import | XS | ✅ 2026-10-01 |
-| ENG-41 | Lint holds the fifth-edition module to the engine's purity rules | XS | 🔲 |
+| ENG-41 | Lint holds the fifth-edition module to the engine's purity rules | XS | ✅ 2026-10-01 |
+| ENG-42 | A test holds the module's tsconfig to the language alone | XS | 🔲 |
 | ENG-32 | The fifth-edition entity types have Zod schemas | M | 🔲 |
 | ENG-33 | The fifth-edition part of the character document has a schema | S | 🔲 |
 | ENG-38 | The fifth-edition pack's JSON Schema is published as a file | XS | 🔲 |
@@ -104,11 +105,11 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-41** — found by ENG-31: `packages/system-5e/tsconfig.json` is the engine's (ES2022, no
-  types), but `biome.json`'s ENG-01 override covers `packages/engine/src` only. A module file
-  importing `dexie` and using `Math.random()` and `globalThis` passes lint; only `eval` fails
-  (Biome's `noGlobalEval`). Its allow-list adds `@grimoire/engine`, and `zod` for ENG-32's
-  schemas. A Biome override replaces the rule's whole list for a file (ENG-31 §11).
+- **ENG-42** — found by ENG-41: ENG-01's typecheck test (`purity.test.ts`) holds
+  `packages/engine/tsconfig.json` to ES2022 with no types; nothing holds
+  `packages/system-5e/tsconfig.json`, which ENG-31 made the same. A sample in
+  `packages/system-5e/src` naming `document`, `process` and `fetch` fails `tsc` today (TS2584,
+  TS2591, TS2304, measured); the test keeps it so.
 - **ENG-36** — ADR 014 item 10: level-up gives ENG-30's log entry (`logEntrySchema`, applied and
   reversed by `applyEntry` and `reverseEntry`), built from the character it changes.
 - **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
@@ -186,7 +187,10 @@ split off an old row got a new id.
 - **Phase 3** — found by ENG-31: a core file may climb into a sibling package other than a
   module (`../../content/src/index.ts` passes lint, measured). The row that first makes
   `content`, `pdf` or `foundry` import the module also refuses that climb in `packages/schema/src`
-  and `packages/engine/src`, or the core reaches the module through it with no error.
+  and `packages/engine/src`, or the core reaches the module through it with no error. Found by
+  ENG-41: a module file climbs the same way (`../../content/src/index.ts`,
+  `../../system-tales/src/index.ts` pass lint in `packages/system-5e/src`, measured); that row
+  refuses it in `packages/system-*/src` too.
 - **Phase 3** — found by ENG-29: two `resource` grants of one key give one resource, with the
   highest of their maximums. Mechanics that give one key from two classes (a multiclass) check
   in their §8 what the SRD says for that case; uses that add up are an effect `add` on
