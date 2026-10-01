@@ -860,3 +860,35 @@ it there. The canvas page itself stays on the owner's account; pinning it in the
 one tap away for the owner. The gate is green: lint checked 74 files; typecheck passed in all 5
 packages; 111 tests passed, 0 failed, 2.02 s.
 Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-26 Every look is a skin's data · XS
+
+**Hat:** ADR 015 makes every look a skin's data
+**Where:** `docs/adr/015-skins-everything-that-changes-the-look-is-data.md` — new; `CLAUDE.md`,
+`docs/design/BRIEF.md`, `docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-25
+
+**What it should look like when done:**
+1. ADR 015 records what the owner's skins can change: colours and fonts, part styles, motion,
+   backgrounds, token frames, dice and their effects, seasons, and an animated portrait.
+2. It records how the app is built for them: no look in a component, a skin as data with a
+   schema, slots, a fixed menu of part styles, animation presets, motion that respects the
+   person and the battery, fonts shipped with the app, ownership set by the app.
+3. `CLAUDE.md` gains the hard invariant; the phase notes and BRIEF Part 5 point at the ADR.
+4. No code changes. The quality gate stays green.
+
+**Tests:** none new. Control numbers: `apps/web/src/index.css` and `apps/web/src/config/app.ts`
+read for colours outside the tokens; the gate's counts.
+
+**What came out of it:** the owner asked on 2026-10-01 whether it is too late to prepare the code
+for sellable skins with animations, animated frames and backgrounds, animated portraits, 3D dice
+effects and seasonal themes. It is not: no real screen exists yet; phase 2 builds the first. The
+shell (SETUP-04) already keeps its colours as tokens in `index.css`; the one colour outside them,
+`APP_BACKGROUND_COLOR` in `config/app.ts`, is the web-app manifest's background, which can only be
+a fixed value. The mockups load their fonts from a font service; that is allowed on the canvas
+only, and ADR 015 item 10 keeps it out of the app. Left open for the owner: whether a seasonal
+skin switches on by itself. The gate is green: lint checked 74 files; typecheck passed in all 5
+packages; 111 tests passed, 0 failed, 1.95 s.
+Found, not fixed: nothing. Nothing for the changelog; a person sees no change.

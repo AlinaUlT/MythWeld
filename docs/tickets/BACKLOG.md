@@ -248,6 +248,11 @@ split off an old row got a new id.
   phase: level-up approval in a campaign, the DM's edit before approving, the approvals tab, the
   DM's setting for the conflict window. The DM tools' phase: actors with types. A second system:
   the system preview.
+- **ADR 015** — added by OPS-26. Phase 2 opens with the skin layer, before the first screen:
+  the full token set, the slots, the part styles, the motion settings, the lint check; the
+  portrait takes animated pictures and video. The theme editor's phase: the skin schema, import,
+  export. The dice phase: dice skins and their effects. The purchases phase: frames, backgrounds,
+  seasons.
 - **ADR 014** — added by OPS-20. Phase 3: the import brings in both SRDs' rules chapters as
   `rule` entries with topics, for Quick rules; bookmarks are a table on the device.
 - **ADR 011, by phase** — added by OPS-12. Phase 2: descriptions open and close, from fixtures
@@ -303,6 +308,7 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-23 | The design reference lists its tokens and its undrawn parts | XS | ✅ 2026-10-01 |
 | OPS-24 | The whole design canvas is kept in the repository | XS | ✅ 2026-10-01 |
 | OPS-25 | Every ticket that builds a screen names its mockup boards | XS | ✅ 2026-10-01 |
+| OPS-26 | ADR 015 makes every look a skin's data | XS | ✅ 2026-10-01 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. The owner's chosen results come back into it.

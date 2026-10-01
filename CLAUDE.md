@@ -138,6 +138,9 @@ rules in a new function.
 
 **The interface**
 
+- **No look is written in a component** ([ADR 015](docs/adr/015-skins-everything-that-changes-the-look-is-data.md)).
+  Every colour, font, size, picture and animation comes from a design token or a skin slot, so a
+  skin can change it. A skin is data, never code.
 - **No user-facing string literal in a component** (§9). Every visible string goes through an
   i18next key. English is the only locale filled for now; Russian is added later by its own
   phase (ADR 000).
