@@ -48,7 +48,8 @@ disagree, fix §4 and say so in §11.
 
 Then build it without stopping: do §4 → the quality gate green → fill §11 → ✅ and the date in
 BACKLOG.md → one commit starting with <ID> → push. Show me the test count and the time from the
-gate. If the ticket changes a screen, show me the screenshots.
+gate. If the ticket changes a screen, build it from its boards in docs/design/mockups/ and its
+row in docs/design/BRIEF.md Part 5, and show me the screenshots next to those boards.
 
 Stop only for a decision that is mine (ADR 007): a golden value that looks wrong, the SPEC and
 the SRD disagreeing, licensing, a feature or scope change, money. Anything marked [ПРОВЕРИТЬ] is
@@ -100,7 +101,8 @@ and what it needs from me (an account, a decision, nothing). Do not start it.
 Grimoire project. Read CLAUDE.md and docs/tickets/BACKLOG.md. Phase <N-1> is closed.
 Read SPEC §12 stage <N> and the SPEC sections it depends on. Cut phase <N> into rows of size
 XS, S or M, each with a hat of one phrase without "and", in the same table form as phases
-0 and 1. Name the phase's last row: its §11 will carry the proof of the stage gate.
+0 and 1. Name the phase's last row: its §11 will carry the proof of the stage gate. A row that
+builds a screen names its boards in docs/design/mockups/.
 Write them into BACKLOG.md and commit. Stop first only if a row adds or drops a feature
 compared with SPEC §12 and the ADRs (ADR 007).
 ```

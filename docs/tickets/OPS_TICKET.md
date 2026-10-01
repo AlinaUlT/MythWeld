@@ -832,3 +832,31 @@ than a sentence that is not ours. The folder is now 2.6 MB. The earlier pages we
 from their scripts; the README says so. The gate is green: lint checked 70 files; typecheck
 passed in all 5 packages; 82 tests passed, 0 failed, 1.71 s.
 Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-25 Screens are built from their mockups · XS
+
+**Hat:** Every ticket that builds a screen names its mockup boards
+**Where:** `docs/tickets/TEMPLATE.md`, `PROMPTS.md`, `docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-24
+
+**What it should look like when done:**
+1. The ticket template's full form asks a screen ticket for its boards in `docs/design/mockups/`
+   and its row in BRIEF Part 5; the short form gains a "Screen" line.
+2. Prompt 2 builds a screen from its boards and shows the screenshots next to them; prompt 6
+   makes each row that builds a screen name its boards.
+3. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** the owner asked how the design can stay available to the project all
+the time. Three things already hold it: the repository keeps every board (OPS-22, OPS-24), and
+`CLAUDE.md`, which every chat reads first, points at the folder. What was missing is a step that
+makes a chat open the design: a ticket could be expanded and built without looking at it. Now the
+template, the two prompts that start a ticket or a phase, and the phase notes (OPS-22) all send
+it there. The canvas page itself stays on the owner's account; pinning it in the sidebar keeps it
+one tap away for the owner. The gate is green: lint checked 74 files; typecheck passed in all 5
+packages; 111 tests passed, 0 failed, 2.02 s.
+Found, not fixed: nothing. Nothing for the changelog; a person sees no change.

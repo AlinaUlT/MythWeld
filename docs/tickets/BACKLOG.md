@@ -297,6 +297,7 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-22 | The current mockups are kept in the repository | S | ✅ 2026-10-01 |
 | OPS-23 | The design reference lists its tokens and its undrawn parts | XS | ✅ 2026-10-01 |
 | OPS-24 | The whole design canvas is kept in the repository | XS | ✅ 2026-10-01 |
+| OPS-25 | Every ticket that builds a screen names its mockup boards | XS | ✅ 2026-10-01 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. The owner's chosen results come back into it.

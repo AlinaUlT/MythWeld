@@ -29,7 +29,7 @@ The ticket goes into `docs/tickets/<AREA>_TICKET.md`, in number order.
 **Hat:** <one phrase, no "and">
 **Depends on:** <ids / `Nothing`>
 **Size:** <S | M>
-**Screen:** <Yes — which one | No>
+**Screen:** <Yes — which one; its boards in `docs/design/mockups/` and its row in `docs/design/BRIEF.md` Part 5 | No>
 **SPEC:** <§… that this ticket builds>
 
 ---
@@ -100,6 +100,7 @@ that §5, §6 or §8 are needed, it is not XS. Use the full form.
 **Hat:** <one phrase>
 **Where:** `packages/…` — <module or file>
 **Depends on:** <id / `Nothing`>
+**Screen:** <its boards in `docs/design/mockups/` | No>
 
 **What it should look like when done:**
 1. …
