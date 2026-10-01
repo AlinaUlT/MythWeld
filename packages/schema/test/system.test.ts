@@ -1,7 +1,5 @@
 import {
   entityBaseSchema,
-  entityIdSchema,
-  entityKeySchema,
   grantBaseSchema,
   grantSchema,
   prerequisiteSchema,
@@ -11,36 +9,17 @@ import {
 } from '@grimoire/schema';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { z } from 'zod';
+import {
+  type TalesEntity,
+  talentSchema,
+  tales,
+  talesEntitySchema,
+  talesLists,
+} from './tales/index.ts';
 
-// A made-up system: two editions, `lore` and `craft` proficiencies at levels 1–3, uses back each
-// scene or session, a `boon` grant kind, and `talent` and `calling` entity types. No real game.
-const talesLists = systemListsOf({
-  editions: ['first-age', 'second-age'],
-  proficiencyCategories: ['lore', 'craft'],
-  proficiencyLevels: [1, 2, 3],
-  recoveryEvents: ['scene', 'session'],
-});
-
-const boonGrantSchema = grantBaseSchema.safeExtend({
-  kind: z.literal('boon'),
-  boon: entityIdSchema,
-  uses: talesLists.usesDefSchema.optional(),
-});
-
-const tales = systemSchemasOf(talesLists, [boonGrantSchema]);
-
-const talentSchema = tales.entityBaseSchema.safeExtend({
-  type: z.literal('talent'),
-  tier: z.int().min(1).max(3),
-});
-const callingSchema = tales.entityBaseSchema.safeExtend({
-  type: z.literal('calling'),
-  key: entityKeySchema,
-  die: z.int().positive(),
-});
-
-const talesEntitySchema = systemEntitySchemaOf(tales, [talentSchema, callingSchema]);
-type TalesEntity = z.infer<typeof talesEntitySchema>;
+// Tales, the made-up test system (ENG-27): two editions, `knack`, `lore` and `craft`
+// proficiencies at levels 1–3, uses back each scene or session, a `boon` grant kind, and
+// `talent` and `calling` entity types. No real game.
 
 const grit = {
   id: 'tales:ability/grit',
@@ -284,7 +263,7 @@ describe('ENG-24 system schemas', () => {
       'entity' | 'proficiency' | 'abilityScore' | 'resource' | 'boon'
     >();
     expectTypeOf<Extract<TalesGrant, { kind: 'proficiency' }>['category']>().toEqualTypeOf<
-      'lore' | 'craft'
+      'knack' | 'lore' | 'craft'
     >();
     expectTypeOf<Extract<TalesGrant, { kind: 'proficiency' }>['level']>().toEqualTypeOf<
       1 | 2 | 3 | undefined
@@ -319,7 +298,7 @@ describe('ENG-24 system schemas', () => {
     expect(grants.oneOf).toHaveLength(5);
     expect(grants.oneOf[1]?.properties.category).toEqual({
       type: 'string',
-      enum: ['lore', 'craft'],
+      enum: ['knack', 'lore', 'craft'],
     });
     expect(grants.oneOf[1]?.properties.level).toEqual({ type: 'number', enum: [1, 2, 3] });
   });

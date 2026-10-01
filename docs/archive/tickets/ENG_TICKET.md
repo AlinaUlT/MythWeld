@@ -2317,3 +2317,227 @@ Found, not fixed:
   Choices name it.
 
 Nothing for the changelog.
+
+---
+
+### ENG-27 The made-up test system
+
+**Hat:** The made-up test system exists as core test data
+**Depends on:** ENG-24 (`systemListsOf`, `systemSchemasOf`, `systemEntitySchemaOf`), ENG-05,
+ENG-06, ENG-39 (the pack's and the character's schemas and openers), ENG-25
+(`loadContentIndex`), ENG-07 (`evaluateNumber`, for the check of item 9)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.3–§5.5, §5.8, §6.1 (what the data exercises); ADR 004 item 4; ADR 014 item 2
+
+---
+
+#### 1. Where the code lives
+
+**Main folder:** `packages/schema/test/tales/` — new. Tales, a small invented game, as test
+data that every core test can import.
+- `tales/system.ts` — new: Tales' lists, its grant kind `boon`, its entity types `talent` and
+  `calling`, its part of a character, its pack and character schemas and openers, and
+  `TALES_RULES`, the rules of item 3 that are not entity data.
+- `tales/content.ts` — new: `talesCore`, the pack `tales-core`.
+- `tales/characters.ts` — new: two characters, `ash` and `brook`.
+- `tales/expected.ts` — new: what `compute()` must give for each character, computed by hand
+  from Tales' rules, with the arithmetic beside each value.
+- `tales/index.ts` — new: exports the four files.
+- `packages/engine/test/test-system.test.ts` — new: the data is whole and agrees with itself.
+- Changes: `packages/schema/test/system.test.ts`, `pack.test.ts`, `character.test.ts`,
+  `migration.test.ts` and `packages/engine/test/content-index.test.ts` import Tales' schemas
+  instead of defining their own.
+
+#### 2. What is missing now
+
+- Five test files each define their own made-up system, `tales`, with
+  `systemListsOf({ ... })`, measured with `grep -c "systemListsOf({"`: `system.test.ts` 2,
+  `character.test.ts` 2, `pack.test.ts` 1, `migration.test.ts` 1, `content-index.test.ts` 1.
+  One of the two in `system.test.ts` and in `character.test.ts` is a second system, `deep`,
+  made on purpose to differ.
+- The five `tales` definitions do not agree:
+
+  | File | Proficiency categories | Levels | Recovery events | Module kinds and types |
+  |---|---|---|---|---|
+  | `system.test.ts` | `lore`, `craft` | 1, 2, 3 | `scene`, `session` | `boon` with `uses`; `talent`, `calling` |
+  | `pack.test.ts` | `lore`, `skill` | 1, 2 | `scene` | `boon` without `uses`; `talent` |
+  | `character.test.ts` | `lore` | 1, 2 | `scene` | `talent`; module part `lanternOil`, `path` |
+  | `migration.test.ts` | `lore` (one edition) | 1 | `scene` | none |
+  | `content-index.test.ts` | `lore` | 1 | `scene` | none |
+
+- No made-up character exists whose numbers are known. `compute()` (ENG-11 onward) has nothing
+  to be tested on: no stat with its own modifier formula, no skill tied to a stat, no resource
+  with a maximum, no unmade choice, no missing reference, each with a value worked out by hand.
+- `pnpm test`: `Test Files 19 passed (19)`, `Tests 189 passed (189)`.
+
+#### 3. What it should look like when done
+
+1. `packages/schema/test/tales/index.ts` exports Tales. Schema tests import it as
+   `./tales/index.ts`; engine tests as `../../schema/test/tales/index.ts`.
+2. **Tales' lists:** editions `first-age`, `second-age`; proficiency categories `knack` (skills),
+   `lore`, `craft`; proficiency levels 1, 2, 3; recovery events `scene`, `session`. Its own grant
+   kind `boon` (`boon`: an entity id; `uses`, optional). Its own entity types `talent` (`tier`
+   1–3) and `calling` (`key`, `die`). Its part of a character: `level` 1–5, `calling` (an entity
+   id), `talents` (entity ids taken outside a calling's grants). System id `tales`, module
+   version 1.
+3. **Tales' rules** (`TALES_RULES` holds the numbers, the comment above it the words):
+   - a stat's modifier is `floor(@score / 2)`, unless the stat has its own `modFormula`;
+   - a stat's maximum is 10, unless the stat has its own `defaultMax`; a score above its maximum
+     counts as the maximum;
+   - a skill's knack level is the highest level its `knack` grants give (no `level` means 1;
+     none means 0);
+   - a skill's total is its stat's modifier + 2 × its knack level + `skills.<key>.bonus` +
+     `skills.all.bonus`;
+   - a skill with `passive: true` has a passive value of 5 + its total;
+   - a boon gives nothing until it is called on, which is an action of a later phase.
+   Stat scores, effects, toggles, overrides, grants, choices, missing references and
+   prerequisites follow the core's rules (SPEC §6.1, §8.2).
+4. **The pack `tales-core`** (`ruleset` `any`) holds: stats `grit`, `wits` and `nerve` (`nerve`:
+   `modFormula` `@score - 3`, `defaultMax` 8, `hasSave` false); skills `climb` twice, one per
+   edition (`first-age` on `grit`, `second-age` on `wits`: ADR 014 item 2), `sneak` (`wits`) and
+   `steady` (`nerve`, passive); conditions `weary` (levels to 3; `skills.all.bonus` −level) and
+   `lost`; callings `warden` and `seeker` (`second-age`); talents `night-warden`, `quick-step`,
+   `deep-lungs` and `iron-will` (`second-age`). Between them: every core grant kind and the
+   module's `boon`; a grant at a level; a choice from a list and one by type and tag; a talent
+   that grants a talent; a toggle; an effect whose value is a formula; two resources and their
+   recovery; three prerequisite kinds.
+5. **Ash** (`first-age`, level 2, a warden) has made every choice, is `weary` at level 1, and
+   has used 1 luck. **Brook** (`second-age`, level 3, a seeker) has left the `knacks` choice unmade,
+   has a talent of the character's own (`character:talent/lucky-charm`) with its toggle on, a
+   talent with two prerequisites the character does not meet, a talent id no pack has
+   (`tales-core:talent/gone-missing`), a `nerve` above its maximum, and an override.
+6. **The expected values,** worked out by hand from items 3–5, `tales/expected.ts`:
+
+   | Path | Ash | Brook |
+   |---|---|---|
+   | `level` | 2 | 3 |
+   | `abilities.grit.score` / `.mod` / `.max` | 7 / 3 / 10 | 6 / 3 / 10 |
+   | `abilities.wits.score` / `.mod` / `.max` | 5 / 2 / 10 | 8 / 4 / 10 |
+   | `abilities.nerve.score` / `.mod` / `.max` | 4 / 1 / 8 | 8 / 5 / 8 |
+   | `skills.climb.prof` / `.total` | 1 / 6 | 0 / 4 |
+   | `skills.sneak.prof` / `.total` | 1 / 4 | 0 / 9 (the override; 4 without it) |
+   | `skills.steady.prof` / `.total` / `.passive` | 0 / 0 / 5 | 0 / 7 / 12 |
+   | `resources.<key>.max` | `luck` 2 | `focus` 6 |
+
+   With them: the entities each character has, its unmade choices (Brook:
+   `tales-core:calling/seeker#knacks`), its missing ids (Brook:
+   `tales-core:talent/gone-missing`) and the entities whose prerequisites it does not meet
+   (Brook: `tales-core:talent/iron-will`). They are test data, not goldens (BACKLOG, ENG-27).
+7. `tales-core` opens through `openTalesPack`, and both characters through `openTalesCharacter`,
+   each to an equal object, `from` `{ schemaVersion: 1, systemSchemaVersion: 1 }`.
+   `loadContentIndex('tales', [talesCore])` loads it with no refusal and no warning.
+8. Every id a character names (its calling, its talents, its conditions, the ids in its choices,
+   the entity of each choice and toggle key) is in the index or in its own entities, except
+   exactly its expected missing ids. Every entity in its expected list is found too.
+9. The expected values agree with the data: each stat and each skill of the character's edition
+   has its paths, and no path names anything else; each modifier is the stat's formula (or
+   Tales' default) evaluated with `evaluateNumber` on the expected score; each maximum is the
+   stat's `defaultMax` or 10, and each score is at most it; each resource maximum is its grant's
+   `uses.max` evaluated on the expected values; each passive value is 5 + the total; each
+   override's value is the expected value at its path.
+10. The five test files of §2 import Tales' lists and schemas; only `deep`, and the schemas a test
+    builds to show a change (a module at version 2), stay local. Their tests keep their meaning;
+    where a test's data names `lanternOil` or `path`, it names Tales' `level`, `calling` and
+    `talents` instead.
+11. The quality gate is green.
+
+#### 4. How to do it
+
+1. `tales/system.ts`: the lists, `boonGrantSchema`, `tales`, `talentSchema`, `callingSchema`,
+   `talesEntitySchema`, `talesDataSchema`, `talesPackSchema`, `talesCharacterSchema`,
+   `openTalesPack`, `openTalesCharacter`, `TALES_RULES`.
+2. `tales/content.ts`, `tales/characters.ts`: plain objects as a file would hold them, each
+   checked against the schema's input type with `satisfies`.
+3. `tales/expected.ts`: `TalesExpected` and one entry per character, each value with its sum.
+4. `packages/engine/test/test-system.test.ts`: §3 items 7–9.
+5. The five test files: their `tales` definitions replaced by imports; data that the shared
+   lists or module part change, changed to match.
+
+Technical choices (ADR 002):
+- **The data lives in `packages/schema/test/tales/`.** It needs only `@grimoire/schema`, and
+  engine tests can reach it in the direction dependencies already point (engine → schema).
+  A workspace package would make a cycle: `schema`'s tests would need it, and it needs `schema`.
+  It is test data: no package exports it, so no build can ship it.
+- **TypeScript objects, not JSON files.** `satisfies` checks the shape while typing it; the test
+  still opens each one through its opener, as a file would be.
+- **Expected values as computed paths to numbers.** The paths are SPEC §5.4's catalogue
+  (`abilities.<key>.score`, `skills.<key>.prof`, `resources.<key>.max`) plus `.mod`, `.total`
+  and `.passive`. `Computed`'s shape is ENG-11's; a flat list of paths fits any shape.
+- **A formula check, not a computation.** Item 9 evaluates one stored formula on hand-written
+  inputs, to catch a sum written wrong; it never produces an expected value.
+- **The words of Tales' rules sit with its numbers,** in `system.ts`. They are the source the
+  hand sums in `expected.ts` cite.
+
+#### 5. Stored data
+
+Nothing stored changes. Test data only: no schema in `src`, no `schemaVersion`, no Dexie table.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/test-system.test.ts` — `describe('ENG-27 made-up test system')`: §3
+  items 7–9.
+- The five test files of §2 — their own tests, unchanged in what they check.
+- Control numbers from: Tales' rules (§3 item 3), applied by hand to the data of items 4–5.
+
+#### 8. Checked against the source
+
+Nothing to check. Tales is invented (ADR 004 item 4); no rule of a real game is used, and its
+words are its own. The core's order of work (base scores, then derived values, then overrides)
+is SPEC §6.1's.
+
+#### 9. Not in this ticket
+
+- `compute()` and anything that computes a value: ENG-11, ENG-12, ENG-28, ENG-29, ENG-17.
+- Tales' derived-value steps as module code: ENG-28 (BACKLOG note).
+- The shape of `Computed`, its breakdown and its warnings: ENG-11 onward.
+- A formula cycle in the data: ENG-18 adds its own.
+- Tracker actions on Ash's `luck`: ENG-30.
+- The rule that the core cannot import a module: ENG-31.
+
+#### 10. Rake check
+
+- **Licensing.** Tales is invented; no SRD or book text, names or numbers.
+- **The golden tests are the truth.** Tales' values are test data, not goldens; none is changed.
+- **Measure, never estimate.** The expected values are worked out by hand from written rules,
+  and item 9 checks each formula-made one with the engine's own evaluator.
+- **Everything is data; the core names no game.** Tales lives in tests only; no core file in
+  `src` changes.
+- **Missing is not broken.** Brook carries a missing id, an unmade choice and unmet
+  prerequisites, so later tickets must handle them as warnings.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+- Built as §3 says. `pnpm test`: `Test Files 20 passed (20)`, `Tests 198 passed (198)`, 3.49 s
+  (was 19 files, 189 tests). `pnpm lint`: 92 files, no error, no warning. `pnpm typecheck`: every
+  project `Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- `test-system.test.ts` holds 9 tests: the openers and the content index (1), then four per
+  character (ids found, choices and prerequisites, the set of paths, the formula check).
+- The checks can fail, measured by changing three expected values on purpose and restoring them:
+  Ash's `abilities.grit.mod` 3 → 4 failed with `grit: expected { value: 3, … } to deeply equal
+  { value: 4, … }`; Brook's `resources.focus.max` 6 → 5 and `skills.steady.passive` 12 → 11
+  failed with `steady: expected 11 to be 12`. 2 of 9 tests failed; restored, 9 of 9 passed.
+- `grep -c "systemListsOf({"` now finds 1 in `character.test.ts` and 1 in `system.test.ts` (each
+  file's `deep`, the second system made on purpose) and 1 in `tales/system.ts`.
+- Differences from the old local systems, each test's meaning kept:
+  - `system.test.ts`: the JSON Schema and type tests name `knack` among the categories.
+  - `pack.test.ts`, `migration.test.ts`, `content-index.test.ts`: imports only; their data parses
+    unchanged against the wider lists.
+  - `character.test.ts`: the module part is Tales' `level`, `calling`, `talents`. The refused
+    module part is `level: 6` (was `path: 'noon'`); the version 2 step renames `level` to `rank`
+    (was `lanternOil` to `oil`); local entity types include `calling`.
+- Conditions get a `key` in Tales' data, so `-@conditions.weary.level` can read one. A condition's
+  `key` is optional in the core's schema (ENG-03, from the entity base).
+
+Found, not fixed:
+- A formula reads a condition by its key (`@conditions.weary.level`; SPEC §5.6 has
+  `@conditions.exhaustion.level`), but `ConditionDef` leaves `key` optional, so a condition
+  without one cannot be read by any formula. Noted on ENG-11 in `BACKLOG.md`: it builds the
+  paths and decides what such a condition gives.
+
+Nothing for the changelog.

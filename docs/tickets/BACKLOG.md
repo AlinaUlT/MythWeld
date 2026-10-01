@@ -73,7 +73,7 @@ split off an old row got a new id.
 | ENG-08 | Dice notation is rolled, in `d` or `к` | S | ✅ 2026-10-01 |
 | ENG-26 | A roll result has the shape the table link will send | XS | ✅ 2026-10-01 |
 | **Core** | **compute, tested on the made-up system** | | |
-| ENG-27 | The made-up test system exists as core test data | S | 🔲 |
+| ENG-27 | The made-up test system exists as core test data | S | ✅ 2026-10-01 |
 | ENG-11 | `compute()` gathers every entity a character has, grants included | M | 🔲 |
 | ENG-12 | Stat scores are computed in the base phase | S | 🔲 |
 | ENG-28 | `compute()` runs the derived-value steps a system module supplies | S | 🔲 |
@@ -102,9 +102,6 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-27** — a small invented game with its own stats, skills and resources, and no content
-  from any real game (ADR 004 item 4). Its expected values are computed by hand from its own
-  rules; they are test data, not goldens. ENG-28 adds its derived-value steps.
 - **ENG-11** — an entity of the other edition gives a warning, never a block (SPEC §5.8,
   ADR 005 item 3.3). Found by ENG-24: an entity whose grants hold a module's kind is not
   assignable to the open `EntityBase` type (`TS2322`); ENG-24 §11 has the measurement. Found by
@@ -112,13 +109,18 @@ split off an old row got a new id.
   character's entities through the module. Found by ENG-25: the content index holds packs only.
   Here a character's own entities join them; a key path whose type and key have entries in two
   rulesets reads the one the character has, else the rules base's (ADR 014 item 2; `withKey`
-  lists them); a choice whose filter finds fewer entries than its `count` is reported.
+  lists them); a choice whose filter finds fewer entries than its `count` is reported. Found by
+  ENG-27: a formula reads a condition by its key (`@conditions.weary.level`), which
+  `ConditionDef` leaves optional; here the paths are built, and a condition without a key gets a
+  rule. Tales, the made-up system, is in `packages/schema/test/tales/`, with its characters'
+  expected values.
 - **ENG-12** — found by ENG-07: SPEC §5.6's base-phase rule (a base formula reads only levels,
   class levels and choices) is checked against the formula's `paths`, every path its text names,
   not only the paths one evaluation read.
 - **ENG-28** — found by ENG-24: the defaults a system gives a stat (SPEC §5.3: the modifier
   formula, a save, a maximum) come with the module's steps here. ENG-03 §4 also named ENG-24;
-  a schema adds nothing on parse, so ENG-24 §9 moved them here.
+  a schema adds nothing on parse, so ENG-24 §9 moved them here. Tales' derived-value steps are
+  built here too, from its `TALES_RULES` (ENG-27).
 - **ENG-31** — the package name and the `system` id are chosen here, checked against the rule on
   names in `CLAUDE.md`. `CLAUDE.md`'s layout, its dependency line and its golden-test path follow
   the new package. Found by ENG-01: a relative path can climb out of `packages/engine` into a

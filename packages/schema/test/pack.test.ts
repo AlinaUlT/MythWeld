@@ -1,6 +1,4 @@
 import {
-  entityIdSchema,
-  grantBaseSchema,
   LOCALE_OVERLAY_SCHEMA_VERSION,
   localeOverlayJsonSchema,
   localeOverlaySchema,
@@ -11,35 +9,14 @@ import {
   packSchemaOf,
   type StoredObject,
   systemEntitySchemaOf,
-  systemListsOf,
-  systemSchemasOf,
 } from '@grimoire/schema';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { z } from 'zod';
+import { talentSchema, tales, talesPackSchema } from './tales/index.ts';
 
-// A made-up system: two editions, `lore` proficiencies, uses back each scene, a `boon` grant kind
-// and a `talent` entity type. No real game.
-const talesLists = systemListsOf({
-  editions: ['first-age', 'second-age'],
-  proficiencyCategories: ['lore', 'skill'],
-  proficiencyLevels: [1, 2],
-  recoveryEvents: ['scene'],
-});
-const tales = systemSchemasOf(talesLists, [
-  grantBaseSchema.safeExtend({ kind: z.literal('boon'), boon: entityIdSchema }),
-]);
-const talentSchema = tales.entityBaseSchema.safeExtend({
-  type: z.literal('talent'),
-  tier: z.int().min(1).max(3),
-});
-const talesPackSchema = packSchemaOf({
-  system: 'tales',
-  systemSchemaVersion: 1,
-  ruleset: tales.rulesetSchema,
-  entity: systemEntitySchemaOf(tales, [talentSchema]),
-});
+// Tales, the made-up test system (ENG-27). No real game.
 
 const talent = {
   id: 'tales-core:talent/night-warden',

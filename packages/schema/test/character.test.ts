@@ -5,6 +5,7 @@ import {
   characterOpenerOf,
   characterSchemaOf,
   DEFAULT_ACTOR_KIND,
+  type EntityId,
   type Migration,
   systemEntitySchemaOf,
   systemListsOf,
@@ -12,32 +13,15 @@ import {
 } from '@grimoire/schema';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { z } from 'zod';
+import {
+  talesCharacterSchema,
+  talesDataSchema,
+  talesEntitySchema,
+  talesLists,
+} from './tales/index.ts';
 
-// A made-up system: two editions, a `talent` entity type, and a module part holding a lantern's
-// oil and a path. No real game.
-const talesLists = systemListsOf({
-  editions: ['first-age', 'second-age'],
-  proficiencyCategories: ['lore'],
-  proficiencyLevels: [1, 2],
-  recoveryEvents: ['scene'],
-});
-const tales = systemSchemasOf(talesLists, []);
-const talentSchema = tales.entityBaseSchema.safeExtend({
-  type: z.literal('talent'),
-  tier: z.int().min(1).max(3),
-});
-const talesEntitySchema = systemEntitySchemaOf(tales, [talentSchema]);
-const talesDataSchema = z.strictObject({
-  lanternOil: z.int().nonnegative(),
-  path: z.enum(['dawn', 'dusk']),
-});
-const talesCharacterSchema = characterSchemaOf({
-  system: 'tales',
-  systemSchemaVersion: 1,
-  edition: talesLists.editionSchema,
-  entity: talesEntitySchema,
-  systemData: talesDataSchema,
-});
+// Tales, the made-up test system (ENG-27): two editions, `talent` and `calling` entity types, and
+// a module part holding a level, a calling and talents. No real game.
 
 const ownTalent = {
   id: 'character:talent/lucky-charm',
@@ -94,7 +78,7 @@ const character = {
   ],
   localEntities: [ownTalent],
   notes: { backstory: 'Grew up by the river.', looks: 'Tall, with a grey cloak.' },
-  systemData: { lanternOil: 3, path: 'dusk' },
+  systemData: { level: 2, calling: 'tales-core:calling/warden', talents: [] },
 };
 
 const CHOICE = 'tales-core:talent/night-warden#pick-lore';
@@ -249,10 +233,10 @@ describe('ENG-06 character document', () => {
   });
 
   it("checks the module's part by the module's schema, and refuses unknown fields", () => {
-    expect(refused({ systemData: { lanternOil: 3, path: 'noon' } })).toEqual(['systemData.path']);
-    expect(refused({ systemData: { lanternOil: 3, path: 'dusk', hp: 10 } })).toEqual([
-      'systemData',
+    expect(refused({ systemData: { ...character.systemData, level: 6 } })).toEqual([
+      'systemData.level',
     ]);
+    expect(refused({ systemData: { ...character.systemData, hp: 10 } })).toEqual(['systemData']);
     for (const field of ['houseRules', 'inspiration', 'classes', 'hp']) {
       expect(refused({ [field]: {} }), field).toEqual(['']);
     }
@@ -316,11 +300,12 @@ describe('ENG-06 character document', () => {
     expectTypeOf<Character['ruleset']>().toEqualTypeOf<'first-age' | 'second-age'>();
     expectTypeOf<Character['mode']>().toEqualTypeOf<'guided' | 'manual'>();
     expectTypeOf<Character['systemData']>().toEqualTypeOf<{
-      lanternOil: number;
-      path: 'dawn' | 'dusk';
+      level: number;
+      calling: EntityId;
+      talents: EntityId[];
     }>();
     expectTypeOf<Character['localEntities'][number]['type']>().toEqualTypeOf<
-      'ability' | 'skill' | 'condition' | 'talent'
+      'ability' | 'skill' | 'condition' | 'talent' | 'calling'
     >();
   });
 });
@@ -356,24 +341,26 @@ describe("ENG-06 a character opens through the core's chain and the module's", (
   });
 
   it("runs the module's own steps on an older character", () => {
-    // The module's version 2 renames `lanternOil` to `oil` in its part.
-    const oilSchema = characterSchemaOf({
+    // The module's version 2 renames `level` to `rank` in its part.
+    const { level, ...rest } = character.systemData;
+    const rankSchema = characterSchemaOf({
       system: 'tales',
       systemSchemaVersion: 2,
       edition: talesLists.editionSchema,
       entity: talesEntitySchema,
-      systemData: z.strictObject({ oil: z.int().nonnegative(), path: z.enum(['dawn', 'dusk']) }),
+      systemData: talesDataSchema.omit({ level: true }).safeExtend({ rank: z.int() }),
     });
-    const renameOil: Migration = (file) => {
-      const { lanternOil, ...data } = file.systemData as Record<string, unknown>;
-      return { ...file, systemData: { ...data, oil: lanternOil } };
+    const renameLevel: Migration = (file) => {
+      const { level, ...data } = file.systemData as Record<string, unknown>;
+      return { ...file, systemData: { ...data, rank: level } };
     };
-    expect(characterOpenerOf(oilSchema, [renameOil])(character)).toEqual({
+    expect(characterOpenerOf(rankSchema, [renameLevel])(character)).toEqual({
       ok: true,
-      value: { ...character, systemSchemaVersion: 2, systemData: { oil: 3, path: 'dusk' } },
+      value: { ...character, systemSchemaVersion: 2, systemData: { ...rest, rank: level } },
       from: { schemaVersion: 1, systemSchemaVersion: 1 },
     });
-    expect(() => characterOpenerOf(oilSchema, [])).toThrow(
+    expect(level).toBe(2);
+    expect(() => characterOpenerOf(rankSchema, [])).toThrow(
       'The schema\'s "systemSchemaVersion" is 2, but its migrations lead to version 1.',
     );
   });

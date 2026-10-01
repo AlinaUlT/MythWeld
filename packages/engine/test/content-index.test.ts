@@ -5,31 +5,11 @@ import {
   loadContentIndex,
   type PackToLoad,
 } from '@grimoire/engine';
-import {
-  packSchemaOf,
-  systemEntitySchemaOf,
-  systemListsOf,
-  systemSchemasOf,
-} from '@grimoire/schema';
 import { describe, expect, expectTypeOf, it } from 'vitest';
+import { type TalesPack, talesPackSchema } from '../../schema/test/tales/index.ts';
 
-// A made-up system: two editions and the core's types only. No real game (ADR 004 item 4).
-const tales = systemSchemasOf(
-  systemListsOf({
-    editions: ['first-age', 'second-age'],
-    proficiencyCategories: ['lore'],
-    proficiencyLevels: [1],
-    recoveryEvents: ['scene'],
-  }),
-  [],
-);
-const talesPackSchema = packSchemaOf({
-  system: 'tales',
-  systemSchemaVersion: 1,
-  ruleset: tales.rulesetSchema,
-  entity: systemEntitySchemaOf(tales, []),
-});
-type TalesPack = ReturnType<typeof talesPackSchema.parse>;
+// Tales, the made-up test system (ENG-27), with packs of its own for each case. No real game
+// (ADR 004 item 4).
 type TalesEntity = TalesPack['entities'][number];
 
 /** A pack of the made-up system, parsed by its schema. */

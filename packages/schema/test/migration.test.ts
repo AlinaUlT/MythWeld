@@ -7,14 +7,10 @@ import {
   openLocaleOverlay,
   PACK_MIGRATIONS,
   PACK_SCHEMA_VERSION,
-  packOpenerOf,
-  packSchemaOf,
-  systemEntitySchemaOf,
-  systemListsOf,
-  systemSchemasOf,
 } from '@grimoire/schema';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { z } from 'zod';
+import { openTalesPack } from './tales/index.ts';
 
 // A made-up stored file, now at version 3. Version 1 had `title`; version 2 renamed it `name`;
 // version 3 added `tags`. The steps do not touch `schemaVersion`: the frame writes it.
@@ -42,23 +38,7 @@ function refusedPaths(opened: Opened<unknown>): string[] {
   return opened.error.issues.map((issue) => issue.path.join('.'));
 }
 
-// A made-up system's pack, for the pack's opener. No real game.
-const talesLists = systemListsOf({
-  editions: ['first-age'],
-  proficiencyCategories: ['lore'],
-  proficiencyLevels: [1],
-  recoveryEvents: ['scene'],
-});
-const tales = systemSchemasOf(talesLists, []);
-const openTalesPack = packOpenerOf(
-  packSchemaOf({
-    system: 'tales',
-    systemSchemaVersion: 1,
-    ruleset: tales.rulesetSchema,
-    entity: systemEntitySchemaOf(tales, []),
-  }),
-  [],
-);
+// Tales, the made-up test system (ENG-27), and an empty pack of it, for the pack's opener.
 const pack = {
   id: 'tales-core',
   version: '1.0.0',
