@@ -9,7 +9,7 @@ import { compareVersions } from './version';
 // in one ruleset (ADR 014 item 2). An id the index lacks gives `missing`, shown as `Missing: <id>`.
 
 /** The ruleset of an entry that holds in every edition of its system (`systemListsOf`). */
-const ANY_RULESET = 'any';
+export const ANY_RULESET = 'any';
 
 /** What the index reads of an entity: the fields every system's entity has (ENG-02). */
 export interface IndexedEntity {
@@ -77,7 +77,7 @@ export interface LoadedContent<E extends IndexedEntity> {
 }
 
 /** Two entries' rulesets meet: one edition, or one of them holds in every edition. */
-function shareRuleset(a: string, b: string): boolean {
+export function shareRuleset(a: string, b: string): boolean {
   return a === b || a === ANY_RULESET || b === ANY_RULESET;
 }
 

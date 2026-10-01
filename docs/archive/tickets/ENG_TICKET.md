@@ -2541,3 +2541,240 @@ Found, not fixed:
   paths and decides what such a condition gives.
 
 Nothing for the changelog.
+
+---
+
+### ENG-11 Gathering a character's entities
+
+**Hat:** `compute()` gathers every entity a character has, grants included
+**Depends on:** ENG-06 (the character's core part), ENG-24 (a module's grant kinds), ENG-25
+(`loadContentIndex`, `withKey`), ENG-27 (Tales, Ash and Brook)
+**Size:** M
+**Screen:** No
+**SPEC:** §6.1 steps 1, 2 and 8; §5.5 (grants, choices); §8.2 (missing is not broken); ADR 004
+items 1–2; ADR 005 item 3.3; ADR 014 item 2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/gather.ts` — new: SPEC §6.1 steps 1 and 2. The entities a
+character has, its grants with their choices, its proficiencies and resources, its unmade
+choices, the entry each key names, its conditions' levels, and the warnings.
+- `packages/engine/src/compute.ts` — new: `SystemModule` (what the core asks of a system's
+  module), `compute()` and `Computed`.
+- `packages/engine/src/index.ts` — changes: exports the two files.
+- `packages/engine/src/content-index.ts` — changes: exports `ANY_RULESET` and `shareRuleset`,
+  which gathering uses too.
+- `packages/engine/test/tales-module.ts` — new: Tales' module, as far as gathering needs it.
+- `packages/engine/test/compute.test.ts` — new: `describe('ENG-11 …')`.
+
+#### 2. What is missing now
+
+- No `compute()`: `grep -rn "compute\|pendingChoices\|SystemModule" packages/engine/src` finds
+  only the comment in `index.ts` and the word "computed" in `roll.ts` and `formula.ts`.
+- Nothing reads `localEntities`: `grep -rn "localEntities" packages/engine/src` finds nothing.
+- The core cannot read a character's species, classes or feats: they are in the module's
+  `systemData` (ENG-06 §11). Tales' calling and talents are there too.
+- An entity whose grants hold a module's kind is not assignable to the open `EntityBase` type:
+  `TS2322` for Tales' `boon` (ENG-24 §11).
+- `conditions` is a list of ids and levels in the character's trackers. A formula reads
+  `@conditions.weary.level` (ENG-27), and nothing gives that path a value. A condition's `key` is
+  optional (ENG-03).
+- `pnpm test`: `Test Files 20 passed (20)`, `Tests 198 passed (198)`.
+
+#### 3. What it should look like when done
+
+1. `compute(character, index, system)` exists in `@grimoire/engine`. It is pure: frozen inputs
+   are not changed, and two calls give equal results. `system` is a `SystemModule` with two
+   functions: `level(character)`, the level a grant's `atLevel` is measured against, and
+   `entities(character)`, the ids its part of the character names, each with its own level
+   when its grants count one (a class's).
+2. **What the character has** (`entities`), in this order: each id the module names, then each
+   condition in the trackers; after each entity, the entities its grants give, depth first. An
+   entity is gathered once, with every place that gave it (`from`: `character` or
+   `<entityId>#<grantId>`) and the level its grants are measured at (its root's). A grant
+   applies when it has no `atLevel` or its `atLevel` is at most that level.
+3. **Lookup:** the character's own entities (`localEntities`) first, then the index. An id found
+   in neither gives a `missing` warning naming where it was given, and is skipped.
+4. **Grants** (`grants`): every grant that applies, of every kind, a module's included, with its
+   `part` and the items chosen for it. `entity` grants give their `fixed` and chosen ids.
+   `proficiency` grants give one row per key, fixed and chosen (`proficiencies`). `resource`
+   grants give one row each (`resources`). Other kinds (`abilityScore`, a module's own) only
+   pass through: their meaning is a later ticket's.
+5. **Choices.** A grant with `choose`, or an `abilityScore` grant with `mode: 'distribute'`, is a
+   choice. Its items are `choices["<entityId>#<grantId>"]`.
+   - None stored, or fewer than `count`: it is in `pendingChoices`, with the items chosen so far
+     and its options.
+   - More than `count`: the first `count` are used, with a `tooManyChosen` warning.
+   - An item not in the list, or one the filter does not find: used, with a `notAnOption`
+     warning. Never a block.
+   - Options: a list gives its items; a filter gives the entries it finds among those the
+     character can use (item 7), each matching every field it names (`type`, a tag in `tags`,
+     `category`). A `proficiency` choice takes their keys; any other kind takes their ids.
+     Entities the character has, and items already chosen, are not offered.
+   - Fewer options than the items still needed: a `fewOptions` warning.
+6. **Another edition:** a gathered entity whose `ruleset` is neither `any` nor the character's
+   gives an `otherRuleset` warning, with `mixingAllowed` from `allowMixedRulesets`. It is still
+   gathered (ADR 005 item 3.3).
+7. **Which entry a key names** (`byKey[type][key]`, ADR 014 item 2). The candidates are the
+   entries the character can use (its `ruleset`'s and `any`; also the other editions' when
+   `allowMixedRulesets` is on) and the entities it has. The pick: one it has in its rules base,
+   else one it has, else the rules base's, else the first. Packs come first in load order, own
+   entities after. An own entity that repeats a type and key of an earlier entry in one
+   ruleset gives a `repeatedKey` warning, as ENG-25 does between packs.
+8. **Conditions** (`conditions[key].level`): every key in `byKey.condition`, so a formula can
+   read `@conditions.<key>.level`. A condition the character does not have reads 0. One it has
+   reads its stored `level`, or 1 without one; above its `maxLevel` (1 when it has none) it
+   reads `maxLevel`, with a `conditionLevel` warning. **A condition without a key has no path:**
+   it is still gathered, and its effects will apply, but no formula can read it.
+9. **Tales** (ENG-27's expected values, written by hand):
+   - Ash: entities warden, night-warden, quick-step, weary; no pending choice; no warning.
+     Proficiencies `knack` `climb` (warden#climber), `knack` `sneak` (warden#pick-knack),
+     `lore` `stars` at level 2 (night-warden#stars). Resource `luck` (warden#luck).
+     `byKey.skill.climb` is `tales-core:skill/climb`. Conditions `weary` 1, `lost` 0.
+   - Brook: entities seeker, lucky-charm, iron-will, lost; pending `seeker#knacks` with options
+     `climb`, `sneak`, `steady`; one warning, `missing` `tales-core:talent/gone-missing` from
+     `character`. Resource `focus`; the `boon` grant passes through, and `deep-lungs` is not
+     gathered. `byKey.skill.climb` is `tales-core:skill/climb-anew`. Conditions `weary` 0,
+     `lost` 1.
+10. A module's grant kind keeps its type through `compute()`: `Computed<TalesEntity>`'s grant is
+    Tales' grant union, `boon` included (the `TS2322` of §2 is gone).
+11. The quality gate is green.
+
+#### 4. How to do it
+
+1. `gather.ts`:
+   - The structural views the core reads: `GatherableEntity` (`IndexedEntity` with `tags` and
+     `grants`), `GrantView` (`id`, `kind`, `atLevel`, `choose`), `CharacterCore`.
+   - `isCoreKind(grant, kind)`: reads a core kind's own fields through the core's `Grant` type.
+   - `gather(character, index, level, named)`: the lookup of item 3; a depth-first walk with an
+     explicit stack; then the options of pending choices, `byKey`, `conditions`.
+2. `compute.ts`: `SystemModule`, `Computed` (the gathered result, for now), `compute()`.
+3. `tales-module.ts`: `level` is `systemData.level`; `entities` are the calling, then the talents.
+4. `compute.test.ts`: §3 items 1–10, on Ash and Brook and on variants of them opened through
+   `openTalesCharacter`.
+
+Technical choices (ADR 002):
+- **The core reads entities through structural views.** `GrantView` names only what every grant
+  has. Any system's grant union is assignable to it, so a module kind passes through with its
+  own type. A core kind is read through the core's `Grant` type; ENG-24 refuses a module kind
+  that takes a core kind's name, so the kind's name decides its shape.
+- **A module's `choose` has the core's shape.** ENG-32's kinds build it from
+  `chooseEntitiesSchema`. The core reports such a choice as pending, but does not decide what
+  its items give.
+- **The module names the entities, the core walks them.** ENG-06 put species, classes and feats
+  in `systemData`; `SystemModule.entities` is the one door to them. Conditions are core trackers,
+  so the core names them itself.
+- **An entity is gathered once.** Its grants apply once, at the level of the first path that
+  reaches it. A loop of grants (A gives B, B gives A) ends there, with no warning.
+- **An explicit stack, not recursion.** A long chain of grants in a stranger's pack cannot
+  exhaust the call stack.
+- **Options are looked up only for a pending choice.** A listed id that is not found then gives
+  `missing`; a made choice's options are never looked up.
+- **A condition without a key has no path.** Taking a slug as its key would work for some slugs
+  only (`gone-missing` is not a path step) and could collide with a real key. Making `key`
+  required would refuse stored packs. A formula naming such a condition reads a missing path:
+  0, with ENG-07's warning.
+- **One `otherRuleset` warning, mixing on or off.** It carries `mixingAllowed`, so the sheet can
+  show a mix the person turned on differently from one they did not.
+- **`Computed` is the gathered result for now.** ENG-12 onward add values and their breakdown.
+
+#### 5. Stored data
+
+Nothing stored changes. `compute()` reads a character and packs; no schema, no
+`schemaVersion`, no Dexie table changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/compute.test.ts` — `describe('ENG-11 gathering a character's entities')`:
+  §3 items 1–10.
+- Control values from: ENG-27's `tales/expected.ts` (entities, pending choices, missing ids), and
+  Tales' data (`tales/content.ts`, `tales/characters.ts`) read by hand for the rest.
+
+#### 8. Checked against the source
+
+Nothing to check. No rule of a real game is used: the order of work is SPEC §6.1's, choices are
+SPEC §5.5's, warnings are SPEC §8.2's, and the test data is the made-up Tales.
+
+#### 9. Not in this ticket
+
+- Effects and toggles of the gathered entities (SPEC §6.1 step 3): ENG-12 (scores), ENG-17
+  (derived values, toggles, overrides). A toggle whose effect is gone (ENG-06 §9): ENG-17.
+- What an `abilityScore` grant and its chosen items give: ENG-12.
+- What a module's grant kind gives (Tales' `boon`, fifth edition's `spell` and `item`): its
+  module.
+- Values, the breakdown, the formula reader: ENG-12 onward. `level` as a path: ENG-28.
+- A resource's maximum, and two grants giving one resource key: ENG-29.
+- Checking prerequisites against a character (Tales' `unmetPrerequisites`): the phase 2 or 4 row
+  in `BACKLOG.md`.
+- A choice stored for a grant the character no longer reaches: kept and not used, no warning.
+
+#### 10. Rake check
+
+- **Missing is not broken.** A missing id, an unmade choice, an item not offered, too many items,
+  another edition: each is a warning or a pending choice; nothing throws, nothing is blocked.
+- **The core names no game.** No type, kind, category, edition or key of any game is written in
+  the code; the module supplies what its part names. Tests use the made-up Tales.
+- **`compute()` is pure and deterministic.** It reads its arguments and returns a new object; a
+  test freezes the inputs and compares two runs.
+- **Each system's rules live in its own module.** No `if (system === …)` or `if (ruleset === …)`:
+  the character's ruleset is compared only with an entry's, as data.
+- **Ids are stable.** Entries are found by id, and by key only for paths.
+- **`packages/engine` is pure TypeScript.** The new files import only `@grimoire/schema` and
+  each other.
+- **Licensing.** Test data is made up; no SRD or book text.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `compute.test.ts` alone: `Tests 16 passed (16)`, 640 ms.
+- Lint: `Checked 96 files`, no fixes, no error (92 before; 4 new files).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 21 passed (21)`, `Tests 214 passed (214)`, 3.41 s (before: 20 files,
+  198 tests, 3.10 s).
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- Line coverage is not measured: no coverage provider is installed. ENG-23 measures the phase's.
+- The tests bite. Each guard removed on its own, the 16 tests run each time: `atLevel`, 1 fails;
+  own entities looked up, 6; every place that gave an entity, 1; `otherRuleset`, 2; only the first
+  `count` items used, 1; `tooManyChosen`, 1; `notAnOption`, 2; `fewOptions`, 1; had entities not
+  offered, 1; chosen items not offered, 1; rulesets in filters, 2; had first in `byKey`, 1; the
+  rules base in `byKey`, 1; a condition's maximum, 1; a level of 1 when none is stored, 1; a
+  condition not had reads 0, 2; `repeatedKey` for own entities, 1; the same type in it, 1;
+  `missing` for a pending list's id, 1; a module kind's items not gathered, 6; a filter's
+  `category`, 2; its tag, 2; depth-first order, 3; a missing chosen id dropped, 1; a
+  distribution pending, 1; a proficiency's `level` kept, 1. An input changed in place: the frozen
+  test fails, 1. `ReachedGrant.grant` typed as `GrantView`: `pnpm typecheck` fails with `TS2344`
+  on the `expectTypeOf` line.
+- One guard did not bite at first: no test had an `abilityScore` grant with `mode:
+  'distribute'`, since Tales has none. A test with a character's own calling holding one was
+  added; with it, the guard's removal fails 1 test.
+
+Differences from §3: none.
+
+Against the row and the SPEC:
+- SPEC §6.1 writes `compute(character, contentIndex, ruleset)`. The third argument is the
+  system's module (ADR 004 item 1); the ruleset is the character's own (`ruleset`, ADR 005
+  item 3.2).
+- Each point of the row's note is done: another edition warns (§3 item 6); the `TS2322` is gone
+  (item 10); the module names its part's entities (item 1); own entities join the index (item 3);
+  a key names the entry the character has, else the rules base's (item 7); a filter with too few
+  entries warns (item 5); conditions have paths, and a keyless condition has a rule (item 8).
+
+Found, not fixed:
+- A stat distribution's stored items reach `compute()` unchecked, in `grants[].chosen`; it is
+  pending only while nothing is stored. Noted on ENG-12 in `BACKLOG.md`.
+- `resources` lists every `resource` grant; two grants may give one key. Noted on ENG-29.
+- `SystemModule` has the two functions gathering needs; ENG-28's steps join it. Tales' module is
+  `packages/engine/test/tales-module.ts`. Noted on ENG-28.
+- A module kind's `choose` must have the core's shape to be typed (`GrantView`). `compute()`
+  reports it pending and passes its items through. Noted on ENG-32.
+- Tales' `unmetPrerequisites` (ENG-27) wait for the row that checks prerequisites. Added to the
+  phases 2 and 4 note.
+
+Nothing for the changelog.

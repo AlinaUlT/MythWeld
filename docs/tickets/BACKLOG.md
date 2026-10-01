@@ -74,7 +74,7 @@ split off an old row got a new id.
 | ENG-26 | A roll result has the shape the table link will send | XS | ✅ 2026-10-01 |
 | **Core** | **compute, tested on the made-up system** | | |
 | ENG-27 | The made-up test system exists as core test data | S | ✅ 2026-10-01 |
-| ENG-11 | `compute()` gathers every entity a character has, grants included | M | 🔲 |
+| ENG-11 | `compute()` gathers every entity a character has, grants included | M | ✅ 2026-10-01 |
 | ENG-12 | Stat scores are computed in the base phase | S | 🔲 |
 | ENG-28 | `compute()` runs the derived-value steps a system module supplies | S | 🔲 |
 | ENG-29 | Resource maximums are computed from their formulas | XS | 🔲 |
@@ -102,25 +102,19 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-11** — an entity of the other edition gives a warning, never a block (SPEC §5.8,
-  ADR 005 item 3.3). Found by ENG-24: an entity whose grants hold a module's kind is not
-  assignable to the open `EntityBase` type (`TS2322`); ENG-24 §11 has the measurement. Found by
-  ENG-06: species, classes and feats are in the module's `systemData`, so the core gets a
-  character's entities through the module. Found by ENG-25: the content index holds packs only.
-  Here a character's own entities join them; a key path whose type and key have entries in two
-  rulesets reads the one the character has, else the rules base's (ADR 014 item 2; `withKey`
-  lists them); a choice whose filter finds fewer entries than its `count` is reported. Found by
-  ENG-27: a formula reads a condition by its key (`@conditions.weary.level`), which
-  `ConditionDef` leaves optional; here the paths are built, and a condition without a key gets a
-  rule. Tales, the made-up system, is in `packages/schema/test/tales/`, with its characters'
-  expected values.
 - **ENG-12** — found by ENG-07: SPEC §5.6's base-phase rule (a base formula reads only levels,
   class levels and choices) is checked against the formula's `paths`, every path its text names,
-  not only the paths one evaluation read.
+  not only the paths one evaluation read. Found by ENG-11: a stat distribution (`abilityScore`,
+  `mode: 'distribute'`) is pending only while nothing is stored; its stored items reach
+  `compute()` unchecked, in `grants[].chosen`, and are checked here against its `patterns`.
 - **ENG-28** — found by ENG-24: the defaults a system gives a stat (SPEC §5.3: the modifier
   formula, a save, a maximum) come with the module's steps here. ENG-03 §4 also named ENG-24;
   a schema adds nothing on parse, so ENG-24 §9 moved them here. Tales' derived-value steps are
-  built here too, from its `TALES_RULES` (ENG-27).
+  built here too, from its `TALES_RULES` (ENG-27). Found by ENG-11: the steps join
+  `SystemModule` (`compute.ts`), which has `level` and `entities`; Tales' module is
+  `packages/engine/test/tales-module.ts`.
+- **ENG-29** — found by ENG-11: `Computed.resources` lists every `resource` grant, so two grants
+  may give one key; this ticket decides what that gives.
 - **ENG-31** — the package name and the `system` id are chosen here, checked against the rule on
   names in `CLAUDE.md`. `CLAUDE.md`'s layout, its dependency line and its golden-test path follow
   the new package. Found by ENG-01: a relative path can climb out of `packages/engine` into a
@@ -131,7 +125,9 @@ split off an old row got a new id.
 - **ENG-32** — found by ENG-04: also fifth edition's grant kinds `spell` and `item`, built on
   ENG-04's `grantBaseSchema` and `chooseEntitiesSchema`, and on the system's `usesDefSchema`
   from ENG-24's `systemListsOf`. ADR 014 items 5–7: a `rule` has a topic; a spell's `scaling`;
-  a granted spell's own uses, with no slot.
+  a granted spell's own uses, with no slot. Found by ENG-11: a kind's `choose` has the core's
+  shape (`GrantView`); `compute()` reports it pending and passes its items through, and the
+  module decides what they give.
 - **ENG-33** — ADR 014 item 8: XP or milestone, inspiration as a count with a maximum, the
   ability score method's key and rolls, the ability bonus source, which feats may be taken.
   ENG-06 left it SPEC §5.8's fifth-edition fields, in `systemData`, with its own
@@ -196,7 +192,8 @@ split off an old row got a new id.
   dice.
 - **Phases 2, 4** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
   §8.2: a warning, never a block). The row is cut with the first phase that lets a person pick an
-  entity with prerequisites.
+  entity with prerequisites. Found by ENG-11: Tales' `unmetPrerequisites` (ENG-27) are its test
+  data; `Computed.entities` gives the entities to check.
 - **Phase 2** — found by ENG-08: the engine has no random source of its own (lint refuses
   `Math.random` in it). The dice panel passes `fairDie(randomSourceOf((a) =>
   crypto.getRandomValues(a)))` to `rollFormula`; "I roll myself" (SPEC §6.5) passes the faces
