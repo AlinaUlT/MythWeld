@@ -20,6 +20,7 @@ import { z } from 'zod';
 // - A stat's modifier is `floor(@score / 2)`, unless the stat has its own `modFormula`.
 // - A stat's maximum is 10, unless the stat has its own `defaultMax`. A score above its maximum
 //   counts as the maximum.
+// - A stat has a save, unless it says `hasSave: false`. No rule of Tales gives a save a value.
 // - A skill's knack level is the highest `level` its `knack` grants give: a grant without `level`
 //   gives 1, and no grant gives 0.
 // - A skill's total is its stat's modifier + 2 × its knack level + `skills.<key>.bonus` +
@@ -34,7 +35,9 @@ import { z } from 'zod';
 export const TALES_RULES = {
   modFormula: 'floor(@score / 2)',
   statMax: 10,
+  hasSave: true,
   knackCategory: 'knack',
+  knackLevel: 1,
   knackStep: 2,
   passiveBase: 5,
 } as const;

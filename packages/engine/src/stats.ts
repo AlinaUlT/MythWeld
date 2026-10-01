@@ -24,7 +24,7 @@ import {
 // against every path its text names: a branch not taken today is taken tomorrow.
 
 /** The core's stat type (ENG-03): the entries whose keys are a character's stats. */
-const STAT_TYPE = 'ability';
+export const STAT_TYPE = 'ability';
 
 /** The ops that change a number, each with its default priority: Foundry's mode order (§5.4). */
 const NUMBER_OPS = { mul: 10, add: 20, min: 30, max: 40, set: 50 } as const;
@@ -42,6 +42,14 @@ export type BreakdownStep = {
   | { kind: 'grant'; part: EntityPartId; source: EntityId; label: L10n }
   | { kind: 'effect'; part: EntityPartId; source: EntityId; label: L10n; op: NumberOp }
   | { kind: 'cap' }
+  /** The character's level, as its module counts it. */
+  | { kind: 'level' }
+  /** A formula's result: the stat's own, or its system's default. */
+  | { kind: 'formula'; formula: string; of: 'stat' | 'system' }
+  /** Another computed path: `value` is that path's, `change` what it adds here. */
+  | { kind: 'path'; path: string }
+  /** A number a rule of the system gives; `rule` is the module's name for it. */
+  | { kind: 'rule'; rule: string }
 );
 
 /** Something the base phase met. `code` and its data are for the screen; `message` is for logs. */

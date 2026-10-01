@@ -1,6 +1,7 @@
 // The rules engine: formulas, effects, the compute pipeline, dice and rests. Pure TypeScript.
 export * from './compute';
 export * from './content-index';
+export * from './derived';
 export * from './dice';
 export * from './effects';
 export * from './formula';

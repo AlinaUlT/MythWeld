@@ -102,12 +102,14 @@ describe('ENG-12 stat scores in the base phase', () => {
     ['Ash', ash, ashExpected],
     ['Brook', brook, brookExpected],
   ])("%s: each stat's score and maximum are ENG-27's expected values", (_, character, expected) => {
-    const statPaths = Object.entries(expected.values).filter(([path]) =>
-      /^abilities\.[a-z][a-zA-Z0-9]*\.(score|max)$/.test(path),
-    );
+    const isStatPath = ([path]: [string, unknown]) =>
+      /^abilities\.[a-z][a-zA-Z0-9]*\.(score|max)$/.test(path);
+    const statPaths = Object.entries(expected.values).filter(isStatPath);
     expect(statPaths).toHaveLength(6);
     const result = computed(character);
-    expect(result.values).toEqual(Object.fromEntries(statPaths));
+    expect(Object.fromEntries(Object.entries(result.values).filter(isStatPath))).toEqual(
+      Object.fromEntries(statPaths),
+    );
     expect(codes(result).map(({ code }) => code)).toEqual(expected.missing.map(() => 'missing'));
   });
 

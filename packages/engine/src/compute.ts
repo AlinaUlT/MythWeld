@@ -1,4 +1,13 @@
 import type { ContentIndex } from './content-index';
+import {
+  computeDerived,
+  type DerivedStep,
+  type DerivedWarning,
+  type DeriveInput,
+  LEVEL_PATH,
+  type StatDefaults,
+  statsOf,
+} from './derived';
 import type { FormulaValue } from './formula';
 import {
   type CharacterCore,
@@ -13,17 +22,8 @@ import { type BreakdownStep, computeStats, type StatWarning } from './stats';
 // The compute pipeline (SPEC §6.1, ADR 004 item 1). The core runs the steps; what only a game
 // knows comes from its module. Each step's ticket adds what it gives to `Computed`.
 
-/** The path of the character's level, which a base-phase formula may read (SPEC §5.6). */
-const LEVEL_PATH = 'level';
-
-/** What a stat takes from its system when it lacks the field (SPEC §5.3). */
-export interface StatDefaults {
-  /** The highest a score can be: what a stat without its own `defaultMax` takes. */
-  readonly defaultMax: number;
-}
-
-/** What the core asks of a system's module about a character `C`. */
-export interface SystemModule<C> {
+/** What the core asks of a system's module about a character `C` whose entities are `E`. */
+export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> {
   /** The character's level: what a grant's `atLevel` is measured against. */
   level(character: C): number;
   /**
@@ -40,10 +40,16 @@ export interface SystemModule<C> {
    * `undefined` for a path a base-phase formula may not read.
    */
   basePath?(character: C, path: string): FormulaValue | undefined;
+  /**
+   * The system's derived values (SPEC §6.1 step 5): computed path → its step. A step reads any
+   * other path, the core's or the module's. The core gives `level` and each stat's
+   * `abilities.<key>.score`, `.max` and `.mod`.
+   */
+  derive(input: DeriveInput<C, E>): Readonly<Record<string, DerivedStep>>;
 }
 
-/** Something computing met: gathering, then the base phase. */
-export type ComputeWarning = GatherWarning | StatWarning;
+/** Something computing met: gathering, the base phase, then the derived values. */
+export type ComputeWarning = GatherWarning | StatWarning | DerivedWarning;
 
 /** What `compute()` gives: what the character has (SPEC §6.1 steps 1–2), then its values. */
 export interface Computed<E extends GatherableEntity> extends Omit<Gathered<E>, 'warnings'> {
@@ -62,18 +68,22 @@ export interface Computed<E extends GatherableEntity> extends Omit<Gathered<E>, 
 export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
   character: C,
   index: ContentIndex<E>,
-  system: SystemModule<C>,
+  system: SystemModule<C, E>,
 ): Computed<E> {
   const level = system.level(character);
   const gathered = gather(character, index, level, system.entities(character));
-  const stats = computeStats(character, gathered, {
+  const defaults = system.statDefaults;
+  const base = computeStats(character, gathered, {
     read: (path) => (path === LEVEL_PATH ? level : system.basePath?.(character, path)),
-    defaultMax: system.statDefaults.defaultMax,
+    defaultMax: defaults.defaultMax,
   });
+  const stats = statsOf(gathered, defaults);
+  const steps = system.derive({ character, gathered, stats });
+  const derived = computeDerived({ level, stats, defaults, base, steps });
   return {
     ...gathered,
-    values: stats.values,
-    breakdown: stats.breakdown,
-    warnings: [...gathered.warnings, ...stats.warnings],
+    values: derived.values,
+    breakdown: derived.breakdown,
+    warnings: [...gathered.warnings, ...base.warnings, ...derived.warnings],
   };
 }

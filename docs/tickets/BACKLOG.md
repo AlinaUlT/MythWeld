@@ -76,7 +76,7 @@ split off an old row got a new id.
 | ENG-27 | The made-up test system exists as core test data | S | ✅ 2026-10-01 |
 | ENG-11 | `compute()` gathers every entity a character has, grants included | M | ✅ 2026-10-01 |
 | ENG-12 | Stat scores are computed in the base phase | S | ✅ 2026-10-01 |
-| ENG-28 | `compute()` runs the derived-value steps a system module supplies | S | 🔲 |
+| ENG-28 | `compute()` runs the derived-value steps a system module supplies | S | ✅ 2026-10-01 |
 | ENG-29 | Resource maximums are computed from their formulas | XS | 🔲 |
 | ENG-17 | Derived-phase effects, toggles, overrides apply with a breakdown | M | 🔲 |
 | ENG-18 | A formula cycle stops with a message naming the paths | S | 🔲 |
@@ -102,20 +102,21 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-28** — found by ENG-24: the defaults a system gives a stat (SPEC §5.3: the modifier
-  formula, a save) join `SystemModule.statDefaults` here. ENG-03 §4 also named ENG-24; a schema
-  adds nothing on parse, so ENG-24 §9 moved them here. ENG-12 brought the maximum (`defaultMax`),
-  which the cap needs. Tales' derived-value steps are built here too, from its `TALES_RULES`
-  (ENG-27). Found by ENG-11: the steps join `SystemModule` (`compute.ts`); Tales' module is
-  `packages/engine/test/tales-module.ts`. Found by ENG-12: the base phase reads `level`; here it
-  becomes a value in `Computed.values`.
 - **ENG-29** — found by ENG-11: `Computed.resources` lists every `resource` grant, so two grants
   may give one key; this ticket decides what that gives.
 - **ENG-17** — found by ENG-12: `Computed.values` and `.breakdown` hold the base phase's stats,
   and `activeEffects` (`effects.ts`) gives the effects switched on; this ticket adds its phases
   to them, and a manual edit's step to the breakdown. Left to it: a base-phase effect on a target
   that is not a stat's score or maximum, and an effect on a stat's score or maximum whose own
-  phase is `derived` or `final`.
+  phase is `derived` or `final`. Found by ENG-28: a path is computed when first read
+  (`valueAt` in `derived.ts`), so a path's derived effects apply there, after its step and
+  before any reader gets it. `conditions.<key>.level` is not yet in `values`; `weary`'s effect
+  reads it. The totals in `derived.test.ts` are before derived effects and overrides; here they
+  become ENG-27's expected values, written beside each one.
+- **ENG-18** — found by ENG-28: a path read while it is being computed reads 0 with a `cycle`
+  warning naming that path and the path that read it. The paths in progress are the `computing`
+  set in `derived.ts`, in the order they began; this ticket names the whole loop, its effects'
+  formulas included.
 - **ENG-31** — the package name and the `system` id are chosen here, checked against the rule on
   names in `CLAUDE.md`. `CLAUDE.md`'s layout, its dependency line and its golden-test path follow
   the new package. Found by ENG-01: a relative path can climb out of `packages/engine` into a
@@ -142,6 +143,11 @@ split off an old row got a new id.
   are the hill dwarf's, and SRD 5.1 has only the hill dwarf. §8 checks the 2014 and 2024 sources
   and shows the owner the result before the fixture is written. The golden values are not changed
   without her.
+- **ENG-13** — found by ENG-28: the module's `statDefaults` are SPEC §5.3's (the modifier
+  formula, a save, a maximum of 20); its saves read `StatOf.hasSave`; its values are `derive`'s
+  steps, as Tales' are (`packages/engine/test/tales-module.ts`). A skill's own `totalFormula`
+  (SPEC §5.3, a core field) is read by no code yet: this ticket decides whether the module's
+  skill step or the core reads it.
 - **ENG-13 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true. The
   full goldens A–D are green by ENG-19.
 - **ENG-16** — ADR 014 item 6: a spell's current dice for the character's level, with a breakdown.

@@ -3013,3 +3013,237 @@ Found, not fixed:
   Noted on ENG-17 in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-28 The module's derived values
+
+**Hat:** `compute()` runs the derived-value steps a system module supplies
+**Depends on:** ENG-07 (`evaluateNumber`), ENG-11 (`gather`, `byKey`, `proficiencies`), ENG-12
+(`computeStats`, `values`, `breakdown`, `statDefaults`), ENG-27 (Tales, Ash and Brook)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.1 step 5; §5.3 (`modFormula`, `hasSave` and their defaults); §5.6 (`@score`,
+`@level`); §6.2 (breakdown); ADR 004 item 1
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/derived.ts` — new: SPEC §6.1 step 5. The character's level
+and each stat's modifier, the module's derived values, read from each other path by path, with
+their breakdown and what computing them met.
+- `packages/engine/src/compute.ts` — changes: `SystemModule` gains the entity type `E` and
+  `derive`; `StatDefaults` moves to `derived.ts` and gains `modFormula` and `hasSave`;
+  `compute()` runs the derived step after the base phase.
+- `packages/engine/src/stats.ts` — changes: `BreakdownStep` gains the kinds `level`, `formula`,
+  `path` and `rule`; `STAT_TYPE` is exported.
+- `packages/engine/src/index.ts` — changes: exports `derived.ts`.
+- `packages/schema/test/tales/system.ts` — changes: `TALES_RULES` gains `hasSave` and
+  `knackLevel`, with their words.
+- `packages/engine/test/tales-module.ts` — changes: Tales' stat defaults and its derived values.
+- `packages/engine/test/derived.test.ts` — new: `describe('ENG-28 …')`.
+- `packages/engine/test/stats.test.ts`, `compute.test.ts` — changes: their modules take the new
+  fields; ENG-12's first test picks the stats' paths out of `values`, which now holds more.
+
+#### 2. What is missing now
+
+- `compute()` gives Ash 6 paths, measured: `abilities.grit.score`, `abilities.grit.max`,
+  `abilities.wits.score`, `abilities.wits.max`, `abilities.nerve.score`, `abilities.nerve.max`.
+  No `level`, no modifier, no skill value: ENG-27's expected values have 18 paths for Ash.
+- `grep -rn "\.mod\b\|'mod'\|modFormula\|hasSave\|skills\.\|derive" packages/engine/src` finds one
+  line, `effects.ts:34`, which only names `statTargetOf`.
+- `SystemModule` has `level`, `entities`, `statDefaults.defaultMax` and `basePath`. A module
+  cannot give a derived value, and a stat has no default modifier formula or save.
+- `level` is read by the base phase (`compute.ts`, `LEVEL_PATH`), but it is not a value
+  (BACKLOG, found by ENG-12).
+- `pnpm test`: `Test Files 22 passed (22)`, `Tests 228 passed (228)`.
+
+#### 3. What it should look like when done
+
+1. **`level`** is in `values`, the module's `level(character)`, with one breakdown step
+   `{ kind: 'level' }`.
+2. **Each stat's modifier** `abilities.<key>.mod` is in `values`: the stat's own `modFormula`,
+   else `SystemModule.statDefaults.modFormula`, evaluated with `@score` reading the stat's
+   computed score. Its breakdown is one step `{ kind: 'formula', formula, of: 'stat' | 'system' }`.
+   A formula that does not parse, or meets anything else, gives what `evaluateNumber` gives (0
+   for a parse error), with a `modFormula` warning carrying the formula's warning.
+3. **A stat's defaults** are `statDefaults` `{ defaultMax, modFormula, hasSave }`. The module's
+   steps get each stat the character has as `{ key, entity, hasSave }`, its `hasSave` being its
+   own, else the system's.
+4. **The module's steps.** `SystemModule.derive({ character, gathered, stats })` gives computed
+   path → step. A step gets `read(path)` and returns `{ value, steps }`: the number and its
+   breakdown. `compute()` runs every step and puts each path in `values` and `breakdown`.
+5. **Path by path.** `read(path)` gives a path's value, computing it first when it is a step's and
+   not yet computed, so a step may read any other step's path, in any order. Each path is
+   computed once.
+6. **Never a crash** (SPEC §8.2):
+   - A path nothing gives reads 0, with `missingPath` naming the path and the path that read it.
+   - A path read while it is being computed reads 0, with `cycle` naming the path and the path
+     that read it (the loop's other paths are ENG-18's, §9).
+   - A module step for a path the core gives (`level`, a stat's `score`, `max`, `mod`) is not
+     used, with `pathTaken`.
+7. **Order of `values`:** `level`; each stat's `score`, `max`, `mod`; then the module's paths in
+   its order.
+8. **Tales' module** (its rules: `tales/system.ts`):
+   - stat defaults: maximum 10, modifier `floor(@score / 2)`, a save unless the stat says
+     `hasSave: false`;
+   - for each skill `byKey` names: `skills.<key>.prof`, the highest `level` of its `knack`
+     grants (none: 1; no grant: 0), with that grant's step; `skills.<key>.bonus` 0;
+     `skills.<key>.total`, the stat's modifier + 2 × `prof` + `bonus` + `skills.all.bonus`, a
+     `path` step for each; for a skill with `passive: true`, `skills.<key>.passive`, 5 (a `rule`
+     step, `passiveBase`) + its total; and `skills.all.bonus` 0.
+9. **Tales, worked out by hand** (derived-phase effects and overrides are ENG-17's, so the totals
+   below are before them; ENG-27's expected values with them are in brackets):
+
+   | Path | Ash | Brook |
+   |---|---|---|
+   | `level` | 2 | 3 |
+   | `abilities.grit.mod` / `wits` / `nerve` | 3 / 2 / 1 | 3 / 4 / 5 |
+   | `skills.climb.prof` / `.total` | 1 / 5 [6] | 0 / 4 [4] |
+   | `skills.sneak.prof` / `.total` | 1 / 4 [4] | 0 / 4 [9, the override] |
+   | `skills.steady.prof` / `.total` / `.passive` | 0 / 1 [0] / 6 [5] | 0 / 5 [7] / 10 [12] |
+
+   Ash's `level`, mods and `prof`s, and Brook's `level`, mods, `prof`s and climb total, are
+   ENG-27's expected values. Neither character gets a warning from this step.
+10. Every path's breakdown adds up to its value. `compute()` stays pure: ENG-11's frozen-input
+    test runs this step too.
+11. The quality gate is green.
+
+#### 4. How to do it
+
+1. `stats.ts`: the four new step kinds; export `STAT_TYPE`.
+2. `derived.ts`: `StatDefaults`, `StatOf`, `Derived`, `DerivedStep`, `DeriveInput`,
+   `DerivedWarning`; `statsOf(gathered, defaults)`; `computeDerived(...)`: the known values
+   (`level`, the base phase's), the core's modifier steps, the module's steps, a memoised
+   `valueOf(path, readBy)` with the set of paths in progress; then every path in the order of
+   §3 item 7.
+3. `compute.ts`: `SystemModule<C, E>` with `derive`; `compute()` calls `computeDerived` and
+   joins its warnings.
+4. `tales/system.ts`: `TALES_RULES.hasSave` and `.knackLevel`, and their words.
+5. `tales-module.ts`: `statDefaults` and `derive`.
+6. The tests of §7.
+
+Technical choices (ADR 002):
+- **Path by path, not step after step.** A derived value reads others (a total reads a modifier,
+  a passive value reads a total), and ENG-17's effects will change inputs such as
+  `skills.<key>.bonus` before a total reads them. Computing a path when it is first read gives
+  the right order for any module without the module listing one, and the set of paths in
+  progress is where ENG-18 finds a loop.
+- **The core computes the modifier; the module gives its default.** `modFormula` is a field of
+  the core's `ability` type (ENG-03), so every system reads it the same way.
+- **`hasSave` is resolved by the core and read by the module.** A save is a system's rule (fifth
+  edition's, ENG-13); the core only fills in the default, as it does for the maximum.
+- **A step reads numbers.** Every value the core and Tales give is a number, so `read` returns
+  one, and a missing path is the core's warning, not each module's.
+- **A modifier formula that does not parse gives 0**, as `evaluateNumber` does (ENG-07), with
+  the warning. Taking the system's default instead would hide the pack's mistake behind a
+  plausible number.
+- **A loop reads 0 and warns.** Without the guard, a pack whose two stats read each other's
+  modifier would exhaust the call stack. Naming the whole loop is ENG-18's hat.
+- **The module declares the paths effects will target** (`skills.<key>.bonus`,
+  `skills.all.bonus`) with the value 0, so a total's breakdown names them and ENG-17 has a path
+  to change (SPEC §5.4: the target catalogue comes from what the character has).
+
+#### 5. Stored data
+
+Nothing stored changes. `compute()` reads what ENG-12 read; no schema, no `schemaVersion`, no
+Dexie table changes. `TALES_RULES` is test data.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/derived.test.ts` — `describe('ENG-28 derived values a system module
+  supplies')`: §3 items 1–10 on Ash and Brook and on variants: their values and breakdowns; a
+  stat's own formula and the system's; a formula that does not parse; `hasSave`'s default; a
+  module step reading another in any order, once each; a missing path; a loop; a taken path.
+- `stats.test.ts`, `compute.test.ts` — ENG-11's and ENG-12's tests, unchanged in meaning.
+- Control values from: ENG-27's `tales/expected.ts`, and Tales' rules and data worked out by
+  hand for the totals before ENG-17's effects (§3 item 9) and for each variant.
+
+#### 8. Checked against the source
+
+Nothing to check. No rule of a real game is used: Tales is made up, and the order of work is
+SPEC §6.1's. Fifth edition's defaults (SPEC §5.3: `floor((@score - 10) / 2)`, a save, 20) are
+not written here; its module gives them (ENG-13).
+
+#### 9. Not in this ticket
+
+- Derived-phase and final-phase effects, toggles on them, overrides: ENG-17. The totals of §3
+  item 9 reach ENG-27's expected values there.
+- A formula loop's full message, naming every path of the loop: ENG-18.
+- Resource maximums (`resources.<key>.max`): ENG-29.
+- Condition levels as values (`conditions.<key>.level`): a formula in this step that reads one
+  gets `missingPath` (§11).
+- Fifth edition's derived values (proficiency bonus, saves, skills, passives, hit points, armor
+  class): ENG-13 to ENG-16, as its module's steps.
+
+#### 10. Rake check
+
+- **The core names no game.** The core names its own `ability` type, the paths `level` and
+  `abilities.<key>.mod`, and SPEC §5.6's `@score`. The default formula, the save, the skills'
+  paths and Tales' numbers are the module's.
+- **Everything is data.** Every stat the character has gets a modifier, a pack's or its own; no
+  stat key is written in the code.
+- **Formulas never run code.** A modifier formula goes through ENG-07's parser and walker.
+- **Missing is not broken.** A missing path, a loop, a formula that does not parse, a taken path:
+  each is a warning and a 0 or a path not used; nothing throws.
+- **`compute()` is pure.** The steps read the frozen inputs; ENG-11's frozen-input test runs them.
+- **A number with no breakdown entry is a bug.** Every new value has its steps, and they add up.
+- **Each system's rules live in its own module.** No `if (system === …)`: Tales' rules are in its
+  module, in the tests.
+- **`packages/engine` is pure TypeScript.** `derived.ts` imports only `@grimoire/schema` and the
+  engine's own files.
+- **Licensing.** Test data is made up.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `derived.test.ts` alone: `Tests 10 passed (10)`, 911 ms.
+- Lint: `Checked 101 files`, no fixes, no error (99 before; 2 new files).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 23 passed (23)`, `Tests 238 passed (238)`, 3.33 s (before: 22 files,
+  228 tests, 3.52 s).
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- `compute()` now gives Ash 21 paths (was 6): `level`, 3 per stat, `skills.all.bonus`, 3 per
+  skill, and steady's passive value.
+- The tests bite. Each guard removed or changed on its own, the `derived`, `stats`, `compute` and
+  `test-system` tests run (49 tests). In `derived.ts`: a stat's own formula ignored, 6 fail; its
+  own `hasSave` ignored, 1; `@score` not read as the stat's score, 26; formula warnings dropped,
+  1; no `pathTaken` check, 1; `pathTaken` for the base phase's paths only, 1; results not kept
+  (each read computes again), 24; no `missingPath` warning, 1; no `cycle` warning, 1; no loop
+  guard (the call stack is exhausted), 1; the module's paths before the core's, 2; `level` with
+  an empty breakdown, 24; every formula step `of: 'system'`, 2. In Tales' module: an equal knack
+  level takes the last grant, 1; a grant without `level` gives 0, 4; any category counts as a
+  knack, 1; every skill passive, 1; a knack step of 1, 3; `skills.all.bonus` not read, 1.
+- One mutation was first written wrong (it left the `missingPath` warning in) and passed;
+  rewritten, it fails 1 test.
+
+Differences from §3: none.
+
+Against the row and its note:
+- Each point of the note is done: `statDefaults` gains `modFormula` and `hasSave` (§3 item 3);
+  Tales' derived steps are its module's `derive`, from `TALES_RULES` (item 8); the steps join
+  `SystemModule` (item 4); `level` is a value (item 1).
+- `TALES_RULES` gains `hasSave` and `knackLevel`. The knack level's default was already a rule in
+  words (ENG-27); the save is new: Tales has no rule that gives a save a value, so its default is
+  only what the core fills in.
+- ENG-12's first test compared all of `values` with the 6 stat paths; it now picks those paths
+  out of `values`, which holds 21 for Ash.
+
+Found, not fixed:
+- A skill's own `totalFormula` (SPEC §5.3, a core field since ENG-03) is read by no code: a
+  module's step computes every total by its own rule. Noted on ENG-13 in `BACKLOG.md`.
+- `conditions.<key>.level` is not in `values`: a formula of this step that reads one gets
+  `missingPath`. ENG-17's effects are the first to read one (`weary`'s
+  `-@conditions.weary.level`). Noted on ENG-17.
+- The totals in `derived.test.ts` are before derived effects and overrides (§3 item 9); ENG-17
+  makes them ENG-27's, which the test writes beside each one. Noted on ENG-17.
+- The `cycle` warning names the path read again and the path that read it; the paths in progress
+  are the `computing` set, in the order they began. Noted on ENG-18.
+
+Nothing for the changelog.
