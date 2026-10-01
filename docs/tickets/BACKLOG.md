@@ -86,7 +86,7 @@ split off an old row got a new id.
 | ENG-31 | The fifth-edition module is a package the core cannot import | XS | ✅ 2026-10-01 |
 | ENG-41 | Lint holds the fifth-edition module to the engine's purity rules | XS | ✅ 2026-10-01 |
 | ENG-42 | A test holds the module's tsconfig to the language alone | XS | ✅ 2026-10-01 |
-| ENG-32 | The fifth-edition entity types have Zod schemas | M | 🔲 |
+| ENG-32 | The fifth-edition entity types have Zod schemas | M | ✅ 2026-10-01 |
 | ENG-33 | The fifth-edition part of the character document has a schema | S | 🔲 |
 | ENG-38 | The fifth-edition pack's JSON Schema is published as a file | XS | 🔲 |
 | ENG-09 | 2014 fixtures: every SRD entity golden A or C needs | M | 🔲 |
@@ -110,21 +110,26 @@ split off an old row got a new id.
 - **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
   recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
   `regainResource` gives uses back, never below none spent.
-- **ENG-32** — found by ENG-04: also fifth edition's grant kinds `spell` and `item`, built on
-  ENG-04's `grantBaseSchema` and `chooseEntitiesSchema`, and on the system's `usesDefSchema`
-  from ENG-24's `systemListsOf`. ADR 014 items 5–7: a `rule` has a topic; a spell's `scaling`;
-  a granted spell's own uses, with no slot. Found by ENG-11: a kind's `choose` has the core's
-  shape (`GrantView`); `compute()` reports it pending and passes its items through, and the
-  module decides what they give.
 - **ENG-33** — ADR 014 item 8: XP or milestone, inspiration as a count with a maximum, the
   ability score method's key and rolls, the ability bonus source, which feats may be taken.
   ENG-06 left it SPEC §5.8's fifth-edition fields, in `systemData`, with its own
   `systemSchemaVersion` and migrations (ENG-06 §9). Found by ENG-39: the same version goes to
-  the module's packs, with a pack step for each version (ENG-39 §4).
+  the module's packs, with a pack step for each version (ENG-39 §4). Found by ENG-32: a
+  lineage is an `entity` grant's choice and a background's feat an `entity` grant, both kept in
+  `choices`; SPEC §5.8's `species.lineage` and `feats[].via` would be a second place for them.
+  A species' `size` lists the sizes to choose from; where the choice is kept is this ticket's.
 - **ENG-38** — found by ENG-05: SPEC §5.7's `/schema/pack.schema.json`, from
   `packJsonSchemaOf` with ENG-32's entity union, kept in step with the schemas by a test.
+  Found by ENG-32: the union's JSON Schema loses 10 of the module's checks, measured with ajv
+  (ENG-32 §11): a range's distance by its kind, a duration's value and unit by its kind, a
+  material's cost and use by `m`, the `weapon` and `armor` blocks by category, a long range below
+  the normal one, a class level twice, a multiclass grant id that is the class's own, a spell's
+  scaling by its level, an item grant's id twice. Each gets a JSON Schema form or a line in the
+  file's description.
 - **ENG-09, ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's
-  schemas. Every rules fact in them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`).
+  schemas. Every rules fact in them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`). SPEC §5.3's
+  fields that list what an entity gives (a class's features, a species' traits, domain spells,
+  a background's feat) are grants: ENG-32 §4's table.
 - **ENG-09** — golden A says mountain dwarf, but its numbers (+2 CON, +1 WIS, Dwarven Toughness)
   are the hill dwarf's, and SRD 5.1 has only the hill dwarf. §8 checks the 2014 and 2024 sources
   and shows the owner the result before the fixture is written. The golden values are not changed
@@ -133,7 +138,10 @@ split off an old row got a new id.
   formula, a save, a maximum of 20); its saves read `StatOf.hasSave`; its values are `derive`'s
   steps, as Tales' are (`packages/engine/test/tales-module.ts`). A skill's own `totalFormula`
   (SPEC §5.3, a core field) is read by no code yet: this ticket decides whether the module's
-  skill step or the core reads it.
+  skill step or the core reads it. Found by ENG-32: a class's own `grants` apply whether it is
+  the first class or a later one, and its `multiclass.grants` are what a later class gives (the
+  SRD data keeps them apart, ENG-32 §8). This ticket decides how a later class leaves out the
+  grants of a first class, and reads `ClassDef.saves` of the first class.
 - **ENG-13 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true. The
   full goldens A–D are green by ENG-19.
 - **ENG-13, ENG-14, ENG-34** — found by ENG-17: an effect whose op gives no number (`append`,
@@ -146,7 +154,9 @@ split off an old row got a new id.
   term that keeps some dice has no simple average (`2d20kh1`'s is 13.825). A count of dice that
   grows with level is not notation: a term's count is digits, so the dice are written from the
   computed count.
-- **ENG-20** — ADR 014 item 7: casting with "use a slot: no".
+- **ENG-20** — ADR 014 item 7: casting with "use a slot: no". Found by ENG-32: a `spell`
+  grant's `uses` have no key of their own; the cast action keeps their spent count, by the
+  grant's part id or a key it gives them.
 - **ENG-19** — ability increase source, subclass level, multiclass rounding, exhaustion, rests,
   inspiration (SPEC §6.3 table). Golden C and golden D close here. ADR 014 item 8: inspiration's
   SRD text is shown to the owner next to her default of 3.
@@ -186,6 +196,12 @@ split off an old row got a new id.
   ENG-41: a module file climbs the same way (`../../content/src/index.ts`,
   `../../system-tales/src/index.ts` pass lint in `packages/system-5e/src`, measured); that row
   refuses it in `packages/system-*/src` too.
+- **Phase 3** — found by ENG-32: SRD values the fifth-edition schemas cannot hold yet, measured
+  at 5e-database `e6edf9a` (ENG-32 §8, §11): 2014's `mounts-and-vehicles` equipment (40 entries)
+  has no `ItemDef.category`; 2024's "Until dispelled or triggered" (2 spells) has no place for
+  "or triggered"; 2024's `elven-lineage`, `gnomish-lineage` and `magic-initiate` let the person
+  choose the spellcasting stat among three, and a `spell` grant's `ability` takes one stat. The
+  import widens the schema for each (no migration) or maps the value.
 - **Phase 3** — found by ENG-29: two `resource` grants of one key give one resource, with the
   highest of their maximums. Mechanics that give one key from two classes (a multiclass) check
   in their §8 what the SRD says for that case; uses that add up are an effect `add` on
@@ -214,6 +230,10 @@ split off an old row got a new id.
   one, not the effect or grant whose formula did, so a typo in an effect's formula points at its
   target's own step. `valueAt` in `derived.ts` knows that part (`by`); the warning can carry it
   before the effect builder shows it.
+- **Phases 2, 3** — found by ENG-32: some fifth-edition keys have no entity type to give their
+  name on screen: a spell's `school`, a species' `size` and `creatureType`, an item's `rarity`,
+  a spell area's `shape`, a feat's `category`, a rule's `topic` and `icon`. The first screen
+  that shows one gives them names: a simple entity type each, or the module's i18n keys.
 - **Phases 2, 4** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
   §8.2: a warning, never a block). The row is cut with the first phase that lets a person pick an
   entity with prerequisites. Found by ENG-11: Tales' `unmetPrerequisites` (ENG-27) are its test

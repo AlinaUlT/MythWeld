@@ -80,18 +80,26 @@ export const grantBaseSchema = z.strictObject({
 function givesSomething(grant: { fixed?: unknown; choose?: unknown }): boolean {
   return grant.fixed !== undefined || grant.choose !== undefined;
 }
-const GIVES_NOTHING = 'Needs `fixed`, `choose` or both.';
-/** `givesSomething` as JSON Schema. */
-const GIVES_SOMETHING_JSON = { anyOf: [{ required: ['fixed'] }, { required: ['choose'] }] };
 
-const entityGrantSchema = grantBaseSchema
-  .safeExtend({
+/**
+ * `grant`, refusing it when it has neither `fixed` nor `choose`: it would give nothing. Every kind
+ * that gives by list or by choice uses it, a module's included.
+ */
+export function withFixedOrChoose<T extends z.ZodType<{ fixed?: unknown; choose?: unknown }>>(
+  grant: T,
+): T {
+  return grant
+    .refine(givesSomething, 'Needs `fixed`, `choose` or both.')
+    .meta({ anyOf: [{ required: ['fixed'] }, { required: ['choose'] }] });
+}
+
+const entityGrantSchema = withFixedOrChoose(
+  grantBaseSchema.safeExtend({
     kind: z.literal('entity'),
     fixed: uniqueList(entityIdSchema).optional(),
     choose: chooseEntitiesSchema.optional(),
-  })
-  .refine(givesSomething, GIVES_NOTHING)
-  .meta(GIVES_SOMETHING_JSON);
+  }),
+);
 
 const abilityScoreGrantSchema = z.discriminatedUnion('mode', [
   grantBaseSchema.safeExtend({
@@ -127,16 +135,15 @@ export function coreGrantSchemasOf<
   L extends z.ZodType<number>,
   U extends z.ZodType<UsesDef>,
 >(lists: { proficiencyCategory: C; proficiencyLevel: L; usesDef: U }) {
-  const proficiencyGrantSchema = grantBaseSchema
-    .safeExtend({
+  const proficiencyGrantSchema = withFixedOrChoose(
+    grantBaseSchema.safeExtend({
       kind: z.literal('proficiency'),
       category: lists.proficiencyCategory,
       fixed: uniqueList(entityKeySchema).optional(),
       choose: chooseKeysSchema.optional(),
       level: lists.proficiencyLevel.optional(),
-    })
-    .refine(givesSomething, GIVES_NOTHING)
-    .meta(GIVES_SOMETHING_JSON);
+    }),
+  );
   const resourceGrantSchema = grantBaseSchema.safeExtend({
     kind: z.literal('resource'),
     key: entityKeySchema,

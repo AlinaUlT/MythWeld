@@ -4408,3 +4408,304 @@ Technical choices (ADR 002):
 Found, not fixed: nothing.
 
 Nothing for the changelog.
+
+---
+
+### ENG-32 The fifth-edition entity types
+
+**Hat:** The fifth-edition entity types have Zod schemas
+**Depends on:** ENG-24 (the three steps a module takes), ENG-04 (`grantBaseSchema`,
+`chooseEntitiesSchema`), ENG-11 (`GrantView`), ENG-31 and ENG-41 (the package and its lint)
+**Size:** M
+**Screen:** No
+**SPEC:** §5.2 (`EntityType`, `Ruleset`), §5.3, §5.5; ADR 004 items 1, 3; ADR 014 items 5–7
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/entity-types.ts` — new. Fifth edition's 15 entity types
+and its union by `type`.
+- `packages/system-5e/src/system.ts` — new: fifth edition's lists, its grant kinds `spell` and
+  `item`, and its schemas from ENG-24's `systemSchemasOf`.
+- `packages/system-5e/src/index.ts` — changes: exports both files.
+- `packages/system-5e/package.json` — changes: depends on `zod`; `pnpm-lock.yaml` with it.
+- `packages/schema/src/grant.ts` — changes: `withFixedOrChoose` is exported, and the core's
+  `entity` and `proficiency` kinds use it.
+- `packages/schema/src/entity-base.ts` — changes: `listWithUnique` also takes a number field.
+- `packages/system-5e/test/entity-types.test.ts` — new.
+
+#### 2. What is missing now
+
+- The module exports one constant: `grep -n "export" packages/system-5e/src/index.ts` prints
+  `export const FIFTH_EDITION_SYSTEM = '5e';` and nothing else.
+- No fifth-edition type exists. `grep -rn "'spell'\|'class'\|'species'" packages/*/src` finds
+  only comments in `packages/schema/src/grant.ts`.
+- No system lists `2014` and `2024`: the core's `rulesetIdSchema` takes any kebab-case id.
+- `packages/system-5e/package.json` has no `zod`, which ENG-41's lint already allows.
+- `pnpm test`: `Test Files 30 passed (30)`, `Tests 294 passed (294)`.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/system-5e` exports `fifthEditionLists`, `fifthEdition` (ENG-24's
+   `systemSchemasOf` result), `spellGrantSchema`, `itemGrantSchema`, a `…DefSchema` and a type for
+   each of its 15 types, `spellcastingDefSchema`, `fifthEditionEntitySchema` and the type
+   `FifthEditionEntity`, and the numbers `MAX_LEVEL` (20) and `MAX_SPELL_LEVEL` (9).
+2. **The lists** (SPEC §5.2, §5.3, §5.5): editions `2014`, `2024`; proficiency categories
+   `skill`, `save`, `armor`, `weapon`, `tool`, `language`; proficiency levels `0.5`, `1`, `2`;
+   recovery events `short`, `long`, `dawn`, `turn`, `manual`. `2020` is refused on `ruleset`,
+   `feat` on a proficiency's `category`, `3` on its `level`, `scene` on a recovery's `on`.
+3. **The `spell` grant** takes `fixed?` (entity ids), `choose?` (the core's
+   `chooseEntitiesSchema`), `ability?` (a stat key), `alwaysPrepared?` and `uses?` (the system's
+   `usesDefSchema`: a granted spell's own uses, cast with no slot, ADR 014 item 7). It needs
+   `fixed`, `choose` or both. `ability: 'choice'` passes only as a stat named `choice`.
+4. **The `item` grant** takes `fixed?` (a list of `{ id, qty }`, `qty` a whole number from 1, no
+   id twice) and `choose?`. It needs `fixed`, `choose` or both.
+5. **The union** picks by `type` among 18 types, in this order: the core's `ability`, `skill`,
+   `condition`; then `species`, `lineage`, `class`, `subclass`, `background`, `feat`,
+   `feature`, `spell`, `item`, `language`, `damageType`, `weaponProperty`, `weaponMastery`,
+   `toolKind`, `rule`. `monster` is refused on `type`.
+6. **Each type's fields** are SPEC §5.3's, with the changes of §4. Every object is strict;
+   parsing adds nothing, so a valid entity parses to an equal object.
+7. **What grants already say is not a field** (§4 table): `ClassDef.levels[].features`,
+   `SubclassDef.levels`, `SubclassDef.alwaysPrepared`, `SpeciesDef.traits`, `SpeciesDef.lineages`,
+   `BackgroundDef.abilityOptions`, `originFeat` and `feature`, `FeatureDef.origin` and
+   `FeatureDef.uses` are each refused as unknown fields.
+8. **A `rule` has a topic** (ADR 014 item 5): `topic` (a key) is needed, `icon` (a key) is
+   optional.
+9. **A spell's scaling fits its level** (ADR 014 item 6): `scaling` needs `kind` and `formula`;
+   `kind: 'cantrip'` only on a level-0 spell, `kind: 'slot'` only on level 1 to 9. Each wrong pair
+   is refused on `scaling.kind`.
+10. **Numbers the rules bound** (§8): a class's `hitDie` is 6, 8, 10 or 12; a level is 1 to 20; a
+    spell's level is 0 to 9; a level column has 20 numbers.
+11. **Checks that catch a wrong entry**, each refused on the path named: a `distance` range
+    without `distance`, or another range with it (`range.distance`); a `timed` duration without
+    `value` and `unit`, or another duration with them (`duration`); `mCost` or `mConsumed`
+    without `m` (`components`); a `weapon` block on an item that is not a weapon, or a weapon
+    without one (`weapon`); the same for `armor` (`armor`); a long range below the normal one
+    (`weapon.range.long`); a class level given twice (`levels.<n>.level`); a multiclass grant whose
+    id is one of the class's own grants (`multiclass.grants.<n>.id`); an empty `speed`; a spell
+    list with neither `classKey` nor `tag`; an empty `multiclass`.
+12. **Keys other entities name are needed:** `class`, `subclass`, `language`, `damageType`,
+    `weaponProperty`, `weaponMastery`, `toolKind` refuse an entity without `key`.
+13. **The core reads fifth edition's entities.** `FifthEditionEntity` is assignable to the
+    engine's `GatherableEntity` (`pnpm typecheck`). A feat whose `spell` grant chooses from a
+    filter is pending in `compute()` with the spells the filter finds as options; once chosen, its
+    items pass through in `grants[].chosen` and no spell is gathered (ENG-11's note).
+14. `z.toJSONSchema(fifthEditionEntitySchema)` runs and gives 18 options, each with
+    `additionalProperties: false` and `ruleset` as an `enum` of `2014`, `2024`, `any`.
+15. The quality gate is green.
+
+#### 4. How to do it
+
+1. `grant.ts`: `withFixedOrChoose(grant)` adds the refinement and its JSON Schema that the core's
+   `entity` and `proficiency` kinds have today; both use it. `entity-base.ts`: `listWithUnique`'s
+   field may hold a number.
+2. `system.ts`: `fifthEditionLists = systemListsOf({...})`; the two grant kinds as
+   `grantBaseSchema.safeExtend` with `withFixedOrChoose`; `fifthEdition =
+   systemSchemasOf(fifthEditionLists, [spellGrantSchema, itemGrantSchema])`.
+3. `entity-types.ts`: each type is `fifthEdition.entityBaseSchema.safeExtend({ type, … })`;
+   the checks of §3 item 11 are `refine`s; `fifthEditionEntitySchema =
+   systemEntitySchemaOf(fifthEdition, [...])`.
+4. The tests of §7. Test entities are made up (`hb-test`), so they hold no rules fact.
+
+**What grants already say is not a field.** The core gathers what an entity gives only from its
+`grants` (ENG-11), and ENG-04 made SPEC §5.5's `feature` and `feat` kinds one `entity` kind. A
+field listing the same entities would be read by no code, or by a second path that could disagree
+with the grants and give a wrong number with no error. Each such SPEC field is written as a grant:
+
+| SPEC §5.3 field | Written as |
+|---|---|
+| `ClassDef.levels[].features` | `entity` grants of the class, with `atLevel` |
+| `SubclassDef.levels[].features` | `entity` grants of the subclass, with `atLevel` |
+| `SubclassDef.alwaysPrepared` | `spell` grants with `alwaysPrepared: true` and `atLevel` |
+| `SpeciesDef.traits` | an `entity` grant, `fixed` |
+| `SpeciesDef.lineages` | an `entity` grant that chooses one of the lineage ids |
+| `BackgroundDef.abilityOptions` | an `abilityScore` grant, `mode: 'distribute'` |
+| `BackgroundDef.originFeat`, `.feature` | an `entity` grant, `fixed` |
+| `FeatureDef.origin` | the grant that gives the feature (`HadEntity.from`), its `atLevel` |
+| `FeatureDef.uses` | a `resource` grant, whose maximum ENG-29 computes |
+
+Adding a field later needs no migration; removing one would. Measured, `FeatureDef.origin` also
+cannot hold the SRD: one trait belongs to several species (§8).
+
+Technical choices (ADR 002):
+- **Fields the SRD leaves empty are optional**, measured in §8: a species' `creatureType` (no
+  2014 race has one); a lineage's `size`, `speed`, `creatureType` (no 2014 subrace or 2024
+  subspecies has them; SPEC calls the lineage "the same shape"); a class's `primaryAbilities`
+  (no 2014 class has them); a weapon's `damage` (the Net has none); each part of `multiclass`
+  (2014 sorcerer and wizard, 2024 monk, sorcerer and wizard give no proficiencies), which needs
+  at least one part.
+- **A material's cost is `{ amount, unit }`**, an item's `cost` shape, not SPEC's bare number:
+  measured, the SRDs price materials in `gp` and in `cp` (§8).
+- **A list that may be empty is absent instead**: a weapon's `properties` is optional and holds
+  one or more; the morningstar has none, so `[]` and a missing field would say the same.
+- **`ability: 'choice'` is not taken.** It does not say among which stats; the 2024 SRD's three
+  such entries name three (§8). A choice there is a second choice in one grant, which `choices`
+  keys by grant. The wider form joins with the import (phase 3); widening needs no migration.
+- **A level column has 20 numbers**, index 0 for level 1, so a third-caster subclass from level
+  3 writes zeros, and nothing is guessed. A slot table row holds the slots of levels 1 to 9; a
+  pact magic row has slots at one level only (§8: warlock 5 has 2 of level 3, 0 of the others).
+- **No `rulesets/` file:** both editions share every shape. `ruleset` on an entity is data.
+- **Open keys stay keys** where SPEC writes `string`: a school, a size, a creature type, a
+  rarity, a damage type, a weapon property or mastery, an area's shape, a feat's category, a
+  rule's topic and icon. Homebrew adds its own; the SRD's values are the import's.
+- **The JSON Schema loses the `refine` checks**, as ENG-04's did before ENG-05. ENG-38 publishes
+  the file and adds them (its note).
+
+#### 5. Stored data
+
+Nothing stored changes. No fifth-edition pack or character is stored yet; the core's open
+schemas are unchanged.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/entity-types.test.ts` — `describe('ENG-32 fifth-edition entity
+  types')`: every type parses to an equal object; the lists; both grant kinds; the type list;
+  each change of §4 refused; the topic; scaling by level; the bounds; each check of §3 item 11;
+  needed keys; the core's view and a pending `spell` choice through `compute()`; the inferred
+  types; the JSON Schema export.
+- Control values from: SPEC §5.2–§5.5 field lists; the bounds measured in §8; ADR 014 items 5–7.
+  Test entities are made up and hold no rules fact.
+
+#### 8. Checked against the source
+
+Source: 5e-bits/5e-srd-api at commit `e6edf9a` (the one ENG-02 measured),
+`packages/5e-database/src/{2014,2024}/en/`, read with `jq`. Both data sets are SRD 5.1 and
+SRD 5.2.1 (CC-BY-4.0).
+- **Hit dice.** `5e-SRD-Classes.json`, `hit_die`: 2014 and 2024 alike, barbarian 12; bard,
+  cleric, druid, monk, rogue, warlock 8; fighter, paladin, ranger 10; sorcerer, wizard 6. The set
+  is {6, 8, 10, 12}.
+- **Levels.** `5e-SRD-Levels.json`, `level`: 1 to 20 in both.
+- **Spell levels.** `5e-SRD-Spells.json`, `level`: 0 to 9 in both. SRD 5.1 (`5e-SRD-Rules.json`):
+  "A cantrip is a spell that can be cast at will, without using a spell slot and without being
+  prepared in advance." Fire Bolt grows "when you reach 5th level" (2014) and "when you reach
+  levels 5 … 11 … and 17" (2024); Fireball "for each slot level above 3rd" (2014), "for each spell
+  slot level above 3" (2024). So `cantrip` scaling reads the character's level, `slot` the slot.
+- **Casting times.** 2014: `1 action`, `1 bonus action`, `1 reaction`, `1 minute`, `10 minutes`,
+  `1 hour`, `8 hours`, `12 hours`, `24 hours`. 2024 adds a text after a reaction or bonus action
+  ("Reaction, which you take when …"), and Plant Growth's "Action (Overgrowth) or 8 hours
+  (Enrichment)". Units: action, bonus, reaction, minute, hour; values whole. The text goes in
+  `note`.
+- **Ranges.** `Self`, `Touch`, `Sight`, `Special`, `Unlimited`, and distances in feet and miles
+  (`1 mile`, `500 miles`). A distance is stored in feet (SPEC §7.5).
+- **Durations.** `Instantaneous`, `Until dispelled`, `Special`, and `round`, `minute`, `hour`,
+  `day` with whole numbers (`1 round` … `30 days`). 2024 also has "Until dispelled or triggered"
+  (2 spells): see §11.
+- **Coins.** Equipment costs use `cp`, `sp`, `gp`; SRD 5.1's rules add "The electrum piece (ep)
+  and the platinum piece (pp)". Material costs: 2014, 55 in `gp`; 2024, 60 in `GP` and 1 in `CP`
+  ("worth 1+ CP").
+- **Armor and weapons.** 2014 `armor_category`: Light 3, Medium 5, Heavy 4, Shield 1; Medium caps
+  Dexterity at 2, Heavy adds none (`dexCap` 0), Light has no cap (`null`). `weapon_category` and
+  `weapon_range`: Simple and Martial, Melee and Ranged. One weapon has no `damage`: `net` (2014).
+  The morningstar's `properties` is `[]` (2014). In both, no long range is below its normal range.
+- **Species.** 2014 races: `size`, `speed`, no creature type (0 of 9). 2024 species: `type`
+  Humanoid in all 9; the tiefling chooses Small or Medium. No 2014 subrace or 2024 subspecies has
+  a size or speed. 2014 traits with more than one race: `darkvision` (dwarf, elf, gnome,
+  half-elf, half-orc, tiefling), `fey-ancestry` (elf, half-elf); 2024, 40 traits, among them
+  `darkvision-60` (dragonborn, elf, gnome, tiefling).
+- **Classes.** 2014 classes have no `primary_ability`; 2024 classes have one. Every class has
+  2 saving throws. Warlock 5 (2014): `spell_slots_level_3: 2`, every other slot level 0.
+  Multiclassing: sorcerer and wizard (both), monk (2024) give no proficiencies; the fighter's
+  prerequisite is "Strength 13 or Dexterity 13" (`prerequisite_options`, `choose: 1`), which the
+  core's `formula` prerequisite holds.
+- **A spell grant's stat.** 2024 `elven-lineage`, `gnomish-lineage`, `magic-initiate`:
+  "Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with
+  this trait (choose the ability when you select the lineage)."
+
+#### 9. Not in this ticket
+
+- The fifth-edition pack schema, its `systemSchemaVersion` and its JSON Schema file: ENG-33 sets
+  the version, ENG-38 the file.
+- The fifth-edition part of the character (a species' size, a class's level and subclass, which
+  lineage): ENG-33. A lineage is now an `entity` grant's choice (noted on ENG-33).
+- What a `spell` or `item` grant gives a character, and where a granted spell's spent uses are
+  kept: ENG-15, ENG-20. Which class's grants apply to a later class in a multiclass: ENG-13.
+- Reading the class table (`@classes.<key>.table.<column>`), the spell slots, the defaults of a
+  stat: ENG-13 to ENG-16.
+- The SRD's entities, their import and its mapping: ENG-09, ENG-10 (fixtures), phase 3 (import).
+- Names on screen for the open keys of §4: phase 2 and 3 (§11).
+
+#### 10. Rake check
+
+- **Each system's rules live in its own module.** Every type, list and kind is in
+  `packages/system-5e`; the core gains one helper and one wider type, and names no game.
+- **No `if (ruleset === …)`.** Both editions share every shape; no rule of one edition is coded.
+- **Everything is data.** No stat, skill, class or spell is named in code; stats in a spell grant,
+  a class's saves and a spell's save are keys, so `san` works like `str`.
+- **Formulas never run code.** Scaling, uses, prepared counts and damage are text here.
+- **Missing is not broken.** A schema checks shape; an id or key naming nothing is valid here.
+- **Stored units are feet and pounds.** Speeds, ranges and areas are feet; weight is pounds.
+- **Ids are stable; a stored-shape change needs a migration.** Nothing is stored yet; the core's
+  open schemas parse what they parsed before (ENG-04's tests pass unchanged).
+- **Licensing.** Test entities are made up. §8 quotes the SRDs (CC-BY-4.0); no other text.
+- **No "D&D" in names.** Every name is "fifth edition" or `5e`.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `entity-types.test.ts` alone: `Tests 13 passed (13)`, 883 ms.
+- Lint: `Checked 119 files`, no errors (116 before; 3 new files).
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done`.
+- Test: `Test Files 31 passed (31)`, `Tests 307 passed (307)`, 4.70 s (before: 30 files, 294
+  tests).
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The core's JSON Schema did not change with `withFixedOrChoose`: `z.toJSONSchema` of
+  `entityBaseSchema`, `grantSchema`, `prerequisiteSchema`, `coreEntitySchema`, `usesDefSchema`,
+  the three core types and `effectSchema`, written to one file before and after: 122,975 bytes
+  each, `cmp` finds no difference. ENG-04's tests pass unchanged.
+- The tests bite. Each guard removed on its own, 13 tests run each time: scaling by level, 1
+  fails; a range's distance, 1; a timed duration, 1; a material's parts, 1; the item blocks, 1;
+  the long range, 1; a class level twice, 1; a multiclass grant's id, 1; at least one speed, 1; a
+  spell list's field, 1; a part of `multiclass`, 1; the hit dice, 1; the level bound, 1; a
+  column's length, 1; a slot row's length, 1; the spell level bound, 1; `toolKind`'s key, 1; the
+  class's key, 1; the rule's topic, 1; weapon properties not empty, 1; a lineage's optional size
+  and speed, 2; an optional creature type, 1; the proficiency levels, 1; the recovery events, 1;
+  the editions, 2; fixed-or-choose on the `spell` grant, 1, and on the `item` grant, 1; a
+  quantity from 1, 1; an item id once, 1; the system's recovery events in a spell grant's uses,
+  1; the module's grant kinds dropped, 4; `withFixedOrChoose`'s check, 2. `hitDie` as any whole
+  number: `pnpm typecheck` fails with `TS2344` on the `expectTypeOf` line.
+- The JSON Schema, checked with ajv (`Ajv2020`) on `z.toJSONSchema(fifthEditionEntitySchema, {
+  io: 'input' })`: the 21 test entities pass. It keeps the unknown fields, at least one speed, a
+  spell list's field, a part of `multiclass`, and fixed-or-choose. It loses 10 checks: a range's
+  distance by its kind, a duration's value and unit by its kind, a material's cost and use by
+  `m`, the `weapon` block by category, the `armor` block by category, a long range below the
+  normal one, a class level twice, a multiclass grant id that is the class's own, scaling by
+  level, an item grant's id twice. Noted on ENG-38.
+
+Differences from §3: none.
+
+Against the row and the SPEC:
+- Each point of the row's note is done: the `spell` and `item` kinds on `grantBaseSchema`,
+  `chooseEntitiesSchema` and the system's `usesDefSchema` (§3 items 3–4); a rule's topic (item 8);
+  a spell's scaling (item 9); a granted spell's own uses (item 3); a kind's `choose` read by
+  `compute()`, pending, then passed through (item 13).
+- ADR 014 item 6 says ENG-32 keeps `scaling` "required wherever a spell's damage grows". A schema
+  cannot see that damage grows; `scaling` is the one field that says it, its `formula` is needed,
+  and its kind must fit the level. ENG-09 and ENG-10 write it on each fixture spell that grows.
+- SPEC §5.3 departs in the ways §4 lists: the fields that list given entities are grants; fields
+  the SRD leaves empty are optional; a material's cost has a unit; `'choice'` is not taken.
+
+Found, not fixed:
+- The JSON Schema loses 10 of the module's checks (above). Noted on ENG-38.
+- SRD values these schemas cannot hold yet, measured at `e6edf9a`: 2014's `mounts-and-vehicles`
+  equipment (40 entries) has no `ItemDef.category`; 2024's "Until dispelled or triggered" (2
+  spells) has no place for "or triggered"; 2024's three spell grants that choose their stat among
+  three (§8). New note for phase 3 in `BACKLOG.md`.
+- A class's own `grants` apply whether it is the first class or a later one; the SRD data keeps a
+  later class's proficiencies apart (`multi_classing.proficiencies`, §8). Noted on ENG-13.
+- A lineage is an `entity` grant's choice and a background's feat an `entity` grant, both kept in
+  `choices`; SPEC §5.8's `species.lineage` and `feats[].via` would be a second place. Noted on
+  ENG-33.
+- A `spell` grant's `uses` have no key, so its spent count needs one. Noted on ENG-20.
+- Keys with no entity type to give their name on screen: a spell's `school`, a species' `size`
+  and `creatureType`, an item's `rarity`, an area's `shape`, a feat's `category`, a rule's `topic`
+  and `icon`. New note for phases 2–3 in `BACKLOG.md`.
+- ENG-09 and ENG-10 write SPEC §5.3's given-entity fields as grants. Added to their note.
+
+Nothing for the changelog.

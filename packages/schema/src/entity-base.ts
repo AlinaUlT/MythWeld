@@ -41,12 +41,12 @@ export const entityMetaSchema = z.strictObject({
 export type EntityMeta = z.infer<typeof entityMetaSchema>;
 
 /** A list whose items differ in `field`; a repeat is reported on the later item's `field`. */
-export function listWithUnique<K extends string, T extends z.ZodType<Record<K, string>>>(
+export function listWithUnique<K extends string, T extends z.ZodType<Record<K, string | number>>>(
   item: T,
   field: K,
 ) {
   return z.array(item).superRefine((list, ctx) => {
-    const seen = new Set<string>();
+    const seen = new Set<string | number>();
     for (const [index, entry] of list.entries()) {
       const value = entry[field];
       if (seen.has(value)) {
