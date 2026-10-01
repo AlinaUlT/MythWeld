@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Green-screen terminal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=VT323&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#000}
+button{font-family:inherit;font-size:inherit;margin:0;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 360px; height: 800px; box-sizing: border-box; position: relative; overflow: hidden; background: #031a08">
+<pre style="margin: 0; padding: 14px 14px 0; font-family: VT323, monospace; font-size: 20px; line-height: 19px; white-space: pre; color: #39ff6a; text-shadow: 0 0 5px rgba(57, 255, 106, 0.8)">GRIMOIRE OS 1.0   640K RAM OK
+READY.
+&gt; LOAD "IREN"
+LOADING............ DONE
+
++------------------------------+
+| IREN    HUMAN FIGHTER  LV 01 |
+| RULES 2024   BKGD SOLDIER    |
++------------------------------+
+ HP [################] 12/12
+ AC 17  INIT +3  SPD 30  PB +2
+
+ ATTR  SCORE  MOD  SAVE
+ STR      17   +3    +5 *
+ DEX      13   +1    +1
+ CON      15   +2    +4 *
+ INT       8   -1    -1
+ WIS      12   +1    +1
+ CHA      10   +0    +0
+
+ SKILLS  (* = PROFICIENT)
+ *ATHLETICS.............+5
+ *INSIGHT...............+3
+ *INTIMIDATION..........+2
+ *PERCEPTION............+3
+ *SURVIVAL..............+3
+ PASSIVE PERCEPTION...13
+
+&gt; ROLL ATHLETICS
+ D20 [14] +5 = 19   (SAMPLE)
+&gt; <span style="background: #39ff6a; color: #031a08">_</span></pre>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 30px; display: flex; gap: 0; font-family: VT323, monospace; font-size: 18px; line-height: 30px">
+<span style="flex-grow: 1; background: #39ff6a; color: #031a08; text-align: center">F1 HELP</span><span style="flex-grow: 1; background: #031a08; color: #39ff6a; text-align: center">F2 ROLL</span><span style="flex-grow: 1; background: #39ff6a; color: #031a08; text-align: center">F3 REST</span><span style="flex-grow: 1; background: #031a08; color: #39ff6a; text-align: center">F10 QUIT</span>
+</div>
+<div style="position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0px, rgba(0, 0, 0, 0.28) 1px, transparent 1px, transparent 3px)"></div>
+<div style="position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.75) 100%)"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 360, "height": 800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

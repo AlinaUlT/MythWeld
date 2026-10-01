@@ -731,3 +731,39 @@ have a current design on the canvas (P1–P7, P9, P11 in part, P17); P8, P10, P1
 drawn. P5 is drawn but was never reviewed on its own, and the row says so. The gate is green:
 lint checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.61 s.
 Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-22 The current mockups in the repository · S
+
+**Hat:** The current mockups are kept in the repository
+**Where:** `docs/design/mockups/` — new (41 boards, `canvas.json`, `README.md`, `generator/`,
+`.gitignore`); `docs/design/BRIEF.md`, `CLAUDE.md`, `biome.json`, `docs/tickets/BACKLOG.md` —
+changed
+**Depends on:** OPS-21
+
+**What it should look like when done:**
+1. The current design's boards (page "Our design v3") and the six future-skin ideas are in
+   `docs/design/mockups/`, as HTML text, with the canvas index for those two pages.
+2. The scripts that generate them are in `generator/`, and rebuild every board byte for byte
+   from the repository, with no path from this machine.
+3. `README.md` says what each board shows, how to read a file, and how to change one.
+4. `CLAUDE.md`'s doc map, BRIEF Part 4 and the phase notes point at the folder.
+5. The quality gate stays green; the folder is outside lint, being generated files.
+
+**Tests:** none new. Control numbers: a rebuild in an empty copy (`gen9`, `gen11`, `gen12`,
+`gen14` in that order) compared with `cmp` against the committed files; the gate's counts.
+
+**What came out of it:** the owner asked on 2026-10-01 that the design be kept where every chat
+can see and build from it, so the progress is not lost. Until now the mockups lived only on the
+design canvas, and their generators only in a working folder that is deleted when a chat ends.
+BRIEF Part 4 kept mockup images out of the repository; the mockups are text, and the rule now
+says so: images and screenshots still stay out. Checked before committing: no personal name (each
+token of the commit authors' names and emails compared with the files: one hit, the icon name
+"users"), no tool name, no "D&D", no hidden character. The generators had four paths of the
+working folder and the renderer two of this machine; they now use the repository's own paths and
+the system's temporary folder, and `CHROMIUM_PATH` is optional. The rebuild gave 41 of 41 files
+identical. Earlier canvas pages (v1, v2, the palettes, the reference redraws) stay on the canvas
+only; they are rejected or replaced rounds. The folder is 1.1 MB. The gate is green: lint
+checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.56 s.
+Found, not fixed: nothing. Nothing for the changelog; a person sees no change.

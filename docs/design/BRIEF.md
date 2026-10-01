@@ -446,8 +446,10 @@ opens: P1 to P17 from this brief. Mark which screens belong to the Game master s
 
 ## Part 4 — Notes for designing
 
-- Mockup images stay out of the repository, like screenshots. Only the choice is written down,
-  as text, in Part 5.
+- The mockups themselves are kept in the repository, as text: `docs/design/mockups/` holds
+  the current design's HTML files, the canvas index and the scripts that generate them (the
+  owner's decision, 2026-10-01). Phase tickets build their screens from them and from Part 5.
+  Images (PNG, screenshots) still stay out of the repository.
 - Every visible word becomes a translation key when the screen is built (CLAUDE.md, "The
   interface"). A design can use any wording; the ticket that builds the screen sets the keys.
 - The screens not listed here (conditions, spell slots in detail, level-up, PDF export) are

@@ -1,0 +1,481 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-09-30T17:53:17Z"
+  },
+  "title": "Grimoire design options",
+  "launch": {
+    "view": "canvas",
+    "page": "ours-v3"
+  },
+  "pages": [
+    {
+      "id": "retro",
+      "name": "Retro and weird"
+    },
+    {
+      "id": "ours-v3",
+      "name": "Our design v3"
+    }
+  ],
+  "boards": {
+    "Retro-Win95.dc.html": {
+      "x": 0,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Win95 shareware",
+      "page": "retro"
+    },
+    "Retro-RPG.dc.html": {
+      "x": 440,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "16-bit RPG menu",
+      "page": "retro"
+    },
+    "Retro-Terminal.dc.html": {
+      "x": 880,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Green-screen terminal",
+      "page": "retro"
+    },
+    "Retro-Parchment.dc.html": {
+      "x": 0,
+      "y": 1180,
+      "w": 360,
+      "h": 800,
+      "title": "Parchment overload",
+      "page": "retro"
+    },
+    "Retro-Wood.dc.html": {
+      "x": 440,
+      "y": 1180,
+      "w": 360,
+      "h": 800,
+      "title": "Wood and leather",
+      "page": "retro"
+    },
+    "Retro-Homepage.dc.html": {
+      "x": 880,
+      "y": 1180,
+      "w": 360,
+      "h": 800,
+      "title": "Early homepage",
+      "page": "retro"
+    },
+    "V3-Player.dc.html": {
+      "x": 0,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Player: six sections (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Sources.dc.html": {
+      "x": 440,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "All sources",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Library.dc.html": {
+      "x": 880,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Library: search, filter, groups, legend (ADR 012)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Entry.dc.html": {
+      "x": 1320,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "A spell's window: small top part, no Damage dice list (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Sheet.dc.html": {
+      "x": 0,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Sheet: the class line is the level",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Turn.dc.html": {
+      "x": 440,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Turn tab: what you can do",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-SheetDice.dc.html": {
+      "x": 880,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Dice: any count, custom dice",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Keypad.dc.html": {
+      "x": 1320,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Damage / Heal / Temp HP pad (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-LevelUp.dc.html": {
+      "x": 1760,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Level up: XP or milestone",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Spells.dc.html": {
+      "x": 2200,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Spells: slot grid, granted spell 1/LR",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Cast.dc.html": {
+      "x": 2640,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Cast: what you cast, See full description, Don't use a spell slot",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Create.dc.html": {
+      "x": 0,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "New character: turning circle arrows, feat from the library (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Methods.dc.html": {
+      "x": 440,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "Ability score methods",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-DMReview.dc.html": {
+      "x": 1760,
+      "y": 6160,
+      "w": 360,
+      "h": 800,
+      "title": "DM review: edit a value, Wizard 3 → 4 on the class line (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Start.dc.html": {
+      "x": 440,
+      "y": 6160,
+      "w": 360,
+      "h": 800,
+      "title": "Start: Player and DM squares (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Characters.dc.html": {
+      "x": 440,
+      "y": 3800,
+      "w": 360,
+      "h": 800,
+      "title": "Support: my characters",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Dice.dc.html": {
+      "x": 880,
+      "y": 3800,
+      "w": 360,
+      "h": 800,
+      "title": "Support: dice page",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Roll.dc.html": {
+      "x": 1320,
+      "y": 3800,
+      "w": 360,
+      "h": 800,
+      "title": "Support: a roll",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Rest.dc.html": {
+      "x": 1760,
+      "y": 3800,
+      "w": 360,
+      "h": 800,
+      "title": "Support: rest",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Actions.dc.html": {
+      "x": 2200,
+      "y": 3800,
+      "w": 360,
+      "h": 800,
+      "title": "Actions (⋯): Level up first (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Features.dc.html": {
+      "x": 2640,
+      "y": 3800,
+      "w": 360,
+      "h": 800,
+      "title": "Support: features",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-About.dc.html": {
+      "x": 0,
+      "y": 4980,
+      "w": 360,
+      "h": 800,
+      "title": "Support: about",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Add.dc.html": {
+      "x": 440,
+      "y": 4980,
+      "w": 360,
+      "h": 800,
+      "title": "Support: edit mode",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Stat.dc.html": {
+      "x": 880,
+      "y": 4980,
+      "w": 360,
+      "h": 800,
+      "title": "Support: custom stat",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Token.dc.html": {
+      "x": 1320,
+      "y": 4980,
+      "w": 360,
+      "h": 800,
+      "title": "Support: portrait",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-QuickRules.dc.html": {
+      "x": 1760,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Quick rules: every SRD rule by topic (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-QuickRule.dc.html": {
+      "x": 2200,
+      "y": 260,
+      "w": 360,
+      "h": 800,
+      "title": "Quick rules: a topic, then a rule over it (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-TempHP.dc.html": {
+      "x": 3080,
+      "y": 1440,
+      "w": 360,
+      "h": 800,
+      "title": "Temporary HP: green number and bar part (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Roller.dc.html": {
+      "x": 880,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "Roll calculator (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Feats.dc.html": {
+      "x": 1320,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "Choose a feat: the library's Feats list with filters (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Conflict.dc.html": {
+      "x": 1760,
+      "y": 2620,
+      "w": 360,
+      "h": 800,
+      "title": "Race and background both raise abilities (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Systems.dc.html": {
+      "x": 0,
+      "y": 6160,
+      "w": 360,
+      "h": 800,
+      "title": "Later: choose the game system (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-DMHome.dc.html": {
+      "x": 880,
+      "y": 6160,
+      "w": 360,
+      "h": 800,
+      "title": "DM home: approvals with a count, actors (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Approvals.dc.html": {
+      "x": 1320,
+      "y": 6160,
+      "w": 360,
+      "h": 800,
+      "title": "Approvals: characters waiting (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    },
+    "V3-Actor.dc.html": {
+      "x": 2200,
+      "y": 6160,
+      "w": 360,
+      "h": 800,
+      "title": "New actor with a type (ADR 013)",
+      "page": "ours-v3",
+      "is_interactive": true
+    }
+  },
+  "order": [
+    "Retro-Win95.dc.html",
+    "Retro-RPG.dc.html",
+    "Retro-Terminal.dc.html",
+    "Retro-Parchment.dc.html",
+    "Retro-Wood.dc.html",
+    "Retro-Homepage.dc.html",
+    "V3-Player.dc.html",
+    "V3-Sources.dc.html",
+    "V3-Library.dc.html",
+    "V3-Entry.dc.html",
+    "V3-Sheet.dc.html",
+    "V3-Turn.dc.html",
+    "V3-SheetDice.dc.html",
+    "V3-Keypad.dc.html",
+    "V3-LevelUp.dc.html",
+    "V3-Spells.dc.html",
+    "V3-Cast.dc.html",
+    "V3-Create.dc.html",
+    "V3-Methods.dc.html",
+    "V3-DMReview.dc.html",
+    "V3-Start.dc.html",
+    "V3-Characters.dc.html",
+    "V3-Dice.dc.html",
+    "V3-Roll.dc.html",
+    "V3-Rest.dc.html",
+    "V3-Actions.dc.html",
+    "V3-Features.dc.html",
+    "V3-About.dc.html",
+    "V3-Add.dc.html",
+    "V3-Stat.dc.html",
+    "V3-Token.dc.html",
+    "V3-QuickRules.dc.html",
+    "V3-QuickRule.dc.html",
+    "V3-TempHP.dc.html",
+    "V3-Roller.dc.html",
+    "V3-Feats.dc.html",
+    "V3-Conflict.dc.html",
+    "V3-Systems.dc.html",
+    "V3-DMHome.dc.html",
+    "V3-Approvals.dc.html",
+    "V3-Actor.dc.html"
+  ],
+  "notes": {
+    "retro-title": {
+      "x": 0,
+      "y": 0,
+      "text": "Retro and weird: old game-app looks",
+      "kind": "title1",
+      "maxW": 1160,
+      "page": "retro"
+    },
+    "v3-0": {
+      "x": 0,
+      "y": 0,
+      "text": "Player page, library and Quick rules (ADR 010, 012, 013)",
+      "kind": "title1",
+      "maxW": 2960,
+      "page": "ours-v3"
+    },
+    "v3-1": {
+      "x": 0,
+      "y": 1180,
+      "text": "The sheet: Turn tab, dice, damage pad, level up, spells",
+      "kind": "title1",
+      "maxW": 2960,
+      "page": "ours-v3"
+    },
+    "v3-2": {
+      "x": 0,
+      "y": 2360,
+      "text": "Making a character (ADR 010, 013)",
+      "kind": "title1",
+      "maxW": 2960,
+      "page": "ours-v3"
+    },
+    "v3-3": {
+      "x": 0,
+      "y": 3540,
+      "text": "Support screens: same as v2, so taps stay in v3",
+      "kind": "title1",
+      "maxW": 2960,
+      "page": "ours-v3"
+    },
+    "v3-5": {
+      "x": 0,
+      "y": 5900,
+      "text": "Start and the DM's side (ADR 013)",
+      "kind": "title1",
+      "maxW": 2960,
+      "page": "ours-v3"
+    }
+  },
+  "designSystems": []
+}

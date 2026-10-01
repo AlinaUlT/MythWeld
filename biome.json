@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/dist", "!pnpm-lock.yaml"]
+    "includes": ["**", "!**/dist", "!pnpm-lock.yaml", "!docs/design/mockups"]
   },
   "formatter": {
     "enabled": true,

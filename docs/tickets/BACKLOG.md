@@ -201,6 +201,9 @@ split off an old row got a new id.
   entity with prerequisites.
 - **Phase 2** — found by OPS-08: ADR 008 replaces the SETUP-04 bottom bar with a start page, a
   player page and My characters. The phase 2 rows build that navigation instead of the bar.
+- **Phases 2–5** — added by OPS-22: each screen is built from its mockup in
+  `docs/design/mockups/` and its row in BRIEF Part 5; a design change made during a phase is
+  made in the mockup and the canvas too.
 - **ADR 009, by phase** — added by OPS-09. Phase 2: the dice panel on the sheet, features by
   source, the About tab, the spellcasting line, Inspiration, portrait and token, custom items,
   companions and sections. Phase 3: several rulebooks at once, the source on every entry.
@@ -274,6 +277,7 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-19 | ADR 013 takes the owner's three corrections to the mockups | XS | ✅ 2026-10-01 |
 | OPS-20 | ADR 014 records what the design decisions change in the engine | S | ✅ 2026-10-01 |
 | OPS-21 | The design brief records the current design, kept open | XS | ✅ 2026-10-01 |
+| OPS-22 | The current mockups are kept in the repository | S | ✅ 2026-10-01 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. The owner's chosen results come back into it.
