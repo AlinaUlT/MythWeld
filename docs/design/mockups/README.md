@@ -51,6 +51,36 @@ differ, the newer date in `docs/design/BRIEF.md` Part 5 wins, and the other is b
 "Future skins"). `canvas.json` is the canvas's index for these two pages: each board's place
 and title.
 
+## The tokens these mockups use
+
+Placeholders until the owner chooses the base colours and the heading font (BRIEF Part 5). The
+app turns them into design tokens; a skin replaces them (ADR 005). Contrast is measured on white
+with `generator/gen2.py`.
+
+| Token | Value | Contrast on white | Used for |
+|---|---|---|---|
+| `bg` | `#F5F5F3` | — | the page |
+| `surface` | `#FFFFFF` | — | cards, sheets, the header and the dock |
+| `text`, `strong` | `#1C1D20` | 16.85 : 1 | text; filled buttons, tokens, ticks |
+| `onStrong` | `#FFFFFF` | — | text on filled buttons |
+| `muted` | `#5E6269` | 6.13 : 1 | second lines, labels |
+| `line` | `#E2E2DE` | — | borders and dividers |
+| `soft` | `#EDECE8` | — | chips, search fields, boxes |
+| `hp` | `#B5473A` | 5.35 : 1 | the hit point bar, count badges |
+| `track` | `#E6E3DF` | — | the empty part of a bar |
+| `temp` | `#2F7A4A` | 5.25 : 1 | temporary hit points |
+| `warnBg`, `warnText` | `#FBF1D9`, `#6B4A00` | 8.06 : 1 (text) | warnings |
+| `danger` | `#A23A2E` | 6.60 : 1 | Delete |
+
+- **Fonts:** headings in EB Garamond (a placeholder; the heading font is still open, BRIEF X1),
+  everything else in Inter.
+- **Sizes most used:** 11–14 px for second lines and labels, 15–16 px for body text, 18–22 px
+  for numbers and names, 28 px for page titles.
+- **Corners:** 14 px on cards, 12 px on buttons, a full pill on chips, 20 px on the top of a
+  floating window.
+- **Phone frame:** 360 × 800; buttons and icon buttons are 44–48 px tall.
+- **Light only:** the dark theme is not drawn yet (BRIEF Part 5, "Still open in the design").
+
 ## Reading a file
 
 Each file is one phone screen, 360 × 800, in plain HTML with inline styles.

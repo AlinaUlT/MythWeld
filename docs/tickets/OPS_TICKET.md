@@ -767,3 +767,37 @@ identical. Earlier canvas pages (v1, v2, the palettes, the reference redraws) st
 only; they are rejected or replaced rounds. The folder is 1.1 MB. The gate is green: lint
 checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.56 s.
 Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-23 The design reference, checked for gaps · XS
+
+**Hat:** The design reference lists its tokens and its undrawn parts
+**Where:** `docs/design/mockups/README.md`, `docs/design/BRIEF.md`, `docs/tickets/BACKLOG.md` —
+changed
+**Depends on:** OPS-22
+
+**What it should look like when done:**
+1. The mockups' README lists the placeholder tokens the boards use: colours with their measured
+   contrast, fonts, sizes, corners, the phone frame.
+2. BRIEF Part 5's "Still open" row names every requirement written in an ADR but not drawn yet,
+   and the dark theme.
+3. No code changes. The quality gate stays green.
+
+**Tests:** none new. Control numbers: the colours printed from `generator/gen5.py` and
+`generator/gen13.py`, contrast from `generator/gen2.py`; font sizes and corner radii counted
+across the 35 `V3-*` boards with `grep`; each ADR 008–013 requirement searched for in the boards;
+the gate's counts.
+
+**What came out of it:** the owner asked whether the app's design is fully referenced. Every
+request from the chats has a written home (ADRs 008–014, BRIEF), and the current boards are in
+the repository (OPS-22). Two gaps were found and closed in writing: the boards' colours, fonts
+and sizes were only inside the generator scripts, and nothing listed which written requirements
+have no board. Eight of them have none (the real-looking throw, own roll modifiers with "Send to
+DM", the campaign copy, encounter templates, the Bookmarks page, and the Change history, Rules
+options and Export screens), and the dark theme is not drawn. The reference screenshots the
+owner sent stay out of the repository: screenshots are never committed, and two of the
+references hold text without an open license; ADRs 008, 012 and 013 say in words what was taken
+from each. The gate, run again after rebasing onto ENG-24 and ENG-05, is green: lint checked
+70 files; typecheck passed in all 5 packages; 82 tests passed, 0 failed, 1.68 s.
+Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
