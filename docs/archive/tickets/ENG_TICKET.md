@@ -3817,3 +3817,257 @@ Found, not fixed:
   knows the part since this ticket. Noted on phase 5 in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-30 Tracker actions and their log entries
+
+**Hat:** Tracker actions return a log entry that undoes them
+**Depends on:** ENG-06 (the trackers: `state.resources`, `state.conditions`, `state.toggles`),
+ENG-26 (`rollerSchema`: who), ENG-29 (`resources.<key>.max`), ENG-17 (toggles), ENG-11
+(conditions, `maxLevelOf`), ENG-27 (Tales: Ash, Brook)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.4, as ADR 014 item 10 widens it; §5.8 `state`
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/trackers.ts` — new: the core's tracker actions.
+- `packages/engine/src/log.ts` — new: `applyEntry`, `reverseEntry`, the path and JSON helpers.
+- `packages/schema/src/log.ts` — new: `logEntrySchema`, the shape the table link will send.
+- `packages/schema/src/index.ts`, `packages/engine/src/index.ts` — export the new files.
+- `packages/engine/src/gather.ts` — changes: `CONDITION_TYPE` and `maxLevelOf` are exported, so
+  the condition actions use gathering's rule, not a copy.
+- `packages/schema/test/log.test.ts`, `packages/engine/test/trackers.test.ts` — new.
+
+#### 2. What is missing now
+
+- `grep -rn "logEntry\|LogEntry\|useResource\|applyEntry\|undo" packages --include=*.ts` finds
+  nothing.
+- No function changes a character. The trackers of ENG-06 are only read (`compute()` reads
+  conditions and toggles; nothing reads `state.resources`).
+- `pnpm test`: `Test Files 26 passed (26)`, `Tests 264 passed (264)`, 3.74 s.
+
+#### 3. What it should look like when done
+
+The control character is ENG-27's Ash: luck max 2 with 1 used, Weary at level 1, `glow` off.
+Brook: focus max 6 with none used, Lost, `charm` on. `stamp` is
+`{ id, at, by: { role: 'player', name: 'Wren' } }`.
+
+**The log entry**
+1. `logEntrySchema` (`@grimoire/schema`) is a strict object: `id` (uuid), `at` (UTC date and
+   time), `by` (`rollerSchema`: role and name), `action` (a key), `subject` (what changed: a
+   resource key, a condition id, a toggle's part id), `label` (optional, the name of what
+   changed), `changes` (at least one).
+2. A change is `{ path, before?, after? }`. `path` is the field names from the character's root,
+   at least one: `['state', 'resources', 'luck']`. `before` and `after` are JSON values; a missing
+   one means the field is absent.
+3. The schema refuses: no changes; an empty path; an empty step; a step `__proto__`,
+   `constructor` or `prototype`; one path twice; a path inside another; a value that is not
+   JSON (`NaN`, a function); an unknown field; a bad `id` or `at`.
+
+**Applying and reversing**
+4. `applyEntry(character, entry)` gives `{ ok: true, character }` with every path set to its
+   `after` value (removed when there is none). It first checks that every path holds its
+   `before` value; if one does not, it gives `{ ok: false, code: 'changed', path, expected,
+   found }` and changes nothing.
+5. `reverseEntry(character, entry)` does the same from `after` to `before`.
+6. A path through a value that is not an object, or through a field that is not there, or with
+   an unsafe step, gives `{ ok: false, code: 'badPath', path }`. `Object.prototype` never
+   changes.
+7. An entry not applied yet is a pending change. Its `after` edited, it applies with the edited
+   value: Brook's focus entry `after: 2` edited to `3` applies as 3.
+8. Neither function changes what it is given. The result shares the parts it did not change.
+
+**Resources**
+9. `resourceUses(character, computed, key)` gives `{ max, spent, left }`, or `undefined` when no
+   grant gives the key. `left` is `floor(max) - spent`, never below 0. Ash's luck:
+   `{ max: 2, spent: 1, left: 1 }`. Brook's focus: `{ max: 6, spent: 0, left: 6 }`.
+10. `useResource(character, computed, { key, count }, stamp)`:
+    - Ash, luck, 1: luck 2; the entry's `action` `useResource`, `subject` `luck`, `label`
+      `{ en: 'Luck' }`, `changes` `[{ path: ['state', 'resources', 'luck'], before: 1, after: 2 }]`.
+    - Ash after that, luck, 1: `{ ok: false, code: 'notEnough', left: 0, count: 1 }`.
+    - Brook, focus, 2: the change has no `before` and `after: 2`. Brook, focus, 7: `notEnough`,
+      `left: 6`.
+    - A count of 0, -1 or 1.5: `badCount`. Brook's `breath` (no grant gives it, ENG-29):
+      `noResource`.
+    - A maximum that is not whole or below 0 (a talent's grant with `2.5` or `-1`): `left` 2 and 0.
+11. `regainResource(character, computed, { key, amount }, stamp)`, `amount` a whole number from 1
+    or `all`:
+    - Ash, luck, 1: `before: 1, after: 0`. Ash, luck, `all`: the same. Ash, luck, 5: `after: 0`
+      (never below 0).
+    - Brook, focus, 1: `{ ok: false, code: 'unchanged' }`.
+    - A key no grant gives, with uses stored (`state.resources.old: 2`): regains, with no `label`.
+    - An amount of 0 or 1.5: `badCount`.
+
+**Conditions**
+12. `setCondition(character, index, { id, level? }, stamp)`, `level` 1 when not given:
+    - Ash, Weary, 2: `changes` `[{ path: ['state', 'conditions'], before: [{ id: weary, level: 1 }],
+      after: [{ id: weary, level: 2 }] }]`, `label` `{ en: 'Weary' }`. Computed after it:
+      `skills.sneak.total` 3 (wits 2 + 2 × 1 + `shadow` 1 - 2).
+    - Ash, Lost: appended as `{ id: lost }`, with no `level`, since Lost has no levels.
+    - Ash, Weary, 4: `{ code: 'badLevel', level: 4, max: 3 }`. Ash, Lost, 2: `badLevel`, `max: 1`.
+      Levels 0 and 1.5: `badLevel`.
+    - Ash, Weary, 1: `unchanged`.
+    - An id no pack has: `missing`. A talent's id: `notACondition`.
+13. `removeCondition(character, index, { id }, stamp)`:
+    - Ash, Weary: `after: []`. Computed after it: `skills.sneak.total` 5 (2 + 2 + 1).
+    - Ash, Lost: `unchanged`.
+    - A stored condition whose entry no pack has any more: removed, with no `label`.
+
+**Toggles**
+14. `setToggle(character, computed, { part, on }, stamp)`:
+    - Ash, `tales-core:talent/night-warden#glow`, on: `changes`
+      `[{ path: ['state', 'toggles', '<part>'], after: true }]`, `label` `{ en: 'Glowing' }`.
+      Computed after it: `abilities.grit.score` 8 (6 + 1 + 1), `skills.climb.total` 7
+      (4 + 2 × 1 + 2 - 1).
+    - Ash, `glow`, off: `unchanged` (its default is off).
+    - Brook, `character:talent/lucky-charm#charm`, off: `before: true, after: false`, `label`
+      `{ en: 'Held' }`.
+    - Ash, `night-warden#shadow` (no toggle): `noToggle`. Brook, `night-warden#glow` (Brook has
+      no Night Warden): `noToggle`.
+
+**Every action**
+15. A refusal changes nothing and carries a `code`, its data, and an English `message` for logs.
+16. Each entry an action gives parses with `logEntrySchema`, and carries `stamp`'s `id`, `at`, `by`.
+17. `reverseEntry` on the character an action gave, with that action's entry, gives back a
+    character equal to the one before, for every action in items 10–14.
+18. Two changes in order, then the first reversed: Ash uses 1 luck (1 → 2), regains all (2 → 0),
+    then reverses the use: `{ code: 'changed', path: ['state', 'resources', 'luck'], expected: 2,
+    found: 0 }`.
+19. Deep-frozen inputs: no action and neither function throws, and each input equals its copy
+    after the call.
+20. The quality gate is green.
+
+#### 4. How to do it
+
+1. `packages/schema/src/log.ts`: `docPathSchema`, `logChangeSchema`, `logEntrySchema`, their
+   types.
+2. `packages/engine/src/log.ts`: `readAt`, `sameJson`, `copyJson`, `applyEntry`, `reverseEntry`.
+   Applying is two passes: check every `before`, then write every `after` by copying the objects
+   on the path.
+3. `packages/engine/src/gather.ts`: export `CONDITION_TYPE` and `maxLevelOf`.
+4. `packages/engine/src/trackers.ts`: `LogStamp`, `TrackedCharacter`, `TrackerRefusal`,
+   `ActionResult`, `resourceUses`, then the five actions. Each builds its entry from the values it
+   read, then applies it with `applyEntry`, so an action is its entry applied.
+5. Tests, then the gate.
+
+Technical choices (ADR 002):
+- **A path is a list of field names, not a dotted text.** A toggle's part id holds `:`, `/` and
+  `#`; a list needs no escaping.
+- **A list is changed whole.** The conditions are one value, before and after. A path never
+  points into a list, so reversing gives back the same order, and two changes to one list in the
+  wrong order are refused as `changed`, never merged.
+- **Values, not differences.** ADR 014 item 10 names before and after values. A pending entry
+  whose `before` no longer holds is refused, never applied over a newer value. Merging is the
+  table link's.
+- **The caller gives `id`, `at` and `by`.** The engine has no clock and no random source
+  (ENG-01, ENG-08), as `recordRoll` (ENG-26).
+- **`by` is ENG-26's `rollerSchema`.** A roll and a change name their author the same way: a
+  player or the game master, and a name.
+- **No words in the entry.** `action` and `subject` are keys; `label` is the entry's own name in
+  each language it has. The screen makes the sentence from i18n keys.
+- **Spending what is not there is refused; regaining past full is not.** A resource's uses left
+  are `floor(max) - spent`, never below 0 (ENG-29 left this to ENG-30). Regaining lowers the
+  uses spent to no less than 0.
+- **An action that would change nothing is refused (`unchanged`),** so the history never holds an
+  empty entry.
+- **A condition's level is stored only when it has levels.** `maxLevelOf` (ENG-11) gives 1 for a
+  condition without levels.
+- **A toggle is set, not flipped.** The screen sends the state it shows next; a set is the same
+  whoever applies it, and a flip in a pending entry would not be.
+- **Applying does not check the character against its system's schema.** The engine cannot know a
+  module's schema. An edited `after` is checked when the character is saved, by the system's
+  opener (phase 2).
+
+#### 5. Stored data
+
+Nothing stored changes. `logEntrySchema` is a new shape, not stored yet: a Dexie table for it is
+phase 2's, and it gets a version then (as `rollRecordSchema`, ENG-26).
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/schema/test/log.test.ts` — `describe('ENG-30 log entry')`: §3 items 1–3.
+- `packages/engine/test/trackers.test.ts` — `describe('ENG-30 tracker actions')`: §3 items 4–19.
+- Control numbers from: ENG-27's `tales/expected.ts` (Ash, Brook) and Tales' rules in
+  `tales/system.ts`, worked out by hand. The values after a change are worked out by hand in §3.
+
+#### 8. Checked against the source
+
+Nothing to check. The actions are the core's, on Tales; no rule of a real game is used. Fifth
+edition's damage, healing, slots and concentration are ENG-20, and its rests ENG-21.
+
+#### 9. Not in this ticket
+
+- Fifth edition's actions (damage, healing, temporary hit points, slots, concentration): ENG-20.
+- Rests, and which grant's recovery a key given twice follows: ENG-21.
+- Level-up as a log entry: ENG-36.
+- Storing entries, the history in "⋯", undo on the screen, `rev` and `updatedAt`: phase 2.
+- Sending entries, the DM's grouped review and approval, merging a pending entry onto a newer
+  character: the table link's phase.
+- Dropping the stored switches of a removed entity: phase 2 (ENG-17's note).
+
+#### 10. Rake check
+
+- **Engine is pure.** No clock, no random id, no global: the caller gives `id`, `at`, `by`.
+  Nothing passed in is changed; the frozen-input test proves it.
+- **Everything is data; the core names no game.** Resources, conditions and toggles are the
+  core's trackers; the actions read their keys, levels and labels from the content.
+- **Missing is not broken.** A missing condition or resource is a refusal with a code, never a
+  throw; a stored condition with no entry can still be removed, and uses of a key no grant gives
+  can still be regained.
+- **Ids are stable.** Entries name conditions and toggles by id and part id.
+- **No user-facing string in the engine.** Messages are English for logs; the screen uses `code`.
+- **A stored-shape change needs a migration.** None changes (§5).
+- **Licensing.** Tales is invented; no rules text.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- Before: `grep -rn "logEntry\|LogEntry\|useResource\|applyEntry\|undo" packages --include=*.ts`
+  found nothing. `pnpm test`: `Test Files 26 passed (26)`, `Tests 264 passed (264)`, 3.74 s.
+- After: `pnpm test`: `Test Files 28 passed (28)`, `Tests 279 passed (279)`, 3.92 s.
+- The two new files alone: `Tests 15 passed (15)`, 616 ms. `log.test.ts` holds 3 tests,
+  `trackers.test.ts` 12.
+- Lint: `Checked 110 files`, no fixes, no error (5 new files).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The tests catch mistakes. Each change made on its own in the code, then the two new test files
+  run (15 tests): applying skips the `before` check, 2 fail; `readAt` lets `__proto__`,
+  `constructor`, `prototype` through, 1; writing changes the object in place, 10; comparing counts
+  the order of fields, 1; uses left round up, 2; uses left go below 0, 2; one use more than left
+  is allowed, 1; regaining goes below 0, 1; a level is stored for a condition without levels, 1;
+  no `unchanged` refusal, 1; a toggle's default is read the wrong way round, 3; a level above the
+  maximum is allowed, 1; a condition already had is added again, 1; the label is dropped, 5; the
+  schema lets one path sit inside another, 2; the schema lets an unsafe step through, 1. Each was
+  undone, and the files compared equal to their copies.
+- Two of those changes first passed every test: comparing by the order of fields, and the unsafe
+  steps (`readAt` was safe through `Object.hasOwn` alone except for a last step `__proto__`). Two
+  tests were added for them: an entry whose list items have their fields in another order, and the
+  path `['state', '__proto__']`.
+
+Differences from §3:
+- A `notEnough` refusal also carries `key`, and a `badLevel` refusal `id`, so a refusal names
+  what it is about.
+- §3 item 4 gained a test that values compare as JSON, with fields in any order (above).
+
+Against the row and its notes: the ENG-29 note left open what spending does with a maximum below 0
+or not whole. Uses left are `floor(max) - spent`, never below 0 (§4). The ADR 014 item 10 note's
+"label" is the entry's `action` and `subject` keys plus the optional `label`, the name in each
+language the content has.
+
+Found, not fixed:
+- A key may be any camelCase word, so `constructor`, `toString` or `valueOf` pass
+  `entityKeySchema`, and a record read by such a key gets what every object has. Measured: a
+  Tales stat of Ash's own keyed `constructor`, with no base score, computes
+  `abilities.constructor.score` as the text `"0function Object() { [native code] }"`, with no
+  `noBaseScore` warning. New row ENG-40 in `BACKLOG.md`.
+
+Nothing for the changelog.

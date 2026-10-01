@@ -80,7 +80,8 @@ split off an old row got a new id.
 | ENG-29 | Resource maximums are computed from their formulas | XS | ✅ 2026-10-01 |
 | ENG-17 | Derived-phase effects, toggles, overrides apply with a breakdown | M | ✅ 2026-10-01 |
 | ENG-18 | A formula cycle stops with a message naming the paths | S | ✅ 2026-10-01 |
-| ENG-30 | Tracker actions return a log entry that undoes them | S | 🔲 |
+| ENG-30 | Tracker actions return a log entry that undoes them | S | ✅ 2026-10-01 |
+| ENG-40 | A content key never reads a field every object has | XS | 🔲 |
 | **Fifth edition** | **its own package** | | |
 | ENG-31 | The fifth-edition module is a package the core cannot import | XS | 🔲 |
 | ENG-32 | The fifth-edition entity types have Zod schemas | M | 🔲 |
@@ -102,17 +103,23 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
+- **ENG-40** — found by ENG-30: a key may be any camelCase word, so `constructor`, `toString` or
+  `valueOf` pass `entityKeySchema`, and a record read by such a key gets what every object has. A
+  Tales stat keyed `constructor` with no base score computes `abilities.constructor.score` as the
+  text `"0function Object() { [native code] }"`, with no `noBaseScore` warning (ENG-30 §11). The
+  ticket refuses such names in `entityKeySchema`, or reads records with `Object.hasOwn`. ENG-30's
+  log entry refuses the path steps `__proto__`, `constructor` and `prototype`, so today
+  `useResource` refuses a resource keyed `constructor` with `badPath`.
 - **ENG-31** — the package name and the `system` id are chosen here, checked against the rule on
   names in `CLAUDE.md`. `CLAUDE.md`'s layout, its dependency line and its golden-test path follow
   the new package. Found by ENG-01: a relative path can climb out of `packages/engine` into a
   sibling package (`../../content/src/index.ts`), and ENG-01's lint rule cannot see that; the
   core-to-module check here also covers a climb into the module by relative path.
-- **ENG-30, ENG-36** — ADR 014 item 10: a log entry carries who, when, a label and before/after
-  values; it can wait unapplied, and its "after" value can be edited before it applies.
-- **ENG-30, ENG-21** — found by ENG-29: a resource key has one maximum, `resources.<key>.max`, the
-  highest its grants give; it is the formula's number, which can be below 0 or not whole, and
-  ENG-30 decides what spending does then. `Computed.resources` keeps one row per grant, each with
-  its own recovery; ENG-21 decides which ones a key given twice follows on a rest.
+- **ENG-36** — ADR 014 item 10: level-up gives ENG-30's log entry (`logEntrySchema`, applied and
+  reversed by `applyEntry` and `reverseEntry`), built from the character it changes.
+- **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
+  recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
+  `regainResource` gives uses back, never below none spent.
 - **ENG-32** — found by ENG-04: also fifth edition's grant kinds `spell` and `item`, built on
   ENG-04's `grantBaseSchema` and `chooseEntitiesSchema`, and on the system's `usesDefSchema`
   from ENG-24's `systemListsOf`. ADR 014 items 5–7: a `rule` has a topic; a spell's `scaling`;

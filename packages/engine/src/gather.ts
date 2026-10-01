@@ -14,7 +14,7 @@ import {
 // entity of another edition is a warning or a pending choice (SPEC §8.2, ADR 005 item 3.3).
 
 /** The core's condition type (ENG-03): the type whose keys give `@conditions.<key>.level`. */
-const CONDITION_TYPE = 'condition';
+export const CONDITION_TYPE = 'condition';
 
 /** What names a root entity: the character itself (its module part or its trackers). */
 const CHARACTER = 'character';
@@ -218,7 +218,7 @@ function missing(id: string, from: Origin): GatherWarning {
 }
 
 /** A condition's highest level: its `maxLevel`, or 1 when it has no levels. */
-function maxLevelOf(entity: GatherableEntity): number {
+export function maxLevelOf(entity: GatherableEntity): number {
   const max = (entity as { readonly maxLevel?: unknown }).maxLevel;
   return typeof max === 'number' ? max : 1;
 }
