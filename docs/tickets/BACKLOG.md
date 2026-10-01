@@ -76,7 +76,8 @@ split off an old row got a new id.
 | ENG-04 | Effects, grants, prerequisites have game-free Zod schemas | S | ✅ 2026-09-30 |
 | ENG-24 | A system module adds its entity types to the schemas | S | ✅ 2026-10-01 |
 | ENG-05 | The content pack has a schema, exported as JSON Schema | S | ✅ 2026-10-01 |
-| ENG-06 | The core character document has a schema, with the migration frame | S | 🔲 |
+| ENG-06 | The core character document has a schema, with the migration frame | S | ✅ 2026-10-01 |
+| ENG-39 | A pack records the schema version of its system's module | XS | 🔲 |
 | ENG-25 | Packs are checked as they load into the content index | S | 🔲 |
 | **Core** | **formulas, dice** | | |
 | ENG-07 | Formulas evaluate safely, returning the paths they read | M | 🔲 |
@@ -128,12 +129,16 @@ split off an old row got a new id.
 - **ENG-06** — the core part of ADR 004's §5.8 row; the module's part is ENG-33. Packs and
   characters share the migration frame, which refuses a file with a newer `schemaVersion`
   (ADR 003 item A6). ADR 014 item 8: the actor's kind.
+- **ENG-39** — found by ENG-06: a pack holds the module's entity types but carries only the
+  core's `schemaVersion`. `packSchemaOf` takes the module's `systemSchemaVersion` and
+  `packOpenerOf` its migrations, as ENG-06 did for a character (ENG-06 §11).
 - **ENG-25** — ADR 003 item A3: a missing dependency gives a warning and `Missing: <id>`; a
   dependency loop refuses the pack, with a message naming the loop; a pack never replaces another
   pack's entry. Also: a duplicate `key` among active packs of one ruleset (SPEC §5.1, ADR 014
   item 2); a pack of another system is not loaded for a character (ADR 004 item 3). ADR 014
   items 3–4: the index finds the other ruleset's copy by type and key, and keeps names and
-  aliases per language.
+  aliases per language. Found by ENG-06: a pack whose id is `character`, the pack id of a
+  character's own entities, is refused.
 - **ENG-08** — ADR 014 item 11: faces 2–1000, 1–999 dice per term, a fairness test.
 - **ENG-26** — ADR 005 item 5.6: who rolled, what for, the dice, the result, the breakdown; public,
   secret to the DM, or hidden by the DM. Only the shape; sending it belongs to the table-link
@@ -143,7 +148,9 @@ split off an old row got a new id.
   rules; they are test data, not goldens. ENG-28 adds its derived-value steps.
 - **ENG-11** — an entity of the other edition gives a warning, never a block (SPEC §5.8,
   ADR 005 item 3.3). Found by ENG-24: an entity whose grants hold a module's kind is not
-  assignable to the open `EntityBase` type (`TS2322`); ENG-24 §11 has the measurement.
+  assignable to the open `EntityBase` type (`TS2322`); ENG-24 §11 has the measurement. Found by
+  ENG-06: species, classes and feats are in the module's `systemData`, so the core gets a
+  character's entities through the module.
 - **ENG-28** — found by ENG-24: the defaults a system gives a stat (SPEC §5.3: the modifier
   formula, a save, a maximum) come with the module's steps here. ENG-03 §4 also named ENG-24;
   a schema adds nothing on parse, so ENG-24 §9 moved them here.
@@ -160,6 +167,8 @@ split off an old row got a new id.
   a granted spell's own uses, with no slot.
 - **ENG-33** — ADR 014 item 8: XP or milestone, inspiration as a count with a maximum, the
   ability score method's key and rolls, the ability bonus source, which feats may be taken.
+  ENG-06 left it SPEC §5.8's fifth-edition fields, in `systemData`, with its own
+  `systemSchemaVersion` and migrations (ENG-06 §9).
 - **ENG-38** — found by ENG-05: SPEC §5.7's `/schema/pack.schema.json`, from
   `packJsonSchemaOf` with ENG-32's entity union, kept in step with the schemas by a test.
 - **ENG-09, ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's

@@ -10,18 +10,26 @@ import {
   systemIdSchema,
   versionSchema,
 } from './ids';
+import { type Migration, openerOf } from './migration';
 import { l10nSchema, localeSchema, visibleTextSchema } from './text';
 
 // ENG-05: a pack is parsed against one system's entity union (ADR 004 item 3), so the pack schema
 // is built per system. `schemaVersion` is today's shape only; another version goes through the
-// migration frame first (ENG-06). No field says where a pack came from: the app sets that when it
-// installs the pack (ADR 003 item A7), so such a field is refused like any unknown one.
+// migration frame first (`packOpenerOf`, ENG-06). No field says where a pack came from: the app
+// sets that when it installs the pack (ADR 003 item A7), so such a field is refused like any
+// unknown one.
 
 /** The stored shape of a pack. A change to it needs a migration (SPEC §5.8). */
 export const PACK_SCHEMA_VERSION = 1;
 
+/** The steps to `PACK_SCHEMA_VERSION`: step N takes version N + 1 to N + 2. None yet. */
+export const PACK_MIGRATIONS: readonly Migration[] = [];
+
 /** The stored shape of a locale overlay. A change to it needs a migration (SPEC §5.8). */
 export const LOCALE_OVERLAY_SCHEMA_VERSION = 1;
+
+/** The steps to `LOCALE_OVERLAY_SCHEMA_VERSION`. None yet. */
+export const LOCALE_OVERLAY_MIGRATIONS: readonly Migration[] = [];
 
 /** A pack's license (SPEC §5.7). `redistributable: false` keeps it out of every public build. */
 export const packLicenseSchema = z.strictObject({
@@ -99,6 +107,16 @@ export const localeOverlaySchema = z
     }
   });
 export type LocaleOverlay = z.infer<typeof localeOverlaySchema>;
+
+/** The migration frame for a system's packs: a newer pack is refused, an older one migrated. */
+export function packOpenerOf<S extends z.ZodType>(packSchema: S) {
+  return openerOf(packSchema, [{ field: 'schemaVersion', migrations: PACK_MIGRATIONS }]);
+}
+
+/** Opens a locale overlay through the migration frame. */
+export const openLocaleOverlay = openerOf(localeOverlaySchema, [
+  { field: 'schemaVersion', migrations: LOCALE_OVERLAY_MIGRATIONS },
+]);
 
 /** What Zod checks and a JSON Schema cannot say. The exported file lists them for its reader. */
 const PACK_CHECKS_LEFT_OUT = [

@@ -45,6 +45,13 @@ export function entityIdPatternOf(type: string): string {
   return `^${KEBAB.source.slice(1, -1)}:${type}\\/${KEBAB.source.slice(1, -1)}$`;
 }
 
+/** One grant or effect of one entity: `<entityId>#<grantId>`, as a character's choices key it. */
+export const entityPartIdSchema = z.templateLiteral([entityIdSchema, '#', slugSchema]);
+export type EntityPartId = z.infer<typeof entityPartIdSchema>;
+
+/** An id the app makes on the device (`crypto.randomUUID()`), in lowercase only. */
+export const uuidSchema = z.uuid().lowercase();
+
 /** A short key for formulas: `str`, `stealth`, `fighter`. One step of a formula path. */
 export const entityKeySchema = z.string().regex(CAMEL);
 

@@ -27,8 +27,9 @@ const systemListsSchema = z.strictObject({
 });
 
 /**
- * A system's editions (`ruleset`), proficiency categories and levels, and recovery events, as
- * schemas. Throws when a list is empty, holds an item twice, or holds an item of the wrong shape.
+ * A system's editions (`ruleset`, with `any`; `edition`, without it, for a character's one rules
+ * base), proficiency categories and levels, and recovery events, as schemas. Throws when a list is
+ * empty, holds an item twice, or holds an item of the wrong shape.
  */
 export function systemListsOf<
   const E extends List<string>,
@@ -43,6 +44,7 @@ export function systemListsOf<
   const recoveryEventSchema = z.enum(lists.recoveryEvents);
   return {
     rulesetSchema: z.enum([...lists.editions, 'any']),
+    editionSchema: z.enum(lists.editions),
     proficiencyCategorySchema: z.enum(lists.proficiencyCategories),
     proficiencyLevelSchema: z.literal(lists.proficiencyLevels),
     recoveryEventSchema,

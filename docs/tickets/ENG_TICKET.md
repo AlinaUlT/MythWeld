@@ -1020,3 +1020,277 @@ Found, not fixed:
   §5.7): it needs ENG-32's entity union. New row ENG-38 in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-06 The character document
+
+**Hat:** The core character document has a schema, with the migration frame
+**Depends on:** ENG-05 (the pack, its `schemaVersion`), ENG-24 (a system's lists, its entity union)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.8; ADR 003 item A6; ADR 004 items 1, 3 and its §5.8 row; ADR 005 items 3.2, 3.3;
+ADR 014 item 8
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/schema/src/character.ts` — new. The core part of a character, the field
+for the module's part, and the character's opener.
+- `packages/schema/src/migration.ts` — new. The migration frame: one opener for every stored file.
+- `packages/schema/src/pack.ts` — changes: `PACK_MIGRATIONS`, `packOpenerOf`,
+  `LOCALE_OVERLAY_MIGRATIONS`, `openLocaleOverlay`.
+- `packages/schema/src/system.ts` — changes: `systemListsOf` also returns `editionSchema`.
+- `packages/schema/src/entity-base.ts` — changes: `listWithUnique`, which `listWithUniqueIds`
+  now calls.
+- `packages/schema/src/ids.ts` — changes: `entityPartIdSchema`, `uuidSchema`.
+- `packages/schema/src/index.ts` — changes: exports the two new files.
+- `packages/schema/test/character.test.ts`, `packages/schema/test/migration.test.ts` — new.
+
+#### 2. What is missing now
+
+- No character schema and no migration code. `git grep -n -i -E "migrat|character"` over
+  `packages/schema/src` and `packages/engine/src` finds 9 lines: 8 comments and one error message
+  (`Must hold a visible character.`). `pack.ts` line 17 says another version "goes through the
+  migration frame first (ENG-06)".
+- A pack from a newer app is not told apart from a broken one. Measured: a pack with
+  `schemaVersion: 2` is refused with `Invalid input: expected 1` on `schemaVersion`. ADR 003 item
+  A6 asks for a clear refusal that says the file is newer.
+- No schema gives a system's editions without `any`. `systemListsOf` gives `rulesetSchema`, which
+  takes `any`; a character has one rules base (ADR 005 item 3.2).
+- `pnpm test`: `Test Files 12 passed (12)`, `Tests 82 passed (82)`; none for a character or a
+  migration.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/schema` exports `characterSchemaOf`, `characterOpenerOf`, `CHARACTER_SCHEMA_VERSION`
+   (`1`), `CHARACTER_MIGRATIONS` (empty), `CHARACTER_PACK_ID` (`character`), `DEFAULT_ACTOR_KIND`
+   (`pc`); `openerOf` and the types `Migration`, `VersionChain`, `Opened`, `StoredObject`;
+   `PACK_MIGRATIONS`, `packOpenerOf`, `LOCALE_OVERLAY_MIGRATIONS`, `openLocaleOverlay`;
+   `entityPartIdSchema`, `uuidSchema`, `listWithUnique`.
+2. `characterSchemaOf({ system, systemSchemaVersion, edition, entity, systemData })` builds a
+   system's character schema from its id, the version of the module's part, its editions, its
+   entity union and the module's part.
+3. The core part has these fields (ADR 004's §5.8 row, ADR 014 item 8). All are required but
+   `player` and `portraitBlobId`:
+   - `id` — a lowercase UUID;
+   - `schemaVersion` — exactly `CHARACTER_SCHEMA_VERSION`; `systemSchemaVersion` — exactly the
+     module's;
+   - `rev` — a whole number, 0 or more;
+   - `createdAt`, `updatedAt` — date and time in UTC, as `2026-10-01T09:00:00.000Z`;
+   - `system` — exactly the system's id; `ruleset` — one of its editions, never `any`;
+   - `allowMixedRulesets` — true or false;
+   - `kind` — the actor's kind, a key: `pc`, `npc`, `enemy`, or one the DM names;
+   - `mode` — `guided` or `manual`;
+   - `name`, `player` — visible text; `portraitBlobId` — a lowercase UUID;
+   - `packs` — pack ids in order, none twice; may be empty;
+   - `abilities.base` — stat key → whole number;
+   - `choices` — `<entityId>#<grantId>` → keys or entity ids, at least one, none twice;
+   - `state.resources` — resource key → uses spent, a whole number from 0;
+     `state.conditions` — `{ id, level? }`, no id twice; `state.toggles` —
+     `<entityId>#<effectId>` → true or false;
+   - `overrides` — `{ path, value, note? }`, no path twice; `value` is a number, true or false, or
+     visible text;
+   - `localEntities` — entities of the system, no id twice;
+   - `notes` — key → visible text;
+   - `systemData` — the module's part, checked by the module's schema.
+4. A character's own entities have ids of the pack `character` (`character:talent/lucky-charm`).
+   Another pack's id is refused on `localEntities.<n>.id`; `character` in `packs` is refused on
+   `packs.<n>`.
+5. Refused, each on its own path: another system (`system`); another `schemaVersion` or
+   `systemSchemaVersion`; `any` or an edition the system lacks (`ruleset`); an id that is not a
+   lowercase UUID (`id`); a time with an offset, or a date with no time (`createdAt`); a choice key
+   with no `#<grantId>` (`choices.<key>`); an empty choice; a path overridden twice
+   (`overrides.1.path`); a condition twice (`state.conditions.1.id`); an entity type the system
+   lacks (`localEntities.<n>.type`); an unknown field in the module's part (`systemData`); any
+   unknown field (the root).
+6. A system's parts that cannot be right throw when the schema is built: a system id that is not
+   kebab-case; a `systemSchemaVersion` that is not a whole number from 1; an `edition` schema that
+   takes `any`.
+7. `openerOf(schema, chains)` is the migration frame. Each chain names a version field and its
+   migrations; its current version is the number of migrations plus 1. Opening a file:
+   - a version above the current one, in any chain, is refused before any step runs:
+     `{ ok: false, code: 'newer', field, found, current, message }`;
+   - a version below it runs the steps from that version, in order; after each step the frame
+     writes the next version into the field;
+   - the result is parsed by the schema: `{ ok: true, value, from }`, or
+     `{ ok: false, code: 'invalid', error, message }`;
+   - the file passed in is never changed.
+8. The frame checks itself when it is built. A version field that is not one number literal
+   throws `The schema's "<field>" is not one number literal.`; a literal that differs from the
+   number of migrations plus 1 throws `The schema's "schemaVersion" is 2, but its migrations lead
+   to version 1.`
+9. A character opens through two chains: the core's (`schemaVersion`, `CHARACTER_MIGRATIONS`) and
+   the module's (`systemSchemaVersion`, the migrations given to `characterOpenerOf`). A pack
+   (`packOpenerOf`) and an overlay (`openLocaleOverlay`) open through one chain each. Each core
+   chain has no migration today, so its current version is 1.
+10. A made-up file at version 3 with two migrations: a version 1 file opens in the version 3
+    shape, `from: { schemaVersion: 1 }`; a version 2 file runs only the second step; version 4 is
+    refused as `newer`.
+11. The quality gate is green.
+
+#### 4. How to do it
+
+1. `ids.ts`: `entityPartIdSchema`, a template literal `<entityId>#<slug>`; `uuidSchema`,
+   `z.uuid().lowercase()`.
+2. `entity-base.ts`: `listWithUnique(item, field)`; `listWithUniqueIds(item)` calls it with
+   `id`, with the same message.
+3. `system.ts`: `systemListsOf` returns `editionSchema`, the editions without `any`.
+4. `migration.ts`: `openerOf`. It reads each field's literal from the schema's `propValues`, as
+   ENG-24 reads names.
+5. `character.ts`: `characterSchemaOf`, the core's constants, `characterOpenerOf`.
+6. `pack.ts`: the pack's and the overlay's migration lists and openers.
+7. The tests of §7.
+
+Technical choices (ADR 002):
+- **The module's part is one field, `systemData`.** ADR 004 splits the document into "a core
+  part plus a part the module owns". One field keeps them apart: a core field and a module field
+  can never share a name, and the core never reads the module's names. SPEC §5.8 has every field
+  at the top level; the module's fields keep their meaning and move into `systemData`
+  (ADR 002 item 3).
+- **Two versions, not one.** The core's shape and each module's shape change on their own. With
+  one number, a core change would bump every system's version, and a module's change the core's.
+  `schemaVersion` is the core's, as on a pack; `systemSchemaVersion` is the module's. Both sit at
+  the top level, because a module's step also changes `localEntities`, a core field that holds
+  the module's types.
+- **The current version is counted, not written.** A chain's current version is its migrations
+  plus 1, and the frame throws for a schema whose literal differs. A version bumped without a
+  step, or a step without a bump, fails as soon as the opener is built: in every test that loads
+  it.
+- **The frame writes the new version**, not the step, so a step cannot forget it.
+- **A refusal carries a code and numbers.** The screen says it in the person's language
+  (`CLAUDE.md`: no visible string outside i18n). `message` is English, for logs and tests.
+- **A newer file is refused before any step runs**, in any chain (ADR 003 item A6).
+- **A version that is not a whole number from 1 is not migrated.** The schema refuses it on its
+  field, as `invalid`.
+- **The base stat scores are the core's** (`abilities.base`): stats are the core's (ADR 004
+  item 1), and ENG-12 computes them in the core. The score method is the module's (ADR 014
+  item 8).
+- **`state` holds the core's trackers**: resources, conditions, toggles. Hit points, temporary
+  hit points, hit dice, slots, death saves, concentration and inspiration are fifth edition's
+  (ADR 004's context lists them) and go in ENG-33's `systemData`.
+- **House rules are the module's.** Every item of SPEC §8.4 is a fifth-edition rule.
+- **`notes` is a record of key → text.** SPEC §5.8's eight names include ideals, bonds and
+  flaws, which are fifth edition's; which notes a sheet shows is the module's.
+- **A character's own entities use the pack id `character`.** Their ids never collide with a
+  pack's entries (ADR 003 item A3), and a copied character keeps them with no id change. Every
+  character uses the same id; each character has its own content index.
+- **The id is a lowercase UUID**, made by the app (`crypto.randomUUID()`), so characters made on
+  two devices never share an id. Lowercase only, so one id has one spelling.
+- **`kind` and `allowMixedRulesets` are required.** One spelling per state; making a field
+  optional later needs no migration, the reverse does (ADR 002 item 2). The creation screen
+  writes `DEFAULT_ACTOR_KIND`.
+- **A choice holds at least one item.** An unmade choice has no entry; `[]` would be a second
+  spelling of it.
+
+#### 5. Stored data
+
+The character gets its first stored shape: `schemaVersion: 1`, and the module's
+`systemSchemaVersion`. Nothing is stored yet (the Dexie database has no tables, SETUP-06), so
+nothing migrates. The pack's and the overlay's shapes do not change; they gain an opener and an
+empty list of migrations.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/schema/test/character.test.ts` — `describe('ENG-06 character document')`: a full
+  character round trips; each required field; ids, times and `rev`; system, versions, editions;
+  kinds and modes; packs; choices; trackers; overrides; a character's own entities; the module's
+  part and unknown fields; two systems apart; a system's parts that throw; the inferred types
+  (`expectTypeOf`, checked by `pnpm typecheck`). `describe("ENG-06 a character opens through the
+  core's chain and the module's")`: the current versions; a newer core or module; a module's step.
+- `packages/schema/test/migration.test.ts` — `describe('ENG-06 migration frame')`: a made-up
+  file at version 3 with two steps (counted with `vi.fn`); a frozen file never changed; a newer
+  file refused before any step; versions that are not whole numbers from 1; a migrated file the
+  schema refuses; two chains; the checks at build time; the types.
+  `describe('ENG-06 the openers of packs and overlays')`.
+- Control values from: SPEC §5.8, ADR 004, ADR 014 item 8; the made-up systems and files of the
+  tests themselves (ADR 004 item 4); RFC 9562's UUID form; `Date.prototype.toISOString`'s form.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is used.
+
+#### 9. Not in this ticket
+
+- Fifth edition's part, in `systemData`: classes, species, background, feats, spells, the
+  inventory, coins, hit points, hit dice, slots, death saves, concentration, inspiration, XP or
+  milestone, the score method, the ability bonus source, house rules: ENG-33.
+- How `compute()` finds the entities a character has, now that species, classes and feats are in
+  the module's part; what a choice's items mean for each grant kind: ENG-11, ENG-12.
+- A choice's item not in its grant's list, a toggle whose effect is gone, an override of a path
+  `Computed` lacks: warnings in ENG-11 and ENG-17, never a refusal (missing is not broken).
+- The Dexie `characters` table, making and saving a character, counting `rev`: phase 2.
+- The screens that show a refusal: phase 2 (a character's JSON), phase 5 (a pack).
+- The DM's list of actor kinds: the DM tools' phase (ADR 013 item 14).
+- The campaign copy, custom sections, companions: their phases, with a migration then (ADR 009,
+  ADR 014 item 9).
+- A version of the module's shape in a pack: §11.
+
+#### 10. Rake check
+
+- **A stored-shape change needs a migration.** The frame ties each version to its steps; a bump
+  without a step throws when the opener is built.
+- **Everything is data; the core names no game.** `character.ts` names no stat, tracker or note
+  of any game. `pc` is an actor kind, a key the DM may add to. The test systems are made up.
+- **Each system's rules live in its own module.** The module's part and its steps are arguments;
+  no `if (system === …)` is written.
+- **Missing is not broken.** The schema checks shape only. A choice, toggle or condition naming a
+  missing entity is not refused here.
+- **Manual overrides always win.** They are stored with path, value and note, one per path, so
+  two overrides never compete.
+- **Ids are stable.** A character's own entities keep their ids when the character is copied.
+- **No user-facing string literal in a component.** A refusal is a code with numbers; the screen
+  writes its text.
+- **Licensing.** Test data is made up; no SRD or book text.
+
+#### 11. What came out of it
+
+Measured:
+- The two new test files alone: `Tests 29 passed (29)`, 524 ms (17 for the character, 12 for the
+  frame).
+- Lint: `Checked 74 files`, 0 errors (70 before).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 14 passed (14)`, `Tests 111 passed (111)`, 1.80 s (before: 12 files,
+  82 tests). ENG-02 to ENG-05's 82 tests pass unchanged.
+- Build: `Done`.
+- The exported JSON Schemas did not change: `packJsonSchemaOf` of a made-up system's pack,
+  `localeOverlayJsonSchema()`, and `z.toJSONSchema` of `entityBaseSchema` and `coreEntitySchema`,
+  written to one file before and after: 98,749 bytes each, `cmp` finds no difference.
+- The tests bite. Each guard removed on its own, 41 tests run each time (the two new files and
+  ENG-05's): lowercase UUID, 1 fails; `character` refused in `packs`, 1; a pack twice, 1; own
+  entities in the pack `character`, 1; one override per path, 1; a choice's at least one and none
+  twice, 1; the choice key's shape, 1; the toggle key's shape, 1; `any` refused as a rules base,
+  1; the system id check, 1; the module version check, 1; the module's part left unchecked, 2;
+  the newer refusal, 4; the counted version, 2; the one-literal check, 1; the frame writing the
+  version, 5; the frame changing the file in place, 4; whole versions only, 1; steps from the
+  version found, 3. `systemSchemaVersion` left as any whole number: the character test file does
+  not load (`The schema's "systemSchemaVersion" is not one number literal.`), so its 17 tests do
+  not run. `ruleset` left as any text: `pnpm typecheck` fails with `TS2344` on the `expectTypeOf`
+  line.
+
+Differences from §3: none.
+
+Against the row: the row names the core character document and the migration frame. ADR 004's
+§5.8 row lists the core part as id, versions, system, packs, choices, overrides, local entities,
+notes and trackers. The code also keeps in the core part: the name, the player, the portrait,
+the rules base and the mixing switch (ADR 005 items 3.2, 3.3), the mode, the base stat scores
+(§4), and the actor's kind (ADR 014 item 8).
+
+Found, not fixed:
+- A pack holds the module's entity types but carries only the core's `schemaVersion`. When a
+  module's entity type changes shape, a stored pack has no version that says which shape its
+  entities have. A character has `systemSchemaVersion` (this ticket); a pack needs the same. New
+  row ENG-39 in `BACKLOG.md`.
+- A pack may have the id `character`. No character can turn it on (this ticket refuses it in
+  `packs`). Noted on ENG-25 in `BACKLOG.md`.
+- Species, classes and feats move into the module's `systemData`, so the core cannot read them
+  to gather a character's entities. Noted on ENG-11 in `BACKLOG.md`.
+- The made-up test system is now written in four test files. ENG-27 makes it shared test data, as
+  ENG-24 §9 planned.
+
+Nothing for the changelog.
