@@ -585,3 +585,32 @@ ADR 012's homebrew copy and edit move into a "⋯" menu, so the title row keeps 
 The gate is green: lint checked 66 files; typecheck passed in all 5 packages; 59 tests passed,
 0 failed, 1.59 s.
 Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-17 What Quick rules holds · XS
+
+**Hat:** ADR 013 records what Quick rules holds
+**Where:** `docs/adr/013-temp-hp-creation-dm-tools-home-tabs.md`, `docs/design/BRIEF.md`,
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-16
+
+**What it should look like when done:**
+1. ADR 013 item 18 records Quick rules: every SRD rule, English first; search; topic cards; a
+   topic and a rule each open in a floating window.
+2. It records that a word whose entry or rule exists is a link in every text of the app, and a
+   word with no target stays plain text.
+3. "What Quick rules holds" leaves "Still open". BRIEF P17 and `BACKLOG.md` follow it.
+4. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** the reference was ten screenshots of a website's DM screen reference:
+its topic list, the Action and Reaction topics, and four rules opened over a topic. The
+owner's changes to it: all the rules, and English first. The topic names in item 18 are
+examples from the reference, written in English; the final list is set from the SRD text when
+phase 3 builds it. The website's comments section is not taken: the app has no server for it.
+The gate is green: lint checked 66 files; typecheck passed in all 5 packages; 59 tests passed,
+0 failed, 1.49 s.
+Found, not fixed: nothing. Nothing for the changelog; a person sees no change.

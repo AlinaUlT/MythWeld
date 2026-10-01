@@ -7,7 +7,7 @@
 On 2026-10-01 the owner reviewed the "Our design v3" mockups and gave the requirements below,
 with three screenshots of a website's ability score calculator as the reference for item 8.
 The same day the owner sent four screenshots of the same website's spell page as the reference
-for item 6. From the references, only the idea and the order of the parts are taken: no text,
+for item 6, and ten screenshots of its DM screen reference for item 18. From the references, only the idea and the order of the parts are taken: no text,
 no images, no styling. Each item names the phase that builds it (ADR 007 item 4).
 
 ## Decision
@@ -101,19 +101,31 @@ no images, no styling. Each item names the phase that builds it (ADR 007 item 4)
     - **Dice roll**: an animation that looks like a real roll on a table, in the spirit of the
       "Dice So Nice!" module for Foundry VTT. No code or art is taken from it. ADR 009 item 10's
       fairness test stays. (The dice phase.)
-    - **Quick rules**: a cheat sheet for players and DMs. What it holds comes from a screenshot
-      the owner will send. Only openly licensed text or the app's own words. (Phase 3.)
+    - **Quick rules**: a cheat sheet for players and DMs (item 18). (Phase 3.)
     - **Bookmarks**: entries the person marks to keep at hand, such as spells, armor and magic
       items. Bookmarks stay on the device. (Phase 3.)
 
     The DM's home page has the same sections, plus the DM's: approvals (item 13), actors (item
     14) and campaigns (BRIEF P11).
+18. **Quick rules hold all the rules.** Every rule of the open rulebooks (SRD 5.1 and
+    SRD 5.2.1), in English first; Russian comes with its own phase. Top to bottom:
+    - the title and a search field;
+    - topics as cards, for example Move, Action, Bonus action, Reaction, Combat, Other actions,
+      Environment, Damage and attack, Hit points, death and rest, Abilities and skills, Origins,
+      Conditions and diseases, Active class features, Spells, Multiclassing;
+    - a topic opens in a floating window: its name, share, bookmark, close; a short
+      introduction; its rules as cards, each with an icon, its name and its source;
+    - a rule opens in a floating window over the topic: its name, bookmark, close; a small box
+      with its topic (a link back) and its source; a one-line summary; the full text.
+
+    In every text of the app (rules, spells, features, items), a word whose entry or rule
+    exists is a link, and tapping it opens that entry in a floating window: "concentration" in a
+    spell opens the Concentration rule. A word with no target stays plain text. (Phase 3.)
 
 ## Still open
 
 - Where the level sits in the sheet's header: six options on the design canvas, page
   "Our design v3".
-- What Quick rules holds: the owner's screenshot.
 - The level-up screenshot the owner named; it did not arrive.
 - Whether "Reroll" in the roll calculator is unlimited.
 
@@ -127,6 +139,7 @@ no images, no styling. Each item names the phase that builds it (ADR 007 item 4)
 | ADR 010 item 13 | Approve with Yes or No | The DM can edit a value first (item 12) |
 | ADR 012 item 4 | Classes and subclasses with their sources; share, homebrew copy, edit, close | Also per ruleset (item 4); a small top part; share, bookmark, close, and "⋯" (item 6) |
 | BRIEF P3 item 6 | Ability bonuses from race or background, pick one | A window with a checkbox for each (item 10) |
+| ADR 011 | Full descriptions | Terms inside them are links (item 18) |
 | BRIEF P1, P3, P4, P6, P7, P9, P11, P17 | — | Follow this ADR |
 | `BACKLOG.md` | — | Notes each item under its phase |
 

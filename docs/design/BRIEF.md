@@ -150,6 +150,10 @@ ADR 010: "⋯" on "Books in use" adds packs (downloaded, imported, the person's 
 ADR 013: the page's sections are Characters, Sources (SRD 5.1 and SRD 5.2.1 built in, plus the
 person's packs), Library, Dice roll, Quick rules, Bookmarks. The DM's page has the same, plus
 approvals with a count, actors and campaigns.
+ADR 013 item 18: Quick rules holds every SRD rule, in English first: a search field and topic
+cards (Move, Action, Bonus action, Reaction, Combat, …); a topic opens in a floating window
+with its rules as cards (icon, name, source); a rule opens in a floating window over it (topic
+link, source, summary, full text). Any word whose entry exists is a link, in every text.
 One state only.
 ```
 
