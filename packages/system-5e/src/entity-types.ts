@@ -9,7 +9,7 @@ import {
   visibleTextSchema,
 } from '@grimoire/schema';
 import { z } from 'zod';
-import { fifthEdition, MAX_LEVEL, MAX_SPELL_LEVEL } from './system';
+import { COINS, fifthEdition, HIT_DIE_SIZES, MAX_LEVEL, MAX_SPELL_LEVEL } from './system';
 
 // ENG-32: fifth edition's entity types (SPEC §5.3), each built on the system's base, so its
 // editions, grant kinds and proficiencies are checked by fifth edition's lists. What an entity
@@ -20,7 +20,7 @@ import { fifthEdition, MAX_LEVEL, MAX_SPELL_LEVEL } from './system';
 const base = fifthEdition.entityBaseSchema;
 
 /** A class level, or a character's: 1 to 20. */
-const levelSchema = z.int().min(1).max(MAX_LEVEL);
+export const levelSchema = z.int().min(1).max(MAX_LEVEL);
 
 /** One whole number per class level, from level 1 at index 0. */
 const levelColumnSchema = z.array(z.int().nonnegative()).length(MAX_LEVEL);
@@ -28,7 +28,7 @@ const levelColumnSchema = z.array(z.int().nonnegative()).length(MAX_LEVEL);
 /** A price: an amount of one coin. */
 const costSchema = z.strictObject({
   amount: z.number().positive(),
-  unit: z.enum(['cp', 'sp', 'ep', 'gp', 'pp']),
+  unit: z.enum(COINS),
 });
 
 /** Damage of one type: a roll formula and the damage type's key. */
@@ -106,7 +106,7 @@ export const classDefSchema = base
   .safeExtend({
     type: z.literal('class'),
     key: entityKeySchema,
-    hitDie: z.literal([6, 8, 10, 12]),
+    hitDie: z.literal(HIT_DIE_SIZES),
     primaryAbilities: uniqueList(entityKeySchema).optional(),
     saves: uniqueList(entityKeySchema),
     subclassLevel: levelSchema,

@@ -5,8 +5,7 @@
 // ENG-41: its code is pure TypeScript, as the engine's is. Lint refuses here every global the
 // engine refuses, `Math.random`, and any import but its own files, the core and `zod`.
 
-/** Fifth edition's system id, which its packs and characters name (ADR 004 item 3). */
-export const FIFTH_EDITION_SYSTEM = '5e';
-
+export * from './character';
 export * from './entity-types';
+export * from './pack';
 export * from './system';

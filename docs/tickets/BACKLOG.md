@@ -87,7 +87,7 @@ split off an old row got a new id.
 | ENG-41 | Lint holds the fifth-edition module to the engine's purity rules | XS | ✅ 2026-10-01 |
 | ENG-42 | A test holds the module's tsconfig to the language alone | XS | ✅ 2026-10-01 |
 | ENG-32 | The fifth-edition entity types have Zod schemas | M | ✅ 2026-10-01 |
-| ENG-33 | The fifth-edition part of the character document has a schema | S | 🔲 |
+| ENG-33 | The fifth-edition part of the character document has a schema | S | ✅ 2026-10-01 |
 | ENG-38 | The fifth-edition pack's JSON Schema is published as a file | XS | 🔲 |
 | ENG-09 | 2014 fixtures: every SRD entity golden A or C needs | M | 🔲 |
 | ENG-10 | 2024 fixtures: every SRD entity golden B, B4, C or D needs | M | 🔲 |
@@ -110,16 +110,8 @@ split off an old row got a new id.
 - **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
   recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
   `regainResource` gives uses back, never below none spent.
-- **ENG-33** — ADR 014 item 8: XP or milestone, inspiration as a count with a maximum, the
-  ability score method's key and rolls, the ability bonus source, which feats may be taken.
-  ENG-06 left it SPEC §5.8's fifth-edition fields, in `systemData`, with its own
-  `systemSchemaVersion` and migrations (ENG-06 §9). Found by ENG-39: the same version goes to
-  the module's packs, with a pack step for each version (ENG-39 §4). Found by ENG-32: a
-  lineage is an `entity` grant's choice and a background's feat an `entity` grant, both kept in
-  `choices`; SPEC §5.8's `species.lineage` and `feats[].via` would be a second place for them.
-  A species' `size` lists the sizes to choose from; where the choice is kept is this ticket's.
 - **ENG-38** — found by ENG-05: SPEC §5.7's `/schema/pack.schema.json`, from
-  `packJsonSchemaOf` with ENG-32's entity union, kept in step with the schemas by a test.
+  `packJsonSchemaOf` of ENG-33's `fifthEditionPackSchema`, kept in step with the schemas by a test.
   Found by ENG-32: the union's JSON Schema loses 10 of the module's checks, measured with ajv
   (ENG-32 §11): a range's distance by its kind, a duration's value and unit by its kind, a
   material's cost and use by `m`, the `weapon` and `armor` blocks by category, a long range below
@@ -141,7 +133,11 @@ split off an old row got a new id.
   skill step or the core reads it. Found by ENG-32: a class's own `grants` apply whether it is
   the first class or a later one, and its `multiclass.grants` are what a later class gives (the
   SRD data keeps them apart, ENG-32 §8). This ticket decides how a later class leaves out the
-  grants of a first class, and reads `ClassDef.saves` of the first class.
+  grants of a first class, and reads `ClassDef.saves` of the first class. Found by ENG-33: the
+  module reads `systemData` (`FifthEditionCharacter`): its level is the sum of `classes[].level`;
+  it names the species, the background, each class and subclass at that class's level, and
+  `feats` (ENG-33's test does this). A feat's `replaces` names the grant whose ability score
+  improvement it is taken in place of; this ticket decides how that grant is left out.
 - **ENG-13 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true. The
   full goldens A–D are green by ENG-19.
 - **ENG-13, ENG-14, ENG-34** — found by ENG-17: an effect whose op gives no number (`append`,
@@ -149,6 +145,10 @@ split off an old row got a new id.
   (`ac.formulas`, `defenses.*`, `roll.*`, `skills.<key>.ability`) is left alone by the phases,
   with no warning. The ticket that computes such a list, roll or text reads its effects through
   `activeEffects` (`effects.ts`) and warns for its own targets.
+- **ENG-14** — found by ENG-33: a level's hit points are a `classes[].hp` entry: a number, `avg`
+  or `max` (dnd5e: `hitDie / 2 + 1` and the die's value, ENG-33 §8). The schema bounds a number by
+  12, the largest die; a number above the class's own die warns here. No row computes the size:
+  `species.size`, or the species' one size; a species with several and none chosen is pending.
 - **ENG-16** — ADR 014 item 6: a spell's current dice for the character's level, with a breakdown.
   Found by ENG-08: SPEC §5.6 shows a roll formula with its average, and no function gives it; a
   term that keeps some dice has no simple average (`2d20kh1`'s is 13.825). A count of dice that
@@ -156,14 +156,20 @@ split off an old row got a new id.
   computed count.
 - **ENG-20** — ADR 014 item 7: casting with "use a slot: no". Found by ENG-32: a `spell`
   grant's `uses` have no key of their own; the cast action keeps their spent count, by the
-  grant's part id or a key it gives them.
+  grant's part id or a key it gives them. Found by ENG-33: the trackers it changes are
+  `systemData.state`; the schema refuses a death save count above 3 and inspiration above
+  `houseRules.inspirationMax`, so the actions stop there.
 - **ENG-19** — ability increase source, subclass level, multiclass rounding, exhaustion, rests,
   inspiration (SPEC §6.3 table). Golden C and golden D close here. ADR 014 item 8: inspiration's
-  SRD text is shown to the owner next to her default of 3.
+  SRD text is shown to the owner next to her default of 3. Found by ENG-33: the house rules'
+  defaults (`houseRulesSchema`, SPEC §8.4 "by the SRD") are each ruleset's; a new character is
+  written with them. The 2024 rules text: 5e-database at `e6edf9a` has no 2024 rules file, and
+  this environment's network refuses the SRD 5.2.1 PDF's host (ENG-33 §8).
 - **ENG-35** — ADR 014 item 1 (from ADR 013 item 10): a 2014 race with a 2024 background gives
   ability increases from the race, the background or both; `both` warns, never blocks; the
   default is the rules base's source. Its §8 reads both SRDs for other bonuses of one kind given
   in two places (ADR 005 item 3.4, still in force for those); each one found becomes a new row.
+  The choice is ENG-33's `systemData.abilities.bonusSource`; its `species` is ADR 014's `race`.
 - **ENG-22** — the Appendix Д pack gains the `system` field (ADR 004 item 3) and the module's
   `systemSchemaVersion` (ENG-39); no expected value changes.
 - **ENG-37** — ADR 005 item 3.6; the fixture states its ability bonus source (ADR 014 item 1).
@@ -202,6 +208,13 @@ split off an old row got a new id.
   "or triggered"; 2024's `elven-lineage`, `gnomish-lineage` and `magic-initiate` let the person
   choose the spellcasting stat among three, and a `spell` grant's `ability` takes one stat. The
   import widens the schema for each (no migration) or maps the value.
+- **Phase 3** — found by ENG-33: an entity two grants give is gathered once, with one choice
+  per grant (ENG-11). That is right for a trait two sources give, and wrong for a feat taken
+  twice: of 2024's feats, `ability-score-improvement`, `magic-initiate` and `skilled` say "You
+  can take this feat more than once" (ENG-33 §8), and Magic Initiate can come twice at level 1
+  (the Acolyte's, and a human's Versatile origin feat). 2024 gives its Ability Score Improvement feature at several levels under
+  one id, so each level's choice needs its own class grant. The import, or a core row before it,
+  gives a feat taken twice its own choices.
 - **Phase 3** — found by ENG-29: two `resource` grants of one key give one resource, with the
   highest of their maximums. Mechanics that give one key from two classes (a multiclass) check
   in their §8 what the SRD says for that case; uses that add up are an effect `add` on
@@ -270,6 +283,9 @@ split off an old row got a new id.
   Phase 5: custom stats, the person's packs next to the books, custom entries with effects. The
   dice phase (with ADR 005 item 11): the honest animated roll, custom roll modifiers. The table
   link's phase: the campaign copy, the DM's changes, approval of important changes.
+- **Phase 4** — found by ENG-33: SPEC §8.4's point-buy budget is the point-buy method's (ADR 010
+  item 12), not a house rule: `houseRulesSchema` has no field for it. A method is a key in
+  `systemData.abilities.method`, with its rolls as ENG-26 roll records.
 - **ADR 010, by phase** — added by OPS-10. Phase 2: custom dice and any count of dice, the
   Damage and Heal number pad, the Turn tab, the spell slot grid, casting without a slot. Phase
   3: the one-page library with topics and full entries, the All sources list. Phase 4: steps

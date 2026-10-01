@@ -4709,3 +4709,311 @@ Found, not fixed:
 - ENG-09 and ENG-10 write SPEC §5.3's given-entity fields as grants. Added to their note.
 
 Nothing for the changelog.
+
+---
+
+### ENG-33 The fifth-edition character
+
+**Hat:** The fifth-edition part of the character document has a schema
+**Depends on:** ENG-06 (`characterSchemaOf`, `systemData`, the migration frame), ENG-39 (the
+module's version on a pack), ENG-32 (the entity union), ENG-26 (`rollRecordSchema`)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.8, §8.4; ADR 004 and its §5.8 row; ADR 009 item 5; ADR 010 items 7, 12; ADR 013
+items 9, 10; ADR 014 items 1, 8
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/character.ts` — new. Fifth edition's part of a character
+(`systemData`), its house rules, its character schema and opener.
+- `packages/system-5e/src/pack.ts` — new: the fifth-edition pack schema and opener.
+- `packages/system-5e/src/system.ts` — changes: `FIFTH_EDITION_SYSTEM` (moved from `index.ts`),
+  `FIFTH_EDITION_SCHEMA_VERSION`, `HIT_DIE_SIZES`, `COINS`.
+- `packages/system-5e/src/entity-types.ts` — changes: a class's `hitDie` reads `HIT_DIE_SIZES`, a
+  cost's `unit` reads `COINS`; `levelSchema` is exported.
+- `packages/system-5e/src/index.ts` — changes: exports the two new files.
+- `packages/system-5e/test/character.test.ts` — new.
+
+#### 2. What is missing now
+
+- The module has no character and no pack: `grep -rn "characterSchemaOf\|packSchemaOf\|systemData"
+  packages/system-5e/src` prints nothing.
+- No fifth-edition field of SPEC §5.8 has a schema: house rules, the score method, species,
+  background, classes, feats, spells, inventory, coins, hit points, hit dice, slots, death saves,
+  concentration, inspiration. ADR 014 item 8's fields (XP or milestone, inspiration as a count with
+  a maximum, the method's key and rolls, the ability bonus source, which feats may be taken) have
+  no place either.
+- The module has no version of its stored shape, for its characters or its packs (ENG-39 §9).
+- `pnpm test`: `Test Files 31 passed (31)`, `Tests 307 passed (307)`.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/system-5e` exports `FIFTH_EDITION_SCHEMA_VERSION` (`1`),
+   `FIFTH_EDITION_CHARACTER_MIGRATIONS` and `FIFTH_EDITION_PACK_MIGRATIONS` (both empty),
+   `HIT_DIE_SIZES` (`[6, 8, 10, 12]`), `COINS` (`['cp', 'sp', 'ep', 'gp', 'pp']`), `DEATH_SAVES`
+   (`3`), `levelSchema`, `houseRulesSchema`, `fifthEditionDataSchema`,
+   `fifthEditionCharacterSchema`, `openFifthEditionCharacter`, `fifthEditionPackSchema`,
+   `openFifthEditionPack`, and the types `HouseRules`, `FifthEditionData`, `FifthEditionCharacter`,
+   `FifthEditionPack`.
+2. A fifth-edition character is ENG-06's core part with `system: '5e'`, `systemSchemaVersion: 1`,
+   a `ruleset` of `2014` or `2024`, ENG-32's entities in `localEntities`, and this `systemData`.
+   Every field is required but `species`, `background` and those marked `?`:
+   - `houseRules` (SPEC §8.4, ADR 013 item 9, ADR 009 item 5): `hitPointMethods` — the ways a
+     level's hit points may be taken, of `roll`, `avg`, `max`, at least one, none twice;
+     `abilityMax` — a whole number from 1; `feats` — `none`, `own`, `ownAndOtherOptional` or `all`;
+     `multiclass` — true or false; `encumbrance` — `none`, `simple` or `variant`;
+     `skillAbilitySwap` — true or false; `inspirationMax` — a whole number from 1.
+   - `abilities`: `method` — a key; `rolls?` — ENG-26 roll records, at least one; `bonusSource` —
+     `species`, `background` or `both`.
+   - `advancement`: `mode` — `xp` or `milestone`; `xp` — a whole number from 0.
+   - `species?`: `{ id, size? }`, `size` a key. `background?`: `{ id }`.
+   - `classes`: `{ id, subclass?, level, hp }` in the order taken, no id twice; `level` 1 to 20;
+     `hp` one entry per level, each a whole number from 1 to 12, `avg` or `max`; the levels add up
+     to 20 at most.
+   - `feats`: `{ id, replaces? }`, no id twice and no `replaces` twice; `replaces` is an
+     `<entityId>#<grantId>`.
+   - `spells`: a class or subclass id → `{ known?, prepared? }`, at least one of the two, each a
+     list of spell ids with at least one and none twice.
+   - `inventory`: `{ uid, itemId?, custom?, qty, equipped, attuned, container?, note? }`; `uid` a
+     lowercase UUID, none twice; exactly one of `itemId` and `custom` (`{ name, weight? }`); `qty`
+     a whole number from 0; `container` another row's `uid`, never the row's own, and no loop.
+   - `currency`: `cp`, `sp`, `ep`, `gp`, `pp`, each a whole number from 0, all five.
+   - `state`: `hp` — `{ current, temp }`, whole numbers from 0; `hitDiceSpent` — `d6`, `d8`, `d10`,
+     `d12` → a whole number from 0; `slotsSpent` — `1` to `9` → a whole number from 0;
+     `pactSlotsSpent` — a whole number from 0; `deathSaves` — `{ success, failure }`, each 0 to 3;
+     `concentration?` — a spell id; `inspiration` — a whole number from 0, at most
+     `houseRules.inspirationMax`.
+3. Refused, each on its own path: a 2014 rules base written `any` (`ruleset`); `systemSchemaVersion:
+   2`; an empty `hitPointMethods` and `roll` twice (`systemData.houseRules.hitPointMethods`);
+   `feats: 'some'`; a bonus source `race`; empty `rolls`; a class twice (`classes.1.id`); level 0
+   and 21 (`classes.0.level`); `hp` one entry short, an entry of 0 or 13, `'roll'` as an entry
+   (`classes.0.hp`, `classes.0.hp.<n>`); levels adding up to 21 (`classes`); a feat twice
+   (`feats.1.id`); `replaces` twice (`feats.1.replaces`); a `replaces` with no `#<grantId>`; a
+   spell entry with neither list, an empty list, a spell twice (`spells.<id>.known.1`); a row with
+   both or neither of `itemId` and `custom` (`inventory.<n>`); a `uid` twice (`inventory.1.uid`); a
+   `container` that is no row, the row itself, or a loop of two (`inventory.<n>.container`); a
+   missing coin (`currency.ep`); an unknown coin; hit dice `d20` and a slot level `10` (as unknown
+   keys); `hp.current` −1; a death save count 4 (`state.deathSaves.failure`); inspiration 4 with a
+   maximum of 3 (`state.inspiration`); any unknown field.
+4. A fifth-edition pack is ENG-05's pack with `system: '5e'`, `systemSchemaVersion: 1`, ENG-32's
+   entity union, and a `ruleset` of `2014`, `2024` or `any`. Refused: `systemSchemaVersion: 2`, an
+   entity of a type the module lacks.
+5. Both open through the migration frame with two chains (ENG-06, ENG-39): a current file opens
+   with `from: { schemaVersion: 1, systemSchemaVersion: 1 }`; `systemSchemaVersion: 2` is refused as
+   `newer` with `current: 1`.
+6. The core reads it. `FifthEditionCharacter` is assignable to the engine's
+   `CharacterCore<FifthEditionEntity>` (`pnpm typecheck`). `compute()`, with a module made in the
+   test that reads `systemData`, gathers the species, the background, each class at its own level
+   and the feats, with no warning.
+7. Inferred types: `ruleset` is `'2014' | '2024'`; `systemSchemaVersion` is `1`; an `hp` entry is
+   `number | 'avg' | 'max'`; `currency` is `Record<'cp' | 'sp' | 'ep' | 'gp' | 'pp', number>`.
+8. ENG-32's tests pass unchanged, with `hitDie` and a cost's `unit` read from `HIT_DIE_SIZES` and
+   `COINS`.
+9. The quality gate is green.
+
+#### 4. How to do it
+
+1. `system.ts`: `FIFTH_EDITION_SYSTEM` (moved), `FIFTH_EDITION_SCHEMA_VERSION`, `HIT_DIE_SIZES`,
+   `COINS`. `index.ts` keeps its ENG-31 comment and re-exports.
+2. `entity-types.ts`: `z.literal(HIT_DIE_SIZES)`, `z.enum(COINS)`; `export const levelSchema`.
+3. `character.ts`: the house rules, each part of `systemData`, the data schema with its checks
+   across fields, the character schema, its opener with the module's (empty) steps.
+4. `pack.ts`: `packSchemaOf` with the module's version and union; `packOpenerOf` with its own
+   (empty) steps.
+5. The tests of §7.
+
+Technical choices (ADR 002):
+- **What a grant gives is kept in `choices`, not in a field** (ENG-32 §11). A lineage is an
+  `entity` grant's choice, so SPEC §5.8's `species.lineage` is left out. A feat a background, a
+  species or a class gives is a grant (`via` `origin`, `species`, `class`). `feats` keeps the feats
+  no grant gives: one taken in place of an ability score improvement, and one given by hand.
+- **A feat in place of an improvement names the grant it stands in for** (`replaces`,
+  `<entityId>#<grantId>`), where SPEC has `via: 'asi'` and `atLevel`. A 2024 class gives one
+  Ability Score Improvement feature at several levels (§8), so only the grant names one slot; the
+  grant has the level. A feat with no `replaces` is SPEC's `bonus` or `custom`. dnd5e keeps this
+  choice on the class's advancement the same way (§8).
+- **`species.size` is the size chosen** from the species' list (ENG-32 keeps the list on the
+  species). A species with one size needs none.
+- **A level's hit points are a number, `avg` or `max`**, dnd5e's three values (§8). SPEC has
+  `number | 'avg'`; `max` is the first class's first level, and the house rule `max`. A number is
+  at most 12, the largest hit die; whether it fits the class's own die needs the pack, which a
+  schema does not read: ENG-14 warns.
+- **`classes` is in the order taken.** The first is the first class: its saving throws (ENG-13's
+  note) and its first level's hit points.
+- **House rules are the module's** (ENG-06 §4) and required: a default changed later never changes
+  a saved character. SPEC §8.4's list, with three changes. The method list holds any of SPEC's
+  three ways, so a table allowing two needs no new value. `feats` is one scale: SPEC §8.4's "feats
+  allowed (2014)" is `none`, ADR 013 item 9's three options are the rest. The point-buy budget is
+  left out: ADR 010 item 12 makes a score method data, with "a pool the scores are taken from", so
+  the budget is that method's (phase 4); a field added then needs no migration, a field removed
+  would. Their default values are the rulesets' (§9).
+- **The ability bonus source says `species`**, where ADR 014 item 1 writes `race`: it chooses
+  between the `species` field and the `background` field, and the 2014 race is the `species` type
+  (SPEC §6.3's first row). The screen says "race" for 2014 through i18n.
+- **The method's rolls are ENG-26 roll records**: one shape for a roll, the one the table link
+  sends, so a DM can see what was rolled.
+- **XP stays in milestone mode.** `{ mode, xp }`, so switching back loses nothing.
+- **Required booleans and counts** (`equipped`, `attuned`, `pactSlotsSpent`): one spelling per
+  state (ENG-06 §4). **Spent counts are records from 0**, as ENG-06's `state.resources`.
+- **A list that may be empty is absent instead** where a record holds it (`spells`), as
+  `choices` does (ENG-06 §4). Lists that grow and shrink in play (`classes`, `feats`, `inventory`)
+  may be empty, as ENG-06's `overrides` and `localEntities`.
+- **Checks across fields are made where both fields are in the file**: inspiration under its
+  maximum, a container that exists, the levels' total. A reference into a pack (a spell, a class,
+  a size the species lacks) is not checked: missing is not broken.
+- **The pack's schema is here; its JSON Schema file is ENG-38's.** Both files take the module's one
+  version, each with its own steps (ENG-39 §4).
+- **`FIFTH_EDITION_SYSTEM` moves to `system.ts`**: `character.ts` and `pack.ts` need it, and
+  importing `index.ts` from them would be a loop.
+
+#### 5. Stored data
+
+A fifth-edition character and a fifth-edition pack get their first stored shape:
+`systemSchemaVersion: 1`, with no steps. Nothing is stored yet: the Dexie database has no tables
+(SETUP-06), `packages/content` builds no pack, and no screen makes a character. So nothing
+migrates. The core's shapes do not change.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/character.test.ts` — `describe('ENG-33 fifth-edition character')`: a
+  full character round trips; required and optional fields; empty lists; each refusal of §3 item
+  3; the core reads it through `compute()`; the inferred types (`expectTypeOf`, checked by
+  `pnpm typecheck`). `describe('ENG-33 fifth-edition files open through both chains')`: a current
+  character and pack, a newer one, a pack refused.
+- Control values from: SPEC §5.8, §8.4; ADR 014 item 8; the bounds in §8. Test content is made up
+  (`hb-test`) and holds no rules fact.
+
+#### 8. Checked against the source
+
+Sources: 5e-bits/5e-srd-api at `e6edf9a`, `packages/5e-database/src/{2014,2024}/en/` (as ENG-32),
+read with `jq`; foundryvtt/dnd5e at `7bfb3f1` (2026-10-01), `module/`. SRD 5.1 and 5.2.1 are
+CC-BY-4.0. The 2024 rules chapters are not in the data set, and the SRD 5.2.1 PDF's host is
+refused by this environment's network, so 2024 facts come from dnd5e, which checks both editions.
+- **Death saves.** SRD 5.1 (`5e-SRD-Rules.json`, Death Saving Throws): "On your third success, you
+  become stable … On your third failure, you die." dnd5e
+  (`data/actor/templates/attributes.mjs`, `applyDeathSaveResult`): successes and failures are
+  clamped to 0–3, one function for both editions. So each count is 0 to 3.
+- **Levels.** dnd5e `config.mjs`: `DND5E.maxLevel = 20`; `data/item/class.mjs` caps a class's
+  levels and the character's level (the sum of its classes) at it, for both editions. ENG-32 §8:
+  class levels 1 to 20 in both SRDs.
+- **Hit points per level.** dnd5e `documents/advancement/hit-points.mjs`: a level's value is
+  `"max"` (the die's value), `"avg"` (`hitDieValue / 2 + 1`) or a number; level 1 of the original
+  class is `"max"`. One advancement for both editions.
+- **Ability score improvements.** 2014 (`5e-SRD-Features.json`): one feature per class per level,
+  each its own id (`barbarian-ability-score-improvement-1` at level 4 to `-5` at 19): "you can
+  increase one ability score of your choice by 2, or you can increase two ability scores of your
+  choice by 1." 2014 feats: `grappler` only. 2024: one feature per class, given again at later
+  levels ("You gain the Ability Score Improvement feat (see "Feats") or another feat of your choice
+  for which you qualify. You gain this feature again at Barbarian levels 8, 12, and 16."). 2024
+  feats that say "You can take this feat more than once": `ability-score-improvement`,
+  `magic-initiate`, `skilled`. The 2024 backgrounds `acolyte` and `sage` give `magic-initiate`;
+  the human's `versatile`: "You gain an Origin feat of your choice". dnd5e (`data/advancement/ability-score-improvement-data.mjs`): a class's improvement
+  is filled with `type: "asi"` or `type: "feat"`; `documents/advancement/ability-score-improvement.mjs`
+  allows the feat in 2014 only with the `allowFeats` setting, always in 2024.
+- **Hit dice, coins, spell levels, pact slots, a species' sizes:** ENG-32 §8 (hit dice 6, 8, 10,
+  12; `cp`, `sp`, `ep`, `gp`, `pp`; spell levels 0 to 9; a warlock's slots at one level; the 2024
+  tiefling chooses Small or Medium).
+- **Inspiration:** not checked here. The count and its maximum are ADR 014 item 8's shape; the
+  SRD's text and the default maximum are ENG-19's §8.
+
+#### 9. Not in this ticket
+
+- The default values of the house rules (SPEC §8.4 "by the SRD"), inspiration's default maximum
+  of 3 among them: ENG-19, the ruleset files.
+- Fifth edition's `SystemModule` (its level, the entities it names, `derive`), and what a feat's
+  `replaces` does to the grant: ENG-13.
+- Hit points from `classes[].hp`, a size from `species.size`: ENG-14.
+- The counts of known and prepared spells: ENG-15. The ability bonus source applied: ENG-35.
+- The actions that change `state` (damage, slots, death saves, concentration, inspiration, rests):
+  ENG-20, ENG-21. Level-up writing `classes`: ENG-36.
+- Score methods as data, the point-buy budget, rolling: phase 4 (ADR 010 item 12).
+- The pack's published JSON Schema: ENG-38.
+- An entity given twice, such as a repeatable feat taken twice: §11.
+
+#### 10. Rake check
+
+- **A stored-shape change needs a migration.** The module's version is counted against its two
+  lists of steps when each opener is built (ENG-06's frame). Nothing is stored yet (§5).
+- **Each system's rules live in its own module; the core names no game.** Every field is in
+  `packages/system-5e`; no core file changes.
+- **Everything is data.** Stats are keys (`abilities.base`, `abilityMax` caps any stat); no
+  ability or skill is named. Hit dice, coins and spell levels are module lists, each in one place.
+- **No `if (ruleset === …)`.** Both editions share the shape; a house rule's default per edition
+  is ENG-19's.
+- **Missing is not broken.** An id naming nothing in a pack is valid here; only facts inside the
+  file are checked.
+- **Manual overrides always win.** Not touched: they are the core's `overrides`.
+- **Stored units are feet and pounds.** A custom item's `weight` is pounds.
+- **Licensing.** Test content is made up. §8 quotes the SRDs (CC-BY-4.0) and names dnd5e files.
+- **No "D&D" in names.** Every name is "fifth edition" or `5e`.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `character.test.ts` alone: `Tests 13 passed (13)`, 1.19 s.
+- Lint: `Checked 122 files`, no errors (119 before; 3 new files).
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done`.
+- Test: `Test Files 32 passed (32)`, `Tests 320 passed (320)`, 6.71 s (before: 31 files, 307
+  tests). ENG-32's 13 tests pass unchanged with `hitDie` and a cost's `unit` read from
+  `HIT_DIE_SIZES` and `COINS`.
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The tests bite. Each guard removed on its own, the new file run (13 tests): one hit points entry
+  per level, 1 fails; the levels' total, 1; a grant replaced once, 1; a spell entry's one list, 1;
+  `itemId` or `custom`, 1; a container that is a row, 1; no container loop, 1; inspiration under
+  its maximum, 1; death saves up to 3, 1; a hit points number up to 12, 1; `equipped` required, 1;
+  the hit dice keys, 1; the slot level keys, 1; all five coins, 1; at least one roll, 1; a hit
+  point method once, 1. The character schema built with version 2: the file does not load (`The
+  schema's "systemSchemaVersion" is 2, but its migrations lead to version 1.`). An `hp` entry as
+  any text, and the bonus source as any key: `pnpm typecheck` fails with `TS2344` on the
+  `expectTypeOf` line of each.
+- The coins guard first had no failing test: the test wrote `ep: undefined`, which a full and a
+  partial record both refuse. Measured with a probe test: a partial record takes a missing key and
+  refuses a key that holds `undefined`. The test now leaves the key out.
+
+Differences from §3:
+- A spell twice is refused on its list (`spells.<id>.prepared`), not on its item: the list is the
+  core's `uniqueList`, which reports there.
+- `d20` is refused on its key (`state.hitDiceSpent.d20`); a slot level `0` or `10`, and an unknown
+  coin, on the record (`state.slotsSpent`, `currency`). Zod reports a key outside a pattern on the
+  key, and a key outside a list on the record.
+- Two refusals carry a second path, also true: an inspiration maximum of 0 puts the count of 2
+  above it (`state.inspiration`); one class at level 21 also takes the total above 20
+  (`classes`).
+- The tests also refuse SPEC's `species.lineage` and `feats[].via`, an unknown tracker
+  (`exhaustion`, which is a core condition), a `uid` that is not a UUID, a `qty` of −1, and a
+  custom name that is a space.
+
+Against the row and the SPEC:
+- Each point of the row's note is done: XP or milestone (`advancement`); inspiration as a count
+  with `houseRules.inspirationMax`; the method's key and rolls; the bonus source; which feats may be
+  taken (`houseRules.feats`); the module's one version on its packs, each with its own steps; a
+  lineage and a background's feat left to `choices`; the species' size (`species.size`).
+- SPEC §5.8 and §8.4 depart in the ways §4 lists: no `species.lineage`; `feats` is
+  `{ id, replaces? }`; `hp` takes `max`; the house rules have no point-buy budget, and `feats` is
+  one scale; `equipped`, `attuned` and `pactSlotsSpent` are required; the method is a key with its
+  rolls; the bonus source says `species`.
+- `FIFTH_EDITION_SYSTEM` moved from `index.ts` to `system.ts`; its name and value did not change.
+
+Found, not fixed:
+- An entity two grants give is gathered once, with one choice per grant (ENG-11): wrong for a feat
+  taken twice. 2024 has three such feats, and Magic Initiate can come twice at level 1 (§8). No
+  golden test of phase 1 takes a feat twice (SPEC §6.7: B has Alert and Savage Attacker, B4 one
+  improvement). New note for phase 3 in `BACKLOG.md`.
+- No row computes the character's size from `species.size`. Noted on ENG-14, with the hit points
+  entries.
+- How a feat's `replaces` leaves its grant out, and what the module names from `systemData`.
+  Noted on ENG-13.
+- The house rules' defaults are each ruleset's. Noted on ENG-19, with where 2024 rules text can
+  and cannot be read from this environment (§8).
+- The point-buy budget is the point-buy method's. New note for phase 4.
+- The trackers' bounds the actions must keep. Noted on ENG-20. The bonus source's field. Noted on
+  ENG-35. The pack ENG-38 publishes. Noted on ENG-38.
+
+Nothing for the changelog.

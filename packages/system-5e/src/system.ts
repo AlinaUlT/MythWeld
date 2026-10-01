@@ -12,13 +12,28 @@ import {
 import { z } from 'zod';
 
 // Fifth edition's lists and grant kinds, given to the core in ENG-24's steps. The values are
-// SPEC §5.2, §5.3 and §5.5's; the bounds were measured in both SRDs (ENG-32 §8).
+// SPEC §5.2, §5.3 and §5.5's; the bounds were measured in both SRDs (ENG-32 §8, ENG-33 §8).
+
+/** Fifth edition's system id, which its packs and characters name (ADR 004 item 3). */
+export const FIFTH_EDITION_SYSTEM = '5e';
+
+/**
+ * The stored shape of the module's part of a file: a pack's entities, a character's own entities
+ * and its `systemData` (ENG-39). A change to it needs a step in each list of migrations.
+ */
+export const FIFTH_EDITION_SCHEMA_VERSION = 1;
 
 /** The highest level a class or a character reaches, in both editions. */
 export const MAX_LEVEL = 20;
 
 /** The highest spell level; level 0 is a cantrip. */
 export const MAX_SPELL_LEVEL = 9;
+
+/** The sizes of a hit die: a class's `hitDie`, a character's spent hit dice. */
+export const HIT_DIE_SIZES = [6, 8, 10, 12] as const;
+
+/** The coins: a price's unit, a character's money. */
+export const COINS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const;
 
 /** Fifth edition's editions, proficiencies and recovery events. */
 export const fifthEditionLists = systemListsOf({
