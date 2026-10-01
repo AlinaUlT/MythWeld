@@ -52,8 +52,29 @@ export type EntityPartId = z.infer<typeof entityPartIdSchema>;
 /** An id the app makes on the device (`crypto.randomUUID()`), in lowercase only. */
 export const uuidSchema = z.uuid().lowercase();
 
+/**
+ * The camelCase names every object has (`Object.prototype`'s), and `prototype`, which a log
+ * entry's path never steps through (ENG-30). Never a key.
+ */
+export const RESERVED_KEYS: readonly string[] = [
+  'constructor',
+  'hasOwnProperty',
+  'isPrototypeOf',
+  'propertyIsEnumerable',
+  'prototype',
+  'toLocaleString',
+  'toString',
+  'valueOf',
+];
+// ENG-40: a record read by a key such as `constructor` gets what every object has, so no key is
+// one. A pattern, not a refinement, so the exported JSON Schema carries it.
+const NOT_RESERVED = new RegExp(`^(?!(?:${RESERVED_KEYS.join('|')})$)`);
+
 /** A short key for formulas: `str`, `stealth`, `fighter`. One step of a formula path. */
-export const entityKeySchema = z.string().regex(CAMEL);
+export const entityKeySchema = z
+  .string()
+  .regex(CAMEL)
+  .regex(NOT_RESERVED, 'Is the name of a field every object has; a key never is.');
 
 /** A place in the computed character that an effect targets (SPEC §5.4), such as `init.bonus`. */
 export const computedPathSchema = z.string().regex(PATH);

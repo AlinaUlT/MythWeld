@@ -81,7 +81,7 @@ split off an old row got a new id.
 | ENG-17 | Derived-phase effects, toggles, overrides apply with a breakdown | M | ✅ 2026-10-01 |
 | ENG-18 | A formula cycle stops with a message naming the paths | S | ✅ 2026-10-01 |
 | ENG-30 | Tracker actions return a log entry that undoes them | S | ✅ 2026-10-01 |
-| ENG-40 | A content key never reads a field every object has | XS | 🔲 |
+| ENG-40 | A content key never reads a field every object has | XS | ✅ 2026-10-01 |
 | **Fifth edition** | **its own package** | | |
 | ENG-31 | The fifth-edition module is a package the core cannot import | XS | 🔲 |
 | ENG-32 | The fifth-edition entity types have Zod schemas | M | 🔲 |
@@ -103,13 +103,6 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-40** — found by ENG-30: a key may be any camelCase word, so `constructor`, `toString` or
-  `valueOf` pass `entityKeySchema`, and a record read by such a key gets what every object has. A
-  Tales stat keyed `constructor` with no base score computes `abilities.constructor.score` as the
-  text `"0function Object() { [native code] }"`, with no `noBaseScore` warning (ENG-30 §11). The
-  ticket refuses such names in `entityKeySchema`, or reads records with `Object.hasOwn`. ENG-30's
-  log entry refuses the path steps `__proto__`, `constructor` and `prototype`, so today
-  `useResource` refuses a resource keyed `constructor` with `badPath`.
 - **ENG-31** — the package name and the `system` id are chosen here, checked against the rule on
   names in `CLAUDE.md`. `CLAUDE.md`'s layout, its dependency line and its golden-test path follow
   the new package. Found by ENG-01: a relative path can climb out of `packages/engine` into a
@@ -221,6 +214,11 @@ split off an old row got a new id.
   §8.2: a warning, never a block). The row is cut with the first phase that lets a person pick an
   entity with prerequisites. Found by ENG-11: Tales' `unmetPrerequisites` (ENG-27) are its test
   data; `Computed.entities` gives the entities to check.
+- **Phase 2** — found by ENG-40: an override's path or an effect's target may be one step such
+  as `toString` (`computedPathSchema`). `compute()` handles it (`overrideNoPath`), but
+  `Computed.values` and `Computed.breakdown` are plain objects, so `values['toString']` gives a
+  function, not `undefined`. The first screen that reads `Computed` by a stored path reads only
+  own fields, or the path schema refuses ENG-40's `RESERVED_KEYS` as a step.
 - **Phase 2** — found by ENG-08: the engine has no random source of its own (lint refuses
   `Math.random` in it). The dice panel passes `fairDie(randomSourceOf((a) =>
   crypto.getRandomValues(a)))` to `rollFormula`; "I roll myself" (SPEC §6.5) passes the faces

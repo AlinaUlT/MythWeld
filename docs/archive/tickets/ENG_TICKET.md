@@ -4071,3 +4071,90 @@ Found, not fixed:
   `noBaseScore` warning. New row ENG-40 in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-40 Keys every object has · XS
+
+**Hat:** A content key never reads a field every object has
+**Where:** `packages/schema/src/ids.ts` — changes: `entityKeySchema` refuses the names every
+object has, listed in a new `RESERVED_KEYS`; `packages/schema/test/keys.test.ts` — new
+**Depends on:** ENG-02 (`entityKeySchema`), ENG-30 (`UNSAFE_PATH_STEPS`, the measurement in its
+§11), ENG-27 (Tales: Ash)
+**Screen:** No
+
+**What it should look like when done:**
+1. `RESERVED_KEYS` (`@grimoire/schema`) lists 8 names: the 7 camelCase names `Object.prototype`
+   has (`constructor`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`,
+   `toLocaleString`, `toString`, `valueOf`), and `prototype`. The test measures the 7 from
+   `Object.getOwnPropertyNames(Object.prototype)` at run time.
+2. `entityKeySchema` refuses each of the 8, with one issue whose message is `Is the name of a
+   field every object has; a key never is.` It still takes `str`, `san`, `sleightOfHand`, `d20`,
+   and a longer word holding one of the names: `toStrings`, `myConstructor`, `prototypes`,
+   `valueOfGold`. A key it refused before (`Str`, `1st`, `''`) still gives one issue.
+3. Every place that takes a key refuses them, at the key's own path: an entity's `key` (`key`);
+   a character's `abilities.base.toString`, `state.resources.constructor`, `notes.valueOf`.
+4. The pack's JSON Schema (`packJsonSchemaOf`) refuses a Tales pack with a stat keyed `toString`,
+   as Zod does; the same stat keyed `tough` passes both.
+5. ENG-30's measurement: Ash with a stat of its own keyed `constructor` and no base score no
+   longer opens. `openTalesCharacter` refuses it at `localEntities.0.key`. Before, it opened, and
+   `compute()` gave `abilities.constructor.score` the text `"0function Object() { [native code]
+   }"`, with no `noBaseScore` warning.
+6. Every step of `UNSAFE_PATH_STEPS` (ENG-30) is refused as a key, so a resource's key is always
+   a step a log entry's path may take: `useResource` never refuses a key the schema took with
+   `badPath`.
+7. The quality gate is green.
+
+**Choices (ADR 002):**
+- **The schema refuses the names; the readers do not change.** One place covers every record
+  read by a key: today the base phase's `abilities.base[key]` (`stats.ts`), later a module's or a
+  screen's. A pack's author is told at import, at the key, instead of getting a stat that
+  computes a text. Reading with `Object.hasOwn` would fix one reader and leave each new one to
+  remember.
+- **`prototype` is refused too,** though a plain object lacks it: ENG-30's log entry refuses the
+  step, so a resource keyed `prototype` could never be spent.
+- **The list is written out, and the test measures it.** The JSON Schema needs a fixed pattern;
+  the test compares the list with the runtime's `Object.prototype`, so a name the language adds
+  fails the test.
+- **A second pattern, with a lookahead:** `^(?!(?:constructor|…)$)`. The exported JSON Schema
+  carries the check, as it carries ENG-05's, and the issue's message says why the key is refused.
+- **Entity type names and computed paths keep the plain camelCase step.** No record is read by a
+  type or a path from content today: the engine reads paths through `Map`s (§11). An entity id
+  embeds the type's pattern in a template literal, where a lookahead ending in `$` would not hold.
+- **Nothing stored changes.** Dexie has no table yet (`apps/web/src/db/db.ts`: `stores({})`), so
+  no saved character or pack holds such a key, and no migration is needed.
+
+**Tests:** `packages/schema/test/keys.test.ts` — `describe('ENG-40 a key is never a field every
+object has')`: items 1–6. Control: the runtime's `Object.prototype` names; ENG-27's Ash; ENG-30
+§11's measurement.
+**What came out of it:**
+
+Measured:
+- Before: `entityKeySchema` took `constructor`, `hasOwnProperty`, `isPrototypeOf`,
+  `propertyIsEnumerable`, `toLocaleString`, `toString`, `valueOf` and `prototype`. Ash with a
+  stat of its own keyed `constructor` opened through `openTalesCharacter`, and `compute()` gave
+  `abilities.constructor.score` `"0function Object() { [native code] }"`, with no `noBaseScore`
+  warning: ENG-30's measurement, repeated. A Tales pack with a stat keyed `constructor` parsed.
+  `pnpm test`: `Test Files 28 passed (28)`, `Tests 279 passed (279)`, 4.27 s.
+- `Object.getOwnPropertyNames(Object.prototype)` gave 12 names; 7 are camelCase. The other 5
+  (`__proto__`, `__defineGetter__`, `__defineSetter__`, `__lookupGetter__`, `__lookupSetter__`)
+  were already refused by the camelCase pattern.
+- After: `pnpm test`: `Test Files 29 passed (29)`, `Tests 285 passed (285)`, 4.44 s.
+  `keys.test.ts` alone: `Tests 6 passed (6)`, 1.06 s.
+- Lint: `Checked 111 files`, no error. Typecheck: `Scope: 5 of 6 workspace projects`, all 5
+  `Done`. Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The tests catch mistakes. Each change made on its own, then `keys.test.ts` run: no second
+  pattern, 5 of 6 fail; the pattern without its closing `$` (so `toStrings` is refused too), 2;
+  `prototype` left out of the list, 2. Each was undone, and `ids.ts` compared equal to its copy.
+
+Differences from §3: none.
+
+Found, not fixed:
+- A computed path takes any camelCase step (`computedPathSchema`), so an override's path or an
+  effect's target may be one step such as `toString`. `compute()` handles it: Ash with an
+  override of `toString` opens, and gets `overrideNoPath`. But `Computed.values` and
+  `Computed.breakdown` are plain objects: `values['toString']` and `breakdown['toString']` give
+  a function, not `undefined`. Nothing reads them by a stored path today. New note for phase 2
+  in `BACKLOG.md`.
+
+Nothing for the changelog.
