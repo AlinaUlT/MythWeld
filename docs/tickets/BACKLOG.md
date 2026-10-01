@@ -201,11 +201,11 @@ split off an old row got a new id.
   packs from "Books in use". DM tools: encounter templates. The table link's phase: the DM's
   level-up control, changes reviewed together.
 - **ADR 012** — added by OPS-14. Phase 3: the library's list page and its floating entry window.
-- **ADR 013, by phase** — added by OPS-15 to OPS-18. Phase 2: temporary hit points in their
+- **ADR 013, by phase** — added by OPS-15 to OPS-19. Phase 2: temporary hit points in their
   own colour, the class line as the level with Level up in "⋯", the Player and DM squares, the
   home page's sections. Phase 3: classes and subclasses per ruleset, one entry per ruleset, the spell's description
   layout, Sources with the SRDs built in, Quick rules with every SRD rule and linked terms,
-  Bookmarks. Phase 4: filled triangles, the roll calculator, optional feats, the ability
+  Bookmarks. Phase 4: the turning arrow on creation steps, the roll calculator, optional feats, the ability
   bonus conflict window. The dice phase: the roll that looks like a real throw. The table link's
   phase: level-up approval in a campaign, the DM's edit before approving, the approvals tab, the
   DM's setting for the conflict window. The DM tools' phase: actors with types. A second system:
@@ -256,6 +256,7 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-16 | ADR 013 records the spell description's layout | XS | ✅ 2026-10-01 |
 | OPS-17 | ADR 013 records what Quick rules holds | XS | ✅ 2026-10-01 |
 | OPS-18 | ADR 013 records Level up in the sheet's "⋯" menu | XS | ✅ 2026-10-01 |
+| OPS-19 | ADR 013 takes the owner's three corrections to the mockups | XS | ✅ 2026-10-01 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. The owner's chosen results come back into it.

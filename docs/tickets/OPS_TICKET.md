@@ -643,3 +643,32 @@ appears twice. A multiclass character's line ("Fighter 3 / Wizard 2") is drawn w
 builds the header. The gate is green: lint checked 66 files; typecheck passed in all 5
 packages; 59 tests passed, 0 failed, 1.60 s.
 Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-19 Three corrections to the mockups · XS
+
+**Hat:** ADR 013 takes the owner's three corrections to the mockups
+**Where:** `docs/adr/013-temp-hp-creation-dm-tools-home-tabs.md`, `docs/design/BRIEF.md`,
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-18
+
+**What it should look like when done:**
+1. ADR 013 item 6: no "Damage dice" list in a spell's window; on the sheet, a spell's dice
+   follow the character's level by themselves after a level-up.
+2. ADR 013 item 7: a chevron in a circle, an outline icon in the text colour, down when closed
+   and up when open, turning with a short animation; the same control everywhere something
+   opens and closes. It replaces the filled triangles.
+3. ADR 013 item 18: everything behind an open rule window is dimmed, the topic window included.
+4. BRIEF P3, P7, P17 and `BACKLOG.md` follow it. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** the owner marked the corrections on a picture of four mockups and sent
+two pictures of a chevron in a circle as an example of the shape, not to be copied. "🔻 and 🔺"
+in OPS-15 was read as the exact look; the owner meant the shape of an arrow tip. The owner
+asked whether such arrows are images; the answer given: they are icons, vector drawings in
+code, which is what lets them take the theme's colours and turn. The gate is green: lint
+checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.63 s.
+Found, not fixed: nothing. Nothing for the changelog; a person sees no change.

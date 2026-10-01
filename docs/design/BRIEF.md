@@ -153,7 +153,8 @@ approvals with a count, actors and campaigns.
 ADR 013 item 18: Quick rules holds every SRD rule, in English first: a search field and topic
 cards (Move, Action, Bonus action, Reaction, Combat, …); a topic opens in a floating window
 with its rules as cards (icon, name, source); a rule opens in a floating window over it (topic
-link, source, summary, full text). Any word whose entry exists is a link, in every text.
+link, source, summary, full text), and everything behind it is dimmed. Any word whose entry
+exists is a link, in every text.
 One state only.
 ```
 
@@ -193,7 +194,8 @@ A bar pinned at the bottom shows the live numbers: AC, hit points, initiative.
 ADR 010: each step opens with an arrow to show what was chosen and closes with it; "Change"
 stays. Ability scores offer standard array, point buy, 4d6, and custom methods built from
 dice, rerolls, drops, a shared bonus roll, a cap or a pool.
-ADR 013: steps open and close with filled triangles (the look of 🔻 and 🔺, drawn as icons). The
+ADR 013: steps open and close with a chevron in a circle, an outline icon in the text colour,
+down when closed and up when open, turning with a short animation. The
 roll calculator: the total, "Roll" ("Reroll" after), six rolled scores each with "Choose
 ability", a table per ability (rolled, bonuses, final, modifier); "Apply to abilities" turns on
 when all six are rolled by the method and placed. Picking a feat opens the library's Feats list
@@ -289,13 +291,14 @@ Sources, Export, Grouping, Sorting and a legend; entries are cards grouped by le
 spells) with a kind icon, name, source badge, school, and V S M, concentration and ritual
 markers. The window shows both names, source badges, share / homebrew copy / edit / close, a
 type line, a properties box, the full text with tappable terms and dice, "At higher levels",
-"Damage dice" by level (opens and closes), and classes and subclasses with their sources.
+"Damage dice" by level (ADR 013: removed), and classes and subclasses with their sources.
 ADR 013: classes and subclasses per edition, for example "Wizard (2014)", "Wizard (2024)"; a
 spell that reads the same in both editions is still two entries, marked 2014 and 2024. A
 spell's window: the name and the other language's name; share, bookmark, close, and "⋯" for
 homebrew copy and edit; a small top part (type line with the source, then casting time, range,
 duration and components in a compact box), so the text starts high; then the text with
-tappable dice and terms, "Damage dice", and the classes per edition.
+tappable dice and terms, and the classes per edition. No "Damage dice" list: on the sheet, a
+spell's dice follow the character's level by themselves.
 States: search with no results; a "Missing: <id>" chip inside a text.
 ```
 

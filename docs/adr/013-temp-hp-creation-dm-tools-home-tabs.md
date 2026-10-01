@@ -44,13 +44,22 @@ names the phase that builds it (ADR 007 item 4).
      and the properties (casting time, range, duration, components) in a compact box. It is kept
      small so the text starts high on the screen;
    - the text: dice are tappable and roll; terms such as conditions are tappable links;
-   - "Damage dice" by level (ADR 012), and the classes per ruleset (item 4).
+   - the classes per ruleset (item 4).
+
+   There is no "Damage dice" list by level: the text already says how a spell grows. On the
+   sheet, a spell's dice follow the character: after a level-up, the spell shows the dice for
+   the new level by itself (for example a cantrip's damage at level 5).
 
 ### Making a character
 
-7. **Filled triangles open and close a step.** A step opens with a triangle pointing down and
-   closes with one pointing up, filled, in the look of 🔻 and 🔺. They are drawn as icons, not
-   emoji. This replaces the arrow of ADR 010 item 11. (Phase 4.)
+7. **A turning arrow opens and closes a step.** The control is an arrow tip (a chevron) in a
+   circle, drawn as an outline in the text colour: it points down when the step is closed and
+   up when it is open, and turns between the two with a short animation when tapped. It is an
+   icon, a small vector drawing, so it takes the theme's colours and can move; it is not an
+   emoji and not a picture. The owner's two pictures (a chevron in a circle, down and up) show
+   the shape only; they are not copied. The same control opens and closes everything else that
+   opens and closes, the descriptions of ADR 011 included. This replaces the arrow of ADR 010
+   item 11. (Phase 4; the descriptions in phase 2.)
 8. **The roll calculator.** After the person picks an ability score method (ADR 010 item 12),
    the step shows, top to bottom:
    - the total of the rolled scores;
@@ -121,6 +130,7 @@ names the phase that builds it (ADR 007 item 4).
       introduction; its rules as cards, each with an icon, its name and its source;
     - a rule opens in a floating window over the topic: its name, bookmark, close; a small box
       with its topic (a link back) and its source; a one-line summary; the full text.
+      Everything behind the open window, the topic window included, is dimmed.
 
     In every text of the app (rules, spells, features, items), a word whose entry or rule
     exists is a link, and tapping it opens that entry in a floating window: "concentration" in a
@@ -137,9 +147,9 @@ names the phase that builds it (ADR 007 item 4).
 |---|---|---|
 | ADR 008 items 2 and 3, BRIEF P1 and P17 | Start page; a player page with My characters, the rulebook, Dice, My packs | A system preview once there are two systems; Player and DM squares; six sections (items 15–17) |
 | ADR 010 item 7 | A level-up button on the sheet; in a campaign, the DM decides how level-up works | Level up in the sheet's "⋯" menu (item 2); outside a campaign, no approval; in a campaign, the DM approves (item 3) |
-| ADR 010 item 11 | An arrow | Filled triangles (item 7) |
+| ADR 010 item 11 | An arrow | A chevron in a circle that turns (item 7) |
 | ADR 010 item 13 | Approve with Yes or No | The DM can edit a value first (item 12) |
-| ADR 012 item 4 | Classes and subclasses with their sources; share, homebrew copy, edit, close | Also per ruleset (item 4); a small top part; share, bookmark, close, and "⋯" (item 6) |
+| ADR 012 item 4 | Classes and subclasses with their sources; share, homebrew copy, edit, close; "Damage dice" by level | Also per ruleset (item 4); a small top part; share, bookmark, close, and "⋯"; no "Damage dice" list (item 6) |
 | BRIEF P3 item 6 | Ability bonuses from race or background, pick one | A window with a checkbox for each (item 10) |
 | ADR 011 | Full descriptions | Terms inside them are links (item 18) |
 | BRIEF P1, P3, P4, P6, P7, P9, P11, P17 | — | Follow this ADR |
