@@ -327,7 +327,16 @@ describe('ENG-17 derived-phase effects, toggles and overrides', () => {
     expect(result.values['skills.climb.total']).toBe(4); // grit 3 + 2 × 1 + bonus read as 0 - 1
     expect(result.values['skills.climb.bonus']).toBe(6); // `nimble` 2 + `back` 4
     expect(codes(result)).toEqual([
-      { code: 'cycle', path: 'skills.climb.bonus', for: 'skills.climb.total' },
+      {
+        code: 'cycle',
+        path: 'skills.climb.bonus',
+        for: 'skills.climb.total',
+        loop: [
+          { path: 'skills.climb.bonus' },
+          { path: 'skills.climb.total', by: 'character:talent/echo#back' },
+          { path: 'skills.climb.bonus' },
+        ],
+      },
     ]);
   });
 

@@ -277,9 +277,9 @@ describe('ENG-28 derived values a system module supplies', () => {
     const calls: string[] = [];
     const counted =
       (path: string, step: DerivedStep): DerivedStep =>
-      (read) => {
+      (read, readBy) => {
         calls.push(path);
-        return step(read);
+        return step(read, readBy);
       };
     const module = withSteps(() => ({
       'tally.c': counted('c', (read) => {
@@ -364,8 +364,22 @@ describe('ENG-28 derived values a system module supplies', () => {
       'abilities.self.mod': 4, // itself read as 0, + 4
     });
     expect(codes(result)).toEqual([
-      { code: 'cycle', path: 'abilities.luck.mod', for: 'abilities.hope.mod' },
-      { code: 'cycle', path: 'abilities.self.mod', for: 'abilities.self.mod' },
+      {
+        code: 'cycle',
+        path: 'abilities.luck.mod',
+        for: 'abilities.hope.mod',
+        loop: [
+          { path: 'abilities.luck.mod' },
+          { path: 'abilities.hope.mod' },
+          { path: 'abilities.luck.mod' },
+        ],
+      },
+      {
+        code: 'cycle',
+        path: 'abilities.self.mod',
+        for: 'abilities.self.mod',
+        loop: [{ path: 'abilities.self.mod' }, { path: 'abilities.self.mod' }],
+      },
     ]);
   });
 

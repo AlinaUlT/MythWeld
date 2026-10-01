@@ -3618,3 +3618,202 @@ Found, not fixed:
   stores a number for a number path.
 
 Nothing for the changelog.
+
+---
+
+### ENG-18 A formula loop names its paths
+
+**Hat:** A formula cycle stops with a message naming the paths
+**Depends on:** ENG-28 (`computeDerived`, its path-by-path reader, the `cycle` warning), ENG-17
+(`phasesOf`, effects read inside the reader), ENG-29 (`resources.<key>.max`), ENG-27 (Tales, Ash)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.6 (formulas, loops); §8.2 (missing is not broken); §12 stage 1, the last line of its
+"Готово, когда" list
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/derived.ts` — changes: the paths in progress keep their order
+and the formula that read each; a `cycle` warning carries the whole loop, and its message names
+every path of it.
+- `packages/engine/src/phases.ts` — changes: an effect's formulas read through a reader that names
+  the effect's part.
+- `packages/engine/src/compute.ts` — changes: `SystemModule.derive`'s comment says how a step names
+  the part whose formula it reads.
+- `packages/engine/test/cycle.test.ts` — new: `describe('ENG-18 …')`.
+- `packages/engine/test/derived.test.ts`, `phases.test.ts`, `resources.test.ts` — changes: their
+  `cycle` warnings carry the loop.
+
+#### 2. What is missing now
+
+Measured with `compute()` on ENG-28's and ENG-17's loop tests:
+- Two stats whose modifiers read each other (`luck`: `@abilities.hope.mod + 1`, `hope`:
+  `@abilities.luck.mod + 1`) give one warning:
+  `@abilities.luck.mod is read for abilities.hope.mod while it is being computed; 0 is used.`
+  Its data is `{ code: 'cycle', path, for }`: two paths.
+- A loop through an effect (`echo#back` on `skills.climb.bonus` reads `@skills.climb.total`, whose
+  step reads `skills.climb.bonus`) gives:
+  `@skills.climb.bonus is read for skills.climb.total while it is being computed; 0 is used.`
+  The effect that closes the loop is not named, so the message points at the module's step for
+  `skills.climb.bonus`, which reads nothing.
+- A loop of three or more paths names only the last two; the rest is lost. `computing` in
+  `derived.ts` is a `Set` of paths, with no record of what read each one.
+- `pnpm test`: `Test Files 25 passed (25)`, `Tests 259 passed (259)`.
+
+#### 3. What it should look like when done
+
+1. **A `cycle` warning names its whole loop.** Besides `path` (the path read again) and `for` (the
+   path whose computing read it), it carries `loop`: every path from `path`, in the order each began
+   to be computed, back to `path`. The first and the last entry are `path`, as ENG-25's
+   `dependencyLoop` names a loop of packs.
+2. **Each entry names what read it.** An entry is `{ path, by? }`. `by` is the part
+   (`<entityId>#<id>`) whose formula read the path: an effect on the entry before it (ENG-17), or a
+   `resource` grant of it (ENG-29). With no `by`, the entry before it read it in its own step (the
+   core's modifier formula, the module's step). The first entry has no `by`: what began it is not
+   on the loop.
+3. **Only the loop.** A path in progress before the loop began (it read into the loop from outside)
+   is not in `loop`. A path that finished is not either: two loops through one path give two
+   warnings, each naming its own.
+4. **The message names every path:**
+   `@<path> is read for <for> while it is being computed; 0 is used. The loop: @<a> → @<b> → … → @<a>.`
+   An entry with `by` is written `@<path> (read by "<by>")`.
+5. **What a loop does to the values does not change** (ENG-28): the path read again reads 0 there,
+   each path is computed once, nothing throws.
+6. **A module's step can name a part.** A step gets `readBy(part)` beside `read`: a reader whose
+   reads name that part in a loop, for a step that evaluates a pack's formula. A step that does not
+   use it works as before.
+7. **Worked out by hand** on Ash with a stat of its own, `fate` (`@resources.charm.max + 1`), and a
+   talent `knot` with a resource `charm` (`@skills.climb.total`) and an effect `pull` on
+   `skills.climb.bonus` (`add @abilities.fate.mod`): one warning, `path` `abilities.fate.mod`,
+   `for` `skills.climb.bonus`, `loop` `abilities.fate.mod` → `resources.charm.max` →
+   `skills.climb.total` (by `knot#charm`) → `skills.climb.bonus` → `abilities.fate.mod` (by
+   `knot#pull`). Values: `skills.climb.bonus` 2 (`nimble` 2, `pull` 0), `skills.climb.total` 6,
+   `resources.charm.max` 6, `abilities.fate.mod` 7.
+8. Ash and Brook, with no loop, get no `cycle` warning. Every breakdown still adds up to its value.
+9. The quality gate is green.
+
+#### 4. How to do it
+
+1. `derived.ts`: `LoopLink { path; by? }`; `PartReader = (by: EntityPartId) => ValueReader`;
+   `DerivedStep` and `Finish` get the part reader; the `cycle` warning gains `loop`.
+2. `derived.ts`: `computing` becomes a `Map` from path to its link, in insertion order; `valueAt`
+   takes the reading part; on a path read again, the loop is the links from that path on, then the
+   read that closed it. The resource step reads each grant's formula through `readBy(part)`.
+3. `phases.ts`: `finish` reads each derived or final effect through `readBy(active.part)`.
+4. `compute.ts`: the `derive` comment.
+5. The tests of §7.
+
+Technical choices (ADR 002):
+- **The loop is found while computing, from the paths in progress.** ENG-07 named its `paths` for
+  this; ENG-28 then made the reader compute a path when it is first read, and a module's step is
+  code, whose reads are known only as it makes them. The paths in progress see every read, a
+  formula's and a step's alike, so the loop is exactly the reads that happened.
+- **A loop on a branch a formula does not take today is not warned.** It changes no value; the day
+  the branch is taken, it warns. Finding it before then is the editor's (§9).
+- **`by` names an effect or a grant, not a stat.** A modifier formula belongs to its stat, which its
+  path already names (`abilities.<key>.mod`). An effect's formula belongs to another entity, and a
+  resource's to one of its grants: without `by` a person would look for the loop in the path's own
+  step and not find it.
+- **`path` and `for` stay.** They are the read that got 0, which is what changed a value; `loop` is
+  why. A screen that showed ENG-28's two keeps working.
+- **The part reader is an argument, not a field of the read.** `ValueReader` stays one path in, one
+  number out, so every formula call keeps its reader; a step or an effect that names its part asks
+  for a reader that carries it.
+
+#### 5. Stored data
+
+Nothing stored changes. A warning is computed, never stored; no schema, no `schemaVersion`, no Dexie
+table changes.
+
+#### 6. What a person will see
+
+Not a screen. The warning's data is for the sheet (phase 2); its message is for logs.
+
+#### 7. Tests
+
+- `packages/engine/test/cycle.test.ts` — `describe('ENG-18 a formula loop names its paths')`: §3
+  items 1–8: the loop of item 7 through a modifier, a resource grant, a module step and an effect,
+  its values and its exact message; a loop read into from a path outside it; two loops through one
+  path; a module step that reads through `readBy`; a path that reads itself; Ash and Brook with no
+  `cycle`.
+- `derived.test.ts`, `phases.test.ts`, `resources.test.ts` — ENG-28's, ENG-17's and ENG-29's loop
+  tests: the same values and warnings, each with its `loop`.
+- Control values from: Tales' rules and each variant's data, worked out by hand (§3 item 7) and
+  checked with `python3`, not by the new code.
+
+#### 8. Checked against the source
+
+Nothing to check. No rule of a real game is used: Tales is made up; what a loop does is SPEC §5.6's
+and §8.2's.
+
+#### 9. Not in this ticket
+
+- A loop on a branch a formula does not take today (§4): the homebrew editor's checks and its
+  live preview (phase 5, SPEC §8.3). Noted on phase 5 in `BACKLOG.md`.
+- Showing the warning on the sheet: phase 2.
+- Base-phase formulas: they read only levels and what the system allows (SPEC §5.6, ENG-12), so no
+  loop can pass through them.
+- A loop of grants (an entity that grants itself): ENG-11 gathers each entity once.
+- A loop of pack dependencies: ENG-25's `dependencyLoop`.
+
+#### 10. Rake check
+
+- **Missing is not broken.** A loop still reads 0 and warns; nothing throws (§3 item 5).
+- **`compute()` is pure and deterministic.** The in-progress list lives inside one call; the order
+  of `values` fixes the order of the reads, so the same character gives the same loop.
+- **A number with no breakdown entry is a bug.** No value or step changes; every test checks that
+  each breakdown adds up.
+- **Formulas never run code.** Every formula still goes through ENG-07's parser and walker.
+- **The core names no game.** The loop names paths and parts; no stat, skill or resource key is in
+  the code.
+- **`packages/engine` is pure TypeScript.** No new import.
+- **Licensing.** Test data is made up.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- Before: the two loop messages of §2; `pnpm test`: `Test Files 25 passed (25)`,
+  `Tests 259 passed (259)`, 3.54 s.
+- After, the same two loops:
+  - `@abilities.luck.mod is read for abilities.hope.mod while it is being computed; 0 is used. The
+    loop: @abilities.luck.mod → @abilities.hope.mod → @abilities.luck.mod.`
+  - `@skills.climb.bonus is read for skills.climb.total while it is being computed; 0 is used. The
+    loop: @skills.climb.bonus → @skills.climb.total (read by "character:talent/echo#back") →
+    @skills.climb.bonus.`
+- §3 item 7's loop gives one warning with the five entries of §3 and the values 2, 6, 6 and 7.
+- `cycle.test.ts` alone: `Tests 5 passed (5)`, 490 ms.
+- Lint: `Checked 105 files`, no fixes, no error (104 before; 1 new file).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 26 passed (26)`, `Tests 264 passed (264)`, 3.37 s.
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The tests bite. Each change made on its own, the engine's tests run (146 tests): the loop starts
+  at the outermost path in progress, 7 fail; its first entry keeps what began it, 1; a finished
+  path stays in progress, 2; the part reader drops the part, 4; a resource grant reads with no
+  part, 2; an effect reads with no part, 2; a link never keeps its part, 4; the closing read loses
+  its part, 3; the message without the loop, 2; the message without the parts, 1.
+- Two mutations were first written with the wrong indentation and did not apply; rewritten, they
+  fail 1 and 3 tests.
+
+Differences from §3: none.
+
+Against the row and its note:
+- Each point of the note is done: `computing` keeps the paths in progress in the order they began
+  (a `Map`, §4 step 2); the warning names the whole loop (§3 item 1); an effect's formula is named
+  by its part (§3 item 2). A resource grant's formula is named too, by the same reader.
+- ENG-07 §9 said the loop would be found from `paths` and `reads`. ENG-28's reader made the paths
+  in progress the place to find it; §4 says why.
+- Tests of earlier tickets that changed: ENG-28's loop test, ENG-17's loop through an effect,
+  ENG-29's resource loop gain their `loop`; values and the other warnings are as before. ENG-28's
+  counting wrapper passes `readBy` on to the step it wraps.
+
+Found, not fixed:
+- A loop on a branch a formula does not take today gives no warning (§4). Noted on phase 5 in
+  `BACKLOG.md`.
+- `missingPath` names the path whose computing read the missing one, not the effect or grant whose
+  formula did; a typo in an effect's formula points at the module's step for its target. `valueAt`
+  knows the part since this ticket. Noted on phase 5 in `BACKLOG.md`.
+
+Nothing for the changelog.

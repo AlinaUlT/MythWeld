@@ -1,5 +1,5 @@
 import type { EffectPhase, EntityPartId } from '@grimoire/schema';
-import { type Derived, LEVEL_PATH, type ValueReader } from './derived';
+import { type Derived, LEVEL_PATH, type PartReader } from './derived';
 import {
   type ActiveEffect,
   activeEffects,
@@ -38,8 +38,8 @@ export type PhaseWarning =
 
 /** Steps 6 and 7, as `computeDerived` runs them on each path. */
 export interface Phases {
-  /** A path's value after its own: its effects, then its override. `read` gives other paths. */
-  finish(path: string, own: Derived, read: ValueReader): Derived;
+  /** A path's value after its own: its effects, then its override. An effect reads by its part. */
+  finish(path: string, own: Derived, readBy: PartReader): Derived;
   /** Everything the phases met, ending with the targets and overrides no path finished. */
   end(): PhaseWarning[];
 }
@@ -113,13 +113,12 @@ export function phasesOf<E extends GatherableEntity>(
   const finished = new Set<string>();
 
   return {
-    finish(path, own, read) {
+    finish(path, own, readBy) {
       finished.add(path);
       const steps: BreakdownStep[] = [...own.steps];
-      const derivedReader: EffectReader = { read };
       const numbers: (EffectNumber & { phase: EffectPhase })[] = [];
       for (const { active, phase } of byTarget.get(path) ?? []) {
-        const reader = phase === 'base' ? baseReader : derivedReader;
+        const reader = phase === 'base' ? baseReader : { read: readBy(active.part) };
         const number = effectNumber(active, reader, warn);
         if (number !== undefined) numbers.push({ ...number, phase });
       }

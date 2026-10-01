@@ -235,7 +235,15 @@ describe('ENG-29 resource maximums', () => {
         inner: 'notFinite',
       },
       { code: 'missingPath', path: 'nowhere.at.all', for: 'resources.gone.max' },
-      { code: 'cycle', path: 'resources.loop.max', for: 'resources.loop.max' },
+      {
+        code: 'cycle',
+        path: 'resources.loop.max',
+        for: 'resources.loop.max',
+        loop: [
+          { path: 'resources.loop.max' },
+          { path: 'resources.loop.max', by: 'character:talent/broken#loop' },
+        ],
+      },
     ]);
     expect(result.warnings[0]?.message).toMatch(
       /\(the maximum of the resource "snap", given by character:talent\/broken#snap\)\.$/,

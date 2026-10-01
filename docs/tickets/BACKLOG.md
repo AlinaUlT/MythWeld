@@ -79,7 +79,7 @@ split off an old row got a new id.
 | ENG-28 | `compute()` runs the derived-value steps a system module supplies | S | ✅ 2026-10-01 |
 | ENG-29 | Resource maximums are computed from their formulas | XS | ✅ 2026-10-01 |
 | ENG-17 | Derived-phase effects, toggles, overrides apply with a breakdown | M | ✅ 2026-10-01 |
-| ENG-18 | A formula cycle stops with a message naming the paths | S | 🔲 |
+| ENG-18 | A formula cycle stops with a message naming the paths | S | ✅ 2026-10-01 |
 | ENG-30 | Tracker actions return a log entry that undoes them | S | 🔲 |
 | **Fifth edition** | **its own package** | | |
 | ENG-31 | The fifth-edition module is a package the core cannot import | XS | 🔲 |
@@ -102,10 +102,6 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-18** — found by ENG-28: a path read while it is being computed reads 0 with a `cycle`
-  warning naming that path and the path that read it. The paths in progress are the `computing`
-  set in `derived.ts`, in the order they began; this ticket names the whole loop, its effects'
-  formulas included.
 - **ENG-31** — the package name and the `system` id are chosen here, checked against the rule on
   names in `CLAUDE.md`. `CLAUDE.md`'s layout, its dependency line and its golden-test path follow
   the new package. Found by ENG-01: a relative path can climb out of `packages/engine` into a
@@ -206,6 +202,14 @@ split off an old row got a new id.
   warns only when it is evaluated. The import checks (ADR 003 item A6) parse each formula with
   `parseFormula`. Found by ENG-08: a roll formula with `parseRoll`, since `parseFormula` refuses
   dice.
+- **Phase 5** — found by ENG-18: `compute()` warns of a formula loop only when its reads happen,
+  so a loop on a branch a formula does not take today (`@level > 3 ? @a : 0`) gives no warning
+  until it is taken. The effect builder's live preview (SPEC §8.3) shows the warning for the chosen
+  character; the import checks can look for one in ENG-07's `paths`.
+- **Phase 5** — found by ENG-18: `missingPath` names the path whose computing read the missing
+  one, not the effect or grant whose formula did, so a typo in an effect's formula points at its
+  target's own step. `valueAt` in `derived.ts` knows that part (`by`); the warning can carry it
+  before the effect builder shows it.
 - **Phases 2, 4** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
   §8.2: a warning, never a block). The row is cut with the first phase that lets a person pick an
   entity with prerequisites. Found by ENG-11: Tales' `unmetPrerequisites` (ENG-27) are its test

@@ -44,11 +44,23 @@ export interface Derived {
 /** A computed path's value, computed first when it is not yet. A path nothing gives reads 0. */
 export type ValueReader = (path: string) => number;
 
-/** How one path is computed: from other paths, read through `read`. */
-export type DerivedStep = (read: ValueReader) => Derived;
+/** A reader for the formula of one part (`<entityId>#<id>`): a loop it closes names that part. */
+export type PartReader = (by: EntityPartId) => ValueReader;
 
-/** What comes after a path's own step: ENG-17's effects and override. `read` gives other paths. */
-export type Finish = (path: string, own: Derived, read: ValueReader) => Derived;
+/**
+ * How one path is computed: from other paths, read through `read`. A step that evaluates a pack's
+ * formula of an entity part reads through `readBy(part)` instead, so a loop names the part.
+ */
+export type DerivedStep = (read: ValueReader, readBy: PartReader) => Derived;
+
+/** What comes after a path's own step: ENG-17's effects and override, each read by its part. */
+export type Finish = (path: string, own: Derived, readBy: PartReader) => Derived;
+
+/** A path on a formula loop. `by` is the part whose formula read it; without it, a step did. */
+export interface LoopLink {
+  readonly path: string;
+  readonly by?: EntityPartId;
+}
 
 /** What a module's steps are made from. */
 export interface DeriveInput<C, E extends GatherableEntity> {
@@ -64,7 +76,7 @@ export type DerivedWarning = { message: string } & (
   | { code: 'modFormula'; key: string; of: 'stat' | 'system'; warning: FormulaWarning }
   | { code: 'resourceFormula'; key: string; part: EntityPartId; warning: FormulaWarning }
   | { code: 'missingPath'; path: string; for: string }
-  | { code: 'cycle'; path: string; for: string }
+  | { code: 'cycle'; path: string; for: string; loop: readonly LoopLink[] }
   | { code: 'pathTaken'; path: string }
 );
 
@@ -73,6 +85,13 @@ export interface DerivedValues {
   values: Record<string, number>;
   breakdown: Record<string, readonly BreakdownStep[]>;
   warnings: DerivedWarning[];
+}
+
+/** A loop as a log names it: each path, and the part whose formula read it. */
+function loopText(loop: readonly LoopLink[]): string {
+  return loop
+    .map(({ path, by }) => `@${path}${by === undefined ? '' : ` (read by "${by}")`}`)
+    .join(' → ');
 }
 
 /** A stat's own field, read structurally: any system's stat type has the core's fields. */
@@ -161,10 +180,10 @@ export function computeDerived<E extends GatherableEntity>(input: {
   }
   for (const [key, given] of byKey) {
     const path = `resources.${key}.max`;
-    steps.set(path, (read) => {
+    steps.set(path, (_, readBy) => {
       let max: number | undefined;
       const parts = given.map(({ part, source, formula }): BreakdownStep => {
-        const result = evaluateNumber(formula, read);
+        const result = evaluateNumber(formula, readBy(part));
         for (const warning of result.warnings) {
           warnings.push({
             code: 'resourceFormula',
@@ -211,9 +230,11 @@ export function computeDerived<E extends GatherableEntity>(input: {
     order.push(path);
   }
 
-  // A path's value, computed when first read. `readBy` is the path whose step reads it.
-  const computing = new Set<string>();
-  function valueAt(path: string, readBy: string): number {
+  // A path's value, computed when first read. `readFor` is the path whose computing reads it, `by`
+  // the part whose formula does. ENG-18: the paths in progress, in the order they began, each with
+  // what read it; a path read again closes a loop, named from that path to the read that closed it.
+  const computing = new Map<string, LoopLink>();
+  function valueAt(path: string, readFor: string, by?: EntityPartId): number {
     const known = values.get(path);
     if (known !== undefined) return known;
     const step = steps.get(path);
@@ -221,23 +242,32 @@ export function computeDerived<E extends GatherableEntity>(input: {
       warnings.push({
         code: 'missingPath',
         path,
-        for: readBy,
-        message: `Missing: @${path} (read for ${readBy}); 0 is used.`,
+        for: readFor,
+        message: `Missing: @${path} (read for ${readFor}); 0 is used.`,
       });
       return 0;
     }
+    const link: LoopLink = by === undefined ? { path } : { path, by };
     if (computing.has(path)) {
+      const links = [...computing.values()];
+      const loop = [
+        { path },
+        ...links.slice(links.findIndex((each) => each.path === path) + 1),
+        link,
+      ];
       warnings.push({
         code: 'cycle',
         path,
-        for: readBy,
-        message: `@${path} is read for ${readBy} while it is being computed; 0 is used.`,
+        for: readFor,
+        loop,
+        message: `@${path} is read for ${readFor} while it is being computed; 0 is used. The loop: ${loopText(loop)}.`,
       });
       return 0;
     }
-    computing.add(path);
+    computing.set(path, link);
     const read: ValueReader = (each) => valueAt(each, path);
-    const result = finish(path, step(read), read);
+    const readBy: PartReader = (part) => (each) => valueAt(each, path, part);
+    const result = finish(path, step(read, readBy), readBy);
     computing.delete(path);
     values.set(path, result.value);
     breakdown.set(path, result.steps);
