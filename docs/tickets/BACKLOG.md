@@ -71,7 +71,7 @@ split off an old row got a new id.
 | **Core** | **formulas, dice** | | |
 | ENG-07 | Formulas evaluate safely, returning the paths they read | M | ✅ 2026-10-01 |
 | ENG-08 | Dice notation is rolled, in `d` or `к` | S | ✅ 2026-10-01 |
-| ENG-26 | A roll result has the shape the table link will send | XS | 🔲 |
+| ENG-26 | A roll result has the shape the table link will send | XS | ✅ 2026-10-01 |
 | **Core** | **compute, tested on the made-up system** | | |
 | ENG-27 | The made-up test system exists as core test data | S | 🔲 |
 | ENG-11 | `compute()` gathers every entity a character has, grants included | M | 🔲 |
@@ -102,9 +102,6 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-26** — ADR 005 item 5.6: who rolled, what for, the dice, the result, the breakdown; public,
-  secret to the DM, or hidden by the DM. Only the shape; sending it belongs to the table-link
-  phase. ADR 014 item 12: the person's own roll modifiers, labelled.
 - **ENG-27** — a small invented game with its own stats, skills and resources, and no content
   from any real game (ADR 004 item 4). Its expected values are computed by hand from its own
   rules; they are test data, not goldens. ENG-28 adds its derived-value steps.
@@ -202,6 +199,10 @@ split off an old row got a new id.
   `Math.random` in it). The dice panel passes `fairDie(randomSourceOf((a) =>
   crypto.getRandomValues(a)))` to `rollFormula`; "I roll myself" (SPEC §6.5) passes the faces
   the person typed as the die.
+- **Phase 2** — found by ENG-26: the roll log (SPEC §6.5) keeps `RollRecord`s, built with
+  `recordRoll`. `rollRecordSchema` refuses an unknown field and carries no version of its own, so
+  the table that keeps the log gives each record one; the table link does the same for what it
+  sends.
 - **Phase 2** — found by ENG-25: a character's active pack that is not installed on the device
   never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
   on each of its entries.

@@ -2209,3 +2209,111 @@ Found, not fixed:
   formula needs `parseRoll`. Added to that note in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-26 The roll record · XS
+
+**Hat:** A roll result has the shape the table link will send
+**Where:** `packages/schema/src/roll.ts` — new: `rollRecordSchema`, the shape;
+`packages/engine/src/roll.ts` — new: `recordRoll`, which rolls labelled parts into that shape on
+ENG-08's `rollFormula`; both packages' `index.ts` export them;
+`packages/schema/test/roll.test.ts` and `packages/engine/test/roll.test.ts` — new
+**Depends on:** ENG-08 (`rollFormula`, `RollResult`, `DieSource`), ENG-02 (`uuidSchema`,
+`entityIdSchema`, `computedPathSchema`)
+**Screen:** No
+
+**What it should look like when done:**
+1. `@grimoire/schema` exports `rollRecordSchema` and the types `RollRecord`, `RollEntry`,
+   `Roller`, `RollVisibility`. A record holds (ADR 005 item 5.6):
+   - `id` (a uuid made on the device) and `rolledAt` (an ISO date-time);
+   - `by`, who rolled: `role` (`player` or `gm`, the game master), `name`, and `actorId`, the
+     rolling character's id, when a character rolled;
+   - `label`, what the roll is for, and `path`, the computed number it rolls against, if any;
+   - `visibility`: `public`; `secret`, a player's roll seen by that player and the game master
+     only; `hidden`, a game master's roll seen by the game master only;
+   - `total`, the result;
+   - `breakdown`, at least one entry: `label`, `formula` as rolled, `value`, `dice` (each term
+     as ENG-08's `DiceRoll`), `sourceId` when an entity gave it, and `own`, true for the
+     person's own modifier (ADR 009 item 11, ADR 014 item 12).
+2. The schema refuses a record that does not add up, each with an issue at its path: `total`
+   not the sum of the entries' values; a term whose `results` or `kept` do not hold `count`
+   items, whose face is above its `faces`, whose kept count is not its `keep.count` (all kept
+   when it has no `keep`), or whose `total` is not the sum of its kept faces; a term whose
+   `text` is not found at `at` in its entry's `formula`; `secret` by the game master; `hidden`
+   by a player; an unknown field anywhere.
+3. `@grimoire/engine` exports `recordRoll(request, read, die)` and the types `RollPart`,
+   `RollRequest`, `RollPartWarning`, `RecordedRoll`. The request holds everything a record
+   holds except `total` and `breakdown`, plus `parts` (at least one: the roll as the rules give
+   it) and `modifiers` (the person's own, may be none). Each part and modifier is a `label`, a
+   roll formula (text or `ParsedRoll`) and an optional `sourceId`. It returns `{ record,
+   warnings }`: one breakdown entry per part, then one per modifier with `own: true`, each rolled
+   with `rollFormula` in that order; `total` is their sum; each warning names its entry's index.
+4. With a die that gives 14, then 3, a made-up Sneak `1d20 + @skills.sneak.total` (7) and a
+   modifier Lucky charm `1d4` give `total` 24, entries 21 (`own: false`) and 3 (`own: true`),
+   and the record passes `rollRecordSchema`.
+5. A part that does not parse, or reads a missing path, gives its value as ENG-08 does, with the
+   warning at its entry's index; the record still passes the schema. A value that would take the
+   total past a finite number gives 0 with a `notFinite` warning, as ENG-07's does.
+   `recordRoll` never throws.
+6. The record shares no array or object with the request or the roll, so changing one later
+   does not change the other.
+7. The quality gate is green.
+
+**Choices (ADR 002):**
+- **A Zod schema, not only a type.** A record crosses from one device to another (the table
+  link), and phase 2's roll log keeps it, so the receiver checks it as packs and characters are
+  checked. The engine builds it, so no component sums a roll (`CLAUDE.md`: every rule lives in
+  `engine` or `content`).
+- **`gm`, not `dm`.** The core names no game (ADR 004); "DM" is the docs' word for the game
+  master of one game.
+- **Labels are text as the roller saw it,** not `{ en, ru }`: a person types their own
+  modifier's label in one language, and the record shows what was rolled.
+- **The record carries no warnings.** They are about the roller's own sheet and are returned
+  next to it; a received roll is shown, not debugged.
+- **No `schemaVersion` on the record.** Nothing stores or sends it yet; the first table or
+  message that does gives it one (phase 2's roll log, the table link).
+
+**Tests:** `packages/schema/test/roll.test.ts` — `describe('ENG-26 the roll record')`: a full
+record and a minimal one pass; each refusal of item 2 at its path.
+`packages/engine/test/roll.test.ts` — `describe('ENG-26 a roll is recorded')`: items 3–6 with a
+scripted die; a seeded run of rolls built from made-up parts and modifiers, each record passing
+`rollRecordSchema`. Control numbers: the faces are scripted and the sums written by hand from
+them; paths and values are made up.
+
+**What came out of it:**
+
+Measured:
+- Before: `git grep -n -i "rollRecord\|roll record\|visibility\|secret" packages/` found
+  nothing; no type or schema held who rolled, what for, or who may see it. `pnpm test`:
+  `Test Files 17 passed (17)`, `Tests 175 passed (175)`, 2.83 s. Lint: `Checked 82 files`.
+- `packages/schema/test/roll.test.ts`: 7 tests. `packages/engine/test/roll.test.ts`: 7 tests.
+- Lint: `Checked 86 files`, 0 errors (4 new files).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 19 passed (19)`, `Tests 189 passed (189)`, 2.91 s.
+- Build: `apps/web build: Done`.
+- The seeded run: 500 requests, 1,768 breakdown entries, 562 warnings; every record passes
+  `rollRecordSchema`, and its total is the sum of its entries.
+- The tests bite. Each guard removed or changed on its own, the two roll test files run (13
+  tests, before item 5's overflow test was added): the record's sum check, 1 fails; the
+  visibility pairing, 1; the `results`/`kept` length, 1; a face above the faces, 1; the kept
+  count, 2; a term's sum, 1; a term's text at its place, 1; at least one entry, 1; parts marked
+  `own`, 3; modifiers before parts, 3; `keep` not copied, 1; `by` not copied, 1; every warning
+  at entry 0, 1; the total off by 1, 6; `sourceId` dropped, 2; a parsed formula's text not kept,
+  1. The overflow guard removed (with its test, 7 in the engine file): 1 fails.
+
+Differences from §3:
+- Item 5 gained the overflow line. Measured before it: two parts of a 308-digit number gave
+  `total` `Infinity` with no warning, and `rollRecordSchema` refused the record.
+- Item 3: a warning's index is the field `entry`.
+
+Against the row: as the row says, ADR 005 item 5.6 and ADR 014 item 12. Beyond it: the record's
+`id` and `rolledAt`, so a log or a link can order rolls and find one twice (Choices).
+
+Found, not fixed:
+- `rollRecordSchema` refuses an unknown field and carries no version of its own. Phase 2's roll
+  log (SPEC §6.5) stores records, and the table link sends them; each gives them a version.
+  Noted on phase 2 in `BACKLOG.md`; the table link's phase has no rows yet, and this ticket's
+  Choices name it.
+
+Nothing for the changelog.

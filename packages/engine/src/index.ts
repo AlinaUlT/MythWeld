@@ -2,4 +2,5 @@
 export * from './content-index';
 export * from './dice';
 export * from './formula';
+export * from './roll';
 export * from './version';

@@ -9,5 +9,6 @@ export * from './ids';
 export * from './migration';
 export * from './pack';
 export * from './prerequisite';
+export * from './roll';
 export * from './system';
 export * from './text';
