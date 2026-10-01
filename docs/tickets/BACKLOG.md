@@ -126,14 +126,17 @@ split off an old row got a new id.
   them.
 - **ENG-06** — the core part of ADR 004's §5.8 row; the module's part is ENG-33. Packs and
   characters share the migration frame, which refuses a file with a newer `schemaVersion`
-  (ADR 003 item A6).
+  (ADR 003 item A6). ADR 014 item 8: the actor's kind.
 - **ENG-25** — ADR 003 item A3: a missing dependency gives a warning and `Missing: <id>`; a
   dependency loop refuses the pack, with a message naming the loop; a pack never replaces another
-  pack's entry. Also: a duplicate `key` among active packs (SPEC §5.1); a pack of another system
-  is not loaded for a character (ADR 004 item 3).
+  pack's entry. Also: a duplicate `key` among active packs of one ruleset (SPEC §5.1, ADR 014
+  item 2); a pack of another system is not loaded for a character (ADR 004 item 3). ADR 014
+  items 3–4: the index finds the other ruleset's copy by type and key, and keeps names and
+  aliases per language.
+- **ENG-08** — ADR 014 item 11: faces 2–1000, 1–999 dice per term, a fairness test.
 - **ENG-26** — ADR 005 item 5.6: who rolled, what for, the dice, the result, the breakdown; public,
   secret to the DM, or hidden by the DM. Only the shape; sending it belongs to the table-link
-  phase.
+  phase. ADR 014 item 12: the person's own roll modifiers, labelled.
 - **ENG-27** — a small invented game with its own stats, skills and resources, and no content
   from any real game (ADR 004 item 4). Its expected values are computed by hand from its own
   rules; they are test data, not goldens. ENG-28 adds its derived-value steps.
@@ -144,8 +147,13 @@ split off an old row got a new id.
   the new package. Found by ENG-01: a relative path can climb out of `packages/engine` into a
   sibling package (`../../content/src/index.ts`), and ENG-01's lint rule cannot see that; the
   core-to-module check here also covers a climb into the module by relative path.
+- **ENG-30, ENG-36** — ADR 014 item 10: a log entry carries who, when, a label and before/after
+  values; it can wait unapplied, and its "after" value can be edited before it applies.
 - **ENG-32** — found by ENG-04: also fifth edition's grant kinds `spell` and `item`, built on
-  ENG-04's `grantBaseSchema`, `chooseEntitiesSchema` and `usesDefSchema`.
+  ENG-04's `grantBaseSchema`, `chooseEntitiesSchema` and `usesDefSchema`. ADR 014 items 5–7: a
+  `rule` has a topic; a spell's `scaling`; a granted spell's own uses, with no slot.
+- **ENG-33** — ADR 014 item 8: XP or milestone, inspiration as a count with a maximum, the
+  ability score method's key and rolls, the ability bonus source, which feats may be taken.
 - **ENG-09, ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's
   schemas. Every rules fact in them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`).
 - **ENG-09** — golden A says mountain dwarf, but its numbers (+2 CON, +1 WIS, Dwarven Toughness)
@@ -154,16 +162,21 @@ split off an old row got a new id.
   without her.
 - **ENG-13 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true. The
   full goldens A–D are green by ENG-19.
+- **ENG-16** — ADR 014 item 6: a spell's current dice for the character's level, with a breakdown.
+- **ENG-20** — ADR 014 item 7: casting with "use a slot: no".
 - **ENG-19** — ability increase source, subclass level, multiclass rounding, exhaustion, rests,
-  inspiration (SPEC §6.3 table). Golden C and golden D close here.
-- **ENG-35** — ADR 005 item 3.4: a 2014 race with a 2024 background gives ability increases from
-  one of the two, never both; the default is the rules base's source. Its §8 reads both SRDs for
-  other bonuses of one kind given in two places; each one found becomes a new row.
+  inspiration (SPEC §6.3 table). Golden C and golden D close here. ADR 014 item 8: inspiration's
+  SRD text is shown to the owner next to her default of 3.
+- **ENG-35** — ADR 014 item 1 (from ADR 013 item 10): a 2014 race with a 2024 background gives
+  ability increases from the race, the background or both; `both` warns, never blocks; the
+  default is the rules base's source. Its §8 reads both SRDs for other bonuses of one kind given
+  in two places (ADR 005 item 3.4, still in force for those); each one found becomes a new row.
 - **ENG-22** — the Appendix Д pack gains the `system` field (ADR 004 item 3); no expected value
   changes.
-- **ENG-37** — ADR 005 item 3.6. The ticket stops to show the character and its hand-computed
-  values to the owner (golden values are hers); the test is written only after her yes. No golden F value is
-  written before that.
+- **ENG-37** — ADR 005 item 3.6; the fixture states its ability bonus source (ADR 014 item 1).
+  The ticket stops to show the character and its hand-computed values to the owner (golden
+  values are hers); the test is written only after her yes. No golden F value is written before
+  that.
 - **ENG-23** — the phase's last ticket. Its §11 carries the proof of the stage 1 gate.
 
 ---
@@ -210,6 +223,8 @@ split off an old row got a new id.
   phase: level-up approval in a campaign, the DM's edit before approving, the approvals tab, the
   DM's setting for the conflict window. The DM tools' phase: actors with types. A second system:
   the system preview.
+- **ADR 014** — added by OPS-20. Phase 3: the import brings in both SRDs' rules chapters as
+  `rule` entries with topics, for Quick rules; bookmarks are a table on the device.
 - **ADR 011, by phase** — added by OPS-12. Phase 2: descriptions open and close, from fixtures
   and free text. Phase 3: the SRD texts. Phase 5: the person's packs.
 
@@ -257,6 +272,7 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-17 | ADR 013 records what Quick rules holds | XS | ✅ 2026-10-01 |
 | OPS-18 | ADR 013 records Level up in the sheet's "⋯" menu | XS | ✅ 2026-10-01 |
 | OPS-19 | ADR 013 takes the owner's three corrections to the mockups | XS | ✅ 2026-10-01 |
+| OPS-20 | ADR 014 records what the design decisions change in the engine | S | ✅ 2026-10-01 |
 
 - **OPS-03** — `docs/design/BRIEF.md`: the pages, what is on each, free and paid marks, the
   style of ADR 005 item 7, and a prompt per screen. The owner's chosen results come back into it.

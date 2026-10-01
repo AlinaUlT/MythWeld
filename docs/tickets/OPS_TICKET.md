@@ -672,3 +672,37 @@ asked whether such arrows are images; the answer given: they are icons, vector d
 code, which is what lets them take the theme's colours and turn. The gate is green: lint
 checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.63 s.
 Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-20 What the design decisions change in the engine · S
+
+**Hat:** ADR 014 records what the design decisions change in the engine
+**Where:** `docs/adr/014-what-the-design-changes-in-the-engine.md` — new;
+`docs/tickets/BACKLOG.md` — changed
+**Depends on:** OPS-19
+
+**What it should look like when done:**
+1. ADR 014 reads ADRs 008–013 against SPEC §5.1–§5.8, §6.4, §6.5, ADR 005 item 3 and the
+   phase 1 rows, and lists each place the design reaches the schemas, the character document,
+   the actions or the dice, with the rows it changes.
+2. A conflict between an older ADR and the owner's newer decision is named, with which one wins.
+3. The notes of each changed row in `BACKLOG.md` point at the ADR's item; the rows, their order
+   and their sizes stay.
+4. No code changes. The quality gate stays green.
+
+**Tests:** none new; the quality gate is run to show nothing else changed. Control numbers: the
+gate's counts.
+
+**What came out of it:** the owner asked on 2026-10-01 what the design decisions change in the
+plan and in the code, as a priority. One conflict: ADR 005 item 3.4 said "never both" for ability
+increases from a 2014 race and a 2024 background; ADR 013 item 10 allows both, with a warning;
+the newer decision is the owner's and wins (ADR 014 item 1). One gap the design exposed: SPEC
+§5.1 makes a `key` unique among a character's active packs, which a character mixing both SRDs
+could never satisfy, since the same entry has the same key in each; keys are now unique within a
+ruleset (item 2). Six things the design needs are added to the character document's tickets
+now rather than as migrations later (item 8). Every change becomes one log entry shape that serves
+undo, the change history, the DM's grouped review, the DM's edit and a waiting level-up
+(item 10). Phase 1 keeps its rows; 13 row notes now point at ADR 014. The gate is green: lint
+checked 66 files; typecheck passed in all 5 packages; 59 tests passed, 0 failed, 1.82 s.
+Found, not fixed: nothing. Nothing for the changelog; a person sees no change.
