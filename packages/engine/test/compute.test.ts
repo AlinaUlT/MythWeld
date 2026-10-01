@@ -200,7 +200,7 @@ describe('ENG-11 gathering a character’s entities', () => {
     expect(atOne.pendingChoices).toEqual([]);
 
     const ownLevel: SystemModule<TalesCharacter> = {
-      level: talesModule.level,
+      ...talesModule,
       entities: (character) => [{ id: character.systemData.calling, level: 1 }],
     };
     expect(ids(computed(ash, ownLevel))).toEqual([
@@ -579,13 +579,15 @@ describe('ENG-11 gathering a character’s entities', () => {
     const player = (choices: Record<string, string[]>) => ({
       ruleset: 'one',
       allowMixedRulesets: false,
+      abilities: { base: {} },
       choices,
-      state: { conditions: [] },
+      state: { conditions: [], toggles: {} },
       localEntities: [] as Card[],
     });
     const dealer: SystemModule<ReturnType<typeof player>> = {
       level: () => 1,
       entities: () => [{ id: 'cards:hand/start' }],
+      statDefaults: { defaultMax: 1 },
     };
 
     it("matches a filter's category, and looks up a pending list's ids", () => {

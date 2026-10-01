@@ -75,7 +75,7 @@ split off an old row got a new id.
 | **Core** | **compute, tested on the made-up system** | | |
 | ENG-27 | The made-up test system exists as core test data | S | ✅ 2026-10-01 |
 | ENG-11 | `compute()` gathers every entity a character has, grants included | M | ✅ 2026-10-01 |
-| ENG-12 | Stat scores are computed in the base phase | S | 🔲 |
+| ENG-12 | Stat scores are computed in the base phase | S | ✅ 2026-10-01 |
 | ENG-28 | `compute()` runs the derived-value steps a system module supplies | S | 🔲 |
 | ENG-29 | Resource maximums are computed from their formulas | XS | 🔲 |
 | ENG-17 | Derived-phase effects, toggles, overrides apply with a breakdown | M | 🔲 |
@@ -102,19 +102,20 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-12** — found by ENG-07: SPEC §5.6's base-phase rule (a base formula reads only levels,
-  class levels and choices) is checked against the formula's `paths`, every path its text names,
-  not only the paths one evaluation read. Found by ENG-11: a stat distribution (`abilityScore`,
-  `mode: 'distribute'`) is pending only while nothing is stored; its stored items reach
-  `compute()` unchecked, in `grants[].chosen`, and are checked here against its `patterns`.
 - **ENG-28** — found by ENG-24: the defaults a system gives a stat (SPEC §5.3: the modifier
-  formula, a save, a maximum) come with the module's steps here. ENG-03 §4 also named ENG-24;
-  a schema adds nothing on parse, so ENG-24 §9 moved them here. Tales' derived-value steps are
-  built here too, from its `TALES_RULES` (ENG-27). Found by ENG-11: the steps join
-  `SystemModule` (`compute.ts`), which has `level` and `entities`; Tales' module is
-  `packages/engine/test/tales-module.ts`.
+  formula, a save) join `SystemModule.statDefaults` here. ENG-03 §4 also named ENG-24; a schema
+  adds nothing on parse, so ENG-24 §9 moved them here. ENG-12 brought the maximum (`defaultMax`),
+  which the cap needs. Tales' derived-value steps are built here too, from its `TALES_RULES`
+  (ENG-27). Found by ENG-11: the steps join `SystemModule` (`compute.ts`); Tales' module is
+  `packages/engine/test/tales-module.ts`. Found by ENG-12: the base phase reads `level`; here it
+  becomes a value in `Computed.values`.
 - **ENG-29** — found by ENG-11: `Computed.resources` lists every `resource` grant, so two grants
   may give one key; this ticket decides what that gives.
+- **ENG-17** — found by ENG-12: `Computed.values` and `.breakdown` hold the base phase's stats,
+  and `activeEffects` (`effects.ts`) gives the effects switched on; this ticket adds its phases
+  to them, and a manual edit's step to the breakdown. Left to it: a base-phase effect on a target
+  that is not a stat's score or maximum, and an effect on a stat's score or maximum whose own
+  phase is `derived` or `final`.
 - **ENG-31** — the package name and the `system` id are chosen here, checked against the rule on
   names in `CLAUDE.md`. `CLAUDE.md`'s layout, its dependency line and its golden-test path follow
   the new package. Found by ENG-01: a relative path can climb out of `packages/engine` into a
@@ -181,10 +182,17 @@ split off an old row got a new id.
 
 - **Phase 3** — found by ENG-02: 11 of 4,428 5e-database slugs do not fit the entity id's slug
   pattern; the import maps them. ENG-02 §11 lists them.
+- **Phase 3** — found by ENG-12: a stat's maximum caps its score after every base-phase effect
+  (SPEC §6.1 step 4), so an item whose mechanics put a score above the maximum must raise
+  `abilities.<key>.max` too (SPEC §5.4's belt, `max 21`). The mechanics' §8 checks which items
+  do this.
 - **Phase 5** — found by ENG-39: a locale overlay keys its texts by field name, but carries only
   the core's `schemaVersion`. When a module renames a text field, a stored overlay keeps the old
   name and its text is no longer shown. The row that stores imported overlays gives them the
   module's version, or ties each to its pack's.
+- **Phase 5** — found by ENG-12: a stat distribution's pattern is picked by its count of items,
+  so of two patterns with one length (`[[2, 1], [1, 1]]`) the second is never used. The import
+  checks or the editor warn.
 - **Phase 5** — found by ENG-07: a pack's formulas are only text to the schema, which cannot
   import the engine, so a formula past ENG-07's limits, or one that does not parse, loads and
   warns only when it is evaluated. The import checks (ADR 003 item A6) parse each formula with

@@ -1,4 +1,4 @@
-import type { EntityId, EntityPartId, Grant, L10n, UsesDef } from '@grimoire/schema';
+import type { Effect, EntityId, EntityPartId, Grant, L10n, UsesDef } from '@grimoire/schema';
 import {
   ANY_RULESET,
   type ContentIndex,
@@ -50,22 +50,28 @@ export interface GrantView {
   readonly choose?: ChooseView;
 }
 
-/** What the core reads of an entity to gather it. Any system's entity union is assignable. */
+/** What the core reads of an entity to compute it. Any system's entity union is assignable. */
 export interface GatherableEntity extends IndexedEntity {
   readonly tags?: readonly string[];
   readonly grants?: readonly GrantView[];
+  readonly effects?: readonly Effect[];
 }
 
 /** One grant of an entity, with the system's own type. */
 export type GrantOf<E extends GatherableEntity> = NonNullable<E['grants']>[number];
 
-/** What the core reads of a character: its rules base, choices, conditions and own entities. */
+/**
+ * What the core reads of a character: its rules base, base stat scores, choices, conditions,
+ * toggles and own entities.
+ */
 export interface CharacterCore<E extends GatherableEntity> {
   readonly ruleset: string;
   readonly allowMixedRulesets: boolean;
+  readonly abilities: { readonly base: Readonly<Partial<Record<string, number>>> };
   readonly choices: Readonly<Partial<Record<string, readonly string[]>>>;
   readonly state: {
     readonly conditions: readonly { readonly id: string; readonly level?: number }[];
+    readonly toggles: Readonly<Partial<Record<string, boolean>>>;
   };
   readonly localEntities: readonly E[];
 }
@@ -155,11 +161,31 @@ type CoreGrant<K extends Grant['kind']> = Extract<Grant, { kind: K }>;
  * A grant of one of the core's kinds, read with that kind's fields. ENG-24 refuses a module kind
  * whose name is a core kind's, so the name decides the shape.
  */
-function isCoreKind<K extends Grant['kind']>(
+export function isCoreKind<K extends Grant['kind']>(
   grant: GrantView,
   kind: K,
 ): grant is GrantView & CoreGrant<K> {
   return grant.kind === kind;
+}
+
+/** A stat distribution: an `abilityScore` grant whose numbers the person places. */
+type Distribution = GrantView & Extract<CoreGrant<'abilityScore'>, { mode: 'distribute' }>;
+
+/** The grant is a stat distribution. */
+function isDistribution(grant: GrantView): grant is Distribution {
+  return isCoreKind(grant, 'abilityScore') && grant.mode === 'distribute';
+}
+
+/**
+ * The numbers a stat distribution's items take, the i-th item the i-th number: its first
+ * pattern with as many numbers as items. `undefined` while no pattern has as many: the choice is
+ * still pending.
+ */
+export function patternOf(
+  grant: { readonly patterns: readonly (readonly number[])[] },
+  chosen: readonly string[],
+): readonly number[] | undefined {
+  return grant.patterns.find((pattern) => pattern.length === chosen.length);
 }
 
 /** A filter, not a list. */
@@ -282,10 +308,9 @@ export function gather<E extends GatherableEntity>(
       const chosen = chosenFor(grant, part);
       const reached = { part, source: entity.id, level: step.level, grant, chosen };
       grants.push(reached);
-      const isDistribute = isCoreKind(grant, 'abilityScore') && grant.mode === 'distribute';
       if (
         (grant.choose !== undefined && chosen.length < grant.choose.count) ||
-        (isDistribute && chosen.length === 0)
+        (isDistribution(grant) && patternOf(grant, chosen) === undefined)
       ) {
         unmade.push(reached);
       }
@@ -316,18 +341,10 @@ export function gather<E extends GatherableEntity>(
    */
   function chosenFor(grant: GrantView, part: EntityPartId): string[] {
     const stored = character.choices[part] ?? [];
-    if (isCoreKind(grant, 'abilityScore') && grant.mode === 'distribute') return [...stored];
+    if (isDistribution(grant)) return distributed(grant, part, stored);
     const choose = grant.choose;
     if (choose === undefined) return [];
-    if (stored.length > choose.count) {
-      warnings.push({
-        code: 'tooManyChosen',
-        part,
-        count: choose.count,
-        chosen: stored.length,
-        message: `"${part}" asks for ${choose.count}; ${stored.length} are stored, and the first ${choose.count} are used.`,
-      });
-    }
+    tooMany(part, choose.count, stored.length);
     const takesKeys = isCoreKind(grant, 'proficiency');
     const keysFound = isFilter(choose.from) ? keysMatching(choose.from) : undefined;
     const used: string[] = [];
@@ -362,6 +379,39 @@ export function gather<E extends GatherableEntity>(
     return used;
   }
 
+  /** Warns when more items are stored than a choice takes; the first `count` are used. */
+  function tooMany(part: EntityPartId, count: number, stored: number): void {
+    if (stored <= count) return;
+    warnings.push({
+      code: 'tooManyChosen',
+      part,
+      count,
+      chosen: stored,
+      message: `"${part}" asks for ${count}; ${stored} are stored, and the first ${count} are used.`,
+    });
+  }
+
+  /**
+   * A stat distribution's stored items, as used: at most its longest pattern's count, each
+   * one not in `from` warned and used.
+   */
+  function distributed(grant: Distribution, part: EntityPartId, stored: readonly string[]) {
+    const longest = Math.max(...grant.patterns.map((pattern) => pattern.length));
+    tooMany(part, longest, stored.length);
+    const used = stored.slice(0, longest);
+    for (const item of used) {
+      if (!grant.from.includes(item)) {
+        warnings.push({
+          code: 'notAnOption',
+          part,
+          item,
+          message: `"${item}" is not among the options of "${part}"; it is used.`,
+        });
+      }
+    }
+    return used;
+  }
+
   /** The keys of the entries a filter finds among those the character can use. */
   function keysMatching(filter: ChooseFilter): Set<string> {
     const keys = new Set<string>();
@@ -377,9 +427,8 @@ export function gather<E extends GatherableEntity>(
   const pendingChoices: PendingChoice<E>[] = unmade.map(({ part, grant, chosen }) => {
     const choose = grant.choose;
     if (choose === undefined) {
-      const from =
-        isCoreKind(grant, 'abilityScore') && grant.mode === 'distribute' ? grant.from : [];
-      return { part, grant, chosen, options: [...from] };
+      const from = isDistribution(grant) ? grant.from : [];
+      return { part, grant, chosen, options: from.filter((item) => !chosen.includes(item)) };
     }
     const takesKeys = isCoreKind(grant, 'proficiency');
     const givesEntities = isCoreKind(grant, 'entity');

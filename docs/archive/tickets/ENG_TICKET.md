@@ -2778,3 +2778,238 @@ Found, not fixed:
   phases 2 and 4 note.
 
 Nothing for the changelog.
+
+---
+
+### ENG-12 Stat scores in the base phase
+
+**Hat:** Stat scores are computed in the base phase
+**Depends on:** ENG-07 (`parseFormula`, `paths`), ENG-11 (`compute()`, `gather`, `byKey`), ENG-27
+(Tales, Ash and Brook)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.1 steps 3 and 4; §5.4 (effects, the targets `abilities.<key>.score` and `.max`);
+§5.5 (`abilityScore` grants); §5.6 (the base-phase rule); §6.2 (breakdown); Appendix Д (the cap
+comes from `defaultMax`)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/stats.ts` — new: SPEC §6.1 step 4. Each stat's score and
+maximum, their breakdown, and what the base phase met.
+- `packages/engine/src/effects.ts` — new: SPEC §6.1 step 3. The effects of the entities a
+  character has that are switched on; the phase an effect applies in; a target that names a
+  stat's score or maximum.
+- `packages/engine/src/compute.ts` — changes: `SystemModule` gains `statDefaults` and
+  `basePath`; `Computed` gains `values` and `breakdown`; `compute()` runs the base phase.
+- `packages/engine/src/gather.ts` — changes: a stored stat distribution is checked against its
+  patterns; the views read effects, base scores and toggles; `isCoreKind` and `patternOf` are
+  exported.
+- `packages/engine/src/index.ts` — changes: exports the two new files.
+- `packages/engine/test/tales-module.ts` — changes: Tales' default maximum.
+- `packages/engine/test/stats.test.ts` — new: `describe('ENG-12 …')`.
+- `packages/engine/test/compute.test.ts` — changes: its two made-up modules and its made-up
+  character gain the new fields.
+
+#### 2. What is missing now
+
+- Nothing computes a score: `grep -rn "abilities\|toggles\|effects\|patterns"
+  packages/engine/src` finds one line, the comment at the top of `index.ts`.
+- `Computed` is `Gathered`: no value, no breakdown (ENG-11 §4).
+- A stat distribution's stored items reach `compute()` unchecked, in `grants[].chosen`; it is
+  pending only while nothing is stored (ENG-11 §11).
+- SPEC §5.6's base-phase rule is checked nowhere (ENG-07 §11).
+- `SystemModule` has `level` and `entities` only: no default maximum for a stat, and no way to
+  say which paths a base formula may read.
+- `pnpm test`: `Test Files 21 passed (21)`, `Tests 214 passed (214)`.
+
+#### 3. What it should look like when done
+
+1. `compute()` gives `values` (computed path → value) and `breakdown` (computed path → its
+   steps) for each stat the character has: `abilities.<key>.score` and `abilities.<key>.max`.
+   Its stats are the `ability` entries `byKey` names (ENG-11): a pack's and its own, alike.
+2. **Score:** the stored base (`abilities.base[key]`), plus each increase an `abilityScore` grant
+   gives, in the grants' order, then the base-phase effects on `abilities.<key>.score` in order of
+   priority; then at most its maximum.
+3. **Maximum:** the stat's own `defaultMax`, else `SystemModule.statDefaults.defaultMax`; then the
+   base-phase effects on `abilities.<key>.max` in order of priority.
+4. **Grants.** `mode: 'fixed'` gives each of its values. `mode: 'distribute'` uses its first
+   pattern with as many numbers as the items stored, and gives the i-th item the i-th number:
+   patterns `[[2, 1], [1, 1, 1]]`, items `['wits', 'grit']` give wits +2, grit +1.
+   - More items than its longest pattern: the first that many are used, with `tooManyChosen`.
+   - An item not in `from`: used, with `notAnOption`.
+   - No pattern with as many numbers: it stays pending, with the items so far and the rest of
+     `from` as options, and gives nothing.
+5. **Effects.** Every effect of every entity the character has; its place is
+   `<entityId>#<effectId>`. One applies in the base phase when its toggle is on (the stored value,
+   else the toggle's default), it is not `situational`, its phase is `base` (its own, or by
+   default for a target that is a stat's score or maximum), and its `when` is true. `mul`, `add`,
+   `min`, `max` and a `set` with a number apply, by default in that order (priorities 10, 20, 30,
+   40, 50); an effect's own `priority` places it among them; equal priorities keep the gathering
+   order.
+6. **The base-phase rule** (SPEC §5.6). Every path the text of a `when` or a `value` names (the
+   parsed formula's `paths`, taken or not) must be `level` or a path the module's `basePath`
+   answers. Otherwise the effect is not applied, with `notInBasePhase` and those paths:
+   `@level > 9 ? @skills.climb.total : 1` is refused for `skills.climb.total`.
+7. **Formulas.** A formula that does not parse: the effect is not applied, with a `formula`
+   warning that carries the parse error. A formula's other warnings are passed on as `formula`
+   warnings, and its value is used (`1 / 0` gives 0).
+8. **Warnings**, never a block: `noBaseScore` (a stat with no stored base: 0 is used); `noStat`
+   (a base score, a grant's value or an effect names a key that is not one of the character's
+   stats: not used); `notANumber` (`set` with a yes/no or a text, `append`, `advantage`,
+   `disadvantage`, `note` on a stat's score or maximum: not applied).
+9. **Breakdown** (SPEC §6.2). A score's steps: `base`, each `grant` (its part, source and
+   source's name), each `effect` (its part, source, label — its own, else its entity's name — op
+   and value), and `cap` when the maximum lowers it. A maximum's: `default` (of `stat` or
+   `system`), then its effects. Each step has `value` and `change`; a path's changes sum to its
+   value.
+10. **Tales** (ENG-27's expected values): Ash grit 7 / 10, wits 5 / 10, nerve 4 / 8, no warning;
+    Brook grit 6 / 10 (the `charm` toggle on), wits 8 / 10, nerve 8 / 8 (base 9, capped), and only
+    the `missing` warning ENG-11 gives.
+11. Not applied by the base phase, and not warned: a base-phase effect on another target, and an
+    effect on a stat's score or maximum whose own phase is `derived` or `final` (§9: ENG-17).
+12. The quality gate is green.
+
+#### 4. How to do it
+
+1. `effects.ts`: `statTargetOf`, `phaseOf`, `activeEffects`.
+2. `stats.ts`: `computeStats(character, gathered, base)`: the stats from `byKey`; the base scores;
+   the grants' increases; the effects, each checked and evaluated in gathering order; then per
+   stat its maximum, its score and the cap.
+3. `gather.ts`: a distribution's stored items through `tooManyChosen` and `notAnOption`; pending
+   while `patternOf` finds no pattern; its options without the items chosen.
+4. `compute.ts`: `statDefaults`, `basePath`, `values`, `breakdown`, `ComputeWarning`.
+5. `tales-module.ts`: `statDefaults: { defaultMax: TALES_RULES.statMax }`.
+6. The tests of §7.
+
+Technical choices (ADR 002):
+- **Values are a flat map of computed paths.** The same paths effects target (SPEC §5.4),
+  formulas read (§5.6) and overrides name (§5.8). ENG-28 and ENG-17 add theirs to it; the
+  reader of a later phase is `values[path]`.
+- **The order of ops is Foundry's mode order.** SPEC §6.1 step 4 puts additions before
+  `set/max/min` and does not place `mul`. SPEC §5.4 maps `mul`, `add`, `min`, `max`, `set` to
+  Foundry's multiply, add, downgrade, upgrade, override, whose mode numbers are 1 to 5 in that
+  order (§8). The default priority is 10 × that number, so an effect's own `priority` can fall
+  between two.
+- **Increases come before effects:** they are the score's source value, as the base is.
+- **The cap comes last**, as SPEC §6.1 step 4 orders and Appendix Д says ("the cap of 20 comes
+  from `defaultMax`"). An effect that should go above the maximum raises the maximum too (§11).
+- **A distribution's pattern is picked by its count of items.** A choice is a list of keys, none
+  twice (ENG-06), so it cannot hold a number; the order of its items places the numbers.
+- **The base-phase rule reads `paths`, not `reads`** (ENG-07's reason: a branch not taken today
+  is taken tomorrow). The core allows `level`; SPEC §5.6's class levels and choices are a
+  system's, so the module answers the rest through `basePath`, and `undefined` refuses a path.
+- **Only the maximum of a stat's defaults comes now.** The cap needs it. SPEC §5.3's modifier
+  formula and save stay with ENG-28 and join `statDefaults` there.
+- **A formula that does not parse is not applied.** Its 0 would set or lower a score.
+- **A situational effect never changes a number.** SPEC §5.4: it is shown in the roll dialog.
+- **Effects are collected in their own file** (SPEC §6.1 step 3), so ENG-17 reuses them.
+
+#### 5. Stored data
+
+Nothing stored changes. `compute()` now reads `abilities.base` and `state.toggles`, which
+ENG-06's character schema already has; no schema, no `schemaVersion`, no Dexie table changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/stats.test.ts` — `describe('ENG-12 stat scores in the base phase')`:
+  Ash's and Brook's stats; Brook's breakdown; toggles and their default; a distribution made,
+  pending, too long, with an item not offered; the order of ops and a priority; the cap and an
+  effect on the maximum; `when` and `@level`; the base-phase rule with and without a module's
+  `basePath`; formula warnings; `noBaseScore`, `noStat`, `notANumber`, situational and other
+  phases; a character's own stat with its own maximum. Every result's breakdown is checked to
+  add up to its value.
+- `packages/engine/test/compute.test.ts` — ENG-11's tests, their modules given `statDefaults`.
+- Control values from: ENG-27's `tales/expected.ts` for Ash and Brook; Tales' rules and data, and
+  each variant's data, worked out by hand and checked with `python3`, not by the new code.
+
+#### 8. Checked against the source
+
+No rule of a real game is used: Tales is made up, and the steps are SPEC §6.1's.
+
+One fact from outside, for the order of ops (§4): Foundry's effect modes, read in
+`@league-of-foundry-developers/foundry-vtt-types` 13.346.0-beta.20250812191140,
+`src/foundry/common/constants.d.mts`, `ACTIVE_EFFECT_MODES`: `CUSTOM` 0, `MULTIPLY` 1, `ADD` 2,
+`DOWNGRADE` 3, `UPGRADE` 4, `OVERRIDE` 5. The default priority Foundry gives a change is in its
+client code, which is not published; it is not relied on.
+
+#### 9. Not in this ticket
+
+- A stat's modifier, its save, SPEC §5.3's default modifier formula, `level` as a value: ENG-28.
+- Effects in the derived and final phases, overrides, a toggle whose effect is gone; a
+  base-phase effect on a target that is not a stat's score or maximum; an effect on a stat
+  whose own phase is `derived` or `final`: ENG-17.
+- A formula cycle: ENG-18. The base-phase rule keeps the base phase free of them.
+- What a situational effect shows in the roll dialog: ENG-34 and phase 2.
+- Fifth edition's class levels as base paths: its module's `basePath`, with ENG-33's classes.
+- Which ability bonus source a mixed character uses (ADR 014 item 1): ENG-35.
+
+#### 10. Rake check
+
+- **The core names no game.** The core names its own `ability` type and the `abilities.` paths
+  of SPEC §5.4; the maximum, the base paths and the stats are the module's and the packs'.
+  Tests use the made-up Tales.
+- **Everything is data.** A character's own stat is computed as a pack's (§7); no stat key is in
+  the code.
+- **Formulas never run code.** Every formula goes through ENG-07's parser and walker.
+- **The base-phase rule** is checked against every path a formula names.
+- **Missing is not broken.** A missing base, an unknown stat, a formula that does not parse, an
+  effect that gives no number: each is a warning; nothing throws.
+- **`compute()` is pure.** ENG-11's frozen-input test now runs the base phase too.
+- **A number with no breakdown entry is a bug.** Every value has its steps, and they add up.
+- **`packages/engine` is pure TypeScript.** The new files import only `@grimoire/schema` and
+  each other.
+- **Licensing.** Test data is made up; the Foundry fact is a constant's number, not rules text.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `stats.test.ts` alone: `Tests 14 passed (14)`, 960 ms.
+- Lint: `Checked 99 files`, no fixes, no error (96 before; 3 new files).
+- Typecheck: `Scope: 5 of 6 workspace projects`, all 5 `Done`.
+- Test: `Test Files 22 passed (22)`, `Tests 228 passed (228)`, 3.74 s (before: 21 files,
+  214 tests, 3.98 s).
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The tests bite. Each guard removed on its own, `stats.test.ts` and `compute.test.ts` run (30
+  tests): toggles ignored, 5 fail; a toggle's default, 1; situational applied, 1; the phase, 1;
+  `noStat` for an effect, 1; `noBaseScore`, 1; `noStat` for a base, 1; `noStat` for a grant, 2;
+  `set` with any value, 1; a formula that does not parse applied, 1; the base-phase check, 1;
+  only the first path checked, 1; `when`, 1; formula warnings, 1; an effect's own priority, 1;
+  no sort, 1; `add` before `mul`, 1; `max` before `min`, 1; `set` not last, 1; the cap, 3; the
+  stat's own maximum, 4; effects on the maximum, 1; grants, 10; always the first pattern, 3;
+  pending only when empty, 1; a distribution's `tooManyChosen`, 1; its `notAnOption`, 1; its
+  options keeping chosen items, 1; `level` not readable, 2; the module's `basePath` ignored, 1;
+  an effect's own label, 1.
+- Two guards did not bite at first. An effect's own `label`: no test had one; the cap test's
+  `higher` now has one, and the guard's removal fails 1 test. `mod` added to a stat's base-phase
+  fields: an effect on `abilities.<key>.mod` is still never applied, so nothing changes; it stays
+  untested.
+
+Differences from §3: none.
+
+Against the row and its note:
+- The note's two points are done: the base-phase rule is checked against `paths` (§3 item 6), and
+  a stored distribution against its patterns (item 4).
+- Re-cut: the system's default maximum came here, not with ENG-28, since the cap needs it. ENG-28's
+  note in `BACKLOG.md` now says so.
+- SPEC §6.1 step 4 names increases "from race, from background, from levels and feats": in the
+  core they are all `abilityScore` grants, wherever the module's data puts them.
+
+Found, not fixed:
+- The cap comes last (SPEC §6.1 step 4), so an item's mechanics that put a score above a stat's
+  maximum must raise the maximum too, or the cap undoes them. SPEC §5.4's catalogue gives a belt
+  as `max 21` on the row of both targets. Noted on phase 3 in `BACKLOG.md`: its mechanics' §8
+  checks which items do this.
+- A distribution's pattern is picked by its count of items, so two patterns of one length with
+  different numbers (`[[2, 1], [1, 1]]`) cannot both be chosen; the second is never used. Noted on
+  phase 5 in `BACKLOG.md`: the import checks or the editor warn.
+- ENG-17 inherits `values`, `breakdown` and `activeEffects`, and the effects ENG-12 leaves (§9).
+  Noted on ENG-17 in `BACKLOG.md`.
+
+Nothing for the changelog.
