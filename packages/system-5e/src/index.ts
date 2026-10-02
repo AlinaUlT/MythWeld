@@ -12,6 +12,7 @@ export * from './classes';
 export * from './combat';
 export * from './entity-types';
 export * from './equipment';
+export * from './level-up';
 export * from './module';
 export * from './pack';
 export * from './rulesets';

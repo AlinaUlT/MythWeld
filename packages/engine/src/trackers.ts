@@ -2,13 +2,23 @@ import type { L10n, LogChange, LogEntry, Roller } from '@grimoire/schema';
 import type { Computed } from './compute';
 import type { ContentIndex, Lookup } from './content-index';
 import { type CharacterCore, CONDITION_TYPE, type GatherableEntity, maxLevelOf } from './gather';
-import { type Applied, applyEntry, copyJson, type EntryRefusal, readAt, sameJson } from './log';
+import {
+  type Applied,
+  applyEntry,
+  copyJson,
+  type EntryRefusal,
+  type JsonValue,
+  readAt,
+  sameJson,
+} from './log';
 
 // ENG-30: the actions on the trackers every system has (SPEC §5.8 `state`): the uses spent of a
 // resource, the conditions, the switches of toggled effects. Each action reads the character,
 // builds the log entry that makes its change, and applies that entry, so the entry alone redoes
 // or undoes it (ADR 014 item 10). A refusal changes nothing and gives no entry; an action that
 // would change nothing is refused too, so the history never holds an empty entry.
+// ENG-36: `entryOf` and `changeTo` are exported, so a module's action (fifth edition's level-up)
+// builds its entry as these do.
 
 /**
  * Who makes a change, when, and the new entry's id. The caller gives them, as it gives a roll's
@@ -39,10 +49,13 @@ export type TrackerRefusal = { message: string } & (
   | { code: 'unchanged' }
 );
 
-/** What an action gives: the changed character and its entry, or why nothing changed. */
-export type ActionResult<C> =
+/**
+ * What an action gives: the changed character and its entry, or why nothing changed. `R` is the
+ * action's own refusals: the core's tracker actions give `TrackerRefusal`, a module's its own.
+ */
+export type ActionResult<C, R extends { code: string; message: string } = TrackerRefusal> =
   | { ok: true; character: C; entry: LogEntry }
-  | ({ ok: false } & (TrackerRefusal | EntryRefusal));
+  | ({ ok: false } & (R | EntryRefusal));
 
 /** A resource's maximum (ENG-29), the uses spent, and the uses left. */
 export interface ResourceUses {
@@ -60,27 +73,33 @@ function isCount(count: number): boolean {
   return Number.isInteger(count) && count >= 1;
 }
 
-/** `{ before }` with what `path` holds, or nothing when the field is not there. */
-function before(character: unknown, path: readonly string[]): Pick<LogChange, 'before'> {
+/**
+ * The change that sets `path` to `after`, or removes it when `after` is `undefined`: its `before`
+ * is what the place holds now, none when the field is not there.
+ */
+export function changeTo(
+  character: unknown,
+  path: readonly string[],
+  after: JsonValue | undefined,
+): LogChange {
   const found = readAt(character, path);
-  const value = found.ok ? copyJson(found.value) : undefined;
-  return value === undefined ? {} : { before: value };
+  const before = found.ok ? copyJson(found.value) : undefined;
+  return {
+    path: [...path],
+    ...(before !== undefined && { before }),
+    ...(after !== undefined && { after: copyJson(after) }),
+  };
 }
 
-/**
- * The entry of `stamp` with these changes, applied to the character. Refused as `unchanged` when
- * every change's value after is its value before.
- */
-function done<C>(
-  character: C,
-  stamp: LogStamp,
-  made: Pick<LogEntry, 'action' | 'subject' | 'changes'> & { label?: L10n | undefined },
-): ActionResult<C> {
-  if (made.changes.every((change) => sameJson(change.before, change.after))) {
-    return { ok: false, code: 'unchanged', message: `${made.action} changes nothing.` };
-  }
+/** What an action made: its key, what it was done to, its name, its changes. */
+export type MadeChanges = Pick<LogEntry, 'action' | 'subject' | 'changes'> & {
+  label?: L10n | undefined;
+};
+
+/** The entry of `stamp` with what an action made: who, when, and the changes. */
+export function entryOf(stamp: LogStamp, made: MadeChanges): LogEntry {
   const { role, name, actorId } = stamp.by;
-  const entry: LogEntry = {
+  return {
     id: stamp.id,
     at: stamp.at,
     by: { role, name, ...(actorId !== undefined && { actorId }) },
@@ -89,6 +108,17 @@ function done<C>(
     ...(made.label !== undefined && { label: { ...made.label } }),
     changes: made.changes,
   };
+}
+
+/**
+ * The entry of `stamp` with these changes, applied to the character. Refused as `unchanged` when
+ * every change's value after is its value before.
+ */
+function done<C>(character: C, stamp: LogStamp, made: MadeChanges): ActionResult<C> {
+  if (made.changes.every((change) => sameJson(change.before, change.after))) {
+    return { ok: false, code: 'unchanged', message: `${made.action} changes nothing.` };
+  }
+  const entry = entryOf(stamp, made);
   const applied: Applied<C> = applyEntry(character, entry);
   return applied.ok ? { ok: true, character: applied.character, entry } : applied;
 }
@@ -149,7 +179,7 @@ export function useResource<C extends TrackedCharacter<E>, E extends GatherableE
     action: 'useResource',
     subject: key,
     label: resourceLabel(computed, key),
-    changes: [{ path, ...before(character, path), after: uses.spent + count }],
+    changes: [changeTo(character, path, uses.spent + count)],
   });
 }
 
@@ -178,7 +208,7 @@ export function regainResource<C extends TrackedCharacter<E>, E extends Gatherab
     action: 'regainResource',
     subject: key,
     label: resourceLabel(computed, key),
-    changes: [{ path, ...before(character, path), after }],
+    changes: [changeTo(character, path, after)],
   });
 }
 
@@ -224,7 +254,7 @@ export function setCondition<C extends TrackedCharacter<E>, E extends Gatherable
     action: 'setCondition',
     subject: id,
     label: entity.name,
-    changes: [{ path: [...CONDITIONS], ...before(character, CONDITIONS), after: copyJson(after) }],
+    changes: [changeTo(character, CONDITIONS, copyJson(after))],
   });
 }
 
@@ -246,7 +276,7 @@ export function removeCondition<C extends TrackedCharacter<E>, E extends Gathera
     action: 'removeCondition',
     subject: id,
     label: found.ok ? found.entity.name : undefined,
-    changes: [{ path: [...CONDITIONS], ...before(character, CONDITIONS), after: copyJson(after) }],
+    changes: [changeTo(character, CONDITIONS, copyJson(after))],
   });
 }
 
@@ -281,6 +311,6 @@ export function setToggle<C extends TrackedCharacter<E>, E extends GatherableEnt
     action: 'setToggle',
     subject: part,
     label: toggle.label,
-    changes: [{ path, ...before(character, path), after: on }],
+    changes: [changeTo(character, path, on)],
   });
 }

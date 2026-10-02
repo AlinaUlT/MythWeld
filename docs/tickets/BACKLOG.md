@@ -110,13 +110,11 @@ split off an old row got a new id.
 | ENG-35 | The ability-bonus source is a choice, the rules base by default | S | 🔲 |
 | ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | 🔲 |
 | ENG-21 | A rest changes the character by its edition's rules | S | 🔲 |
-| ENG-36 | Level-up changes the character through an undoable action | S | 🔲 |
+| ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-36** — ADR 014 item 10: level-up gives ENG-30's log entry (`logEntrySchema`, applied and
-  reversed by `applyEntry` and `reverseEntry`), built from the character it changes.
 - **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
   recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
   `regainResource` gives uses back, never below none spent.

@@ -9059,3 +9059,264 @@ Found, not fixed:
   for phase 2 in `BACKLOG.md`: the Spells tab and the starting inventory show the edition there.
 
 Nothing for the changelog.
+
+---
+
+### ENG-36 Level-up as an undoable action
+
+**Hat:** Level-up changes the character through an undoable action
+**Depends on:** ENG-30 (`logEntrySchema`, `applyEntry`, `reverseEntry`, `LogStamp`), ENG-33
+(`systemData.classes`, `feats`, `spells`, `state.hp`), ENG-14 (`hp.max`, `hitPointsOf`), ENG-13
+(a feat's `replaces`, a later class's grants), ENG-10 (golden B, B4)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.4 `levelUp`, `undoLevelUp`, as ADR 014 item 10 widens it; §7.4's level-up steps;
+ADR 004 item 1 (level-up is a module's action)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/level-up.ts` — new: fifth edition's `levelUp`.
+- `packages/system-5e/src/index.ts` — exports it.
+- `packages/engine/src/trackers.ts` — changes: `entryOf` (the entry of a stamp) and `changeTo`
+  (one change, its `before` read from the character) are exported, so a module's action builds its
+  entry as the core's actions do; `ActionResult` takes the action's own refusals as a second type.
+- `packages/system-5e/test/level-up.test.ts` — new.
+
+#### 2. What is missing now
+
+- `grep -rn "levelUp\|LevelUp\|level-up" packages --include=*.ts` finds nothing.
+- No function changes `systemData.classes`. A level is gained only by writing the character by
+  hand.
+- `pnpm test`: `Test Files 43 passed (43)`, `Tests 481 passed (481)`, 6.47 s.
+
+#### 3. What it should look like when done
+
+The control characters are golden B (2024: human fighter 1, CON 15 (+2), d10, `hp: ['max']`,
+12 of 12 hit points) and golden A (2014: hill dwarf cleric 1, CON 16 (+3), d8, Dwarven Toughness
++1 per level, 12 of 12). `stamp` is `{ id, at, by: { role: 'player', name: 'Wren' } }`.
+
+**The action**
+1. `levelUp(character, index, ask, stamp)` (`@grimoire/system-5e`) gives `{ ok: true, character,
+   entry }` or a refusal. `ask` is `{ class, hp, subclass?, choices?, feats?, spells? }`: the class
+   that gains the level, that level's hit points (a number rolled, `avg` or `max`), the subclass it
+   takes, the picks for the grants the level opens (part id → keys or ids), the feats taken, and the
+   spells a class or subclass knows and has prepared after it.
+2. The entry: `action` `levelUp`, `subject` the class's id, `label` its name, the stamp's `id`,
+   `at` and `by`. It parses with `logEntrySchema`. Its changes, in order:
+   - `['systemData', 'classes']`, the whole list: the class one level higher with the level's hit
+     points last, or a new class taken last at level 1; the subclass set when given;
+   - `['choices', <part>]` for each pick, `before` what was picked (none when nothing was); a
+     pick equal to the one held is left out;
+   - `['systemData', 'feats']`, the whole list, the feats taken last, when any are given;
+   - `['systemData', 'spells', <id>]` for each class or subclass given;
+   - `['systemData', 'state', 'hp', 'current']`, when the maximum changes.
+3. **The hit points lost stay lost.** The current hit points rise by what `hp.max` rises
+   (computed before and after), in whole points, never below 0. An `hp.max` that is overridden, or
+   not a number, rises by 0, and the entry then has no hit point change.
+
+**Golden B to B4**
+4. B, fighter, `avg`: classes `[{ id: fighter, level: 2, hp: ['max', 'avg'] }]`; hit points
+   12 → 20 (12 + 6 + 2); computed `hp.max` 20, `level` 2. The entry has 2 changes, `label`
+   `{ en: 'Fighter' }`.
+5. Then fighter, `avg`, subclass Champion: 20 → 28. Then fighter, `avg`, choices
+   `{ 'srd-2024:class/fighter#ability-scores-4': ['str'],
+   'srd-2024:feature/fighter-weapon-mastery#kinds-4': ['halberd'] }`: 28 → 36. The result equals
+   golden B4 opened, but for `id` and `name`; computed `hp.max` 36 and `abilities.str.score` 19
+   (SPEC §6.7 B4).
+6. Golden A, cleric, `avg`: hit points 12 → 21 (12 + 5 + 3 + 1): the rise holds Dwarven
+   Toughness's point for the new level.
+
+**Hit points**
+7. B, fighter, 7: `hp: ['max', 7]`, 12 → 21. `max`: 12 → 24. B at 5 of 12, `avg`: 5 → 13.
+8. B with an override of `hp.max` to 30, `avg`: the entry has only the classes change; the
+   current hit points stay 12. B with its own feat adding `@level / 2` to `hp.max.bonus`: 12.5 →
+   21, so 12 → 20 (20.5 rounded down). With `0 - 10 * @level` at 1 of 2: 2 → 0, so 1 → 0, not -1.
+9. B, fighter, 11 (above the d10), 0 or 1.5: `{ code: 'badHitPoints', value, die: 10 }`.
+
+**Multiclass, subclass, feats**
+10. B, wizard, `avg`: classes `[fighter 1, { id: wizard, level: 1, hp: ['avg'] }]`; 12 → 18
+    (6 / 2 + 1 + 2). Its prerequisite (INT 13) is not checked here (§9).
+11. B at level 3 with a feat of its own taken by hand, fighter, `feats: [{ id: <another feat of
+    its own>, replaces: 'srd-2024:class/fighter#ability-scores-4' }]` and no STR pick: the feats
+    change adds the new feat after the one it has; `abilities.str.score` stays 17; the feat's
+    `2 * @level` on `hp.max.bonus` makes the level's rise 8 + 8 = 16 (28 → 44).
+    B, fighter, the weapon mastery kinds picked again with the halberd for the glaive: that change
+    has the old kinds as `before`.
+
+**Refusals** — each changes nothing and carries a `code`, its data and an English `message`:
+12. A character of level 20: `{ code: 'maxLevel', level: 20 }`.
+13. A class no pack has: `missing`. Champion as the class: `{ code: 'wrongType', type:
+    'subclass', expected: 'class' }`. Wizard as the fighter's subclass: `wrongType`, expected
+    `subclass`. A feat no pack has: `missing`; a feature as a feat: `wrongType`, expected `feat`.
+14. B, wizard with subclass Champion: `{ code: 'otherClass', id: champion, classKey: 'fighter',
+    expected: 'wizard' }`.
+15. B4, fighter with any subclass: `{ code: 'hasSubclass', id: fighter, subclass: champion }`.
+16. A pick of no items: `{ code: 'invalid', issues }`, an issue at
+    `['choices', 'srd-2024:class/fighter#ability-scores-4']`: the result is checked against
+    `fifthEditionCharacterSchema`, so a level-up never gives a character its opener refuses.
+
+**Undo**
+17. `reverseEntry` with each entry of items 4–5, newest first, gives back each character before
+    it, down to golden B.
+18. The level 2 entry reversed on the level 3 character: `{ code: 'changed', path: ['systemData',
+    'classes'] }`.
+19. Deep-frozen inputs: `levelUp` does not throw, and each input equals its copy after the call.
+20. The quality gate is green.
+
+#### 4. How to do it
+
+1. `packages/engine/src/trackers.ts`: `entryOf(stamp, made)` and `changeTo(character, path,
+   after)` out of the private `done` and `before`, which now use them; `ActionResult<C, R =
+   TrackerRefusal>`.
+2. `packages/system-5e/src/level-up.ts`: `LevelUpAsk`, `LevelUpRefusal`, `levelUp`. In order:
+   the level cap; the class, subclass and feats looked up (`finderOf`, the character's own first);
+   the hit points against the class's die; the changes without the hit points; the character with
+   them checked against the schema; `hp.max` computed before and after; the hit point change; the
+   entry applied with `applyEntry`.
+3. Tests, then the gate.
+
+Technical choices (ADR 002):
+- **A module's action.** ADR 004 item 1 puts level-up in the system module. It uses the core's
+  entry, applying and reversing unchanged.
+- **Undo is `reverseEntry`.** SPEC §6.4's `undoLevelUp` is reversing the level-up's entry
+  (ADR 014 item 10); no second function. A later change on the same place refuses the undo as
+  `changed`, as every entry does (ENG-30).
+- **One entry holds the whole level-up**: the class, its hit points, the picks, the feats, the
+  spells. The DM's review approves or edits a level-up as one entry (ADR 013 item 3), and one undo
+  takes all of it back.
+- **The hit points lost stay lost.** The current hit points rise by the maximum's rise, computed
+  by `compute()` before and after, so a per-level bonus or a Constitution raised by the same
+  level-up is counted once, in one place. dnd5e also raises the current hit points (§8).
+- **The action refuses what is not a level-up**: a level past 20, a class, subclass or feat that
+  no pack has or that is another type, a roll the die cannot give, a subclass for a class that
+  has one. A pick may replace an earlier one (SRD 5.2.1's fighter may replace its Fighting Style
+  feat on a level-up, §8); the entry keeps the old pick as `before`.
+- **The rules a person may bend are not checked here.** A multiclass prerequisite, the subclass
+  level, the house rules' hit point methods and `multiclass` are warnings in the level-up wizard
+  (phase 4); manual mode allows any of them (SPEC §7.4).
+- **The result is checked against the character schema.** Unlike `applyEntry`, the module knows
+  its schema; a level-up never gives a character that would not open.
+
+#### 5. Stored data
+
+Nothing stored changes. The entry is ENG-30's `logEntrySchema`; the fields it changes are
+ENG-33's.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/level-up.test.ts` — `describe('ENG-36 level-up')`: §3 items 1–19.
+- Control numbers from: SPEC §6.7 golden B and B4 (hit points 12 and 36, STR 19), golden A's hit
+  points (12); the values between, worked out by hand in §3 from ENG-14 §8's hit points per level.
+
+#### 8. Checked against the source
+
+Sources: foundryvtt/dnd5e at `7bfb3f1` (2026-10-01): `module/documents/advancement/hit-points.mjs`,
+and SRD 5.2.1 as dnd5e quotes it, `packs/_source/content24/chapter-2/character-creation.yml` and
+`packs/_source/classes24/` (CC-BY-4.0). 5e-bits/5e-srd-api at `240592b` (2026-10-02), `packages/5e-database/src/2014/en/`:
+its rules file has no chapter on gaining a level or multiclassing (searched for "Beyond 1st",
+"additional Hit Die", "hit point maximum increases": only class features and traits match).
+- **Gaining a level** (SRD 5.2.1, "Gaining a Level"): choose a class, the same or another by the
+  multiclassing rules; gain a Hit Die, roll it, add the Constitution modifier, add the total
+  (minimum 1) to the Hit Point maximum, or take the fixed value; record the new class features and
+  make the choices they offer. A Constitution modifier raised by 1 raises the maximum by 1 per
+  level. ENG-14 computes the maximum this way from `classes[].hp`.
+- **A new class's first level** (SRD 5.2.1, Multiclassing, "Hit Points and Hit Point Dice"): "You
+  gain the level 1 Hit Points for a class only when your total character level is 1." So a later
+  class's level 1 is rolled or the average; `max` there is a house rule (`hitPointMethods`), not
+  refused (§4).
+- **The current hit points.** Neither SRD says what a level-up does to them. dnd5e's
+  `HitPointsAdvancement#apply` adds the level's hit points (the value plus the Constitution
+  modifier, at least 1, plus per-level bonuses) to `attributes.hp.value`; `reverse` takes them
+  off. This ticket adds the maximum's whole rise (§4).
+- **Replacing a pick on a level-up.** SRD 5.2.1's Fighting Style, as dnd5e quotes it
+  (`packs/_source/classes24/fighter/class-features/fighting-style.yml`, `license: CC-BY-4.0`):
+  "Whenever you gain a Fighter level, you can replace the feat you chose with a different Fighting
+  Style feat." So a level-up may change an earlier pick; the action allows any pick, with its old
+  value as `before`.
+
+#### 9. Not in this ticket
+
+- The multiclass prerequisites, the subclass level, the house rules' hit point methods and
+  multiclass switch as warnings: the level-up wizard, phase 4 (SPEC §12 stage 4: "multiclass
+  checks prerequisites, a warning, not a block").
+- Which grants a level opens and the choices still to make: `compute()`'s `pendingChoices`
+  (ENG-11), read by the wizard after the level-up.
+- XP: gaining it, and a level reached by it (ADR 010 item 7): phase 4.
+- Storing entries, the history, the DM's approval of a waiting level-up: phase 2 and the table
+  link.
+- Level-down past what an entry holds (taking a level off by hand): the sheet's manual edit,
+  phase 2.
+
+#### 10. Rake check
+
+- **Each system's rules live in its module.** Level-up is in `system-5e`; the core gains only two
+  game-free helpers. No `if (ruleset === …)`: both editions level up the same way.
+- **Missing is not broken.** A class or feat no pack has is a refusal with a code, never a throw;
+  an unmade pick stays a pending choice, not a refusal.
+- **Ids are stable.** The entry names the class by id and each pick by its part id.
+- **`compute()` is pure.** The action calls it twice and changes nothing it is given; the frozen
+  test proves it.
+- **Measure, never estimate.** Every value in §3 is SPEC §6.7's or worked out by hand from ENG-14's
+  rules.
+- **No user-facing string in the engine or the module.** `message` is English for logs; the screen
+  uses `code`.
+- **A stored-shape change needs a migration.** None changes (§5).
+- **Licensing.** The made-up feat is the character's own (`character:`), with no rules text.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- Before: `grep -rn "levelUp\|LevelUp\|level-up" packages --include=*.ts` found nothing.
+  `pnpm test`: `Test Files 43 passed (43)`, `Tests 481 passed (481)`, 6.47 s.
+- After, on `7633984`: `pnpm test`: `Test Files 44 passed (44)`, `Tests 498 passed (498)`, 6.49 s.
+  Rebased onto `1b4f1b0` (ENG-22 and ENG-49 landed first): `Test Files 44 passed (44)`,
+  `Tests 514 passed (514)`, 6.63 s.
+- The new file alone: `Tests 17 passed (17)`, 1.11 s. ENG-30's `trackers.test.ts`, after the
+  helpers moved: `Tests 12 passed (12)`, 620 ms.
+- Lint: `Checked 158 files` (rebased), no fixes, no error. Typecheck: `Scope: 6 of 7 workspace projects`,
+  all `Done`. Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- Golden B leveled three times equals golden B4 in every field but `id` and `name`; computed
+  `hp.max` 36 and `abilities.str.score` 19, SPEC §6.7's B4 values. Current hit points 12 → 20 →
+  28 → 36. Golden A, cleric 2: 12 → 21. Each of the three entries reversed, newest first, gives
+  back the character before it, down to golden B.
+- The tests catch mistakes. Each change made on its own in `level-up.ts`, then the new file run
+  (17 tests): no level cap, 1 fails; a roll above the die allowed, 2; a roll of 0 allowed, 1; a
+  roll not whole allowed, 1; a second subclass allowed, 1; another class's subclass allowed, 1;
+  feats not looked up, 1; a new class taken first, 1; the level's hit points put first, 4; the
+  subclass dropped, 1; changes that change nothing kept, 1; the feats asked for replacing the
+  list, 0 at first; no schema check, 1; the current hit points not raised, 9; raised below 0, 1;
+  rounded instead of down, 1; set to the new maximum, 3; raised by the level's die and CON alone,
+  4; the label dropped, 2. Each was undone, and the file compared equal to its copy.
+- The one change that first passed every test, the feats replacing the list, passed because every
+  test character had no feats. The feat test now starts from a character with a feat taken by
+  hand; with that change, 1 fails.
+
+Differences from §3:
+- §3 items 3, 8 and 11 gained what the work added: the current hit points rise in whole points
+  (a test with a half point per level, and one that would go below 0), a pick equal to the one
+  held is left out of the entry, and a pick made again keeps the old one as `before`.
+- A refusal of an entry's place (`badPath`, `changed`) can come back from `levelUp` too, as from
+  ENG-30's actions: `ActionResult<C, R>` keeps `EntryRefusal` beside the action's own refusals.
+  No test reaches it; a part id in `choices` that is not a safe path step would.
+
+Against the row and its note: the note named ENG-30's entry, applied and reversed by
+`applyEntry` and `reverseEntry`, built from the character it changes; that is what was built. No
+`undoLevelUp` function: SPEC §6.4's undo is `reverseEntry` (§4).
+
+Found, not fixed:
+- `compute()` gives no warning for `max` hit points at a level other than the character's very
+  first (SRD 5.2.1, Multiclassing: "the level 1 Hit Points for a class only when your total
+  character level is 1"; §8). The schema and the level-up accept it as a house rule. The warning
+  belongs with the level-up wizard's other warnings, phase 4, whose rows are written when it
+  opens; no row now.
+- 5e-bits/5e-srd-api's `HEAD` is `240592b` (2026-10-02), past ENG-09's `e6edf9a`. Only its 2014
+  rules file was read here, for text it does not have; no fixture was compared against it.
+
+Nothing for the changelog.
