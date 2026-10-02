@@ -103,8 +103,9 @@ split off an old row got a new id.
 | ENG-49 | A spell or item a grant names that no pack has gives a warning | S | ✅ 2026-10-02 |
 | ENG-52 | A roll formula's average is computed, kept dice included | S | ✅ 2026-10-02 |
 | ENG-50 | A spell's dice are computed for the character's level | S | ✅ 2026-10-02 |
-| ENG-51 | A spell a grant gives with its own stat has its casting numbers | S | 🔲 |
+| ENG-51 | A spell a grant gives with its own stat has its casting numbers | S | ✅ 2026-10-02 |
 | ENG-53 | A spell's healing is a roll formula of its own | S | 🔲 |
+| ENG-55 | A spell's damage adds `damage.spell.bonus` | S | 🔲 |
 | ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | S | 🔲 |
 | ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | ✅ 2026-10-02 |
 | ENG-46 | Armor worn without training has its edition's penalties | S | 🔲 |
@@ -151,16 +152,16 @@ split off an old row got a new id.
   ENG-19: 2014 exhaustion's test data (`test/exhaustion.test.ts`) gives `disadvantage` on
   `roll.check.all` (level 1), `roll.attack.all` and `roll.save.all` (level 3); SPEC §5.4's catalog
   has `roll.check.<ability>`, not `.all`, so this row makes it a target or the data changes.
-- **ENG-51** — re-cut from ENG-16 (ENG-16 §11). Found by ENG-15: SPEC §5.4 has two targets for a
-  spell attack, `spell.attack.bonus` (ENG-15 adds it to `classes.<key>.spell.attack`) and
-  `attack.spell.bonus`, beside `damage.spell.bonus`; this row decides how a spell's attack reads
-  the second. A spell a `spell` grant gives with its own `ability` (a feat's, a species') has no
-  DC or attack path yet. ENG-16 gives the weapon targets `attack.weapon.<melee|ranged>.bonus`.
 - **ENG-53** — found by ENG-09, made a row by ENG-50 (ENG-50 §9): a spell's healing has no field;
   `damage` and `scaling` hold damage only. Cure Wounds heals 1d8 + the spellcasting modifier, 1d8
   more per slot level above 1st; 10 SRD 5.1 spells have 5e-database's `heal_at_slot_level`.
   ENG-50's `spellDice` joins a `scaling` to the first damage with the core's `addDice`; healing
-  grows the same way. The modifier is the stat a spell is cast with, which ENG-51 gives.
+  grows the same way. The modifier is `abilities.<stat>.mod` of the stat the spell is cast with:
+  its class's `spellcasting.ability`, or for a grant's spell `grantCastingStat` (ENG-51).
+- **ENG-55** — found by ENG-51: SPEC §5.4's `damage.spell.bonus` is no path, so an effect on it
+  warns `noTarget`. A spell's damage is dice text (ENG-50's `spellDice`), which reads no bonus;
+  a weapon's damage reads `damage.weapon.<kind>.bonus` (ENG-16). The row decides which of a
+  spell's damages adds it, and checks the SRDs' "damage rolls" wording in its §8.
 - **ENG-20** — ADR 014 item 7: casting with "use a slot: no". Found by ENG-32: a `spell`
   grant's `uses` have no key of their own; the cast action keeps their spent count, by the
   grant's part id or a key it gives them. Found by ENG-33: the trackers it changes are
@@ -219,7 +220,8 @@ split off an old row got a new id.
   has no `ItemDef.category`; 2024's "Until dispelled or triggered" (2 spells) has no place for
   "or triggered"; 2024's `elven-lineage`, `gnomish-lineage` and `magic-initiate` let the person
   choose the spellcasting stat among three, and a `spell` grant's `ability` takes one stat. The
-  import widens the schema for each (no migration) or maps the value.
+  import widens the schema for each (no migration) or maps the value. The stat a grant casts
+  with is read in one place, `grantCastingStat` (ENG-51), which then reads the choice.
 - **Phase 3** — found by ENG-33: an entity two grants give is gathered once, with one choice
   per grant (ENG-11). That is right for a trait two sources give, and wrong for a feat taken
   twice: of 2024's feats, `ability-score-improvement`, `magic-initiate` and `skilled` say "You
@@ -261,6 +263,10 @@ split off an old row got a new id.
   True Strike gains extra damage it has none of at first. 5e-database `e6edf9a` gives the 2024
   spells no table by slot (one entry each), so the import reads 2024's growth from the text or
   dnd5e's data. The import widens the field (no migration) or maps each.
+- **Phase 3** — found by ENG-51: SRD items that cast a spell "using your spell save DC" (2014
+  Staff of Fire, Staff of Healing, Staff of Power, among others) do not say which DC when a
+  character has more than one: a class's (`classes.<key>.spell.dc`) and a stat's a grant names
+  (`abilities.<stat>.spell.dc`). The mechanics of those items pick one, or let the person pick.
 - **Phase 3** — found by ENG-13: a half proficiency that rounds up (2014's Remarkable Athlete:
   "half your proficiency bonus (round up)") and half a proficiency on every ability check (2014's
   Jack of All Trades). `skills.<key>.prof` 0.5 rounds down (`checkSteps`), and an ability check

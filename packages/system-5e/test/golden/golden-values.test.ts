@@ -474,7 +474,7 @@ describe('ENG-19 goldens: golden D', () => {
 
   /** Each d20 test a character has: saves, checks, skills, weapon and spell attacks, initiative. */
   const D20_TEST =
-    /^(abilities\.[^.]+\.save|checks\.[^.]+\.total|skills\.[^.]+\.total|attacks\.[^.]+\.hit|classes\.[^.]+\.spell\.attack|init\.total)$/;
+    /^(abilities\.[^.]+\.save|checks\.[^.]+\.total|skills\.[^.]+\.total|attacks\.[^.]+\.hit|(classes|abilities)\.[^.]+\.spell\.attack|init\.total)$/;
 
   it("golden D: every d20 test is golden B's − 4", () => {
     const tests = Object.keys(b.values).filter((path) => D20_TEST.test(path));

@@ -4,6 +4,7 @@ import {
   type DerivedStep,
   type DeriveInput,
   evaluateNumber,
+  type GrantOf,
 } from '@grimoire/engine';
 import type { FifthEditionCharacter } from './character';
 import { D20_BONUS_PATH, PROF_PATH, sumOf, zeroStep } from './checks';
@@ -16,6 +17,8 @@ import { MAX_SPELL_LEVEL } from './system';
 // save DC, attack bonus and spell counts; the character's slots come from its one casting class's
 // table, or from the multiclass table at its caster level, whose half-caster rounding is its
 // edition's (`rulesets/`). Pact magic is a pool of its own. The rules are ENG-15 §8's.
+// ENG-51: a spell a grant gives with its own stat is cast with that stat, so each stat a grant
+// names has a DC and an attack of its own; every spell attack adds `attack.spell.bonus` too.
 
 /** What a spell save DC starts from (both SRDs: "8 + …"). */
 export const SPELL_DC_BASE = 8;
@@ -25,6 +28,13 @@ export const SPELL_DC_BONUS_PATH = 'spell.dc.bonus';
 
 /** What every spell attack bonus adds (SPEC §5.4). */
 export const SPELL_ATTACK_BONUS_PATH = 'spell.attack.bonus';
+
+/**
+ * What every attack roll with a spell adds (SPEC §5.4's `attack.<…>.bonus`, beside the weapon
+ * kinds). A spell attack adds both this and `spell.attack.bonus`: the SRD words one bonus both
+ * ways (ENG-51 §8), so an effect on either counts.
+ */
+export const ATTACK_SPELL_BONUS_PATH = 'attack.spell.bonus';
 
 /** The multiclass caster level: what the multiclass table is read at. */
 export const CASTER_LEVEL_PATH = 'spell.casterLevel';
@@ -152,6 +162,42 @@ function countStep(caster: Caster, count: string | readonly number[]): DerivedSt
   };
 }
 
+/** The DC and attack bonus of spells cast with `stat`, as `<path>.dc` and `<path>.attack`. */
+function castingSteps(path: string, stat: string): Record<string, DerivedStep> {
+  const mod = { path: `abilities.${stat}.mod` };
+  return {
+    [`${path}.dc`]: sumOf([
+      { rule: 'spellDcBase', value: SPELL_DC_BASE },
+      mod,
+      { path: PROF_PATH },
+      { path: SPELL_DC_BONUS_PATH },
+    ]),
+    [`${path}.attack`]: sumOf([
+      mod,
+      { path: PROF_PATH },
+      { path: SPELL_ATTACK_BONUS_PATH },
+      { path: ATTACK_SPELL_BONUS_PATH },
+      { path: D20_BONUS_PATH },
+    ]),
+  };
+}
+
+/**
+ * Where the DC and attack of spells cast with a stat a grant names are: `abilities.<stat>.spell`,
+ * then `.dc` and `.attack`.
+ */
+export function statSpellPath(stat: string): string {
+  return `abilities.${stat}.spell`;
+}
+
+/**
+ * The stat the spells a grant gives are cast with: a `spell` grant's own `ability`. None for
+ * another kind of grant, or a grant that names none: its spells are its class's (ENG-51 §4).
+ */
+export function grantCastingStat(grant: GrantOf<FifthEditionEntity>): string | undefined {
+  return grant.kind === 'spell' ? grant.ability : undefined;
+}
+
 /** The multiclass table's row at a caster level; none below 1, the last above 20. */
 function multiclassRow(casterLevel: number): readonly number[] {
   const at = Math.min(Math.floor(casterLevel), MULTICLASS_SLOTS.length);
@@ -159,10 +205,11 @@ function multiclassRow(casterLevel: number): readonly number[] {
 }
 
 /**
- * The spellcasting steps of a character: `spell.dc.bonus` and `spell.attack.bonus`; each casting
- * class's `classes.<key>.spell.*`; with a class casting by slots, `spell.casterLevel` and
- * `spell.slots.level1` to `level9`; with one casting by pact magic, `spell.pact.level` and
- * `spell.pact.slots`.
+ * The spellcasting steps of a character: `spell.dc.bonus`, `spell.attack.bonus` and
+ * `attack.spell.bonus`; each casting class's `classes.<key>.spell.*`; each stat a `spell` grant
+ * names, its `abilities.<stat>.spell.dc` and `.attack`; with a class casting by slots,
+ * `spell.casterLevel` and `spell.slots.level1` to `level9`; with one casting by pact magic,
+ * `spell.pact.level` and `spell.pact.slots`.
  */
 export function spellcastingSteps({
   character,
@@ -171,6 +218,7 @@ export function spellcastingSteps({
   const steps: Record<string, DerivedStep> = {
     [SPELL_DC_BONUS_PATH]: zeroStep,
     [SPELL_ATTACK_BONUS_PATH]: zeroStep,
+    [ATTACK_SPELL_BONUS_PATH]: zeroStep,
   };
 
   // A class casts by its own spellcasting, else by its subclass's, from the level it starts at.
@@ -186,19 +234,7 @@ export function spellcastingSteps({
   for (const caster of casters) {
     const { key, def } = caster;
     const path = `classes.${key}.spell`;
-    const mod = { path: `abilities.${def.ability}.mod` };
-    steps[`${path}.dc`] = sumOf([
-      { rule: 'spellDcBase', value: SPELL_DC_BASE },
-      mod,
-      { path: PROF_PATH },
-      { path: SPELL_DC_BONUS_PATH },
-    ]);
-    steps[`${path}.attack`] = sumOf([
-      mod,
-      { path: PROF_PATH },
-      { path: SPELL_ATTACK_BONUS_PATH },
-      { path: D20_BONUS_PATH },
-    ]);
+    Object.assign(steps, castingSteps(path, def.ability));
     if (def.preparedCount !== undefined) {
       steps[`${path}.prepared`] = countStep(caster, def.preparedCount);
     }
@@ -207,6 +243,10 @@ export function spellcastingSteps({
     }
     if (def.spellsKnown !== undefined) steps[`${path}.known`] = countStep(caster, def.spellsKnown);
   }
+
+  // A stat a grant that applies names: one DC and attack for every grant that names it.
+  const stats = new Set(gathered.grants.flatMap(({ grant }) => grantCastingStat(grant) ?? []));
+  for (const stat of stats) Object.assign(steps, castingSteps(statSpellPath(stat), stat));
 
   // The caster level: each class casting by slots adds its share, rounded on its own; one alone
   // counts as dnd5e counts it.

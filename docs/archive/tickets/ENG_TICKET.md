@@ -10188,3 +10188,253 @@ Found, not fixed:
   and inspiration's rule the sheet reads.
 
 Nothing for the changelog.
+
+---
+
+### ENG-51 A spell a grant gives with its own stat
+
+**Hat:** A spell a grant gives with its own stat has its casting numbers
+**Depends on:** ENG-15 (`spellcastingSteps`, the class's DC and attack, the two bonus targets),
+ENG-32 (the `spell` grant's `ability`), ENG-11 (`Gathered.grants`, the grants that apply), ENG-16
+(the `attack.<kind>.bonus` targets), ENG-17 (effects and overrides on any path)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.5 (`spell` grant: `ability`); §5.4 (`attack.<weapon.melee | weapon.ranged | spell>.bonus`,
+`spell.dc.bonus`, `spell.attack.bonus`); §6.1 step 5 (spell save DC and attack bonus); ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/spellcasting.ts` — changes: `ATTACK_SPELL_BONUS_PATH`,
+`statSpellPath`, `grantCastingStat`; a stat's casting steps, shared by a class's and a stat's;
+`spellcastingSteps` gives the new paths.
+- `packages/system-5e/test/grant-casting.test.ts` — new.
+- `packages/system-5e/test/spellcasting.test.ts` — changes: a spell attack's breakdown has the new
+  part; the paths of a character who casts nothing include `attack.spell.bonus`.
+- `packages/system-5e/test/golden/golden-values.test.ts` — changes: golden D's list of d20 tests
+  names a stat's spell attack too.
+- `docs/tickets/BACKLOG.md` — the notes of ENG-53 and phase 3; the new row ENG-55 (§9).
+
+#### 2. What is missing now
+
+Measured on `main` at `4df11a3`:
+- `grep -rn "\.ability" packages/system-5e/src/spellcasting.ts` finds only `def.ability`, a class's
+  stat. No code reads a `spell` grant's `ability`: `git grep -n "grant.ability"` in `packages/`
+  finds nothing.
+- So a spell a feat or a species gives with its own stat (SRD 5.1's High Elf cantrip, Intelligence;
+  Infernal Legacy, Charisma) has no save DC and no attack bonus: the test entity feat
+  `hb-test:feat/steady-hands` (`ability: 'san'`, `test/entities.ts`) has none.
+- `git grep -n "attack.spell" packages/` finds nothing: SPEC §5.4's `attack.spell.bonus` is no
+  path, so an effect on it warns `noTarget`. ENG-15's spell attack adds `spell.attack.bonus` only.
+- `pnpm test`: `Test Files 48 passed (48)`, `Tests 560 passed (560)` (ENG-19 §11, measured on
+  `44c1b5a`; `4df11a3` is ENG-19's own commit).
+
+#### 3. What it should look like when done
+
+1. **A stat a grant names.** Each stat a `spell` grant that applies names in its `ability` (once
+   per stat, in the order the grants are reached) gives:
+   - `abilities.<stat>.spell.dc` = 8 + `abilities.<stat>.mod` + `prof` + `spell.dc.bonus`;
+   - `abilities.<stat>.spell.attack` = `abilities.<stat>.mod` + `prof` + `spell.attack.bonus` +
+     `attack.spell.bonus` + `d20.all.bonus`.
+   The breakdown is the class's (ENG-15): the 8 a `rule` step `spellDcBase`, each part a `path`
+   step. A grant that does not apply yet (`atLevel` above the character's level) gives nothing; a
+   grant with no `ability` gives nothing (its spells are its class's, §4).
+2. **`attack.spell.bonus`** is 0 for every character, a target for effects (SPEC §5.4), and every
+   spell attack adds it: each class's `classes.<key>.spell.attack` and each stat's. Its place in
+   the breakdown is after `spell.attack.bonus`, before `d20.all.bonus`.
+3. **Where a grant's numbers are.** `grantCastingStat(grant)` gives the stat a `spell` grant's
+   spells are cast with, its `ability`, or `undefined` (another kind of grant, or none named);
+   `statSpellPath(stat)` gives `abilities.<stat>.spell`, whose `.dc` and `.attack` §3 item 1 gives.
+4. **Control values, worked out by hand** (golden A, 2014: CHA 12 → +1, INT 8 → −1, proficiency
+   +2; golden E, 2024: SAN 14 → +2, proficiency +2):
+
+   | Character | Grant's stat | DC | Attack |
+   |---|---|---|---|
+   | golden A | `cha` | 8 + 1 + 2 = 11 | 1 + 2 = 3 |
+   | golden A | `int` | 8 − 1 + 2 = 9 | −1 + 2 = 1 |
+   | golden A | `cha`, given by two grants | one pair: 11, 3 | |
+   | golden A | `str` at `atLevel: 3` | no path | no path |
+   | golden A | `san` (no such stat) | 8 + 0 + 2 = 10, `missingPath` | 0 + 2 = 2, `missingPath` |
+   | golden E | `san` | 8 + 2 + 2 = 12 | 2 + 2 = 4 |
+   | golden A, `cha`, with `spell.dc.bonus` +1, `spell.attack.bonus` +2, `attack.spell.bonus` +1, `d20.all.bonus` −1 | | 12 | 1 + 2 + 2 + 1 − 1 = 5 |
+   | the same, golden A's cleric (WIS 16 → +3) | | 13 + 1 = 14 | 3 + 2 + 2 + 1 − 1 = 7 |
+   | golden A, `cha`, an override of `abilities.cha.spell.dc` to 15 | | 15 | 3 |
+
+   Golden A's own numbers do not change: cleric DC 13, attack +5. No golden value changes, and the
+   goldens give no warning.
+5. `compute()` stays pure: frozen inputs give equal results.
+6. The quality gate is green. No file in `apps/web` changes, so no `pnpm e2e`.
+
+#### 4. How to do it
+
+1. `spellcasting.ts`: `ATTACK_SPELL_BONUS_PATH`; `castingSteps(path, stat)`, the DC and attack of
+   a stat under a path, used by the class loop as it is and by the new stat loop.
+2. `statSpellPath`, `grantCastingStat`; the stat loop over `gathered.grants`.
+3. Tests (§7). Then the backlog notes (§9) and the row ENG-55.
+
+Technical choices (ADR 002):
+- **The numbers are a stat's, not a grant's.** A spell's DC and attack read its stat, `prof` and
+  the bonus targets, nothing of the grant (both SRDs' rule, §8), so two grants with one stat have
+  one DC. dnd5e computes them the same way, per ability (`abilities.<id>.dc`, `.attack`, §8). A
+  grant's part id (`srd-2014:trait/infernal-legacy#spells`) is no path step; a stat's key is one.
+- **Under `abilities.<stat>.spell`**, beside ENG-13's `abilities.<stat>.save` and mirroring
+  ENG-15's `classes.<key>.spell`. Not under `spell.`: a stat named `dc` or `slots` would meet
+  ENG-15's `spell.dc.bonus` or `spell.slots.*`.
+- **Given only for a stat a grant names**, as ENG-15 gives a class's paths only to a class that
+  casts: a character with no such grant has none.
+- **A grant with no `ability` gets nothing here.** In both SRDs a grant with no stat is a class's or
+  a subclass's (the Life domain's spells, cast as a cleric's, §8); which class's numbers its spells
+  show is the Spells tab's mapping (phase 2), with `systemData.spells`, keyed by class or subclass.
+- **`attack.spell.bonus` and `spell.attack.bonus` both add to every spell attack.** SPEC §5.4 has
+  both: the first in the attack family beside the weapon kinds (ENG-16's
+  `attack.weapon.<kind>.bonus`), the second beside `spell.dc.bonus`. The SRD says the same thing
+  both ways ("a +1 bonus to spell attack rolls", "your spell save DC and spell attack bonus each
+  increase by 2", §8), so a pack's effect may target either, and two effects on the two add up.
+  One alias of the other would drop an effect or hide it behind an override of the other.
+- **One function for the stat a grant casts with** (`grantCastingStat`), so the rule sits in the
+  module, not in a screen, and the phase 3 import that lets a person choose the stat (ENG-32's
+  note) changes that function, not its readers. ENG-53's modifier reads it too.
+- **The DC does not read `d20.all.bonus`; the attack does** — ENG-15 §8, the same rule.
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, pack or character field changes; the grant's `ability` was
+stored already and is now read. The published `pack.schema.json` does not change.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/grant-casting.test.ts` — `describe('ENG-51 a granted spell's casting
+  numbers')`: §3 items 1–5, on golden A and golden E with made-up feats (`character:`).
+- `packages/system-5e/test/spellcasting.test.ts` — ENG-15's breakdowns of a spell attack gain the
+  `attack.spell.bonus` step; the paths of a character who casts nothing gain it. No value changes.
+- `packages/system-5e/test/golden/golden-values.test.ts` — golden D's d20 tests include a stat's
+  spell attack (golden B has none, so the count stays 32).
+- Control values from: the goldens' scores (SPEC §6.7) and the rule in §8, worked out by hand in §3
+  item 4, never copied from a run.
+
+#### 8. Checked against the source
+
+Sources: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`,
+`packages/5e-database/src/{2014,2024}/en/`; foundryvtt/dnd5e at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`: `module/` and `packs/_source/content24/`, which quotes
+SRD 5.2.1 (CC-BY-4.0). The same commits as ENG-15 §8. Read 2026-10-02.
+
+**The DC and attack of any spell.**
+- SRD 5.1 (`5e-SRD-Rules.json`, Casting a Spell): "The DC to resist one of your spells equals 8 +
+  your spellcasting ability modifier + your proficiency bonus + any special modifiers." "Your
+  attack bonus with a spell attack equals your spellcasting ability modifier + your proficiency
+  bonus."
+- SRD 5.2.1 (`content24/chapter-7/spells.yml`): "Spell save DC = 8 + your spellcasting ability
+  modifier + your Proficiency Bonus"; "Spell attack modifier = your spellcasting ability + your
+  Proficiency Bonus".
+- Neither names a class: the rule is the stat's. So a spell a grant gives with its own stat has
+  the same DC and attack as a class's spell cast with that stat.
+
+**Grants that name a stat.**
+- SRD 5.1 (`5e-SRD-Traits.json`): `high-elf-cantrip`, "Intelligence is your spellcasting ability
+  for it."; `infernal-legacy`, "Charisma is your spellcasting ability for these spells." No 2014
+  feat gives a spell (`5e-SRD-Feats.json`: Grappler only).
+- SRD 5.2.1 (5e-database 2024 `5e-SRD-Traits.json`, `5e-SRD-Feats.json`): `elven-lineage`,
+  `gnomish-lineage`, `fiendish-legacy` and `magic-initiate`: "Intelligence, Wisdom, or Charisma is
+  your spellcasting ability for …", chosen; `otherworldly-presence` "uses the same spellcasting
+  ability you use for your Fiendish Legacy trait". A choice of stat is ENG-32's phase 3 note.
+- The Life domain's spells (ENG-15 §8, `domain-spells-1`) name no stat: a subclass's spells, cast
+  as its class's.
+
+**dnd5e.**
+- `module/data/actor/templates/common.mjs`, `prepareAbilities`: for every ability,
+  `abl.dc = 8 + abl.mod + prof + dcBonus` (`bonuses.spell.dc`) and
+  `abl.attack.value = abl.mod + prof + abl.attack.bonus + rollReduction`, where `abl.attack.bonus`
+  holds the ability's own and every attack's (`rolls.attack.bonus`) bonus.
+- `module/data/item/spell.mjs`, `availableAbilities`: a spell's own `ability`, else its class's
+  spellcasting ability. `module/data/activity/save-data.mjs`: a spell's save DC is
+  `abilities[ability].dc`.
+- `module/data/activity/attack-data.mjs`, `getAttackData`: a spell's attack roll adds the ability's
+  attack bonus, `rolls.attack` and `rolls.attack.<msak|rsak>` (the spell attack kind's bonus,
+  `bonuses.msak.attack` before), so a bonus of the kind and a general one add up.
+
+**Two words for one bonus.** SRD 5.1 magic items (`5e-SRD-Magic-Items.json`): Robe of the
+Archmagi, "Your spell save DC and spell attack bonus each increase by 2."; Wand of the War Mage +1,
+"you gain a +1 bonus to spell attack rolls"; Staff of Power, "a +2 bonus to Armor Class, saving
+throws, and spell attack rolls". SRD 5.2.1's Robe of the Archmagi says the same as SRD 5.1's. Both
+words name the attack bonus of every spell attack; no SRD bonus is to one class's spells only.
+
+#### 9. Not in this ticket
+
+- `damage.spell.bonus` (SPEC §5.4): what a spell's damage adds. A spell's damage is dice text
+  (ENG-50's `spellDice`), which reads no bonus; new row ENG-55.
+- Choosing a grant's stat among three (2024's lineages, legacy and Magic Initiate): phase 3's
+  import, which widens `grantCastingStat` (ENG-32's note).
+- Which class a grant with no stat casts as, and listing a grant's spells with their numbers: the
+  Spells tab (phase 2).
+- A spell's healing and its modifier: ENG-53. Casting through a grant's `uses`: ENG-20.
+- Advantage on a spell attack: ENG-34.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** No SPEC §6.7 value changes; ENG-15's breakdowns gain a step
+  of 0, their totals the same.
+- **`[ПРОВЕРИТЬ]`, measure, never estimate.** Nothing is marked; every rule is quoted in §8 from
+  its file, every value worked out from the goldens' scores.
+- **`packages/engine` is pure; the core names no game.** No core file changes.
+- **Everything is data.** No stat is named in code: a grant's `ability` is any key, `san` as `cha`.
+- **`compute()` is pure.** The steps read their arguments only; tested frozen.
+- **A number with no breakdown entry is a bug.** Each new path has its steps, which add up.
+- **Manual overrides always win.** Tested on `abilities.cha.spell.dc`.
+- **Each system's rules live in its own module.** Every rule is in `packages/system-5e`; the
+  editions agree (§8), so nothing goes to `rulesets/`.
+- **Missing is not broken.** A stat the character lacks reads 0 with `missingPath`, never a throw.
+- **A stored-shape change needs a migration.** Nothing stored changes.
+- **Licensing.** §8 quotes SRD 5.1 and SRD 5.2.1 (CC-BY-4.0) only; the test feats are made up.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-02, on `main` at `4df11a3`:
+- `pnpm lint`: `Checked 164 files`, no errors (163 before; 1 new test file).
+- `pnpm typecheck`: 6 projects, all `Done`.
+- `pnpm test`: `Test Files 49 passed (49)`, `Tests 568 passed (568)`, 8.38 s (before, measured on
+  `4df11a3`: 48 files, 560 tests). This ticket's 8 are in `grant-casting.test.ts` (882 ms alone);
+  3 tests of ENG-15 changed (below).
+- `pnpm build`: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- Every value of §3 item 4 is true: golden A with a `cha` grant 11 and 3, an `int` grant 9 and 1,
+  `cha` from two grants one pair, `str` at `atLevel: 3` none (and 11, 3 once golden A is cleric 3,
+  STR 13 → +1); `san` on golden A 10 and 2 with two `missingPath` warnings, on golden E 12 and 4
+  with none; with the four effects 12 and 5, the cleric 14 and 7; the override 15, attack 3.
+  Golden A's own cleric stays DC 13, attack +5.
+- An effect `attack.spell.bonus +1` on golden A, measured with a throwaway test: before the
+  change, `noTarget` and the cleric's attack 5; after, no warning and 6. An effect on
+  `damage.spell.bonus` warns `noTarget` before and after (ENG-55).
+- The tests bite. 7 breaks in `spellcasting.ts`, each on its own and restored, the `system-5e`
+  tests run (224 tests): no stat paths, 5 fail; a spell attack without `attack.spell.bonus`, 4;
+  no `attack.spell.bonus` target, 30; every spell grant cast with `cha`, 5; the DC reads
+  `d20.all.bonus`, 4; the attack without `prof`, 14; the paths under `spell.<stat>`, 6.
+
+Differences from §3 and §4: none in values. As §7 says, ENG-15's tests changed in three places:
+golden A's spell attack breakdown and the focused feat's gain the `attack.spell.bonus` step (0);
+the paths of golden B, who casts nothing, filtered by `spell.`, gain `attack.spell.bonus`. Golden
+D's d20 test pattern names a stat's spell attack too; golden B has none, so it still counts 32.
+The class's DC and attack moved into `castingSteps`, which a stat's use too; the class's steps are
+the same but for the one new part.
+
+Against the row and its note:
+- The note's two points are done: `attack.spell.bonus` is a target every spell attack adds
+  (§4 says why both targets add); a `spell` grant with its own `ability` has a DC and an attack.
+- `damage.spell.bonus`, named beside them in the note and in ENG-16 §9, is not a casting number:
+  new row ENG-55, with its note.
+- ENG-53's note now names where the modifier's stat is read; the phase 3 note on choosing a stat
+  among three names `grantCastingStat`.
+
+Found, not fixed:
+- `damage.spell.bonus` is no path (above). New row ENG-55.
+- SRD items cast spells "using your spell save DC" (2014 Staff of Fire, Staff of Healing, Staff
+  of Power, `5e-SRD-Magic-Items.json`) without saying which, when a character has more than one
+  (a multiclass, or a class and a grant). Noted for phase 3's mechanics of those items, in
+  `BACKLOG.md`.
+
+Nothing for the changelog: no screen and no published file changes.

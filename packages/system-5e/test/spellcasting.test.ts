@@ -260,6 +260,7 @@ describe('ENG-15 spellcasting', () => {
       { kind: 'path', path: 'abilities.wis.mod', value: 3, change: 3 },
       { kind: 'path', path: 'prof', value: 2, change: 2 },
       { kind: 'path', path: 'spell.attack.bonus', value: 0, change: 0 },
+      { kind: 'path', path: 'attack.spell.bonus', value: 0, change: 0 },
       { kind: 'path', path: 'd20.all.bonus', value: 0, change: 0 },
     ]);
     expect(a.breakdown['classes.cleric.spell.prepared']).toEqual([
@@ -561,6 +562,7 @@ describe('ENG-15 spellcasting', () => {
     });
     expect(result.breakdown['classes.cleric.spell.attack']?.slice(2)).toEqual([
       { kind: 'path', path: 'spell.attack.bonus', value: 2, change: 2 },
+      { kind: 'path', path: 'attack.spell.bonus', value: 0, change: 0 },
       { kind: 'path', path: 'd20.all.bonus', value: -1, change: -1 },
     ]);
     expect(result.warnings).toEqual([]);
@@ -596,6 +598,7 @@ describe('ENG-15 spellcasting', () => {
     expect(Object.keys(b.values).filter((path) => path.includes('spell.'))).toEqual([
       'spell.dc.bonus',
       'spell.attack.bonus',
+      'attack.spell.bonus',
     ]);
   });
 
