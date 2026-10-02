@@ -91,7 +91,8 @@ split off an old row got a new id.
 | ENG-38 | The fifth-edition pack's JSON Schema is published as a file | S | ✅ 2026-10-02 |
 | ENG-09 | 2014 fixtures: every SRD entity golden A or C needs | M | ✅ 2026-10-02 |
 | ENG-10 | 2024 fixtures: every SRD entity golden B, B4, C or D needs | M | ✅ 2026-10-02 |
-| ENG-13 | Check bonuses are computed: modifiers, proficiency, saves, skills, passives | M | 🔲 |
+| ENG-13 | Check bonuses are computed: modifiers, proficiency, saves, skills, passives | M | ✅ 2026-10-02 |
+| ENG-43 | An effect sets the stat a skill uses | S | 🔲 |
 | ENG-14 | Combat numbers are computed: hit points, armor class, initiative, speed | M | 🔲 |
 | ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | 🔲 |
 | ENG-16 | Attacks are computed, weapon mastery included | S | 🔲 |
@@ -110,31 +111,22 @@ split off an old row got a new id.
 - **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
   recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
   `regainResource` gives uses back, never below none spent.
-- **ENG-13** — found by ENG-28: the module's `statDefaults` are SPEC §5.3's (the modifier
-  formula, a save, a maximum of 20); its saves read `StatOf.hasSave`; its values are `derive`'s
-  steps, as Tales' are (`packages/engine/test/tales-module.ts`). A skill's own `totalFormula`
-  (SPEC §5.3, a core field) is read by no code yet: this ticket decides whether the module's
-  skill step or the core reads it. Found by ENG-32: a class's own `grants` apply whether it is
-  the first class or a later one, and its `multiclass.grants` are what a later class gives (the
-  SRD data keeps them apart, ENG-32 §8). This ticket decides how a later class leaves out the
-  grants of a first class, and reads `ClassDef.saves` of the first class. Golden C (ENG-09)
-  shows it: its one pending choice is the paladin's `skills`, a first class's grant; its test
-  says so, and ENG-13 makes it none. Found by ENG-33: the module reads `systemData`
-  (`FifthEditionCharacter`): its level is the sum of `classes[].level`; it names the species,
-  the background, each class and subclass at that class's level, and `feats` (ENG-33's and
-  ENG-09's tests do this). A feat's `replaces` names the grant whose ability score
-  improvement it is taken in place of; this ticket decides how that grant is left out. Found
-  by ENG-10: golden B's Alert reads `@prof`; Second Wind's maximum reads a class table column,
-  `@classes.fighter.table.secondWindUses` (`ClassDef.levels`); golden D's exhaustion changes
-  `d20.all.bonus`, which goes into every d20 test (checks, saves, initiative, attacks). ENG-10's
-  test gives the three as stand-ins.
-- **ENG-13 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true. The
-  full goldens A–D are green by ENG-19.
-- **ENG-13, ENG-14, ENG-34** — found by ENG-17: an effect whose op gives no number (`append`,
+- **ENG-14 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true, in
+  `test/golden/golden-values.test.ts` (ENG-13). The full goldens A–D are green by ENG-19. Each
+  removes its stand-ins from `STAND_INS` (`test/golden/checks.ts`); a stand-in for a path the
+  module gives fails the tests.
+- **ENG-43, ENG-14, ENG-34** — found by ENG-17: an effect whose op gives no number (`append`,
   `advantage`, `disadvantage`, `note`, a `set` with a text) on a path that is not a number value
   (`ac.formulas`, `defenses.*`, `roll.*`, `skills.<key>.ability`) is left alone by the phases,
   with no warning. The ticket that computes such a list, roll or text reads its effects through
   `activeEffects` (`effects.ts`) and warns for its own targets.
+- **ENG-43** — split off ENG-13 (its §4): SPEC §5.4's `skills.<key>.ability`, a `set` whose value
+  is a stat's key, changes the stat a skill's total reads (`skills.<key>.total`, ENG-13's
+  `checkSteps`). ENG-13 §4 gives a module step no warning of its own but `stepFormula`; this row
+  adds the warnings for a `set` naming no stat the character has and for any other op there.
+- **ENG-34** — found by ENG-13: a passive value is 5 higher with advantage on its check and 5
+  lower with disadvantage (SRD 5.1 Passive Checks; SRD 5.2.1 Passive Perception; dnd5e
+  `advantageMode × 5`). ENG-13's `skills.<key>.passive` is 10 + the skill's total.
 - **ENG-14** — found by ENG-09: no code gives `@equipped`, which the shield's effect reads (SPEC
   §5.3's example, `srd-2014:item/shield`); an item's own effects read it per item (SPEC §5.6).
   Armor proficiency keys are `light`, `medium`, `heavy` and `shield`; weapon keys are `simple`,
@@ -148,6 +140,9 @@ split off an old row got a new id.
   `init.bonus`. Exhaustion (2024) changes `speed.all.bonus`, a path SPEC §5.4's catalogue lacks:
   this ticket gives it and adds it to every speed the character has, never below 0 (dnd5e
   `prepareMovement`, ENG-10 §8).
+  Found by ENG-13: dnd5e's initiative adds the Dexterity check bonus and the roll reduction
+  (`prepareInitiative`); the module gives `checks.dex.bonus` and `d20.all.bonus`, and golden D's
+  initiative −1 needs the second.
 - **ENG-15** — found by ENG-09: a spellcasting class has no level it starts at. In 2014 the
   paladin and the ranger cast from level 2, in 2024 from level 1 (5e-database
   `spellcasting.level`). `srd-2014:class/paladin`'s slot row at level 1 is empty, but its prepared
@@ -172,7 +167,10 @@ split off an old row got a new id.
   SRD text is shown to the owner next to her default of 3. Found by ENG-33: the house rules'
   defaults (`houseRulesSchema`, SPEC §8.4 "by the SRD") are each ruleset's; a new character is
   written with them. The 2024 rules text: 5e-database at `e6edf9a` has no 2024 rules file, and
-  this environment's network refuses the SRD 5.2.1 PDF's host (ENG-33 §8).
+  this environment's network refuses the SRD 5.2.1 PDF's host (ENG-33 §8). Found by ENG-13:
+  dnd5e at `7bfb3f1` quotes SRD 5.2.1's rules chapters and glossary in `packs/_source/content24/`,
+  read there by ENG-10 and ENG-13 §8. `statDefaults` is one value for every character
+  (`SystemModule.statDefaults`), so the house rule `abilityMax` is read by no code.
 - **ENG-35** — ADR 014 item 1 (from ADR 013 item 10): a 2014 race with a 2024 background gives
   ability increases from the race, the background or both; `both` warns, never blocks; the
   default is the rules base's source. Its §8 reads both SRDs for other bonuses of one kind given
@@ -237,6 +235,11 @@ split off an old row got a new id.
   (SPEC §6.1 step 4), so an item whose mechanics put a score above the maximum must raise
   `abilities.<key>.max` too (SPEC §5.4's belt, `max 21`). The mechanics' §8 checks which items
   do this.
+- **Phase 3** — found by ENG-13: a half proficiency that rounds up (2014's Remarkable Athlete:
+  "half your proficiency bonus (round up)") and half a proficiency on every ability check (2014's
+  Jack of All Trades). `skills.<key>.prof` 0.5 rounds down (`checkSteps`), and an ability check
+  (`checks.<key>.total`) has no proficiency level. The mechanics of those features add what they
+  need.
 - **Phase 5** — found by ENG-39: a locale overlay keys its texts by field name, but carries only
   the core's `schemaVersion`. When a module renames a text field, a stored overlay keeps the old
   name and its text is no longer shown. The row that stores imported overlays gives them the
@@ -304,6 +307,10 @@ split off an old row got a new id.
 - **Phase 4** — found by ENG-33: SPEC §8.4's point-buy budget is the point-buy method's (ADR 010
   item 12), not a house rule: `houseRulesSchema` has no field for it. A method is a key in
   `systemData.abilities.method`, with its rolls as ENG-26 roll records.
+- **Phase 4** — found by ENG-13: a feat's `replaces` (ENG-33) leaves out the grant it names
+  (`fifthEditionModule.grantsOf`); one naming a grant the character does not reach is unused with
+  no warning, since the module has no warning of its own but `stepFormula`. The level-up wizard
+  writes `replaces` only for a grant it shows, or the module gains a warning.
 - **ADR 010, by phase** — added by OPS-10. Phase 2: custom dice and any count of dice, the
   Damage and Heal number pad, the Turn tab, the spell slot grid, casting without a slot. Phase
   3: the one-page library with topics and full entries, the All sources list. Phase 4: steps

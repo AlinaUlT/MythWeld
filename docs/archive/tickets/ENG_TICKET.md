@@ -5889,3 +5889,404 @@ Found, not fixed:
   phase 3 in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-13 Check bonuses
+
+**Hat:** Check bonuses are computed: modifiers, proficiency, saves, skills, passives
+**Depends on:** ENG-28 (`derive`, `statDefaults`), ENG-11 (`gather`), ENG-17 (effects on a path),
+ENG-29 (a resource maximum reads a class table), ENG-33 (`systemData`), ENG-09 and ENG-10 (the
+golden fixtures)
+**Size:** M
+**Screen:** No
+**SPEC:** §6.1 step 5 (modifiers, the proficiency bonus by total level, saves, skills at 0, ½, 1
+or 2, passive values); §5.3 (`AbilityDef`'s defaults, `SkillDef.totalFormula`, `ClassDef.saves`,
+`multiclass`, `levels[].table`); §5.4's targets `abilities.<key>.saveBonus`, `saves.all.bonus`,
+`skills.<key>.prof`, `skills.<key>.bonus`, `skills.all.bonus`, `checks.<ability>.bonus`,
+`d20.all.bonus`; §5.6 (`@prof`, `@classes.<key>.level`, `@classes.<key>.table.<column>`); §6.2;
+§6.7 goldens A, B, B4, C and D (their check lines); ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/module.ts` — new: `fifthEditionModule`, fifth edition's
+`SystemModule`. The level and the entities `systemData` names, the stat defaults, the grants a
+later class and a replacing feat leave out, each class's level and table columns, and the
+derived steps.
+- `packages/system-5e/src/checks.ts` — new: `proficiencyBonus(level)` and the check steps:
+  `prof`, `d20.all.bonus`, ability checks, saves, skills, passive values.
+- `packages/system-5e/src/index.ts` — changes: exports both.
+- `packages/engine/src/compute.ts` — changes: `SystemModule` gains `grantsOf`; `basePath` also
+  gets what was gathered.
+- `packages/engine/src/gather.ts` — changes: an entity's grants are read through the module's
+  `grantsOf`.
+- `packages/engine/src/derived.ts` — changes: a step may return the warnings of a formula it
+  evaluated; each becomes a `stepFormula` warning naming the path.
+- `packages/engine/src/stats.ts` — changes: `BreakdownStep` gains the kind `entity`; a `formula`
+  step may be a skill's own (`of: 'skill'`).
+- `packages/engine/test/compute.test.ts`, `derived.test.ts`, `stats.test.ts` — change: an
+  `ENG-13` block each, on Tales.
+- `packages/system-5e/test/module.test.ts` — new: the module on the goldens and on made-up
+  variants of them.
+- `packages/system-5e/test/golden/golden-values.test.ts` — new: SPEC §6.7's check lines of goldens
+  A, B, B4, C and D. ENG-14 onward add their lines here.
+- `packages/system-5e/test/golden/checks.ts` — changes: the test module is the real module, with
+  stand-ins only for what ENG-14 and ENG-16 give.
+- `packages/system-5e/test/golden/fixtures-2014.test.ts`, `fixtures-2024.test.ts` — change: they
+  use it; golden C has no pending choice.
+- `docs/tickets/BACKLOG.md` — the split-off row ENG-43 (§4).
+
+#### 2. What is missing now
+
+Measured on `main` at `8347047`:
+- `grep -rn "SystemModule" packages/system-5e/src` finds nothing: fifth edition has no module.
+  Only the golden tests make one (`gatheringModule`, `test/golden/checks.ts`), with the stat
+  defaults `modFormula: '0'` and `hasSave: false`.
+- With it, golden A gets 20 paths: `level`, 3 per stat, and the stand-in `hp.max.bonus`. Each
+  modifier is 0. No `prof`, no save, skill, ability check or passive path.
+- Golden C (2014) has one pending choice, `srd-2014:class/paladin#skills`, and 13 proficiencies:
+  6 are the paladin's own (`light`, `medium`, `heavy`, `shield`, `simple`, `martial`), heavy armor
+  among them. A later class gives every grant a first class gives.
+- `@prof`, `@classes.fighter.table.secondWindUses` and `d20.all.bonus` are the golden test's
+  stand-ins (ENG-10 §11).
+- `grep -rn "totalFormula" packages/*/src` finds only the schema: a skill's own formula is read
+  by no code. `feats[].replaces` (ENG-33) is read only by its schema.
+- `pnpm test`: `Test Files 36 passed (36)`, `Tests 349 passed (349)`.
+
+#### 3. What it should look like when done
+
+1. **`fifthEditionModule`** is fifth edition's `SystemModule`:
+   - `level`: the sum of `systemData.classes[].level` (0 with no class);
+   - `entities`: the species, the background, each class at its own level followed by its
+     subclass at that level, then each of `feats` (ENG-33's order);
+   - `statDefaults`: SPEC §5.3's, `{ defaultMax: 20, modFormula: 'floor((@score - 10) / 2)',
+     hasSave: true }`;
+   - `basePath`: `classes.<key>.level` for each class the character has, so a base-phase formula
+     reads a class level (SPEC §5.6); any other path is refused, as before.
+2. **What a class gives as a later class** (`grantsOf`, §8): a class that is not the first in
+   `systemData.classes` gives its own grants except its starting proficiencies and items (a
+   `proficiency` or `item` grant without `atLevel`, or at level 1), and its `multiclass.grants`.
+   Golden C, both editions, has no pending choice; the paladin gives `light`, `medium`, `shield`
+   and, in 2014, `simple`, `martial`, in 2024 `martial`, each from a `multiclass-…` grant. No
+   heavy armor.
+3. **A feat taken in place of a grant**: a grant whose part a feat's `replaces` names is not given,
+   whatever its entity. Golden B4 with a feat replacing `srd-2024:class/fighter#ability-scores-4`
+   has STR 17, no pending choice, and the stored choice of that grant is not used.
+4. **The core's part** (game-free):
+   - `SystemModule.grantsOf?(character, entity)` gives the grants an entity gives this character;
+     without it, its own `grants`. `gather` reads every visited entity's grants through it: what
+     it leaves out gives nothing, is never pending, and its stored choice is not read; what it
+     adds is gathered under `<entityId>#<grantId>` as an own grant is.
+   - `basePath(character, path, gathered)`: the third argument is new.
+   - A step may return `warnings` (formula warnings) with its number; each becomes `{ code:
+     'stepFormula', path, warning }`.
+   - `BreakdownStep` gains `{ kind: 'entity', source, label }`: a number an entity gives by one of
+     its own fields, not by a grant or an effect (a class's saves, its table). A `formula` step's
+     `of` may be `'skill'`.
+5. **The paths** the module gives, in this order, each with its breakdown:
+   - `classes.<key>.level`: the class's stored level (a `base` step);
+   - `classes.<key>.table.<column>`: each number column of the class's `levels` row at its level
+     (an `entity` step naming the class). A text column is not a value;
+   - `prof`: the proficiency bonus by the character's level, +2 at levels 1 to 4 and 1 more every 4
+     levels (§8): a `rule` step, `proficiencyBonus`. Level 0 gives +2;
+   - `d20.all.bonus`, `saves.all.bonus`, `skills.all.bonus`: 0, targets for effects;
+   - for each stat, its check, then its save: `checks.<key>.bonus` 0; `checks.<key>.total` = its
+     modifier + `checks.<key>.bonus` + `d20.all.bonus`; then, when it has a save,
+     `abilities.<key>.saveProf`, its proficiency level; `abilities.<key>.saveBonus` 0;
+     `abilities.<key>.save` = its modifier + ⌊saveProf × prof⌋ + `abilities.<key>.saveBonus` +
+     `saves.all.bonus` + `d20.all.bonus`. A stat with `hasSave: false` has none of the three;
+   - for each skill: `skills.<key>.prof`, its proficiency level; `skills.<key>.bonus` 0;
+     `skills.<key>.total` = its stat's modifier + ⌊prof × `prof`⌋ + `skills.<key>.bonus` +
+     `skills.all.bonus` + `checks.<stat>.bonus` + `d20.all.bonus`; a skill with `passive: true`,
+     `skills.<key>.passive` = 10 + its total.
+6. **A proficiency level** is the highest its sources give, with that source as its one step (the
+   first source of the highest, as Tales' knack): a `save` or `skill` proficiency grant, its
+   `level` or 1; for a save, also the first class's `saves`, 1, an `entity` step naming the class.
+   None: 0, with no step.
+7. **A total's steps** are a `path` step for each part. The proficiency part is a `path` step
+   naming `prof`: its `value` the bonus, its `change` what it adds (SPEC §6.2's "+2 ×2").
+8. **A skill's own `totalFormula`** (SPEC §5.3) is its total: one `formula` step `of: 'skill'`,
+   read with `@`-paths as any formula; its passive value is 10 + that. A formula that does not
+   parse gives 0 and a `stepFormula` warning.
+9. **Goldens** (SPEC §6.7), with ENG-14's and ENG-16's stand-ins only:
+
+   | Golden | Line | Expected |
+   |---|---|---|
+   | A | modifiers STR to CHA | +1, +0, +3, −1, +3, +1 |
+   | A | saves | STR +1, DEX +0, CON +3, INT −1, WIS +5, CHA +3 |
+   | A | skills | Insight +5, Medicine +5, Persuasion +3, Religion +1, Perception +3 |
+   | A | passive Perception | 13 |
+   | B | modifiers STR to CHA | +3, +1, +2, −1, +1, +0 |
+   | B | saves | STR +5, CON +4 |
+   | B | skills | Athletics +5, Intimidation +2, Perception +3, Survival +3, Insight +3 |
+   | B | passive Perception | 13 |
+   | B4 | STR, Athletics | 19 (+4), +6 |
+   | C, 2014 and 2024 | proficiency bonus | +3 |
+   | D | Athletics, STR save | +1, +1 |
+
+   Every golden's breakdowns add up to their values, and none of them gets a warning.
+10. **What the goldens read through the real module now:** Alert's `@prof` (golden B's
+    `init.bonus` 2), Second Wind's `@classes.fighter.table.secondWindUses` (2 at fighter 1, 3 at
+    4), `classes.fighter.table.weaponMastery` (4 at fighter 4), exhaustion's `d20.all.bonus` (−4
+    at level 2). The stand-ins left are `hp.max.bonus`, `init.bonus`, `ac.bonus`, `armor.worn`,
+    `speed.all.bonus` (ENG-14) and `crit.range` (ENG-16); the test fails if the module gives one.
+11. **Made-up variants, worked out by hand** (§7): expertise and half proficiency at proficiency
+    +3, a `save` grant, the five bonus targets, a stat of the pack's own with no save, a skill of
+    its own with a formula, golden B with no class, a base-phase formula reading a class level.
+12. `compute()` stays pure: frozen inputs give equal results.
+13. The quality gate is green.
+
+#### 4. How to do it
+
+1. **Re-cut first.** SPEC §5.4's text target `skills.<key>.ability` (a `set` with a stat's key,
+   ENG-17 §9) moves to a new row, **ENG-43 An effect sets the stat a skill uses** (S), after
+   ENG-13 in `BACKLOG.md`. It needs its own reading of `set` effects with a text value and its
+   own warnings; with it, this ticket is more than M. ENG-17's note names ENG-43 for it.
+2. `stats.ts`: the `entity` step kind; `of: 'skill'`.
+3. `derived.ts`: `Derived.warnings`; `stepFormula`; `computeDerived` passes a step's warnings on
+   before `finish`.
+4. `gather.ts`: a `grantsOf` argument, its own `grants` by default. `compute.ts`:
+   `SystemModule.grantsOf`, passed to `gather`; `basePath` gets `gathered`.
+5. `checks.ts`: `proficiencyBonus`, `PASSIVE_BASE`, `checkSteps({ character, gathered, stats })`.
+6. `module.ts`: `fifthEditionModule`; the class paths; `derive` joins them with `checkSteps`.
+7. Tests (§7), then `checks.ts` of the golden tests and the two fixture tests.
+
+Technical choices (ADR 002):
+- **A later class leaves out its own grants by kind, not by a list in the data.** The SRD's
+  rule (§8) is that a later class gives "only some of the new class's starting proficiencies"
+  and no starting equipment; the starting ones are exactly a class's own `proficiency` and
+  `item` grants at level 1, and what it gives instead is `multiclass.grants` (ENG-32). A list of
+  grant ids on the class would be a second place saying the same, and a homebrew class would
+  have to repeat it. A proficiency a class gives at a later level is a feature's, so it stays.
+- **The core asks the module for each entity's grants** (`grantsOf`), instead of learning what a
+  later class is. One hook covers both rules of this ticket (a later class, a feat's `replaces`),
+  and the core names no game. It is called once per entity gathered.
+- **A feat's `replaces` drops the grant whatever it is.** ENG-33 made it name the grant; the
+  schema already refuses a grant replaced twice. Which grants may be replaced is the level-up
+  wizard's choice to offer (phase 4).
+- **Saves come from the first class's `saves` field** (ENG-09 §4), as an `entity` step naming
+  the class: the field is not a grant, and making one up would need a grant id the class could
+  also use. The new step kind serves ENG-14's hit die and armor too.
+- **A proficiency level is the highest, never a sum**: "your proficiency bonus can't be added to
+  a single die roll or other number more than once" (§8). Half a bonus rounds down (§8); a rule
+  that rounds up is a mechanic's (§9).
+- **`d20.all.bonus` goes into every check, save and skill total, and so into passive values.**
+  dnd5e adds its exhaustion reduction to the passive score too (§8). Golden D's passive Perception
+  is therefore 9; SPEC §6.7 does not state it, so it is not a golden value.
+- **`checks.<stat>.bonus` goes into the stat's skills too**: a skill check is an ability check
+  (§8), as dnd5e adds an ability's check bonus to its skills.
+- **Totals read every part, even a 0**, as Tales' do (ENG-28): the breakdown names each path an
+  effect may change, and the screen hides what adds nothing.
+- **A skill's own `totalFormula` is the module's to read**, in its skill step: the core gives no
+  skill total, and what a total adds up is each system's. It replaces the whole total, as its name
+  says; it reads `@prof`, `@d20.all.bonus` and the rest only if it names them. Effects on
+  `skills.<key>.total` still apply after it.
+- **The proficiency bonus is a function, not a table**: `2 + ⌊(level − 1) / 4⌋`, tested against
+  the 20 values of both editions' tables (§8). Level 0, a character not yet given a class, takes
+  +2: the 2024 table's first row is "Up to 4".
+- **The class paths are the module's.** `classes.<key>.level` is read from `systemData`, a table
+  column from the class's `levels` (ENG-10 §4); the class is found among the gathered entities, so
+  a class no pack has gives no path, and a formula reading it warns `missingPath`.
+- **The golden tests' module is the real one.** Stand-ins stay only for paths a later ticket
+  gives, and the helper refuses a stand-in the module gives, so each ticket removes its own.
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, no `schemaVersion`, no Dexie table changes. `replaces` and
+`totalFormula` were stored already; they are now read.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/compute.test.ts` — `describe('ENG-13 a module's rule for grants')`: on
+  Ash, a module that leaves out the warden's `pick-knack` and adds a knack grant: what is left
+  out gives nothing, is not pending and its choice is unused; what is added is gathered under its
+  part; a dropped `entity` grant gathers nothing; `grantsOf` is called once per entity.
+- `packages/engine/test/derived.test.ts` — `describe('ENG-13 a step's formula warnings')`: a step
+  returning a formula's warnings gives `stepFormula` naming its path; finish still applies.
+- `packages/engine/test/stats.test.ts` — `describe('ENG-13 …')`: `basePath` gets what was
+  gathered.
+- `packages/system-5e/test/module.test.ts` — `describe('ENG-13 fifth edition's module')`: §3
+  items 1–8, 11, 12: the level, the entities, the defaults (the modifier of every score 1 to 30
+  against the SRD table), `proficiencyBonus` at levels 0 to 20, golden C's grants and saves,
+  `replaces`, the class paths, the variants, breakdowns, purity.
+- `packages/system-5e/test/golden/golden-values.test.ts` — `describe('ENG-13 goldens: check
+  bonuses')`: §3 item 9.
+- `fixtures-2014.test.ts`, `fixtures-2024.test.ts` — their checks, on the real module; golden C's
+  pending choices are none.
+- Control numbers from: SPEC §6.7 (item 9); §8's tables (proficiency bonus, modifiers); the
+  variants worked out by hand from their data, never copied from a run.
+
+#### 8. Checked against the source
+
+Sources: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214` (its `HEAD` on
+2026-10-02), `packages/5e-database/src/{2014,2024}/en/`, read with `jq`; foundryvtt/dnd5e at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (its `HEAD` on 2026-10-02): `module/` and
+`packs/_source/{rules,content24}`, which quote SRD 5.1 and SRD 5.2.1 (CC-BY-4.0).
+
+**The proficiency bonus.** `5e-SRD-Levels.json`, every class's rows, both editions: +2 at levels 1
+to 4, +3 at 5 to 8, +4 at 9 to 12, +5 at 13 to 16, +6 at 17 to 20 (measured: each level has one
+value across the 12 classes). SRD 5.2.1 (`content24/chapter-1/d20-tests.yml`): "Up to 4 +2, 5–8
++3, …"; both editions (`rules/chapter-6-customization-options.yml`, `content24/chapter-2/
+character-creation.yml`): it is "based on your total character level … a level 3 Fighter / level
+2 Rogue … +3". dnd5e: `Proficiency.calculateMod(level)` = `Math.floor((level + 7) / 4)` on the
+sum of class levels (`character.mjs`), equal for 1 to 20. SRD 5.1 (`5e-SRD-Rules.json`,
+Proficiency Bonus): "can't be added to a single die roll or other number more than once";
+multiplied or divided "only once". So a proficiency level is the highest, not a sum.
+
+**Modifiers and the maximum.** SRD 5.1 (Ability Scores and Modifiers): "subtract 10 from the
+ability score and then divide the total by 2 (round down)", with the table from 1 (−5) to 30
+(+10). SRD 5.2.1 (`content24/chapter-1/playing-the-game.yml`): the same table, and "Whenever you
+divide or multiply a number in the game, round down … Some rules make an exception and tell you
+to round up." dnd5e: `Math.floor((a.value - 10) / 2)`; `maxAbilityScore = 20`. SPEC §5.3's
+defaults agree: `floor((@score - 10) / 2)`, a save, 20.
+
+**Saves.** SRD 5.1 (Saving Throws): "roll a d20 and add the appropriate ability modifier … Each
+class gives proficiency in at least two saving throws". SRD 5.2.1 (`d20-tests.yml`): "Each class
+gives proficiency in at least two saving throws". dnd5e (`common.mjs`, `prepareAbilities`): save
+= modifier + its bonuses + the roll reduction + the proficiency's `flat`.
+
+**Multiclassing.** SRD 5.1 (`rules/chapter-6-customization-options.yml`): "When you gain your
+first level in a class other than your initial class, you gain only some of new class's starting
+proficiencies, as shown in the Multiclassing Proficiencies table", and "You don't, however,
+receive the class's starting equipment". SRD 5.2.1 (`character-creation.yml`): the same first
+sentence, "as detailed in each class's description"; each class's "As a Multiclass Character"
+(`content24/chapter-3/*.yml`) lists what it gives: the fighter and the paladin "Hit Point Die,
+proficiency with Martial weapons, and training with Light and Medium armor and Shields", the
+wizard "the Hit Point Die", the bard one skill, one instrument and light armor; none lists saving
+throws. 5e-database `multi_classing` agrees for 2014 (the paladin: `light-armor`, `medium-armor`,
+`shields`, `simple-weapons`, `martial-weapons`; the bard, the ranger and the rogue choose one
+skill). Golden C's fixtures carry these (ENG-09, ENG-10).
+
+**Skills, checks and passive values.** SRD 5.1 (Skills): "proficiency in a skill means an
+individual can add his or her proficiency bonus to ability checks that involve that skill" — a
+skill check is an ability check. (Passive Checks): "10 + all modifiers that normally apply to the
+check. If the character has advantage on the check, add 5. For disadvantage, subtract 5." SRD
+5.2.1 (`content24/appendices/rules-glossary.yml`, Passive Perception): "10 plus the creature's
+Wisdom (Perception) check bonus. If the creature has Advantage on such checks, increase the score
+by 5"; (`character-creation.yml`): "Include all modifiers that apply to your Wisdom (Perception)
+checks". dnd5e (`creature.mjs`, `prepareSkill`): total = modifier + bonus (the skill's, every
+check's, its ability's check bonus, every skill's) + `conditionRollReduction` + the
+proficiency's `flat`; passive = 10 + modifier + bonus + `flat` + … + advantage × 5 +
+`conditionRollReduction`. Half proficiency: `Proficiency.flat` rounds down unless a rule says up
+(2014's Remarkable Athlete: "half your proficiency bonus (round up)").
+
+**Exhaustion in d20 tests.** SRD 5.2.1 (rules glossary): "When you make a D20 Test, the roll is
+reduced by 2 times your Exhaustion level"; "D20 Tests encompass … ability checks, attack rolls,
+and saving throws". dnd5e: `conditionRollReduction` (exhaustion's `-levels × 2`) is in every
+check, save, skill and passive.
+
+**The goldens' check lines agree with these** (worked out before the test was written): A's
+modifiers from 13, 10, 16, 8, 16, 12; its saves and skills +2 where proficient (the cleric's WIS
+and CHA saves; Insight and Religion from the Acolyte, Medicine and Persuasion from the cleric);
+passive 10 + 3. B's modifiers from 17, 13, 15, 8, 12, 10; STR and CON saves +2; its five skills
++2; passive 10 + 3. B4: STR 19 → +4, Athletics 4 + 2. C: level 6 → +3. D: 5 − 4 and 5 − 4. No
+golden value looks wrong; nothing stops.
+
+#### 9. Not in this ticket
+
+- An effect that sets a skill's stat (`skills.<key>.ability`): ENG-43 (§4).
+- Advantage and disadvantage (Remarkable Athlete's Athletics, the passive's ±5): ENG-34.
+- Initiative, armor class, hit points, speed (and Alert's `init.bonus` as a path): ENG-14. Spell
+  save DC and attack: ENG-15. Attacks: ENG-16.
+- A half proficiency that rounds up (2014's Remarkable Athlete) and an ability check that takes
+  half a proficiency (2014's Jack of All Trades): their mechanics, phase 3.
+- The house rule `abilityMax` and the editions' defaults: ENG-19.
+- Exhaustion in 2014 (levels with their own effects): ENG-19.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** Each expected value is SPEC §6.7's; §8 shows each agrees
+  with the sources. Golden D's passive Perception is not a golden value and is marked so.
+- **`packages/engine` is pure; the core names no game.** The core gains a hook, a warning code and
+  a step kind, none naming a game; `grantsOf` is tested on Tales.
+- **Everything is data.** No stat or skill key is in the code: saves are each stat with a save,
+  skills each skill in `byKey`; a pack's own stat gets a check and a save as `str` does.
+- **`compute()` is pure.** The module reads its arguments only; the purity test runs it frozen.
+- **A number with no breakdown entry is a bug.** Every path has its steps, and they add up.
+- **Manual overrides always win.** The module's paths are finished by ENG-17's phases.
+- **Each system's rules live in its own module.** The multiclass rule, the saves and the bonus are
+  in `packages/system-5e`; no `if (ruleset === …)`: the two editions share each rule here (§8).
+- **Formulas never run code.** `totalFormula` goes through ENG-07's evaluator.
+- **Missing is not broken.** A class no pack has, a skill on a stat the character lacks, a
+  formula that does not parse: a warning and 0, never a throw.
+- **Licensing.** Variants are made up (`hb-test`); §8 quotes the SRDs (CC-BY-4.0) only.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `module.test.ts` alone: `Tests 14 passed (14)`, 882 ms. `golden-values.test.ts` alone: `Tests 6
+  passed (6)`, 671 ms.
+- Lint: `Checked 140 files`, no fixes, no error (136 before; 4 new files).
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done`.
+- Test: `Test Files 38 passed (38)`, `Tests 373 passed (373)`, 5.63 s (before: 36 files, 349
+  tests).
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- Golden A has 115 paths (was 20): `level`; 6 per stat (`score`, `max`, `mod`, `saveProf`,
+  `saveBonus`, `save`); 2 per stat (`checks.<key>.bonus`, `.total`); `prof`, `d20.all.bonus`,
+  `saves.all.bonus`, `skills.all.bonus`; 3 per skill and Perception's passive value;
+  `classes.cleric.level`; the 6 stand-ins.
+- Every line of §3 item 9 is met. Every golden (A, B, B4, C in both editions, D) computes with no
+  warning, and each of its breakdowns adds up to its value.
+- Golden C (2014) has 12 proficiencies (was 13): the wizard's 7, and the paladin's 5 from its
+  `multiclass-armor` and `multiclass-weapons`; no heavy armor. Golden C has no pending choice in
+  either edition.
+- The tests bite. 32 breaks, each on its own and restored, the `engine` and `system-5e` tests run
+  (22 files, 244 tests; 245 for the last three). In `module.ts`: a later class keeps its starting
+  grants, 4 fail; gets no multiclass grants, 2; every class counted later, 7; `atLevel` ignored, 1;
+  items not starting, 1; `replaces` ignored, 1; a text column kept, 1; a class level with no step,
+  2; the base path refused, 1; the modifier rounded, 11; no save by default, 9. In `checks.ts`:
+  the last class's saves, 2; levels summed, 1; an equal level keeps the last, 1; half rounded up,
+  1; a grant's level 0 by default, 6; no `d20.all.bonus` in skills, 2, in saves, 1, in checks, 1;
+  no check bonus in skills, 1; no save bonus, 1; no `saves.all.bonus`, 1; `hasSave` ignored, 1;
+  passive base 5, 5; every skill passive, 1; `totalFormula` ignored, 1; its warnings dropped, 1;
+  the bonus as dnd5e's `⌊(level + 7) / 4⌋` (level 0 gives +1), 2; `prof` with no step, 1. In the
+  core: `grantsOf` not used, 7; a step's warnings dropped, 2; `basePath` given no entities, 2.
+- Three breaks first went unnoticed: the base path break was written so it changed nothing
+  (rewritten, 1 fails); no test looked at exhaustion in an ability check, or at a skill that is not
+  passive. The golden D test of `module.test.ts` was added for them; each now fails 1.
+
+Differences from §3 and §4:
+- No value differs. §3 item 5 was reworded to say each stat's check comes before its save.
+- `grantsOf` returns the system's own grant type, so a Tales module typed with the core's default
+  entity type no longer fits `compute` on Tales' index (`TS2345`). Four test annotations in
+  `compute.test.ts` and `stats.test.ts` now name `TalesEntity`; no test changed in meaning.
+- The stand-ins carry a `rule` step, `standIn`: the "every breakdown adds up" check found
+  `armor.worn` 1 and `crit.range` 20 with no step.
+- One expected value of this ticket's own test was first written wrong: Brook's gathered
+  entities without `iron-will`. It was corrected from ENG-27's `tales/expected.ts`, not from the
+  run.
+- Golden D's passive Perception, 9, is the sources' reading (§4, §8); SPEC §6.7 does not state it,
+  and the test says so.
+
+Against the row and its notes:
+- Each point of the backlog's note is done: the defaults are SPEC §5.3's (§3 item 1); saves read
+  `StatOf.hasSave` (item 5); the values are `derive`'s steps; `totalFormula` is read by the
+  module's skill step (item 8); a later class gives its `multiclass.grants` in place of its
+  starting ones, and only the first class's `saves` count (items 2, 6), so golden C has no pending
+  choice; the module names what ENG-33 says from `systemData`; a feat's `replaces` leaves its grant
+  out (item 3); `@prof`, the class table and `d20.all.bonus` are the module's, their stand-ins gone
+  (item 10).
+- The golden lines this ticket makes true are on in `golden-values.test.ts` (§3 item 9).
+- ENG-17's note: the text target `skills.<key>.ability` moved to ENG-43 (§4 item 1).
+
+Found, not fixed:
+- `statDefaults` is one value for every character, so the house rule `abilityMax` (ENG-33) is read
+  by no code. Noted on ENG-19.
+- A passive value is 5 higher with advantage on its check and 5 lower with disadvantage (SRD 5.1
+  Passive Checks; SRD 5.2.1 Passive Perception; dnd5e `advantageMode × 5`). Noted on ENG-34.
+- A half proficiency that rounds up (2014's Remarkable Athlete: "round up") and half a
+  proficiency on any ability check (2014's Jack of All Trades): `skills.<key>.prof` 0.5 rounds
+  down, and an ability check has no proficiency level. Noted for phase 3's mechanics.
+- A feat's `replaces` naming a grant the character does not reach gives no warning: the module
+  has no warning of its own but `stepFormula`. Noted for phase 4, whose level-up wizard writes it.
+- dnd5e's initiative adds the Dexterity check bonus and the roll reduction (`attributes.mjs`,
+  `prepareInitiative`): golden D's initiative −1 needs `d20.all.bonus`. Noted on ENG-14.
+
+Nothing for the changelog.

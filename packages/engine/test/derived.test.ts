@@ -2,6 +2,7 @@ import {
   type ComputeWarning,
   compute,
   type DerivedStep,
+  evaluateNumber,
   loadContentIndex,
   type StatOf,
   type SystemModule,
@@ -411,5 +412,46 @@ describe('ENG-28 derived values a system module supplies', () => {
         path,
       })),
     );
+  });
+});
+
+describe("ENG-13 a step's formula warnings", () => {
+  it('warns of each as `stepFormula`, naming its path; an override still applies after', () => {
+    /** A step evaluating a formula, its warnings returned with its number. */
+    const evaluating =
+      (formula: string): DerivedStep =>
+      (read) => {
+        const { value, warnings } = evaluateNumber(formula, read);
+        return {
+          value,
+          steps: [{ kind: 'formula', formula, of: 'system', value, change: value }],
+          warnings,
+        };
+      };
+    const result = computed(
+      variant(ash, { overrides: [{ path: 'omens', value: 4 }] }),
+      withSteps(() => ({
+        riddle: evaluating('@abilities.grit.mod +'),
+        omens: evaluating('1 / 0'),
+        clear: evaluating('@abilities.grit.mod + 1'),
+      })),
+    );
+    expect(result.values).toMatchObject({ riddle: 0, omens: 4, clear: 4 });
+    expect(result.breakdown.omens).toEqual([
+      { kind: 'formula', formula: '1 / 0', of: 'system', value: 0, change: 0 },
+      { kind: 'override', value: 4, change: 4 },
+    ]);
+    expect(codes(result)).toEqual([
+      {
+        code: 'stepFormula',
+        path: 'riddle',
+        warning: expect.objectContaining({ code: 'unexpected' }),
+      },
+      {
+        code: 'stepFormula',
+        path: 'omens',
+        warning: expect.objectContaining({ code: 'notFinite' }),
+      },
+    ]);
   });
 });

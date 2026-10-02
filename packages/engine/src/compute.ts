@@ -14,8 +14,10 @@ import {
   type GatherableEntity,
   type Gathered,
   type GatherWarning,
+  type GrantOf,
   gather,
   type NamedEntity,
+  ownGrants,
 } from './gather';
 import { type PhaseWarning, phasesOf } from './phases';
 import { type BasePhase, type BreakdownStep, computeStats, type StatWarning } from './stats';
@@ -38,9 +40,16 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
   /**
    * A path a base-phase formula may read besides `level`, with its value for this character:
    * SPEC §5.6 allows levels, class levels and choices (a fifth-edition class's level). Gives
-   * `undefined` for a path a base-phase formula may not read.
+   * `undefined` for a path a base-phase formula may not read. `gathered` is what it has.
    */
-  basePath?(character: C, path: string): FormulaValue | undefined;
+  basePath?(character: C, path: string, gathered: Gathered<E>): FormulaValue | undefined;
+  /**
+   * The grants an entity gives this character, when a rule of the system leaves some of its own
+   * out or adds others (ENG-13: a fifth-edition class taken after the first). Gathering reads
+   * every entity's grants through it, once each; without it, an entity gives its own `grants`.
+   * A grant's part is `<entityId>#<grantId>` either way.
+   */
+  grantsOf?(character: C, entity: E): readonly GrantOf<E>[];
   /**
    * The system's derived values (SPEC §6.1 step 5): computed path → its step. A step reads any
    * other path, the core's or the module's; a pack's formula of an entity part is read through
@@ -74,10 +83,17 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
   system: SystemModule<C, E>,
 ): Computed<E> {
   const level = system.level(character);
-  const gathered = gather(character, index, level, system.entities(character));
+  const grantsOf = system.grantsOf;
+  const gathered = gather(
+    character,
+    index,
+    level,
+    system.entities(character),
+    grantsOf === undefined ? ownGrants : (entity) => grantsOf(character, entity),
+  );
   const defaults = system.statDefaults;
   const basePhase: BasePhase = {
-    read: (path) => (path === LEVEL_PATH ? level : system.basePath?.(character, path)),
+    read: (path) => (path === LEVEL_PATH ? level : system.basePath?.(character, path, gathered)),
     defaultMax: defaults.defaultMax,
   };
   const base = computeStats(character, gathered, basePhase);

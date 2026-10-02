@@ -223,16 +223,23 @@ export function maxLevelOf(entity: GatherableEntity): number {
   return typeof max === 'number' ? max : 1;
 }
 
+/** An entity's own grants: what it gives when no rule of its system says otherwise. */
+export function ownGrants<E extends GatherableEntity>(entity: E): readonly GrantOf<E>[] {
+  return (entity.grants ?? []) as readonly GrantOf<E>[];
+}
+
 /**
  * Gathers what a character has (SPEC §6.1 steps 1–2). `level` is the character's level, which a
  * grant's `atLevel` is measured against; `named` are the entities its module part names, each
- * with its own level when its grants count one. Pure: nothing passed in is changed.
+ * with its own level when its grants count one. `grantsOf` gives the grants an entity gives this
+ * character, its own by default. Pure: nothing passed in is changed.
  */
 export function gather<E extends GatherableEntity>(
   character: CharacterCore<E>,
   index: ContentIndex<E>,
   level: number,
   named: readonly NamedEntity[],
+  grantsOf: (entity: E) => readonly GrantOf<E>[] = ownGrants,
 ): Gathered<E> {
   const warnings: GatherWarning[] = [];
   const ruleset = character.ruleset;
@@ -311,7 +318,7 @@ export function gather<E extends GatherableEntity>(
     }
 
     const given: Step[] = [];
-    for (const grant of (entity.grants ?? []) as readonly GrantOf<E>[]) {
+    for (const grant of grantsOf(entity)) {
       if (grant.atLevel !== undefined && grant.atLevel > step.level) continue;
       const part: EntityPartId = `${entity.id}#${grant.id}`;
       const chosen = chosenFor(grant, part);

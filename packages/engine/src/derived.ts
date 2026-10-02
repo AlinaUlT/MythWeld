@@ -39,6 +39,8 @@ export interface StatOf<E extends GatherableEntity> {
 export interface Derived {
   readonly value: number;
   readonly steps: readonly BreakdownStep[];
+  /** What a formula the step evaluated met; each is warned as `stepFormula` (ENG-13). */
+  readonly warnings?: readonly FormulaWarning[];
 }
 
 /** A computed path's value, computed first when it is not yet. A path nothing gives reads 0. */
@@ -75,6 +77,7 @@ export interface DeriveInput<C, E extends GatherableEntity> {
 export type DerivedWarning = { message: string } & (
   | { code: 'modFormula'; key: string; of: 'stat' | 'system'; warning: FormulaWarning }
   | { code: 'resourceFormula'; key: string; part: EntityPartId; warning: FormulaWarning }
+  | { code: 'stepFormula'; path: string; warning: FormulaWarning }
   | { code: 'missingPath'; path: string; for: string }
   | { code: 'cycle'; path: string; for: string; loop: readonly LoopLink[] }
   | { code: 'pathTaken'; path: string }
@@ -267,7 +270,16 @@ export function computeDerived<E extends GatherableEntity>(input: {
     computing.set(path, link);
     const read: ValueReader = (each) => valueAt(each, path);
     const readBy: PartReader = (part) => (each) => valueAt(each, path, part);
-    const result = finish(path, step(read, readBy), readBy);
+    const own = step(read, readBy);
+    for (const warning of own.warnings ?? []) {
+      warnings.push({
+        code: 'stepFormula',
+        path,
+        warning,
+        message: `${warning.message} (a formula computing ${path}).`,
+      });
+    }
+    const result = finish(path, own, readBy);
     computing.delete(path);
     values.set(path, result.value);
     breakdown.set(path, result.steps);

@@ -10,11 +10,11 @@ import {
 } from '../../src/index.ts';
 import {
   formulasOf,
-  gatheringModule,
   idsNamedBy,
   idsNamedByCharacter,
   keysNamedBy,
   opened,
+  standingIn,
 } from './checks.ts';
 import { goldenB, goldenB4, goldenC2024, goldenD, srd2024 } from './index.ts';
 
@@ -28,19 +28,10 @@ const entities: readonly FifthEditionEntity[] = pack.entities;
 
 const { index, refused, warnings } = loadContentIndex(FIFTH_EDITION_SYSTEM, [pack]);
 
-// Gathering, the base phase and the fixture's mechanics are under test. The module's values that
-// those mechanics read or change stand in here (ENG-13, ENG-14, ENG-16 give them): each target
-// where it starts, the critical range at a d20's highest face (SPEC §6.5), the proficiency bonus
-// of levels 1 to 4 (+2, 5e-database `prof_bonus`), and the chain mail goldens B, B4 and D wear.
-const fighting = gatheringModule(index, {
-  'init.bonus': 0,
-  'ac.bonus': 0,
-  'crit.range': 20,
-  'd20.all.bonus': 0,
-  'speed.all.bonus': 0,
-  prof: 2,
-  'armor.worn': 1,
-});
+// Gathering, the base phase and the fixture's mechanics are under test, through fifth edition's
+// module (ENG-13): it gives `prof`, the fighter's table and `d20.all.bonus`. The values ENG-14 and
+// ENG-16 will give stand in (`STAND_INS`): each target where it starts, the critical range at a
+// d20's highest face (SPEC §6.5), and the chain mail goldens B, B4 and D wear.
 
 const b = opened(openFifthEditionCharacter(goldenB));
 const b4 = opened(openFifthEditionCharacter(goldenB4));
@@ -49,13 +40,13 @@ const d = opened(openFifthEditionCharacter(goldenD));
 
 /** A character's scores, in the SRD's order of the stats. */
 function scoresOf(character: FifthEditionCharacter): unknown[] {
-  const { values } = compute(character, index, fighting);
+  const { values } = compute(character, index, standingIn);
   return ['str', 'dex', 'con', 'int', 'wis', 'cha'].map((key) => values[`abilities.${key}.score`]);
 }
 
 /** The steps of a stat's score: the base, then each grant's increase. */
 function increasesOf(character: FifthEditionCharacter, key: string): string[] {
-  return (compute(character, index, fighting).breakdown[`abilities.${key}.score`] ?? []).map(
+  return (compute(character, index, standingIn).breakdown[`abilities.${key}.score`] ?? []).map(
     (step) =>
       step.kind === 'grant' ? `${step.part} ${step.change}` : `${step.kind} ${step.change}`,
   );
@@ -161,7 +152,7 @@ describe('ENG-10 2024 fixtures', () => {
   });
 
   it('gathers golden B whole, every choice made', () => {
-    const computed = compute(b, index, fighting);
+    const computed = compute(b, index, standingIn);
     expect(computed.entities.map((had) => had.entity.id)).toEqual(GATHERED_B);
     expect(computed.pendingChoices).toEqual([]);
     expect(computed.warnings).toEqual([]);
@@ -169,7 +160,7 @@ describe('ENG-10 2024 fixtures', () => {
   });
 
   it("gives golden B's proficiencies from the sources SPEC §6.7 names", () => {
-    const given = compute(b, index, fighting).proficiencies.map(
+    const given = compute(b, index, standingIn).proficiencies.map(
       ({ category, key, from }) => `${category} ${key} ← ${from}`,
     );
     expect(given).toEqual([
@@ -205,7 +196,7 @@ describe('ENG-10 2024 fixtures', () => {
   });
 
   it("gives golden B's mechanics their numbers: SPEC §6.7", () => {
-    const { values, resources } = compute(b, index, fighting);
+    const { values, resources } = compute(b, index, standingIn);
     // Initiative +3 = DEX +1, Alert +2.
     expect(values['init.bonus']).toBe(2);
     // AC 17 = chain mail 16, Defense +1.
@@ -223,7 +214,7 @@ describe('ENG-10 2024 fixtures', () => {
   });
 
   it('gathers golden B4: the Champion, level 4, +2 STR', () => {
-    const computed = compute(b4, index, fighting);
+    const computed = compute(b4, index, standingIn);
     expect(computed.entities.map((had) => had.entity.id)).toEqual([
       ...GATHERED_B,
       'srd-2024:feature/fighter-action-surge',
@@ -246,7 +237,7 @@ describe('ENG-10 2024 fixtures', () => {
   });
 
   it("gives golden B4's mechanics their numbers: SPEC §6.7", () => {
-    const { values, entities: had } = compute(b4, index, fighting);
+    const { values, entities: had } = compute(b4, index, standingIn);
     // A critical hit on 19 or 20 (Improved Critical).
     expect(values['crit.range']).toBe(19);
     expect(values['resources.secondWind.max']).toBe(3);
@@ -265,7 +256,7 @@ describe('ENG-10 2024 fixtures', () => {
   });
 
   it('gives golden D exhaustion 2: every d20 test −4, speed −10', () => {
-    const computed = compute(d, index, fighting);
+    const computed = compute(d, index, standingIn);
     expect(computed.entities.map((had) => had.entity.id)).toEqual([
       ...GATHERED_B,
       'srd-2024:condition/exhaustion',
@@ -277,21 +268,19 @@ describe('ENG-10 2024 fixtures', () => {
     // Speed 20 = 30 − 10.
     expect(computed.values['speed.all.bonus']).toBe(-10);
     // Golden B has none of it.
-    const without = compute(b, index, fighting).values;
+    const without = compute(b, index, standingIn).values;
     expect([without['d20.all.bonus'], without['speed.all.bonus']]).toEqual([0, 0]);
   });
 
   it('gathers golden C (2024): two classes, level 6', () => {
-    const computed = compute(c, index, gatheringModule(index, {}));
+    const computed = compute(c, index, standingIn);
     expect(computed.entities.map((had) => [had.entity.id, had.level])).toEqual([
       ['srd-2024:class/wizard', 3],
       ['srd-2024:class/paladin', 3],
     ]);
     expect(computed.values.level).toBe(6);
     expect(computed.warnings).toEqual([]);
-    // The paladin's own skills are a first class's grant; ENG-13 leaves them out of a later class.
-    expect(computed.pendingChoices.map((pending) => pending.part)).toEqual([
-      'srd-2024:class/paladin#skills',
-    ]);
+    // ENG-13: the paladin, a later class, gives its multiclass grants, not its own skills.
+    expect(computed.pendingChoices).toEqual([]);
   });
 });

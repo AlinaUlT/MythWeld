@@ -6,6 +6,8 @@
 // engine refuses, `Math.random`, and any import but its own files, the core and `zod`.
 
 export * from './character';
+export * from './checks';
 export * from './entity-types';
+export * from './module';
 export * from './pack';
 export * from './system';

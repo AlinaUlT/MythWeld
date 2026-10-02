@@ -1,5 +1,9 @@
-import type { ContentIndex, DerivedStep, SystemModule } from '@grimoire/engine';
-import type { FifthEditionCharacter, FifthEditionEntity } from '../../src/index.ts';
+import type { DerivedStep, SystemModule } from '@grimoire/engine';
+import {
+  type FifthEditionCharacter,
+  type FifthEditionEntity,
+  fifthEditionModule,
+} from '../../src/index.ts';
 
 // ENG-09's checks of a golden pack and its characters, shared by both editions' tests (ENG-10).
 // ENG-10 widened them for 2024: a weapon's mastery is a key; a `formula` prerequisite and a
@@ -129,42 +133,35 @@ export function idsNamedByCharacter(character: FifthEditionCharacter): string[] 
 }
 
 /**
- * The test module: it gathers what `systemData` names, gives each class's table columns at its
- * level (`classes.<key>.table.<column>`, read from the class in `index`), and gives `values`.
- * Fifth edition's module, with its defaults and values, is ENG-13's to ENG-16's; each value given
- * here stands in for one of them, and says so where it is given.
+ * The paths the goldens' mechanics read or change that a later ticket's steps give, each from
+ * where it starts (ENG-10 §3 item 9): hit points, initiative, armor class, armor worn and speed
+ * are ENG-14's, the critical range ENG-16's (SPEC §6.5: a d20's highest face). Chain mail is the
+ * armor goldens B, B4 and D wear.
  */
-export function gatheringModule(
-  index: ContentIndex<FifthEditionEntity>,
-  values: Readonly<Record<string, number>>,
-): SystemModule<FifthEditionCharacter, FifthEditionEntity> {
-  const given =
-    (value: number): DerivedStep =>
-    () => ({ value, steps: [] });
-  return {
-    level: (one) => one.systemData.classes.reduce((sum, entry) => sum + entry.level, 0),
-    entities: ({ systemData: data }) => [
-      ...[data.species, data.background].flatMap((entry) => (entry ? [{ id: entry.id }] : [])),
-      ...data.classes.flatMap((entry) => [
-        { id: entry.id, level: entry.level },
-        ...(entry.subclass === undefined ? [] : [{ id: entry.subclass, level: entry.level }]),
-      ]),
-      ...data.feats.map((feat) => ({ id: feat.id })),
-    ],
-    statDefaults: { defaultMax: 20, modFormula: '0', hasSave: false },
-    derive: ({ character }) => {
-      const steps: Record<string, DerivedStep> = {};
-      for (const entry of character.systemData.classes) {
-        const found = index.get(entry.id);
-        if (!found.ok || found.entity.type !== 'class') continue;
-        const { key, levels } = found.entity;
-        const row = levels?.find((each) => each.level === entry.level);
-        for (const [column, value] of Object.entries(row?.table ?? {})) {
-          if (typeof value === 'number') steps[`classes.${key}.table.${column}`] = given(value);
-        }
-      }
-      for (const [path, value] of Object.entries(values)) steps[path] = given(value);
-      return steps;
-    },
-  };
-}
+export const STAND_INS: Readonly<Record<string, number>> = {
+  'hp.max.bonus': 0,
+  'init.bonus': 0,
+  'ac.bonus': 0,
+  'armor.worn': 1,
+  'speed.all.bonus': 0,
+  'crit.range': 20,
+};
+
+/**
+ * ENG-13: fifth edition's module, with `STAND_INS` for the paths it does not give yet. A stand-in
+ * for a path the module gives fails the test: the ticket that gives the path removes its stand-in.
+ */
+export const standingIn: SystemModule<FifthEditionCharacter, FifthEditionEntity> = {
+  ...fifthEditionModule,
+  derive: (input) => {
+    const steps: Record<string, DerivedStep> = { ...fifthEditionModule.derive(input) };
+    for (const [path, value] of Object.entries(STAND_INS)) {
+      if (path in steps) throw new Error(`The module gives ${path}; remove its stand-in.`);
+      steps[path] = () => ({
+        value,
+        steps: [{ kind: 'rule', rule: 'standIn', value, change: value }],
+      });
+    }
+    return steps;
+  },
+};

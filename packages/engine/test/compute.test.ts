@@ -42,7 +42,10 @@ function variant(base: TalesCharacter, change: Partial<TalesCharacter>): TalesCh
 }
 
 /** Tales' character, computed with its module. */
-function computed(character: TalesCharacter, system: SystemModule<TalesCharacter> = talesModule) {
+function computed(
+  character: TalesCharacter,
+  system: SystemModule<TalesCharacter, TalesEntity> = talesModule,
+) {
   return compute(character, index, system);
 }
 
@@ -199,7 +202,7 @@ describe('ENG-11 gathering a character’s entities', () => {
     );
     expect(atOne.pendingChoices).toEqual([]);
 
-    const ownLevel: SystemModule<TalesCharacter> = {
+    const ownLevel: SystemModule<TalesCharacter, TalesEntity> = {
       ...talesModule,
       entities: (character) => [{ id: character.systemData.calling, level: 1 }],
     };
@@ -629,5 +632,60 @@ describe('ENG-11 gathering a character’s entities', () => {
         { code: 'notAnOption', part: 'cards:hand/start#high', item: 'cards:card/two' },
       ]);
     });
+  });
+});
+
+describe("ENG-13 a module's rule for an entity's grants", () => {
+  /** What `grantsOf` was asked: the character's name and the entity's id, in order. */
+  const asked: string[] = [];
+
+  /** Tales with a rule made up here: the warden gives a knack in place of its two choices. */
+  const ruled: SystemModule<TalesCharacter, TalesEntity> = {
+    ...talesModule,
+    grantsOf: (character, entity) => {
+      asked.push(`${character.name} ${entity.id}`);
+      const own = entity.grants ?? [];
+      if (entity.id !== 'tales-core:calling/warden') return own;
+      return [
+        ...own.filter(({ id }) => id !== 'pick-knack' && id !== 'pick-talent'),
+        { id: 'steady', kind: 'proficiency', category: 'knack', fixed: ['steady'] },
+      ];
+    },
+  };
+
+  it('gathers what it gives under the part it names; what it leaves out gives nothing', () => {
+    const result = computed(ash, ruled);
+    // No talent: the warden's `pick-talent` is left out, so night-warden and quick-step are not.
+    expect(ids(result)).toEqual(['tales-core:calling/warden', 'tales-core:condition/weary']);
+    expect(result.grants.map(({ part, chosen }) => [part, chosen])).toEqual([
+      ['tales-core:calling/warden#sturdy', []],
+      ['tales-core:calling/warden#climber', []],
+      ['tales-core:calling/warden#luck', []],
+      ['tales-core:calling/warden#steady', []],
+    ]);
+    expect(result.proficiencies).toEqual([
+      { category: 'knack', key: 'climb', from: 'tales-core:calling/warden#climber' },
+      { category: 'knack', key: 'steady', from: 'tales-core:calling/warden#steady' },
+    ]);
+    // Ash's stored choices of the two left out are not read: nothing pending, no warning.
+    expect(result.pendingChoices).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect([result.values['skills.sneak.prof'], result.values['skills.steady.prof']]).toEqual([
+      0, 1,
+    ]);
+  });
+
+  it('is asked once for each entity gathered, with the character', () => {
+    asked.length = 0;
+    computed(ash, ruled);
+    expect(asked).toEqual(['Ash tales-core:calling/warden', 'Ash tales-core:condition/weary']);
+    asked.length = 0;
+    computed(brook, ruled);
+    expect(asked).toEqual([
+      'Brook tales-core:calling/seeker',
+      'Brook character:talent/lucky-charm',
+      'Brook tales-core:talent/iron-will',
+      'Brook tales-core:condition/lost',
+    ]);
   });
 });

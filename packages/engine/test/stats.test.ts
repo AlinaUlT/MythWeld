@@ -69,7 +69,10 @@ function talent(
 }
 
 /** Tales' character, computed with its module. Every breakdown adds up to its value. */
-function computed(character: TalesCharacter, system: SystemModule<TalesCharacter> = talesModule) {
+function computed(
+  character: TalesCharacter,
+  system: SystemModule<TalesCharacter, TalesEntity> = talesModule,
+) {
   const result = compute(character, index, system);
   for (const [path, steps] of Object.entries(result.breakdown)) {
     const sum = steps.reduce((total, step) => total + step.change, 0);
@@ -407,7 +410,7 @@ describe('ENG-12 stat scores in the base phase', () => {
       refused('by-calling', ['calling.level']),
     ]);
 
-    const withCallingLevel: SystemModule<TalesCharacter> = {
+    const withCallingLevel: SystemModule<TalesCharacter, TalesEntity> = {
       ...talesModule,
       basePath: (_, path) => (path === 'calling.level' ? 3 : undefined),
     };
@@ -518,6 +521,27 @@ describe('ENG-12 stat scores in the base phase', () => {
     expect(result.breakdown['abilities.heart.max']).toEqual([
       { kind: 'default', of: 'stat', value: 5, change: 5 },
     ]);
+    expect(codes(result)).toEqual([]);
+  });
+});
+
+describe('ENG-13 the base phase reads what was gathered', () => {
+  it("gives the module's base paths what the character has", () => {
+    // Tales has no such path; a module made up here reads the die of the calling Ash has.
+    const byDie: SystemModule<TalesCharacter, TalesEntity> = {
+      ...talesModule,
+      basePath: (_, path, gathered) => {
+        if (path !== 'calling.die') return undefined;
+        const calling = gathered.entities.find(({ entity }) => entity.type === 'calling')?.entity;
+        return calling?.type === 'calling' ? calling.die : undefined;
+      },
+    };
+    const keen = talent('keen', [
+      { id: 'die', target: 'abilities.wits.score', op: 'add', value: '@calling.die - 7' },
+    ]);
+    // Wits 5, + 8 − 7: the warden's die is 8.
+    const result = computed(ashWith([keen]), byDie);
+    expect(scores(result).wits).toBe(6);
     expect(codes(result)).toEqual([]);
   });
 });
