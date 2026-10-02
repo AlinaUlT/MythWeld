@@ -349,3 +349,50 @@ describe('ENG-43 a loop through a key path', () => {
     ]);
   });
 });
+
+describe('ENG-48 a loop through a key path with no key of its own', () => {
+  it('gives no key there, and the message says so', () => {
+    /** The modifier of the stat `tally.k` names; the level while it names none. */
+    const modOfKey: DerivedStep = (read, _, readKey) => {
+      const key = readKey('tally.k');
+      const at = key === undefined ? 'level' : `abilities.${key}.mod`;
+      const value = read(at);
+      return { value, steps: [{ kind: 'path', path: at, value, change: value }] };
+    };
+    const system: Module = {
+      ...withSteps({ 'tally.m': modOfKey, 'tally.n': modOfKey }),
+      keys: (input) => ({
+        ...talesModule.keys?.(input),
+        'tally.k': { steps: [], keys: ['grit', 'wits', 'nerve'] },
+      }),
+    };
+    const turn: TalesEntity = {
+      id: 'character:talent/turn',
+      type: 'talent',
+      ruleset: 'any',
+      name: { en: 'Turn' },
+      tier: 1,
+      effects: [{ id: 'turn', target: 'tally.k', op: 'set', value: 'wits', when: '@tally.n >= 0' }],
+      source,
+    };
+    const result = computed(ashWith([], [turn]), system);
+    // `tally.m` reads the key, whose `when` reads `tally.n`, which reads the key in its loop: no
+    // key, so the level, 2. The `when` is true, so the key is wits, and `tally.m` wits' 2.
+    expect(result.values).toMatchObject({ 'tally.m': 2, 'tally.n': 2 });
+    expect(result.keys['tally.k']?.key).toBe('wits');
+    expect(result.pendingKeys).toEqual([{ path: 'tally.k', options: ['grit', 'wits', 'nerve'] }]);
+    expect(codes(result)).toEqual([
+      {
+        code: 'cycle',
+        path: 'tally.k',
+        for: 'tally.n',
+        loop: [
+          { path: 'tally.k' },
+          { path: 'tally.n', by: 'character:talent/turn#turn' },
+          { path: 'tally.k' },
+        ],
+      },
+    ]);
+    expect(result.warnings[0]?.message).toContain('no key is used');
+  });
+});

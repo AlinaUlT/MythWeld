@@ -12,13 +12,14 @@ import { checkSteps, skillKeys } from './checks';
 import { classesOf } from './classes';
 import { ATTUNED_PATH, combatSteps, EQUIPPED_PATH } from './combat';
 import type { FifthEditionEntity } from './entity-types';
+import { sizeKeys } from './size';
 import { spellcastingSteps } from './spellcasting';
 
 // ENG-13: fifth edition's module (ADR 004 item 1), what the core asks of it: the character's
 // level, the entities its `systemData` names, a stat's defaults, the grants a class taken after
 // the first and a feat taken in place of a grant leave out, and the derived values. ENG-14 to
 // ENG-16 add their steps to `derive`: ENG-14 the combat steps, ENG-15 the spellcasting steps.
-// ENG-14: each equipped item is named, with its own paths.
+// ENG-14: each equipped item is named, with its own paths. ENG-48 adds the size to `keys`.
 
 /** A stat's defaults (SPEC §5.3): the modifier, a save, a highest score of 20 (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: StatDefaults = {
@@ -107,6 +108,6 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     ...spellcastingSteps(input),
   }),
 
-  // Each skill's stat, which an effect may set.
-  keys: skillKeys,
+  // Each skill's stat, which an effect may set; the character's size.
+  keys: (input) => ({ ...skillKeys(input), ...sizeKeys(input) }),
 };

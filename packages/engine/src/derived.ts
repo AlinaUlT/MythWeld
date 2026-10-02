@@ -10,6 +10,8 @@ import { type BreakdownStep, type KeyStep, STAT_TYPE, type Stats } from './stats
 // read while it is being computed reads 0 with a warning, so a loop never exhausts the stack.
 // ENG-43: a module may also give key paths, whose value is a key (a skill's stat). A step reads
 // one through `readKey`; it is finished when first read, in the same loop check as a number.
+// ENG-48: a key path given with no key of its own is a choice still to make: it is pending, with
+// its keys as the options, and has a key only when an effect or an override sets one.
 
 /** The path of the character's level (SPEC §5.6 `@level`). */
 export const LEVEL_PATH = 'level';
@@ -79,11 +81,14 @@ export type Finish = (path: string, own: Derived, readBy: PartReader) => Derived
 /**
  * A path whose value is a key, not a number (SPEC §5.4 `skills.<key>.ability`), as a module gives
  * it: its own key, the steps that gave it, and the keys an effect or an override may set it to.
+ * Without `key`, its own key is a choice not yet made (ENG-48: a species offering two sizes).
  */
 export interface KeyPath {
-  readonly key: string;
+  readonly key?: string;
   readonly steps: readonly KeyStep[];
   readonly keys: readonly string[];
+  /** What a rule of its system met in giving it; each is warned as `stepRule` (ENG-48). */
+  readonly ruleWarnings?: readonly RuleWarning[];
 }
 
 /** A key path's key after its effects and override, and the steps that chose it, the last one's. */
@@ -92,8 +97,17 @@ export interface ComputedKey {
   readonly steps: readonly KeyStep[];
 }
 
-/** What comes after a key path's own key: its effects and override, each read by its part. */
-export type FinishKey = (path: string, own: KeyPath, readBy: PartReader) => ComputedKey;
+/** A key path whose own key is a choice not yet made, and the keys it may take (ENG-48). */
+export interface PendingKey {
+  readonly path: string;
+  readonly options: readonly string[];
+}
+
+/**
+ * What comes after a key path's own key: its effects and override, each read by its part.
+ * `undefined` when it has no key of its own and none of them sets one.
+ */
+export type FinishKey = (path: string, own: KeyPath, readBy: PartReader) => ComputedKey | undefined;
 
 /** A path on a formula loop. `by` is the part whose formula read it; without it, a step did. */
 export interface LoopLink {
@@ -128,11 +142,15 @@ export type DerivedWarning =
       | { code: 'pathTaken'; path: string }
     ));
 
-/** Each path's value and breakdown, in the order of `computeDerived`; each key path's key. */
+/**
+ * Each path's value and breakdown, in the order of `computeDerived`; each key path's key, and the
+ * key paths still to choose.
+ */
 export interface DerivedValues {
   values: Record<string, number>;
   breakdown: Record<string, readonly BreakdownStep[]>;
   keys: Record<string, ComputedKey>;
+  pendingKeys: PendingKey[];
   warnings: DerivedWarning[];
 }
 
@@ -164,7 +182,7 @@ export function statsOf<E extends GatherableEntity>(
  * its `abilities.<key>.mod`, each resource's `resources.<key>.max`, each condition's
  * `conditions.<key>.level`, then each path the module's `steps` give. `finish` runs on each path
  * but `level` after its own step (ENG-17); without it, a path is its step's. Then each of the
- * module's `keys`, `finishKey` after its own key. Pure.
+ * module's `keys`, `finishKey` after its own key; one with no own key is pending. Pure.
  */
 export function computeDerived<E extends GatherableEntity>(input: {
   level: number;
@@ -179,8 +197,7 @@ export function computeDerived<E extends GatherableEntity>(input: {
 }): DerivedValues {
   const { level, gathered, stats, defaults, base } = input;
   const finish: Finish = input.finish ?? ((_, own) => own);
-  const finishKey: FinishKey =
-    input.finishKey ?? ((_, own) => ({ key: own.key, steps: own.steps }));
+  const finishKey: FinishKey = input.finishKey ?? ((_, own) => ownKey(own));
   const warnings: DerivedWarning[] = [];
   const values = new Map<string, number>([[LEVEL_PATH, level]]);
   const breakdown = new Map<string, readonly BreakdownStep[]>([
@@ -361,17 +378,19 @@ export function computeDerived<E extends GatherableEntity>(input: {
     return result.value;
   }
 
-  // A key path's key, finished when first read; in a loop, its own key, unfinished.
-  const keys = new Map<string, ComputedKey>();
+  // A key path's key, finished when first read; in a loop, its own key, unfinished. A finished
+  // path with no key is kept as `undefined`, so it is finished once.
+  const keys = new Map<string, ComputedKey | undefined>();
   function keyAt(path: string, readFor: string): ComputedKey | undefined {
-    const known = keys.get(path);
-    if (known !== undefined) return known;
+    if (keys.has(path)) return keys.get(path);
     const own = keyPaths.get(path);
     if (own === undefined) return undefined;
-    if (closesLoop(path, readFor, { path }, `its own key "${own.key}"`)) {
-      return { key: own.key, steps: own.steps };
-    }
+    const used = own.key === undefined ? 'no key' : `its own key "${own.key}"`;
+    if (closesLoop(path, readFor, { path }, used)) return ownKey(own);
     computing.set(path, { path });
+    for (const { rule, data, message } of own.ruleWarnings ?? []) {
+      warnings.push({ code: 'stepRule', path, rule, ...(data && { data }), message });
+    }
     const readBy: PartReader = (part) => (each) => valueAt(each, path, part);
     const result = finishKey(path, own, readBy);
     computing.delete(path);
@@ -379,14 +398,20 @@ export function computeDerived<E extends GatherableEntity>(input: {
     return result;
   }
 
-  const out: DerivedValues = { values: {}, breakdown: {}, keys: {}, warnings };
+  const out: DerivedValues = { values: {}, breakdown: {}, keys: {}, pendingKeys: [], warnings };
   for (const path of order) {
     out.values[path] = valueAt(path, path);
     out.breakdown[path] = breakdown.get(path) ?? [];
   }
-  for (const path of keyPaths.keys()) {
+  for (const [path, own] of keyPaths) {
     const key = keyAt(path, path);
     if (key !== undefined) out.keys[path] = key;
+    if (own.key === undefined) out.pendingKeys.push({ path, options: own.keys });
   }
   return out;
+}
+
+/** A key path's own key and steps, before its effects and override; none when it has no key. */
+function ownKey(own: KeyPath): ComputedKey | undefined {
+  return own.key === undefined ? undefined : { key: own.key, steps: own.steps };
 }

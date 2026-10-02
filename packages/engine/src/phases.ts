@@ -27,6 +27,7 @@ import { applyEffects, type BasePhase, type BreakdownStep, type KeyStep } from '
 // its override, which always wins. A base-phase effect on a stat's score or maximum is the base
 // phase's (ENG-12). `level` is read by gathering and the base phase first, so nothing changes it.
 // ENG-43: a key path is finished in the same order, by each `set` naming one of its keys.
+// ENG-48: one with no own key has a key only when such a `set` or its override gives one.
 
 /** What a `fixedPath` warning names as the cause when it is an override. */
 export const OVERRIDE = 'override';
@@ -55,8 +56,11 @@ export type PhaseWarning =
 export interface Phases {
   /** A path's value after its own: its effects, then its override. An effect reads by its part. */
   finish(path: string, own: Derived, readBy: PartReader): Derived;
-  /** A key path's key after its own: its effects' `set`s, then its override. */
-  finishKey(path: string, own: KeyPath, readBy: PartReader): ComputedKey;
+  /**
+   * A key path's key after its own: its effects' `set`s, then its override. `undefined` when it
+   * has no own key and neither sets one (ENG-48).
+   */
+  finishKey(path: string, own: KeyPath, readBy: PartReader): ComputedKey | undefined;
   /** Everything the phases met, ending with the targets and overrides no path finished. */
   end(): PhaseWarning[];
 }
@@ -183,7 +187,7 @@ export function phasesOf<E extends GatherableEntity>(
         if (set !== undefined) keys.push({ ...set, phase });
       }
       keys.sort(inOrder);
-      let key = own.key;
+      let key: string | undefined = own.key;
       for (const { key: each, part, source, label } of keys) {
         steps.push({ kind: 'effect', part, source, label, key: each });
         key = each;
@@ -205,7 +209,7 @@ export function phasesOf<E extends GatherableEntity>(
           });
         }
       }
-      return { key, steps };
+      return key === undefined ? undefined : { key, steps };
     },
 
     end() {

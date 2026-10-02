@@ -637,7 +637,9 @@ describe('ENG-43 an effect sets the stat a skill uses', () => {
       const result = computed(golden);
       const skills = Object.entries(result.byKey.skill ?? {});
       expect(skills).toHaveLength(18);
-      expect(Object.keys(result.keys)).toEqual(skills.map(([key]) => `skills.${key}.ability`));
+      // ENG-48: the size is a key path too.
+      const skillPaths = Object.keys(result.keys).filter((path) => path.startsWith('skills.'));
+      expect(skillPaths).toEqual(skills.map(([key]) => `skills.${key}.ability`));
       for (const [key, skill] of skills) {
         if (skill.type !== 'skill') throw new Error(`${key} is not a skill`);
         expect(result.keys[`skills.${key}.ability`]?.key, key).toBe(skill.ability);

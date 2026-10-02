@@ -7351,3 +7351,247 @@ Found, not fixed:
   they give; not a row.
 
 Nothing for the changelog.
+
+---
+
+### ENG-48 The character's size
+
+**Hat:** The character's size comes from its species
+**Depends on:** ENG-43 (key paths: `SystemModule.keys`, `finishKey`, `readKey`), ENG-33
+(`species.size`), ENG-32 (a species' and a lineage's `size` lists), ENG-09 and ENG-10 (the
+golden fixtures)
+**Size:** S (the row said XS; §11)
+**Screen:** No
+**SPEC:** §5.3 (`SpeciesDef.size`, "options to choose from"); §5.8 (`species.size`); §6.1 step 2
+("the list of choices not made") and step 8 (`pendingChoices[]`); §8.2 (missing is not broken);
+ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/size.ts` — new: `SIZE_PATH`, `sizeKeys`, the size key
+path.
+- `packages/system-5e/src/module.ts` — changes: `keys` gives the skills' stats and the size.
+- `packages/system-5e/src/index.ts` — changes: exports `size.ts`.
+- `packages/engine/src/derived.ts` — changes: a `KeyPath` may have no `key` and may carry
+  `ruleWarnings`; `PendingKey`; `computeDerived` gives `pendingKeys`.
+- `packages/engine/src/phases.ts` — changes: `finishKey` gives no key when the path has none of
+  its own and no effect or override sets one.
+- `packages/engine/src/compute.ts` — changes: `Computed.pendingKeys`; the doc of
+  `SystemModule.keys`.
+- `packages/engine/test/derived.test.ts`, `phases.test.ts`, `cycle.test.ts` — change: an
+  `ENG-48` block each, on Tales.
+- `packages/system-5e/test/size.test.ts` — new: the size on the goldens and made-up variants.
+- `packages/system-5e/test/module.test.ts` — changes: ENG-43's golden test lists the skills' key
+  paths among the others.
+
+#### 2. What is missing now
+
+Measured on `main` at `c79449b`:
+- `grep -rn size packages/engine/src packages/system-5e/src`, hit dice and spell areas left out,
+  finds only the schemas: `character.ts` lines 209–210 (`species.size`) and `entity-types.ts`
+  lines 52, 55 and 64 (the species' and lineage's lists). No code reads a size.
+- Golden A (the 2014 dwarf, one size), golden B (the 2024 human, `size: 'medium'` stored) and
+  golden B with no size stored: `values.size` and `keys.size` are `undefined`, `pendingChoices`
+  has 0 entries, and there are 0 warnings in each.
+- A key path must have a key (`KeyPath.key: string`, ENG-43), so a size not yet chosen has no
+  shape; `pendingChoices` holds only grants' choices (`PendingChoice.grant`).
+- `pnpm test`: `Test Files 40 passed (40)`, `Tests 424 passed (424)`.
+
+#### 3. What it should look like when done
+
+1. **A key path with no key of its own** (the core, game-free): `KeyPath.key` is optional. Without
+   it, the path is a choice not yet made: `Computed.pendingKeys` lists it as `{ path, options }`,
+   its options its `keys`, in the module's order. `readKey` gives `undefined` for it, and
+   `Computed.keys` has no entry for it, until an effect's `set` or an override names one of its
+   keys; then it has that key and is still listed as pending.
+2. **A key path's own warnings** (the core): `KeyPath.ruleWarnings`, each warned once as
+   `{ code: 'stepRule', path, rule, data? }` when the path is finished.
+3. **A loop** through a key path with no key of its own gives no key there; its message says "no
+   key is used".
+4. **The size** (fifth edition): the key path `size`. Its sizes are a gathered lineage's own
+   `size`, else the character's species' (`systemData.species.id`), as ENG-14 takes a speed. Its
+   key is the one size when there is one, else the stored `species.size`; its step is `{ kind:
+   'entity', source, label, key }`, naming the species or lineage. Its keys are those sizes.
+   - several sizes and none stored: no key; pending, the sizes as options;
+   - a stored size not among them: warned `stepRule` `sizeNotOffered` with `{ size, from }`, and
+     not used: the one size, or pending;
+   - no species gathered: no `size` path, nothing pending.
+5. **Goldens and variants**, from the fixtures' data (§7):
+
+   | Character | `keys.size` | `pendingKeys` | Warnings |
+   |---|---|---|---|
+   | A (dwarf: medium) | medium, step Dwarf | none | none |
+   | B, B4, D (human: medium, small; medium stored) | medium, step Human | none | none |
+   | C 2014, C 2024 (no species) | none | none | none |
+   | B, `small` stored | small, step Human | none | none |
+   | B, none stored | none | `size`: medium, small | none |
+   | B, `large` stored | none | `size`: medium, small | `sizeNotOffered` large, human |
+   | A, `small` stored | medium | none | `sizeNotOffered` small, dwarf |
+   | C 2024 + a made-up species (medium, small) with a lineage (small, tiny), `tiny` stored | tiny, step the lineage | none | none |
+   | the same, none stored | none | `size`: small, tiny | none |
+   | the same, `medium` stored | none | `size`: small, tiny | `sizeNotOffered` medium, the lineage |
+   | B + a made-up feat: `set 'small'`, `set 'large'`, `add 1` | small, steps Human, the feat | none | `unknownKey` large; `notAKey` add |
+   | the same, none stored | small, step the feat | `size`: medium, small | the same two |
+   | the same, `small` stored, override `medium` | medium, steps Human, the feat, override | none | the same two |
+   | the same, `medium` stored, override `large` | small | none | the two, and `overrideNotAKey` |
+
+   Golden B with none stored keeps its walking speed 30 and AC 17.
+6. **Tales** (core tests), with a test module adding `tally.pose` (keys `bold`, `wary`, no key):
+   no key, pending, no warning; a talent's `set 'wary'` gives it wary, still pending, and its
+   `set 'calm'` warns `unknownKey`; an override `bold` wins over it; an override `calm` warns
+   `overrideNotAKey`. A `ruleWarnings` entry is warned once though two steps read the path. Ash's
+   own key paths (its skills') are not pending.
+7. Every other value of every golden is unchanged; ENG-43's 18 skill keys per golden stay.
+8. `compute()` stays pure: frozen inputs give equal results.
+9. The quality gate is green.
+
+#### 4. How to do it
+
+1. `derived.ts`: `KeyPath.key?`, `KeyPath.ruleWarnings?`, `PendingKey`, `FinishKey` may give
+   `undefined`; `keyAt` keeps a finished path with no key, warns its rule warnings, names "no key"
+   in a loop; `computeDerived` lists `pendingKeys`.
+2. `phases.ts`: `finishKey` starts from no key when the path has none.
+3. `compute.ts`: `Computed.pendingKeys`.
+4. `size.ts`: `sizeKeys`. `module.ts`: `keys` joins `skillKeys` and `sizeKeys`.
+5. The tests of §7; ENG-43's golden test reads only the `skills.` key paths.
+
+Technical choices (ADR 002):
+- **The size is a key path.** A size is a key, and ENG-28's derived values are numbers (the
+  row's note); ENG-43 made key paths for such values, with steps, effects and overrides. So the
+  sheet reads `Computed.keys.size` with a breakdown of who gave it, and an effect or an override
+  can change it, with ENG-43's warnings, at no new cost.
+- **A size not chosen is a key path with no key, made pending by the core.** SPEC §8.2: an unmade
+  choice is pending, not an error. The core cannot know a module's choices; a key path with no own
+  key is game-free and says it. The options are its keys, which the module gives already.
+- **A second list, `pendingKeys`, beside `pendingChoices`.** A grant's choice is answered in
+  `choices[part]` and its entry carries the grant; this one is answered in the module's part of the
+  character (`species.size`) and has no grant. One list of two shapes would make every reader of
+  `pendingChoices` tell them apart; SPEC §6.1 step 8's `pendingChoices[]` is now both lists.
+- **Still pending when an effect or an override gives a key.** A grant's choice stays pending
+  whatever the effects do; the stored choice is what the wizard asks for.
+- **A stored size the species lacks warns and is not used.** ENG-33 left it to compute ("missing is
+  not broken"): a species changed after its size was stored keeps a stale size. The warning names
+  it; the size is what the species gives. The warning needs a key path's own warnings, the
+  `ruleWarnings` a number's step has had since ENG-14.
+- **The keys are the species' sizes.** No entity type lists every size (ENG-32's note for phases
+  2–3); a list in code would make an open key closed. §11 notes what this leaves out.
+- **A lineage's own sizes first**, as ENG-14 takes a lineage's own speed: SPEC gives the lineage
+  the species' shape, and ENG-32 made its `size` optional. No SRD lineage has one (ENG-32 §8).
+- **One rule in both editions** (§8): no `rulesets/` change.
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, no `schemaVersion`, no Dexie table changes. `species.size` was
+stored already (ENG-33); it is now read.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/derived.test.ts` — `describe('ENG-48 a key path with no key of its
+  own')`: §3 items 1 and 2, `readKey`, `pendingKeys`, a rule warning warned once; none pending on
+  Ash.
+- `packages/engine/test/phases.test.ts` — `describe('ENG-48 …')`: §3 item 6, effects and
+  overrides.
+- `packages/engine/test/cycle.test.ts` — `describe('ENG-48 …')`: §3 item 3.
+- `packages/system-5e/test/size.test.ts` — `describe('ENG-48 the size comes from the species')`:
+  §3 items 4, 5, 8.
+- Control values from: the fixtures' sizes (`srd-2014.ts`: the dwarf `['medium']`;
+  `srd-2024.ts`: the human `['medium', 'small']`; golden B's stored `'medium'`), ENG-09 §8 and
+  ENG-10 §8; the made-up entities' own lists. Each expected value was read from that data by hand,
+  never copied from a run.
+
+#### 8. Checked against the source
+
+Source: foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (ENG-13's), read on
+2026-10-02. Its `packs/_source/races/` and `packs/_source/origins24/species/` carry
+`license: CC-BY-4.0` with `rules: '2014'` and `'2024'`: they quote SRD 5.1 and SRD 5.2.1.
+
+**One size, or a choice made with the species.**
+- SRD 5.1, the dwarf (`races/dwarf/hill-dwarf.yml`): "Size. Dwarves stand between 4 and 5 feet tall
+  and average about 150 pounds. Your size is Medium." Its `Size` advancement offers `med` only.
+- SRD 5.2.1, the human (`origins24/species/human.yml`): "Size: Medium (about 4–7 feet tall) or
+  Small (about 2–4 feet tall), chosen when you select this species"; its `Size` advancement offers
+  `sm`, `med`. The tiefling (`tiefling-infernal.yml`) says the same with "about 3–4 feet tall".
+- The dwarf (`origins24/species/dwarf.yml`) and the goliath (`goliath.yml`) of 2024 offer `med`
+  only.
+- No subrace or subspecies has a size (ENG-32 §8, measured in 5e-database).
+
+**How dnd5e keeps it.** `module/documents/advancement/size.mjs`: the advancement's `apply` writes
+the actor's `system.traits.size` from the chosen size (`data.size`), else the advancement's first
+size, else `med`; `reverse` sets it back to `med`. The same advancement serves both editions. So
+the size is the species' one size, or the person's choice among its sizes. dnd5e falls back to the
+first size when none is chosen; SPEC §8.2 makes an unmade choice pending instead (§3 item 4).
+
+**A size an effect changes.** SRD 5.2.1, the goliath's Large Form (`goliath.yml`): "Starting at
+character level 5, you can change your size to Large as a Bonus Action". No golden has it (§11).
+
+No golden value names a size (SPEC §6.7); no golden value changes.
+
+#### 9. Not in this ticket
+
+- What a size changes: carrying capacity, a grapple's limit, space. No phase 1 golden reads one.
+- The screen that asks for the size, and its name on screen (ENG-32's note for phases 2–3).
+- An effect that makes the character one size larger or smaller (Enlarge/Reduce): a `set` names a
+  size, not a step.
+- A formula reading the size (`@size`): SPEC §5.6 names no such read; it reads 0 with
+  `missingPath`, as ENG-43's key paths do.
+
+#### 10. Rake check
+
+- **`packages/engine` is pure; the core names no game.** A key path with no key, `pendingKeys` and
+  a key path's own warnings name no size or species; tested on Tales.
+- **Everything is data.** No size is written in code: the sizes come from the species' and the
+  lineage's lists.
+- **`compute()` is pure.** `sizeKeys` reads its arguments only; a frozen character and index give
+  equal results.
+- **A number with no breakdown entry is a bug.** The size is a key, with its own steps.
+- **Manual overrides always win.** An override naming one of the sizes is the last step.
+- **Each system's rules live in its own module.** The size, its rule and its warning are the
+  module's; no `if (ruleset === …)`: both editions share the rule (§8).
+- **Missing is not broken.** A size not chosen is pending; a stale size warns; a missing species
+  gives no size and no throw.
+- **Licensing.** The species, lineage and feat in the tests are made up (`character:`); §8 quotes
+  SRD 5.1 and SRD 5.2.1 (CC-BY-4.0) only.
+
+#### 11. What came out of it
+
+Measured:
+- `size.test.ts` alone: `Tests 7 passed (7)`. `packages/engine` alone: `Test Files 14 passed
+  (14)`, `Tests 188 passed (188)` (5 new).
+- Lint: `Checked 151 files`, no fixes, no error. Typecheck: `Scope: 6 of 7 workspace projects`,
+  all 6 `Done`.
+- Test: `Test Files 41 passed (41)`, `Tests 436 passed (436)`, 7.33 s (before: 40 files, 424
+  tests).
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- Every row of §3 item 5 is met. Goldens A, B, B4 and D: `keys.size` medium, with the Dwarf or
+  the Human as its step; C has no size; no golden has a pending size or a warning.
+- The tests bite. 14 breaks, each on its own and restored, the `engine` and `system-5e` tests run.
+  In the module: the stored size ignored, 5 fail; the first size taken when there are several, 5;
+  no lineage first, 1; no `sizeNotOffered`, 2; the keys only its own key, 5; no `entity` step, 5;
+  no size from the module, 6. In the core: no `pendingKeys`, 8; every key path pending, 10;
+  `pendingKeys` not passed to `Computed`, 8; no rule warnings, 3; a finished path with no key not
+  kept (warned twice), 1; the loop's "no key" text, 1; effects ignored on a path with no own key, 4.
+
+Differences from §3 and from the row:
+- The row was XS. Making a size not chosen pending needed a core change (§3 items 1–3), the
+  rules check of §8 and a stale-size warning, so the template's full form and size S. The size
+  column of the row now says S.
+- The row's note said "pending". The core's `pendingChoices` holds only grants' choices, so the
+  size is in a second list, `Computed.pendingKeys` (§4).
+- ENG-43's test that every golden's key paths are its 18 skills' now filters the `skills.` paths:
+  the size is a key path too. Its expected values did not change.
+
+Found, not fixed:
+- The size's keys are the species' own sizes, so an effect or an override naming another warns and
+  is not applied. SRD 5.2.1's goliath can "change your size to Large" (§8). Added to the note for
+  phases 2–3 on keys with no entity type in `BACKLOG.md`: a size type would give every size.
+- The sheet and the wizard read `Computed.pendingKeys` beside `pendingChoices`, and answer a size
+  in `species.size`, not in `choices`; the size shown is `Computed.keys.size`. New note for phase 2
+  in `BACKLOG.md`.
+
+Nothing for the changelog.

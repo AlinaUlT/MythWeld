@@ -494,6 +494,53 @@ describe('ENG-43 a step reads a key path', () => {
   });
 });
 
+describe('ENG-48 a key path with no key of its own', () => {
+  it('is pending with its keys as the options, reads as no key, and warns its rules once', () => {
+    const read: (string | undefined)[] = [];
+    /** A step that notes the key it reads and is 0. */
+    const reads: DerivedStep = (_, __, readKey) => {
+      read.push(readKey('tally.pose'));
+      return { value: 0, steps: [] };
+    };
+    const system: Module = {
+      ...withSteps(() => ({ 'tally.a': reads, 'tally.b': reads })),
+      keys: (input) => ({
+        ...talesModule.keys?.(input),
+        'tally.pose': {
+          steps: [],
+          keys: ['bold', 'wary'],
+          ruleWarnings: [{ rule: 'stale', data: { pose: 'calm' }, message: 'Calm is gone.' }],
+        },
+        'tally.grip': { key: 'grit', steps: [], keys: ['grit'] },
+      }),
+    };
+    const result = computed(ash, system);
+    expect(read).toEqual([undefined, undefined]);
+    expect(Object.keys(result.keys)).toEqual([
+      'skills.climb.ability',
+      'skills.sneak.ability',
+      'skills.steady.ability',
+      'tally.grip',
+    ]);
+    expect(result.pendingKeys).toEqual([{ path: 'tally.pose', options: ['bold', 'wary'] }]);
+    expect(result.warnings).toEqual([
+      {
+        code: 'stepRule',
+        path: 'tally.pose',
+        rule: 'stale',
+        data: { pose: 'calm' },
+        message: 'Calm is gone.',
+      },
+    ]);
+  });
+
+  it('none is pending when every key path has its own key', () => {
+    const result = computed(ash);
+    expect(Object.keys(result.keys)).toHaveLength(3);
+    expect(result.pendingKeys).toEqual([]);
+  });
+});
+
 describe("ENG-14 a step's own warnings", () => {
   it('warns each rule warning as `stepRule`, naming its path; effect warnings pass as they are', () => {
     const notAppended: EffectWarning = {

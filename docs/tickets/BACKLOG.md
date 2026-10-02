@@ -97,7 +97,7 @@ split off an old row got a new id.
 | ENG-44 | Equipped items count only as the rules allow | S | 🔲 |
 | ENG-45 | Heavy armor's Strength requirement slows its wearer | XS | 🔲 |
 | ENG-47 | The person picks which base AC calculation counts | S | 🔲 |
-| ENG-48 | The character's size comes from its species | XS | 🔲 |
+| ENG-48 | The character's size comes from its species | S | ✅ 2026-10-02 |
 | ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | ✅ 2026-10-02 |
 | ENG-16 | Attacks are computed, weapon mastery included | S | 🔲 |
 | ENG-49 | A spell or item a grant names that no pack has gives a warning | S | 🔲 |
@@ -149,9 +149,6 @@ split off an old row got a new id.
 - **ENG-47** — found by ENG-14: SPEC §6.1 step 5 takes the best AC candidate, or the one the
   person pins; SRD 5.2.1: "you choose which calculation to use". ENG-14's `ac.base` takes the
   highest. A pinned choice is a stored field: a `schemaVersion` bump and a migration.
-- **ENG-48** — found by ENG-33, re-cut from ENG-14: the character's size is `species.size`, or the
-  species' one size; a species with several and none chosen is pending. A size is a text, and
-  ENG-28's derived values are numbers.
 - **ENG-16** — ADR 014 item 6: a spell's current dice for the character's level, with a breakdown.
   Found by ENG-09: a spell's healing has no field (Cure Wounds: 1d8 + the modifier, 1d8 more per
   slot level above 1st); `damage` and `scaling` hold damage only. Weapon proficiency keys are
@@ -290,7 +287,10 @@ split off an old row got a new id.
 - **Phases 2, 3** — found by ENG-32: some fifth-edition keys have no entity type to give their
   name on screen: a spell's `school`, a species' `size` and `creatureType`, an item's `rarity`,
   a spell area's `shape`, a feat's `category`, a rule's `topic` and `icon`. The first screen
-  that shows one gives them names: a simple entity type each, or the module's i18n keys.
+  that shows one gives them names: a simple entity type each, or the module's i18n keys. Found by
+  ENG-48: the key path `size` takes only the species' own sizes, so an effect or an override
+  naming another warns and is not applied (SRD 5.2.1's goliath, Large Form: "you can change your
+  size to Large"). A size type would give every size as its keys.
 - **Phases 2, 4** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
   §8.2: a warning, never a block). The row is cut with the first phase that lets a person pick an
   entity with prerequisites. Found by ENG-11: Tales' `unmetPrerequisites` (ENG-27) are its test
@@ -313,6 +313,11 @@ split off an old row got a new id.
   override applies only when its value is a number on a number path (`overrideNotANumber`
   otherwise), so the override editor stores a number there. The breakdown's kind `override` is
   shown as "Manual edit" (SPEC §6.1 step 7).
+- **Phase 2** — found by ENG-48: the size shown is `Computed.keys.size`, with steps naming the
+  species or lineage, each effect and a manual edit. A size not chosen is in
+  `Computed.pendingKeys` (`{ path, options }`), beside the grants' `pendingChoices`; the answer is
+  written to `systemData.species.size`, not to `choices`. A stored size the species does not offer
+  warns `stepRule` `sizeNotOffered`.
 - **Phase 2** — found by ENG-43: a skill's stat is `Computed.keys['skills.<key>.ability']`, with
   steps naming the skill, each effect and a manual edit; the sheet shows that key, never the
   skill's own `ability`. An override of it applies only when its value is one of its keys (a

@@ -7,6 +7,7 @@ import {
   type DeriveInput,
   type KeyPath,
   LEVEL_PATH,
+  type PendingKey,
   type StatDefaults,
   statsOf,
 } from './derived';
@@ -65,7 +66,8 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    * The system's key paths (ENG-43): computed path → its own key, its steps, and the keys it may
    * take (a fifth-edition skill's stat, SPEC §5.4 `skills.<key>.ability`). A step reads one with
    * `readKey`. An effect's `set` naming one of its keys changes it, in the order a number's
-   * effects apply; an override naming one wins.
+   * effects apply; an override naming one wins. One given with no own key is a choice the
+   * character has not made (ENG-48: a fifth-edition species' size), listed in `pendingKeys`.
    */
   keys?(input: DeriveInput<C, E>): Readonly<Record<string, KeyPath>>;
 }
@@ -79,8 +81,14 @@ export interface Computed<E extends GatherableEntity> extends Omit<Gathered<E>, 
   values: Readonly<Record<string, FormulaValue>>;
   /** Computed path → the steps that made its value (SPEC §6.2). */
   breakdown: Readonly<Record<string, readonly BreakdownStep[]>>;
-  /** Key path → its key and the steps that chose it. */
+  /** Key path → its key and the steps that chose it. A path with no key is not here. */
   keys: Readonly<Record<string, ComputedKey>>;
+  /**
+   * The key paths whose own key is a choice not yet made, each with its keys as the options: the
+   * pending choices (SPEC §6.1 step 8) a module's part of the character holds, beside the grants'
+   * `pendingChoices`.
+   */
+  pendingKeys: readonly PendingKey[];
   warnings: readonly ComputeWarning[];
 }
 
@@ -130,6 +138,7 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
     values: derived.values,
     breakdown: derived.breakdown,
     keys: derived.keys,
+    pendingKeys: derived.pendingKeys,
     warnings: [...gathered.warnings, ...base.warnings, ...derived.warnings, ...phases.end()],
   };
 }

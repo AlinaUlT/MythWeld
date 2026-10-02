@@ -769,6 +769,70 @@ describe('ENG-43 a key path: the stat a skill uses', () => {
   });
 });
 
+describe('ENG-48 a key path with no key of its own', () => {
+  /** Tales' module with `tally.pose`, a key path whose own key is not chosen. */
+  const posing: Module = {
+    ...talesModule,
+    keys: (input) => ({
+      ...talesModule.keys?.(input),
+      'tally.pose': { steps: [], keys: ['bold', 'wary'] },
+    }),
+  };
+  const pending = [{ path: 'tally.pose', options: ['bold', 'wary'] }];
+  const pose = talent('pose', [
+    { id: 'wary', target: 'tally.pose', op: 'set', value: 'wary' },
+    { id: 'calm', target: 'tally.pose', op: 'set', value: 'calm' },
+  ]);
+  const wary = {
+    kind: 'effect',
+    part: 'character:talent/pose#wary',
+    source: 'character:talent/pose',
+    label: { en: 'pose' },
+    key: 'wary',
+  };
+
+  it('has no key until a set gives it one, and stays pending', () => {
+    const none = computed(ash, posing);
+    expect(none.keys['tally.pose']).toBeUndefined();
+    expect(none.pendingKeys).toEqual(pending);
+    expect(none.warnings).toEqual([]);
+
+    const result = computed(ashWith([pose]), posing);
+    expect(result.keys['tally.pose']).toEqual({ key: 'wary', steps: [wary] });
+    expect(result.pendingKeys).toEqual(pending);
+    expect(codes(result)).toEqual([
+      {
+        code: 'unknownKey',
+        part: 'character:talent/pose#calm',
+        target: 'tally.pose',
+        key: 'calm',
+        keys: ['bold', 'wary'],
+      },
+    ]);
+  });
+
+  it('an override naming one of its keys wins; one naming another warns', () => {
+    const bold = computed(
+      ashWith([pose], { overrides: [{ path: 'tally.pose', value: 'bold', note: 'Stood up' }] }),
+      posing,
+    );
+    expect(bold.keys['tally.pose']).toEqual({
+      key: 'bold',
+      steps: [wary, { kind: 'override', key: 'bold', note: 'Stood up' }],
+    });
+    expect(bold.pendingKeys).toEqual(pending);
+
+    const calm = computed(
+      variant(ash, { overrides: [{ path: 'tally.pose', value: 'calm' }] }),
+      posing,
+    );
+    expect(calm.keys['tally.pose']).toBeUndefined();
+    expect(codes(calm)).toEqual([
+      { code: 'overrideNotAKey', path: 'tally.pose', value: 'calm', keys: ['bold', 'wary'] },
+    ]);
+  });
+});
+
 /** Tales' module, naming each talent of the character's own with the paths given for its id. */
 function naming(paths: Readonly<Record<string, OwnPaths>>, more: OwnPaths[] = []): Module {
   return {
