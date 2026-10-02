@@ -8689,3 +8689,169 @@ Found, not fixed:
   which holds every difference.
 
 Changelog: "The fifth-edition pack schema accepts a `mastery` proficiency".
+
+---
+
+### ENG-22 Golden E: the homebrew pack from Appendix Д
+
+**Hat:** The homebrew pack from Appendix Д changes character B
+**Depends on:** ENG-10 (golden B, `srd-2024`), ENG-12 (stat scores), ENG-13 (saves, skills),
+ENG-25 (packs load into the index), ENG-39 (`systemSchemaVersion`), ENG-43 (a skill's stat)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.7 golden E; Appendix Д; D3; §8.2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/test/golden/golden-values.test.ts` — changes: an `ENG-22`
+block; the file's `computed` helper loads the packs the character names.
+- `packages/system-5e/test/golden/hb-local.ts` — new: SPEC Appendix Д's pack, with `system` and
+  `systemSchemaVersion` added.
+- `packages/system-5e/test/golden/characters-2024.ts` — changes: `goldenE`, golden B with the pack.
+- `packages/system-5e/test/golden/index.ts` — changes: exports `hb-local.ts`.
+
+No source file changes.
+
+#### 2. What is missing now
+
+Measured on `main` at `7633984`, with a scratch test (deleted):
+- Appendix Д's pack as the SPEC writes it does not open with `openFifthEditionPack`:
+  `Invalid input: expected "5e" → at system` and `Invalid input: expected 2 → at
+  systemSchemaVersion`. With `system: '5e'` alone, only the second.
+- With both fields, it loads beside `srd-2024`: `loaded` `['srd-2024', 'hb-local']`, nothing
+  refused, no warning.
+- Golden B with the pack, SAN 14 and the feat already gives SPEC §6.7's values: SAN 14, +2, save
+  +2; Composure +2; INT 9 (−1); Occultism proficiency 1, total +1; no warning.
+- No test holds any of it: `grep -rn "goldenE\|hb-local" packages/system-5e` finds nothing.
+- `pnpm test`: `Test Files 43 passed (43)`, `Tests 481 passed (481)`.
+
+#### 3. What it should look like when done
+
+Golden E is golden B (ENG-10) with the pack `hb-local` after `srd-2024` in its `packs`, a base
+SAN of 14 (Appendix Д's last line) and the feat Arcane Scholar given by hand (`systemData.feats`,
+no `replaces`: a 2024 fighter 1 has no grant to take a feat in place of).
+
+1. **The pack.** `hb-local.ts` is Appendix Д's pack word for word, plus `system: '5e'` and
+   `systemSchemaVersion: 2` (ADR 004 item 3, ENG-39). It opens with `openFifthEditionPack`, and
+   loads after `srd-2024` with nothing refused and no warning.
+2. **SAN 14.** `abilities.san.score` 14, `.mod` +2, `.save` +2 (the modifier, no proficiency).
+   SAN is a stat of the character beside the SRD's six, ordered after them (`order` 7), with
+   `hasSave`: what the abilities and saves blocks list.
+3. **Composure +2.** `skills.composure.ability` is `san`; `.prof` 0; `.total` +2.
+4. **Occultism +1.** `abilities.int.score` 9 (8, then the feat's `add 1`), `.mod` −1;
+   `skills.occultism.prof` 1, from the grant `hb-local:feat/arcane-scholar#occult-prof`;
+   `prof` +2; `skills.occultism.total` +1.
+5. **SAN to 16.** Golden E with a base SAN of 16: `skills.composure.total` +3.
+6. **The feat removed.** Golden E with no feats: `skills.occultism.total` −1,
+   `abilities.int.score` 8.
+7. **The pack off.** Golden E with `packs` `['srd-2024']` opens and computes without a throw. Its
+   warnings are exactly two: `missing` for `hb-local:feat/arcane-scholar`, its message
+   `Missing: hb-local:feat/arcane-scholar (given by character).`; and ENG-12's `noStat` for the
+   base score `san`, which no pack now gives. It has the SRD's six stats, and no Occultism or
+   Composure.
+8. **Nothing else moves.** Every value golden B has, golden E has equal, except
+   `abilities.int.score` (9): INT 9's modifier is −1, as INT 8's is.
+9. **Whole.** Golden E, with SAN 16 and with no feat: no warning, and each breakdown adds up to its
+   value (ENG-13's check).
+10. The goldens A–D keep their values: their tests pass unchanged.
+11. The quality gate is green.
+
+#### 4. How to do it
+
+1. `hb-local.ts`: the pack as one object, `satisfies z.input<typeof fifthEditionPackSchema>`, its
+   comment naming Appendix Д and the two added fields.
+2. `characters-2024.ts`: `goldenE`, spread from `goldenB` with its own id and name, `packs`, the
+   base SAN and the feat.
+3. `golden-values.test.ts`: the packs on the device, each opened once, by id; `computed` loads
+   the character's `packs`, in order, into the index (SPEC §5.8: the active packs). Goldens A–D
+   name one SRD pack each, so their index is the one they had. The ENG-13 check that a result has
+   no warning and adds up becomes a function both blocks call.
+4. `describe('ENG-22 golden E: the homebrew pack from Appendix Д')`: §3 items 1–9.
+
+#### 5. Stored data
+
+Nothing stored changes. The pack and the character are test data in the existing shapes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/golden/golden-values.test.ts` — the `ENG-22` block: §3 items 1–9.
+- The same file's ENG-13 to ENG-16 blocks: §3 item 10, unchanged.
+- Control numbers from: SPEC §6.7 golden E (SAN 14 → +2; Composure +2; INT 8 → 9 (−1) + 2 = +1;
+  SAN 16 → Composure +3; no feat → Occultism −1, INT 8; the pack off → `Missing: hb-local:…`);
+  Appendix Д (the pack, SAN 14); golden B's base INT 8 (ENG-10). The SAN save +2 is the modifier
+  with no proficiency (ENG-13's rule); the `noStat` warning is ENG-12's rule for a base score whose
+  stat no pack gives.
+
+#### 8. Checked against the source
+
+No `[ПРОВЕРИТЬ]` in golden E or Appendix Д. The rules facts are ENG-13's, checked there (ENG-13
+§8): the modifier `floor((score − 10) / 2)`; the proficiency bonus +2 at level 1; a skill adds its
+stat's modifier and, with proficiency, the bonus. The cap of 20 is the stat's `defaultMax`
+(Appendix Д's last line; ENG-12). The pack is the owner's homebrew, not SRD text.
+
+#### 9. Not in this ticket
+
+- The abilities and saves blocks on screen: phase 2 (`SHEET`). This ticket proves the engine
+  gives them SAN.
+- Turning a pack on or off, and a character naming a pack the device lacks: the app, phase 2 (the
+  `BACKLOG.md` note found by ENG-25). Here the index holds the packs the character names.
+- Golden F, a character mixing both editions: ENG-37.
+- The prerequisites and repeat of a homebrew feat: Arcane Scholar has none.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** Each expected value is SPEC §6.7's or follows from it by a
+  rule named in §7; none was copied from a run. No expected value of A–D changes.
+- **Everything is data.** SAN, Composure and Occultism come from a pack; no code names them.
+- **Missing is not broken.** §3 item 7: the pack off gives warnings, never a throw.
+- **The engine is pure.** No source file changes.
+- **Content and licensing.** The pack is the owner's homebrew from the SPEC (`redistributable:
+  false`), as ENG-04 and ENG-05 used it; it is test data and enters no build.
+- **Language.** The pack's Russian strings are its entities' data, written as Appendix Д writes
+  them; every comment and test name is English.
+
+#### 11. What came out of it
+
+The gate, measured:
+- `pnpm lint`: `Checked 156 files in 265ms. No fixes applied.`
+- `pnpm typecheck`: 6 projects `Done`, the module's tests included.
+- `pnpm test`: `Test Files 43 passed (43)`, `Tests 490 passed (490)`, 8.49 s. Before: 481; the 9
+  new are the `ENG-22` block. `golden-values.test.ts` alone: 25 (16 before).
+
+The values, from the tests (each SPEC §6.7's):
+- Golden E: SAN 14, +2, save +2 (save proficiency 0). The stats by `order`: STR, DEX, CON, INT,
+  WIS, CHA, SAN, each with a save.
+- Composure: its stat `san`, proficiency 0, +2.
+- INT 9 (base 8, then `hb-local:feat/arcane-scholar#int-plus-1`), −1; Occultism proficiency 1
+  from `hb-local:feat/arcane-scholar#occult-prof`, `prof` 2, total +1.
+- SAN 16: Composure +3. No feat: Occultism −1, INT 8.
+- The pack off: two warnings, `Missing: hb-local:feat/arcane-scholar (given by character).` and
+  `noStat` for `san`; the six SRD stats; no Occultism or Composure value.
+- Of golden B's values, only `abilities.int.score` differs in golden E: 8 → 9.
+- The pack loads after `srd-2024`: nothing refused, no warning.
+
+The fixture was checked against the SPEC's text: a scratch test (deleted) parsed Appendix Д's
+JSON out of `docs/SPEC.md` and compared it with `hbLocal` less `system` and
+`systemSchemaVersion`: equal, top-level keys in the same order.
+
+The tests were checked to fail, each change undone after:
+- The base phase's effects on a stat dropped (`stats.ts`): 2 fail (Occultism; the values that do
+  not move).
+- A missing id throws in gathering (`gather.ts`): 1 fails (the pack off).
+- Only the first six stats computed (`stats.ts`): 4 fail (SAN 14; Composure; SAN 16; whole).
+
+Differences from §3: none.
+
+Against the row: the engine already gave every golden E value (§2), so the ticket wrote test data
+and the test only; no source file changed. The row's note (the pack gains `system` and
+`systemSchemaVersion`, no expected value changes) is done as written.
+
+Found, not fixed: nothing.
+
+Changelog: nothing. No screen shows a character yet.

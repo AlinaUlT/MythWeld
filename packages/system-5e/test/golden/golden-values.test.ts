@@ -2,7 +2,9 @@ import { type Computed, compute, loadContentIndex } from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
+  FIFTH_EDITION_STAT_DEFAULTS,
   FIFTH_EDITION_SYSTEM,
+  type FifthEditionCharacter,
   type FifthEditionEntity,
   type fifthEditionCharacterSchema,
   fifthEditionModule,
@@ -17,6 +19,8 @@ import {
   goldenC2014,
   goldenC2024,
   goldenD,
+  goldenE,
+  hbLocal,
   srd2014,
   srd2024,
 } from './index.ts';
@@ -25,16 +29,37 @@ import {
 // copied from a run. Each ticket from ENG-13 to ENG-19 adds the lines it makes true; the goldens
 // are whole by ENG-19 (BACKLOG). A line no ticket has made true yet is not here.
 
-const index2014 = loadContentIndex(FIFTH_EDITION_SYSTEM, [opened(openFifthEditionPack(srd2014))]);
-const index2024 = loadContentIndex(FIFTH_EDITION_SYSTEM, [opened(openFifthEditionPack(srd2024))]);
+/** The packs the goldens may name, each opened once, by id. */
+const PACKS = new Map(
+  [srd2014, srd2024, hbLocal].map((file) => {
+    const pack = opened(openFifthEditionPack(file));
+    return [pack.id, pack];
+  }),
+);
 
-/** A golden character, computed by fifth edition's module on its edition's pack. */
+/** A character's active packs, in its order (SPEC §5.8), loaded into the content index. */
+function loadedFor(character: FifthEditionCharacter) {
+  return loadContentIndex(
+    FIFTH_EDITION_SYSTEM,
+    character.packs.flatMap((id) => PACKS.get(id) ?? []),
+  );
+}
+
+/** A golden character, computed by fifth edition's module on the packs it names. */
 function computed(
   golden: z.input<typeof fifthEditionCharacterSchema>,
 ): Computed<FifthEditionEntity> {
   const character = opened(openFifthEditionCharacter(golden));
-  const { index } = character.ruleset === '2014' ? index2014 : index2024;
-  return compute(character, index, fifthEditionModule);
+  return compute(character, loadedFor(character).index, fifthEditionModule);
+}
+
+/** The result has no warning, and each path's breakdown adds up to its value (ENG-13). */
+function expectWhole(result: Computed<FifthEditionEntity>) {
+  expect(result.warnings).toEqual([]);
+  for (const [path, steps] of Object.entries(result.breakdown)) {
+    const sum = steps.reduce((total, step) => total + step.change, 0);
+    expect([path, sum]).toEqual([path, result.values[path]]);
+  }
 }
 
 const STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
@@ -151,13 +176,8 @@ describe('ENG-13 goldens: check bonuses', () => {
   });
 
   it('every golden: no warning, and each breakdown adds up to its value', () => {
-    const all = [a, b, b4, d, computed(goldenC2014), computed(goldenC2024)];
-    for (const result of all) {
-      expect(result.warnings).toEqual([]);
-      for (const [path, steps] of Object.entries(result.breakdown)) {
-        const sum = steps.reduce((total, step) => total + step.change, 0);
-        expect([path, sum]).toEqual([path, result.values[path]]);
-      }
+    for (const result of [a, b, b4, d, computed(goldenC2014), computed(goldenC2024)]) {
+      expectWhole(result);
     }
   });
 });
@@ -313,5 +333,123 @@ describe('ENG-16 goldens: weapon attacks', () => {
       'attacks.greatsword.hit': 5,
       'attacks.greatsword.damage': 3,
     });
+  });
+});
+
+describe('ENG-22 golden E: the homebrew pack from Appendix Д', () => {
+  const e = computed(goldenE);
+  const b = computed(goldenB);
+  /** Golden E with its base SAN at `score`. */
+  const withSan = (score: number) => ({
+    ...goldenE,
+    abilities: { base: { ...goldenE.abilities.base, san: score } },
+  });
+  const noFeat = { ...goldenE, systemData: { ...goldenE.systemData, feats: [] } };
+  const packOff = { ...goldenE, packs: ['srd-2024'] };
+
+  it("the pack, Appendix Д's with its system and the module's version, loads after the SRD", () => {
+    const loaded = loadedFor(opened(openFifthEditionCharacter(goldenE)));
+    expect([loaded.loaded, loaded.refused, loaded.warnings]).toEqual([
+      ['srd-2024', 'hb-local'],
+      [],
+      [],
+    ]);
+  });
+
+  it('SAN 14: modifier +2, and a save; a stat after the six', () => {
+    expect(
+      valuesOf(e, [
+        'abilities.san.score',
+        'abilities.san.mod',
+        'abilities.san.saveProf',
+        'abilities.san.save',
+      ]),
+    ).toEqual({
+      'abilities.san.score': 14,
+      'abilities.san.mod': 2,
+      'abilities.san.saveProf': 0,
+      'abilities.san.save': 2,
+    });
+    // What the abilities and saves blocks list: each stat, by its order, and whether it has a save.
+    const stats = Object.values(e.byKey.ability ?? {})
+      .flatMap((stat) => (stat.type === 'ability' ? [stat] : []))
+      .sort((x, y) => x.order - y.order)
+      .map((stat) => [stat.key, stat.hasSave ?? FIFTH_EDITION_STAT_DEFAULTS.hasSave]);
+    expect(stats).toEqual([...STATS, 'san'].map((key) => [key, true]));
+  });
+
+  it('Composure: from SAN, no proficiency, +2', () => {
+    expect(e.keys['skills.composure.ability']?.key).toBe('san');
+    expect(valuesOf(e, ['skills.composure.prof', 'skills.composure.total'])).toEqual({
+      'skills.composure.prof': 0,
+      'skills.composure.total': 2,
+    });
+  });
+
+  it('Occultism: INT 8 → 9 (−1) + proficiency 2 from Arcane Scholar = +1', () => {
+    expect(
+      valuesOf(e, [
+        'abilities.int.score',
+        'abilities.int.mod',
+        'skills.occultism.prof',
+        'prof',
+        'skills.occultism.total',
+      ]),
+    ).toEqual({
+      'abilities.int.score': 9,
+      'abilities.int.mod': -1,
+      'skills.occultism.prof': 1,
+      prof: 2,
+      'skills.occultism.total': 1,
+    });
+    expect(
+      e.breakdown['abilities.int.score']?.map((step) =>
+        step.kind === 'effect' ? step.part : step.kind,
+      ),
+    ).toEqual(['base', 'hb-local:feat/arcane-scholar#int-plus-1']);
+    expect(
+      e.breakdown['skills.occultism.prof']?.map((step) => step.kind === 'grant' && step.part),
+    ).toEqual(['hb-local:feat/arcane-scholar#occult-prof']);
+  });
+
+  it('SAN changed to 16: Composure +3 at once', () => {
+    expect(computed(withSan(16)).values['skills.composure.total']).toBe(3);
+  });
+
+  it('the feat removed: Occultism −1, INT 8', () => {
+    expect(valuesOf(computed(noFeat), ['skills.occultism.total', 'abilities.int.score'])).toEqual({
+      'skills.occultism.total': -1,
+      'abilities.int.score': 8,
+    });
+  });
+
+  it('the pack off: the character opens; Missing: hb-local:… where it was named, no crash', () => {
+    const off = computed(packOff);
+    expect(off.warnings).toEqual([
+      {
+        code: 'missing',
+        id: 'hb-local:feat/arcane-scholar',
+        from: 'character',
+        message: 'Missing: hb-local:feat/arcane-scholar (given by character).',
+      },
+      // ENG-12: a base score whose stat no pack gives is not used.
+      expect.objectContaining({ code: 'noStat', key: 'san', from: 'character' }),
+    ]);
+    expect(Object.keys(off.byKey.ability ?? {})).toEqual(STATS);
+    expect(valuesOf(off, ['skills.occultism.total', 'skills.composure.total'])).toEqual({
+      'skills.occultism.total': undefined,
+      'skills.composure.total': undefined,
+    });
+  });
+
+  it("golden B's other values do not move: INT 9's modifier is −1, as INT 8's is", () => {
+    const moved = Object.entries(b.values).flatMap(([path, value]) =>
+      e.values[path] === value ? [] : [[path, value, e.values[path]]],
+    );
+    expect(moved).toEqual([['abilities.int.score', 8, 9]]);
+  });
+
+  it('golden E, with SAN 16 and with no feat: no warning, each breakdown adds up', () => {
+    for (const result of [e, computed(withSan(16)), computed(noFeat)]) expectWhole(result);
   });
 });

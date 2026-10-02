@@ -4,7 +4,7 @@ import { houseRules, rested, untouched } from './character-parts.ts';
 
 // ENG-10: the 2024 golden characters of SPEC §6.7, on the pack `srd-2024`. What SPEC §6.7 states
 // is written as it states it; what it leaves open is test data, marked so. Their expected values
-// are SPEC §6.7's, turned on by ENG-13 onward.
+// are SPEC §6.7's, turned on by ENG-13 onward. ENG-22 adds golden E, on `hb-local` too.
 
 type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 
@@ -105,6 +105,19 @@ export const goldenB4 = {
     // SPEC §6.7's hit point maximum, not yet hurt.
     state: { ...rested, hp: { current: 36, temp: 0 } },
   },
+} satisfies z.input<typeof fifthEditionCharacterSchema>;
+
+/**
+ * Golden E: golden B with SPEC Appendix Д's pack after the SRD, a base SAN of 14 (Appendix Д's last
+ * line) and its feat Arcane Scholar, given by hand: a fighter 1 has no grant to take it in place of.
+ */
+export const goldenE = {
+  ...goldenB,
+  id: '1f2a3b4c-5d6e-4f7a-8b9c-0d1e2f3a4b5c',
+  name: 'Golden E',
+  packs: ['srd-2024', 'hb-local'],
+  abilities: { base: { ...goldenB.abilities.base, san: 14 } },
+  systemData: { ...goldenB.systemData, feats: [{ id: 'hb-local:feat/arcane-scholar' }] },
 } satisfies z.input<typeof fifthEditionCharacterSchema>;
 
 /** Golden D: golden B with exhaustion at level 2. */

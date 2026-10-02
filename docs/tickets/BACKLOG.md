@@ -111,7 +111,7 @@ split off an old row got a new id.
 | ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | 🔲 |
 | ENG-21 | A rest changes the character by its edition's rules | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | 🔲 |
-| ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | 🔲 |
+| ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
@@ -191,8 +191,6 @@ split off an old row got a new id.
   default is the rules base's source. Its §8 reads both SRDs for other bonuses of one kind given
   in two places (ADR 005 item 3.4, still in force for those); each one found becomes a new row.
   The choice is ENG-33's `systemData.abilities.bonusSource`; its `species` is ADR 014's `race`.
-- **ENG-22** — the Appendix Д pack gains the `system` field (ADR 004 item 3) and the module's
-  `systemSchemaVersion` (ENG-39); no expected value changes.
 - **ENG-37** — ADR 005 item 3.6; the fixture states its ability bonus source (ADR 014 item 1).
   The ticket stops to show the character and its hand-computed values to the owner (golden
   values are hers); the test is written only after her yes. No golden F value is written before
