@@ -7,7 +7,13 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/dist", "!pnpm-lock.yaml", "!docs/design/mockups"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!pnpm-lock.yaml",
+      "!docs/design/mockups",
+      "!apps/web/public/schema"
+    ]
   },
   "formatter": {
     "enabled": true,

@@ -16,6 +16,8 @@ import { COINS, fifthEdition, HIT_DIE_SIZES, MAX_LEVEL, MAX_SPELL_LEVEL } from '
 // gives is its `grants`, the only place the core reads it (ENG-11): SPEC's fields that list given
 // entities (a class's features, a species' traits, a background's feat, a feature's origin and
 // uses) are written as grants instead (ENG-32 §4). Distances are feet and weights pounds.
+// ENG-38: a check JSON Schema can say carries its JSON Schema form beside it, in `.meta()`, so the
+// published file refuses what Zod refuses; the others are lines in its description (`pack.ts`).
 
 const base = fifthEdition.entityBaseSchema;
 
@@ -157,6 +159,24 @@ export const featureDefSchema = base.safeExtend({
 });
 export type FeatureDef = z.infer<typeof featureDefSchema>;
 
+/**
+ * A JSON Schema form: `needs` are required when `field` holds `value`, and refused when it holds
+ * another.
+ */
+function onlyWhen(field: string, value: string, needs: readonly string[]) {
+  return {
+    anyOf: [
+      { properties: { [field]: { const: value } }, required: [...needs] },
+      {
+        properties: {
+          [field]: { not: { const: value } },
+          ...Object.fromEntries(needs.map((need) => [need, false])),
+        },
+      },
+    ],
+  };
+}
+
 /** How far a spell reaches; a `distance` range alone has a distance. */
 const spellRangeSchema = z
   .strictObject({
@@ -167,7 +187,8 @@ const spellRangeSchema = z
   .refine((range) => (range.kind === 'distance') === (range.distance !== undefined), {
     message: 'A `distance` range needs `distance`; no other range has one.',
     path: ['distance'],
-  });
+  })
+  .meta(onlyWhen('kind', 'distance', ['distance']));
 
 /** How long a spell lasts; a `timed` duration alone has a value and a unit. */
 const spellDurationSchema = z
@@ -182,7 +203,8 @@ const spellDurationSchema = z
         ? duration.value !== undefined && duration.unit !== undefined
         : duration.value === undefined && duration.unit === undefined,
     'A `timed` duration needs `value` and `unit`; no other duration has them.',
-  );
+  )
+  .meta(onlyWhen('kind', 'timed', ['value', 'unit']));
 
 /** A spell's components; a material's cost and whether it is used up need the material. */
 const spellComponentsSchema = z
@@ -198,7 +220,13 @@ const spellComponentsSchema = z
       components.m !== undefined ||
       (components.mCost === undefined && components.mConsumed === undefined),
     '`mCost` and `mConsumed` need `m`.',
-  );
+  )
+  .meta({ dependentRequired: { mCost: ['m'], mConsumed: ['m'] } });
+
+/** A JSON Schema form: a `scaling` of this kind. */
+function scalingKind(kind: string) {
+  return { type: 'object', properties: { kind: { const: kind } } };
+}
 
 /**
  * A spell. Level 0 is a cantrip. `scaling` is how its dice grow (ADR 014 item 6): a cantrip's with
@@ -234,7 +262,13 @@ export const spellDefSchema = base
       message: 'A cantrip scales by `cantrip`, a spell of level 1 or more by `slot`.',
       path: ['scaling', 'kind'],
     },
-  );
+  )
+  .meta({
+    anyOf: [
+      { properties: { level: { const: 0 }, scaling: scalingKind('cantrip') } },
+      { properties: { level: { not: { const: 0 } }, scaling: scalingKind('slot') } },
+    ],
+  });
 export type SpellDef = z.infer<typeof spellDefSchema>;
 
 /** A weapon's numbers; a range in feet, the long one no shorter than the normal one. */
@@ -307,6 +341,9 @@ export const itemDefSchema = base
         message: has ? `Only the category \`${category}\` has a \`${block}\` block.` : needs,
       });
     }
+  })
+  .meta({
+    allOf: ITEM_BLOCKS.map(({ block, category }) => onlyWhen('category', category, [block])),
   });
 export type ItemDef = z.infer<typeof itemDefSchema>;
 

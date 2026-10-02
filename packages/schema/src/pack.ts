@@ -152,17 +152,31 @@ function idMatchesType(ctx: { jsonSchema: z.core.JSONSchema.BaseSchema }): void 
   const type = properties?.type;
   const id = properties?.id;
   if (properties === undefined || typeof type !== 'object' || typeof id !== 'object') return;
-  if (typeof type.const !== 'string' || typeof id.pattern !== 'string') return;
-  // A new object: the id's JSON Schema is one object shared by every option.
-  properties.id = { ...id, pattern: entityIdPatternOf(type.const) };
+  if (typeof type.const !== 'string') return;
+  if (typeof id.pattern !== 'string' && typeof id.$ref !== 'string') return;
+  // A new object: the id's JSON Schema is one object shared by every option. Next to a `$ref`,
+  // the pattern applies as well as the shared one, which it narrows.
+  properties.id = { ...id, type: 'string', pattern: entityIdPatternOf(type.const) };
 }
 
-/** A pack schema as draft 2020-12 JSON Schema, for people who write a pack by hand. */
-export function packJsonSchemaOf(packSchema: z.ZodType) {
+/**
+ * A pack schema as draft 2020-12 JSON Schema, for people who write a pack by hand.
+ * `checksLeftOut` are the module's own lines for the description, after the core's.
+ */
+export function packJsonSchemaOf(packSchema: z.ZodType, checksLeftOut: readonly string[] = []) {
+  // ENG-38: a part used in several places is written once, in `$defs`: the fifth-edition pack's
+  // file is 16 times smaller than with every part written out where it is used.
+  const { $schema, ...rest } = z.toJSONSchema(packSchema, {
+    io: 'input',
+    reused: 'ref',
+    override: idMatchesType,
+  });
+  // The title and the checks left out come first, where a person opening the file reads first.
   return {
-    ...z.toJSONSchema(packSchema, { io: 'input', override: idMatchesType }),
+    $schema,
     title: 'Content pack',
-    description: describeChecks('A content pack', PACK_CHECKS_LEFT_OUT),
+    description: describeChecks('A content pack', [...PACK_CHECKS_LEFT_OUT, ...checksLeftOut]),
+    ...rest,
   };
 }
 

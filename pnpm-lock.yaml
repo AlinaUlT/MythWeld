@@ -63,6 +63,9 @@ importers:
         specifier: ^7.4.1
         version: 7.4.1
     devDependencies:
+      '@grimoire/system-5e':
+        specifier: workspace:*
+        version: link:../../packages/system-5e
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0
@@ -143,6 +146,13 @@ importers:
       zod:
         specifier: ^4.6.5
         version: 4.6.5
+    devDependencies:
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.20.0)
 
 packages:
 

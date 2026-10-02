@@ -5017,3 +5017,206 @@ Found, not fixed:
   ENG-35. The pack ENG-38 publishes. Noted on ENG-38.
 
 Nothing for the changelog.
+
+---
+
+### ENG-38 The published pack schema
+
+**Hat:** The fifth-edition pack's JSON Schema is published as a file
+**Depends on:** ENG-05 (`packJsonSchemaOf`), ENG-32 (the entity union, the 10 lost checks in its
+§11), ENG-33 (`fifthEditionPackSchema`), SETUP-07 (the service worker), SETUP-08 (the deploy)
+**Size:** S (re-cut from XS: §11)
+**Screen:** No
+**SPEC:** §5.7 (the published `/schema/pack.schema.json`); ADR 004 item 3
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/public/schema/5e/pack.schema.json` — new, written by its test.
+- `apps/web/test/pack-schema.test.ts` — new: the file equals the module's JSON Schema.
+- `apps/web/e2e/pack-schema.spec.ts` — new: the built app serves the file.
+- `apps/web/e2e/service-worker.ts` — new: `waitForServiceWorker`, moved out of `pwa.spec.ts`.
+- `apps/web/vite.config.ts` — changes: the service worker leaves `schema/` to the server.
+- `apps/web/package.json` — changes: `@grimoire/system-5e` as a dev dependency; the lockfile.
+- `packages/schema/src/pack.ts` — changes: `packJsonSchemaOf` takes a module's lines for the
+  description and writes shared parts once, in `$defs`.
+- `packages/system-5e/src/entity-types.ts` — changes: a JSON Schema form beside 5 refinements.
+- `packages/system-5e/src/pack.ts` — changes: `fifthEditionPackJsonSchema`,
+  `FIFTH_EDITION_CHECKS_LEFT_OUT`.
+- `packages/system-5e/package.json` — changes: `ajv`, `ajv-formats` as dev dependencies.
+- `packages/system-5e/test/entities.ts` — new: ENG-32's made-up entities, moved out of its test.
+- `packages/system-5e/test/pack-json-schema.test.ts` — new.
+- `biome.json` — changes: the written file is left out of formatting.
+- `docs/RUNNING.md` — changes: how the file is rewritten.
+
+#### 2. What is missing now
+
+- `ls apps/web/public` prints `favicon.svg`. No schema file is built or served.
+- `packJsonSchemaOf(fifthEditionPackSchema)`, written with 2-space indentation: 1,267,489 bytes,
+  32,192 lines. Every shared part is written again where it is used. Without indentation:
+  355,972 bytes.
+- The JSON Schema loses 10 of the module's checks (ENG-32 §11). Its `description` names the core's
+  3 lines only.
+- The built `apps/web/dist/sw.js` holds `NavigationRoute(e.createHandlerBoundToURL("index.html")`
+  with no denylist: every page address under `/MythWeld/` that the service worker controls is
+  answered with the app's `index.html`.
+- `pnpm test`: `Test Files 32 passed (32)`, `Tests 320 passed (320)`.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/system-5e` exports `fifthEditionPackJsonSchema()` and `FIFTH_EDITION_CHECKS_LEFT_OUT`.
+   `packJsonSchemaOf(packSchema, checksLeftOut?)` puts a module's lines after the core's 3 in
+   `description`. Called with no lines, its `description` is ENG-05's, word for word.
+2. `apps/web/public/schema/5e/pack.schema.json` is `fifthEditionPackJsonSchema()` as JSON, 2-space
+   indentation, one final newline. `apps/web/test/pack-schema.test.ts` fails when the file and the
+   schemas differ; run with `--update`, it rewrites the file.
+3. The built app serves the file at `/MythWeld/schema/5e/pack.schema.json`, with a `content-type`
+   of `application/json`, equal to the committed file. With the service worker in control, a
+   page opened at that address gets the file, not the app (`pnpm e2e`).
+4. Shared parts are written once, in `$defs`: the file is under 100,000 bytes.
+5. Ajv (`Ajv2020`, strict but for `strictRequired`, with formats) accepts a pack holding ENG-32's
+   21 made-up entities. In the JSON Schema alone, it refuses 6 of the 10 lost checks, each both
+   ways where there are two: a range's `distance` by its kind; a duration's `value` and `unit` by
+   its kind; `mCost` or `mConsumed` without `m`; the `weapon` block by category; the `armor` block
+   by category; a spell's scaling by its level.
+6. The other 4 are lines in the file's `description`, each refused by Zod and accepted by Ajv in
+   the test: a long range below the normal one; a class level given twice; a multiclass grant id
+   given twice or one of the class's own; an item grant's item given twice.
+7. ENG-05's and ENG-40's tests pass unchanged on the made-up system's pack, now with `$defs`.
+8. The file holds only ASCII bytes and no text from a book.
+9. The quality gate is green, and `pnpm e2e`.
+
+#### 4. How to do it
+
+1. `packages/schema/src/pack.ts`: `packJsonSchemaOf(packSchema, checksLeftOut = [])`;
+   `reused: 'ref'`; the id override writes the type's pattern next to a `$ref` as well.
+2. `entity-types.ts`: a `.meta()` beside the range, duration, components, spell and item checks:
+   `if`/`then`/`else` on the kind, category or level; `dependentRequired` for the material;
+   `properties: { field: false }` for a field no other kind has.
+3. `packages/system-5e/src/pack.ts`: the 4 lines and `fifthEditionPackJsonSchema()`.
+4. ENG-32's test entities move to `test/entities.ts`; its test imports them.
+5. `apps/web`: the dev dependency, the test that writes the file, `navigateFallbackDenylist`, the
+   e2e spec. `biome.json` leaves the file out.
+6. `docs/RUNNING.md`: one line on rewriting the file.
+7. The tests of §7.
+
+Technical choices (ADR 002):
+- **One file per system, under `schema/<system id>/`.** SPEC §5.7 names `/schema/pack.schema.json`,
+  written before ADR 004. A pack names one system (ADR 004 item 3), so each system has its own pack
+  schema. The address a person puts in their editor stays the same when a second system comes.
+- **The file is committed, and a test keeps it in step** (`toMatchFileSnapshot`). A change to the
+  published schema shows in the commit that makes it, and the build needs no new step. In CI the
+  test only compares; it never writes.
+- **Shared parts once, in `$defs`** (`reused: 'ref'`), for every system's pack: 16 times smaller
+  (§11). The names are Zod's own (`__schema0` …); no core schema has an id.
+- **The service worker leaves `schema/` to the server.** Its navigation fallback would answer the
+  file's address with the app.
+- **Not precached.** The file is for editors and validators, not for the app offline; Workbox's
+  list (`js`, `css`, `html`, `ico`, `png`, `svg`) already leaves `.json` out.
+- **Biome leaves the file alone.** `JSON.stringify` writes it; a formatter that rewrites it would
+  make the test fail.
+- **`apps/web` takes the module as a dev dependency:** only its test reads it today.
+- **Ajv in the module's tests**, as in the core's (ENG-05).
+
+#### 5. Stored data
+
+Nothing stored changes. The JSON Schema describes the stored pack; the Zod schemas parse what they
+parsed before (the new forms are metadata).
+
+#### 6. What a person will see
+
+Not a screen. A person who writes a pack by hand can point an editor or a validator at
+`https://<site>/MythWeld/schema/5e/pack.schema.json`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/pack-json-schema.test.ts` — `describe('ENG-38 fifth-edition pack JSON
+  Schema')`: §3 items 1, 4–6, 8.
+- `apps/web/test/pack-schema.test.ts` — `describe('ENG-38 published pack schema')`: §3 item 2.
+- `apps/web/e2e/pack-schema.spec.ts` — `ENG-38`: §3 item 3.
+- `packages/schema/test/pack.test.ts`, `keys.test.ts` — unchanged: §3 item 7.
+- Control values from: ENG-32 §11's list of the 10 lost checks; ENG-32's made-up entities
+  (`hb-test`); the byte counts of §2.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact. Each JSON Schema form says what a Zod check of ENG-32 already
+says; Ajv proves each one in the test.
+
+#### 9. Not in this ticket
+
+- A published file for the locale overlay's JSON Schema: SPEC §5.7 publishes the pack's only.
+- A `$schema` field inside a pack, so that an editor finds the file without a setting: §11.
+- A check of the file on the public site in CI's `deploy` job: GitHub Pages serves every file of
+  `dist`, and the e2e test checks the build.
+- Readable names in `$defs`: no core schema has an id.
+
+#### 10. Rake check
+
+- **The core names no game.** `packJsonSchemaOf` takes the module's lines as data; the `5e` path
+  is the app's. No core file imports the module.
+- **The module is pure TypeScript.** It returns the JSON Schema; the app's test writes the file.
+- **Licensing; no rules text.** The test entities are made up (`hb-test`); the file holds the
+  schema only (§3 item 8).
+- **No "D&D".** The file's title is `Content pack`; its path says `5e`.
+- **No external requests.** The app serves the file from its own host and fetches nothing.
+- **Nothing invisible.** The file is checked to be ASCII (§3 item 8).
+- **A stored-shape change needs a migration.** No stored shape changes (§5).
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `pack-json-schema.test.ts` alone: `Tests 4 passed (4)`, 1.01 s. `pack-schema.test.ts` alone, with
+  `CI=true`: `Tests 1 passed (1)`, 444 ms.
+- Lint: `Checked 127 files`, no errors (122 before; 5 new files; the written file is left out).
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done`.
+- Test: `Test Files 34 passed (34)`, `Tests 325 passed (325)`, 5.56 s (before: 32 files, 320
+  tests), with and without `CI=true`. ENG-05's and ENG-40's 23 tests pass unchanged with `$defs`;
+  ENG-32's 13 pass unchanged with the entities moved to `test/entities.ts`.
+- Build: `apps/web build: Done`; `apps/web/dist/schema/5e/pack.schema.json` is 77,634 bytes.
+- E2E: `12 passed (9.9s)` (before: 10). The new spec before the service worker change: the
+  server alone gave the file, and with the worker in control the address answered
+  `text/html;charset=utf-8`, the app. After: both pass; `dist/sw.js` holds
+  `denylist:[/^\/MythWeld\/schema\//]`.
+- The file: 77,634 bytes, 3,299 lines, 125 `$defs`, printable ASCII and line breaks only. The same
+  schema written inline: 1,271,117 bytes, 16.4 times more. Its one `description` is the root's;
+  `grep -c "hb-test\|Lantern"` on it gives 0.
+- With `CI=true` and no file, the app's test fails (`Snapshot … mismatched`) and writes nothing.
+  With `--update` it writes the file; a later change to the schemas (the title moved, below) made
+  it fail again until rewritten.
+- The tests catch mistakes. Each guard removed on its own, the three JSON Schema test files run
+  (27 tests): the range form, 1 fails; the duration form, 1; the material form, 1; the item blocks
+  form, 1; the spell's `slot` branch, 1; the pattern beside a `$ref`, 1 (ENG-05's `carries 8
+  checks`); `reused: 'ref'`, 1; the module's lines, 2.
+- The lockfile: 10 lines added, 0 removed (`ajv`, `ajv-formats` in the module; the module in
+  `apps/web`).
+
+Differences from §3 and §4:
+- §4 item 2 named `if`/`then`/`else`. Biome's recommended `noThenProperty` refuses an object with
+  a `then` key, and no file in the code silences a lint rule. The forms are `anyOf` of two
+  branches (the value and what it needs; any other value and none of it), which refuse the same
+  packs, measured by the 14 cases of the test.
+- The id's pattern beside a `$ref` carries `type: 'string'`: Ajv's strict mode refuses a `pattern`
+  there without one (`missing type "string" for keyword "pattern"`, `strictTypes`).
+- The file starts with `$schema`, `title` and `description`, where a person opening it reads
+  first; Zod's output puts them after `$defs`.
+- `waitForServiceWorker` moved out of `pwa.spec.ts` so the new spec shares it; its body did not
+  change.
+- Re-cut from XS to S: the row's note asked for 10 checks, and the service worker had to be
+  measured and changed.
+
+Notes:
+- The public site was not fetched: this container cannot reach its host (`docs/RUNNING.md`). CI's
+  deploy publishes `apps/web/dist`, which holds the file.
+- The `$defs` names are numbered in the order Zod meets the parts, so a new shared part renumbers
+  the later ones and rewrites their `$ref` lines in the file. Readable, steady names need an `id`
+  on the core's schemas.
+
+Found, not fixed:
+- A pack refuses `$schema`, so a pack file cannot name the published schema: Zod gives
+  `unrecognized_keys` and Ajv `additionalProperty`, measured. New note for phase 5 in
+  `BACKLOG.md`.
+
+Changelog: one line. The public link serves the file.

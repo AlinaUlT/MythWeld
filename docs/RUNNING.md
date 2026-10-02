@@ -46,6 +46,13 @@ pnpm e2e
   on one project, `pixel-7`, at 360×800.
 - Screenshots land in `apps/web/test-results/`. That folder is git-ignored; screenshots are shown
   in the chat, never committed.
+- `apps/web/public/schema/5e/pack.schema.json`, the published pack JSON Schema, is written by its
+  test. After a schema change `pnpm test` fails there; this rewrites the file, which is committed
+  with the change:
+
+  ```
+  pnpm vitest run apps/web/test/pack-schema.test.ts --update
+  ```
 
 ### Playwright's browser
 
@@ -76,7 +83,8 @@ pnpm e2e
      and the upload of `apps/web/dist`;
   2. job `deploy`, only when `check` passed: publishes to GitHub Pages, then fetches the page,
      `manifest.webmanifest`, `sw.js` and `/MythWeld/dice` from the public address.
-- The public link: `https://alinault.github.io/MythWeld/`.
+- The public link: `https://alinault.github.io/MythWeld/`. The fifth-edition pack's JSON Schema is
+  at `schema/5e/pack.schema.json` under it.
 - The result is on GitHub under Actions → CI; the `deploy` job's last step prints the answers it
   got, for example `page 200, manifest 200, sw.js 200, dice 404`. The `404` for `dice` is
   expected: GitHub Pages sends `404.html`, which is the app.

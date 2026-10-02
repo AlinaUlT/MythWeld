@@ -88,7 +88,7 @@ split off an old row got a new id.
 | ENG-42 | A test holds the module's tsconfig to the language alone | XS | ✅ 2026-10-01 |
 | ENG-32 | The fifth-edition entity types have Zod schemas | M | ✅ 2026-10-01 |
 | ENG-33 | The fifth-edition part of the character document has a schema | S | ✅ 2026-10-01 |
-| ENG-38 | The fifth-edition pack's JSON Schema is published as a file | XS | 🔲 |
+| ENG-38 | The fifth-edition pack's JSON Schema is published as a file | S | ✅ 2026-10-02 |
 | ENG-09 | 2014 fixtures: every SRD entity golden A or C needs | M | 🔲 |
 | ENG-10 | 2024 fixtures: every SRD entity golden B, B4, C or D needs | M | 🔲 |
 | ENG-13 | Check bonuses are computed: modifiers, proficiency, saves, skills, passives | M | 🔲 |
@@ -110,14 +110,6 @@ split off an old row got a new id.
 - **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
   recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
   `regainResource` gives uses back, never below none spent.
-- **ENG-38** — found by ENG-05: SPEC §5.7's `/schema/pack.schema.json`, from
-  `packJsonSchemaOf` of ENG-33's `fifthEditionPackSchema`, kept in step with the schemas by a test.
-  Found by ENG-32: the union's JSON Schema loses 10 of the module's checks, measured with ajv
-  (ENG-32 §11): a range's distance by its kind, a duration's value and unit by its kind, a
-  material's cost and use by `m`, the `weapon` and `armor` blocks by category, a long range below
-  the normal one, a class level twice, a multiclass grant id that is the class's own, a spell's
-  scaling by its level, an item grant's id twice. Each gets a JSON Schema form or a line in the
-  file's description.
 - **ENG-09, ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's
   schemas. Every rules fact in them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`). SPEC §5.3's
   fields that list what an entity gives (a class's features, a species' traits, domain spells,
@@ -227,6 +219,10 @@ split off an old row got a new id.
   the core's `schemaVersion`. When a module renames a text field, a stored overlay keeps the old
   name and its text is no longer shown. The row that stores imported overlays gives them the
   module's version, or ties each to its pack's.
+- **Phase 5** — found by ENG-38: a pack refuses unknown fields, so a pack file cannot name the
+  published schema in a `$schema` field (`schema/5e/pack.schema.json`); an editor finds the schema
+  only through its own setting. The row that writes the import checks decides: the pack takes an
+  optional `$schema` (an optional field needs no migration), or the import removes it.
 - **Phase 5** — found by ENG-12: a stat distribution's pattern is picked by its count of items,
   so of two patterns with one length (`[[2, 1], [1, 1]]`) the second is never used. The import
   checks or the editor warn.

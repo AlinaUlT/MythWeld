@@ -1,19 +1,12 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { APP_BACKGROUND_COLOR, APP_BASE_PATH, APP_NAME, APP_SHORT_NAME } from '../src/config/app';
 import en from '../src/locales/en/common.json' with { type: 'json' };
+import { waitForServiceWorker } from './service-worker';
 
 type Icon = { src: string; sizes: string; purpose?: string };
-
-// The service worker controls the page only after it has precached every built file.
-async function waitForServiceWorker(page: Page) {
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready;
-  });
-  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
-}
 
 test('SETUP-07 the manifest names the app and its icons', async ({ page, request }) => {
   await page.goto('./');

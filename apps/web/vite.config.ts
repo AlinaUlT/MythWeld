@@ -24,6 +24,9 @@ export default defineConfig({
         // The plugin adds manifest.webmanifest itself; listing it here too makes Workbox refuse
         // to precache anything (add-to-cache-list-conflicting-entries).
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // ENG-38: a published pack schema is a file, not a page of the app. Without this, a
+        // browser the worker controls gets index.html at the file's address.
+        navigateFallbackDenylist: [new RegExp(`^${APP_BASE_PATH}schema/`)],
         // The plugin sets these two only when it injects its own register script; main.tsx
         // registers instead. Without them a new version waits until every tab of the app closes.
         skipWaiting: true,
