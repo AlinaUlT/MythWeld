@@ -189,6 +189,12 @@ const feats: Of<'feat'>[] = [
 
 // --- The fighter and the Champion (`5e-SRD-Classes.json`, `-Levels.json`, `-Features.json`) ---
 
+/** What a weapon mastery choice offers: any weapon, Simple or Martial (ENG-16 §8). */
+const WEAPONS = { type: 'item', category: 'weapon' };
+
+/** One more kind of weapon to master. */
+const ONE_WEAPON = { count: 1, from: WEAPONS };
+
 /** The fighter's table: its Second Wind and Weapon Mastery columns, per class level. */
 const FIGHTER_LEVELS: NonNullable<Of<'class'>['levels']> = [
   { level: 1, table: { secondWindUses: 2, weaponMastery: 3 } },
@@ -339,8 +345,22 @@ const fighterFeatures: Of<'feature'>[] = [
       },
     ],
   },
-  // How many kinds of weapons is the table's `weaponMastery`; which kinds is ENG-16's (§9).
-  named('fighter-weapon-mastery', 'Weapon Mastery'),
+  {
+    // ENG-16: the kinds of weapons, chosen as dnd5e's advancements choose them: 3 at level 1, one
+    // more at 4, 10 and 16, as the table's `weaponMastery` column counts them (ENG-16 §8).
+    ...named('fighter-weapon-mastery', 'Weapon Mastery'),
+    grants: [
+      {
+        id: 'kinds',
+        kind: 'proficiency',
+        category: 'mastery',
+        choose: { count: 3, from: WEAPONS },
+      },
+      { id: 'kinds-4', kind: 'proficiency', category: 'mastery', atLevel: 4, choose: ONE_WEAPON },
+      { id: 'kinds-10', kind: 'proficiency', category: 'mastery', atLevel: 10, choose: ONE_WEAPON },
+      { id: 'kinds-16', kind: 'proficiency', category: 'mastery', atLevel: 16, choose: ONE_WEAPON },
+    ],
+  },
   named('fighter-action-surge', 'Action Surge'),
   named('fighter-tactical-mind', 'Tactical Mind'),
   named('fighter-subclass', 'Fighter Subclass'),
@@ -555,6 +575,36 @@ const exhaustion: Of<'condition'> = {
 // --- Equipment (`5e-SRD-Equipment.json`, `-Damage-Types.json`, `-Weapon-Properties.json`,
 // `-Weapon-Mastery-Properties.json`) -----------------------------------------------------------
 
+/** A martial melee weapon that deals slashing damage: weight in pounds, cost in gold pieces. */
+function martialMelee(
+  slug: string,
+  name: string,
+  weight: number,
+  gp: number,
+  dice: string,
+  properties: string[],
+  mastery: string,
+): Of<'item'> {
+  return {
+    id: `srd-2024:item/${slug}`,
+    type: 'item',
+    key: slug,
+    ruleset,
+    name: { en: name },
+    source,
+    category: 'weapon',
+    weight,
+    cost: { amount: gp, unit: 'gp' },
+    weapon: {
+      group: 'martial',
+      kind: 'melee',
+      damage: { formula: dice, type: 'slashing' },
+      properties,
+      mastery,
+    },
+  };
+}
+
 const items: Of<'item'>[] = [
   {
     id: 'srd-2024:item/chain-mail',
@@ -592,6 +642,10 @@ const items: Of<'item'>[] = [
       mastery: 'graze',
     },
   },
+  // ENG-16: three more kinds of weapons for golden B's and B4's mastery choices.
+  martialMelee('greataxe', 'Greataxe', 7, 30, '1d12', ['heavy', 'twoHanded'], 'cleave'),
+  martialMelee('glaive', 'Glaive', 6, 20, '1d10', ['heavy', 'reach', 'twoHanded'], 'graze'),
+  martialMelee('halberd', 'Halberd', 6, 20, '1d10', ['heavy', 'reach', 'twoHanded'], 'cleave'),
 ];
 
 const slashing: Of<'damageType'> = {
@@ -613,6 +667,14 @@ const weaponProperties: Of<'weaponProperty'>[] = [
     source,
   },
   {
+    id: 'srd-2024:weaponProperty/reach',
+    type: 'weaponProperty',
+    key: 'reach',
+    ruleset,
+    name: { en: 'Reach' },
+    source,
+  },
+  {
     id: 'srd-2024:weaponProperty/two-handed',
     type: 'weaponProperty',
     key: 'twoHanded',
@@ -622,14 +684,24 @@ const weaponProperties: Of<'weaponProperty'>[] = [
   },
 ];
 
-const graze: Of<'weaponMastery'> = {
-  id: 'srd-2024:weaponMastery/graze',
-  type: 'weaponMastery',
-  key: 'graze',
-  ruleset,
-  name: { en: 'Graze' },
-  source,
-};
+const masteries: Of<'weaponMastery'>[] = [
+  {
+    id: 'srd-2024:weaponMastery/cleave',
+    type: 'weaponMastery',
+    key: 'cleave',
+    ruleset,
+    name: { en: 'Cleave' },
+    source,
+  },
+  {
+    id: 'srd-2024:weaponMastery/graze',
+    type: 'weaponMastery',
+    key: 'graze',
+    ruleset,
+    name: { en: 'Graze' },
+    source,
+  },
+];
 
 /** The pack `srd-2024`, as a file would hold it: the SRD 5.2.1 entities goldens B to D need. */
 export const srd2024 = {
@@ -664,6 +736,6 @@ export const srd2024 = {
     ...items,
     slashing,
     ...weaponProperties,
-    graze,
+    ...masteries,
   ],
 } satisfies z.input<typeof fifthEditionPackSchema>;

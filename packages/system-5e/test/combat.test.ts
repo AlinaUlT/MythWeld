@@ -6,11 +6,12 @@ import {
   type FifthEditionCharacter,
   type FifthEditionEntity,
   type fifthEditionCharacterSchema,
+  fifthEditionModule,
   hitPointsOf,
   openFifthEditionCharacter,
   openFifthEditionPack,
 } from '../src/index.ts';
-import { opened, standingIn } from './golden/checks.ts';
+import { opened } from './golden/checks.ts';
 import {
   goldenA,
   goldenB,
@@ -38,7 +39,7 @@ const index2024 = loadContentIndex(FIFTH_EDITION_SYSTEM, [opened(openFifthEditio
 function computed(character: CharacterInput): Computed<FifthEditionEntity> {
   const one = opened(openFifthEditionCharacter(character));
   const { index } = one.ruleset === '2014' ? index2014 : index2024;
-  const result = compute(one, index, standingIn);
+  const result = compute(one, index, fifthEditionModule);
   for (const [path, steps] of Object.entries(result.breakdown)) {
     const sum = steps.reduce((total, step) => total + step.change, 0);
     expect(sum, path).toBe(result.values[path]);
@@ -553,7 +554,9 @@ describe('ENG-14 combat numbers', () => {
     const character = deepFreeze(opened(openFifthEditionCharacter(goldenA)));
     const { index } = index2014;
     deepFreeze(index);
-    expect(compute(character, index, standingIn)).toEqual(compute(character, index, standingIn));
+    expect(compute(character, index, fifthEditionModule)).toEqual(
+      compute(character, index, fifthEditionModule),
+    );
   });
 });
 
@@ -859,8 +862,8 @@ describe('ENG-47 the base AC calculation the person picks', () => {
     const character = deepFreeze(opened(openFifthEditionCharacter(one)));
     const { index } = index2024;
     deepFreeze(index);
-    const result = compute(character, index, standingIn);
+    const result = compute(character, index, fifthEditionModule);
     expect(result.values['ac.base']).toBe(13);
-    expect(compute(character, index, standingIn)).toEqual(result);
+    expect(compute(character, index, fifthEditionModule)).toEqual(result);
   });
 });

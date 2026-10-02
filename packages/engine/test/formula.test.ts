@@ -1,4 +1,5 @@
 import {
+  diceOf,
   evaluateCondition,
   evaluateFormula,
   evaluateNumber,
@@ -8,6 +9,7 @@ import {
   type FormulaReader,
   type ParsedFormula,
   parseFormula,
+  parseRoll,
 } from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 
@@ -508,5 +510,23 @@ describe('ENG-07 formulas evaluate safely', () => {
     // Every formula the language builds parses; the damaged ones are tried both ways.
     expect(damagedParses).toBeGreaterThan(0);
     expect(damagedParses).toBeLessThan(2500);
+  });
+});
+
+describe('ENG-16 dice terms of a roll', () => {
+  /** The dice terms of a roll formula that parses, each as written. */
+  function termsOf(text: string): string[] {
+    const parsed = parseRoll(text);
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return diceOf(parsed.formula).map((term) => term.text);
+  }
+
+  it('lists each dice term in the order written, in every branch; none in a plain number', () => {
+    expect(termsOf('2d6')).toEqual(['2d6']);
+    expect(termsOf('1')).toEqual([]);
+    expect(termsOf('@prof + 3')).toEqual([]);
+    expect(termsOf('1d4 + 2к6 + @prof')).toEqual(['1d4', '2к6']);
+    expect(termsOf('1d20 >= 10 ? 2d6 : 1d6')).toEqual(['1d20', '2d6', '1d6']);
+    expect(termsOf('max(1d6, -1d4) + 2d20kh1')).toEqual(['1d6', '1d4', '2d20kh1']);
   });
 });

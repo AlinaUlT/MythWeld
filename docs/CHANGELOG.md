@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-10-02 · ENG-16 · The fifth-edition pack schema accepts a `mastery` proficiency: the kinds of
+  weapons whose mastery property a character uses.
 - 2026-10-02 · ENG-47 · The published fifth-edition pack JSON Schema asks for
   `systemSchemaVersion` 2.
 - 2026-10-02 · ENG-38 · The public link serves the JSON Schema of a fifth-edition content pack, at

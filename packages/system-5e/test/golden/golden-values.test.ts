@@ -5,10 +5,11 @@ import {
   FIFTH_EDITION_SYSTEM,
   type FifthEditionEntity,
   type fifthEditionCharacterSchema,
+  fifthEditionModule,
   openFifthEditionCharacter,
   openFifthEditionPack,
 } from '../../src/index.ts';
-import { opened, standingIn } from './checks.ts';
+import { opened } from './checks.ts';
 import {
   goldenA,
   goldenB,
@@ -33,7 +34,7 @@ function computed(
 ): Computed<FifthEditionEntity> {
   const character = opened(openFifthEditionCharacter(golden));
   const { index } = character.ruleset === '2014' ? index2014 : index2024;
-  return compute(character, index, standingIn);
+  return compute(character, index, fifthEditionModule);
 }
 
 const STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
@@ -248,6 +249,69 @@ describe('ENG-15 goldens: spellcasting', () => {
       'spell.slots.level1': 4,
       'spell.slots.level2': 3,
       'spell.slots.level3': 2,
+    });
+  });
+});
+
+describe('ENG-16 goldens: weapon attacks', () => {
+  const a = computed(goldenA);
+  const b = computed(goldenB);
+  const b4 = computed(goldenB4);
+  const d = computed(goldenD);
+  const greatsword = ['attacks.greatsword.hit', 'attacks.greatsword.damage'];
+
+  /** An equipped item's own damage dice and type, which its attack's damage bonus is added to. */
+  function damageOf(result: Computed<FifthEditionEntity>, id: string) {
+    const item = result.entities.find(({ entity }) => entity.id === id)?.entity;
+    return item?.type === 'item' ? item.weapon?.damage : undefined;
+  }
+
+  it('golden A: warhammer +3 to hit, proficiency from the species; 1d8+1 bludgeoning', () => {
+    expect(valuesOf(a, ['attacks.warhammer.hit', 'attacks.warhammer.damage'])).toEqual({
+      'attacks.warhammer.hit': 3,
+      'attacks.warhammer.damage': 1,
+    });
+    expect(damageOf(a, 'srd-2014:item/warhammer')).toEqual({
+      formula: '1d8',
+      type: 'bludgeoning',
+    });
+    // The cleric's weapons are simple; the warhammer is the dwarf's Dwarven Combat Training's.
+    expect(
+      a.breakdown['attacks.warhammer.prof']?.map((step) => step.kind === 'grant' && step.part),
+    ).toEqual(['srd-2014:feature/dwarven-combat-training#weapons']);
+    expect(a.values['crit.range']).toBe(20);
+  });
+
+  it('golden B: greatsword +5, 2d6+3 slashing, mastery Graze', () => {
+    expect(valuesOf(b, [...greatsword, 'attacks.greatsword.mastery'])).toEqual({
+      'attacks.greatsword.hit': 5,
+      'attacks.greatsword.damage': 3,
+      'attacks.greatsword.mastery': 1,
+    });
+    expect(damageOf(b, 'srd-2024:item/greatsword')).toEqual({ formula: '2d6', type: 'slashing' });
+    const item = b.entities.find(({ entity }) => entity.id === 'srd-2024:item/greatsword')?.entity;
+    expect(item?.type === 'item' && item.weapon?.mastery).toBe('graze');
+  });
+
+  it('golden B4: greatsword +6, 2d6+4; a critical hit on 19–20; 4 kinds of weapons mastered', () => {
+    expect(valuesOf(b4, [...greatsword, 'crit.range'])).toEqual({
+      'attacks.greatsword.hit': 6,
+      'attacks.greatsword.damage': 4,
+      'crit.range': 19,
+    });
+    const kinds = b4.proficiencies.filter(({ category }) => category === 'mastery');
+    expect(kinds).toHaveLength(4);
+    expect(b4.values['classes.fighter.table.weaponMastery']).toBe(4);
+  });
+
+  it('golden D: greatsword +1, damage unchanged; without exhaustion, golden B again', () => {
+    expect(valuesOf(d, greatsword)).toEqual({
+      'attacks.greatsword.hit': 1,
+      'attacks.greatsword.damage': 3,
+    });
+    expect(valuesOf(b, greatsword)).toEqual({
+      'attacks.greatsword.hit': 5,
+      'attacks.greatsword.damage': 3,
     });
   });
 });

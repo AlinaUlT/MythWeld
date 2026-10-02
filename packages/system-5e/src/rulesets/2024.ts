@@ -7,4 +7,7 @@ import type { EditionRules } from './edition-rules';
 export const RULES_2024: EditionRules = {
   // "Half your levels (round up) in the Paladin and Ranger classes" (Multiclassing, ENG-15 §8).
   halfCasterRounding: 'up',
+  // "you don't add your ability modifier to a fixed damage amount that doesn't use a roll, such as
+  // the damage of a Blowgun" (Damage Rolls, ENG-16 §8).
+  fixedDamageModifier: false,
 };

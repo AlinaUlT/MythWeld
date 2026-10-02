@@ -4,17 +4,11 @@ import {
   FIFTH_EDITION_SYSTEM,
   type FifthEditionEntity,
   type FifthEditionPack,
+  fifthEditionModule,
   openFifthEditionCharacter,
   openFifthEditionPack,
 } from '../../src/index.ts';
-import {
-  formulasOf,
-  idsNamedBy,
-  idsNamedByCharacter,
-  keysNamedBy,
-  opened,
-  standingIn,
-} from './checks.ts';
+import { formulasOf, idsNamedBy, idsNamedByCharacter, keysNamedBy, opened } from './checks.ts';
 import { goldenA, goldenC2014, srd2014 } from './index.ts';
 
 // ENG-09: the 2014 golden data is whole, agrees with itself, and gives what SPEC §6.7 says golden
@@ -27,8 +21,8 @@ const entities: readonly FifthEditionEntity[] = pack.entities;
 
 const { index, refused, warnings } = loadContentIndex(FIFTH_EDITION_SYSTEM, [pack]);
 
-// Gathering and the base phase are under test, through fifth edition's module (ENG-13), with
-// `hp.max.bonus` from 0, the target of Dwarven Toughness, as a stand-in (ENG-14 gives it).
+// Gathering and the base phase are under test, through fifth edition's module (ENG-13), which
+// gives `hp.max.bonus` from 0, the target of Dwarven Toughness (ENG-14).
 
 const a = opened(openFifthEditionCharacter(goldenA));
 const c = opened(openFifthEditionCharacter(goldenC2014));
@@ -118,7 +112,7 @@ describe('ENG-09 2014 fixtures', () => {
   });
 
   it('gathers golden A whole, every choice made', () => {
-    const computed = compute(a, index, standingIn);
+    const computed = compute(a, index, fifthEditionModule);
     expect(computed.entities.map((had) => had.entity.id)).toEqual([
       'srd-2014:species/dwarf',
       'srd-2014:feature/darkvision',
@@ -150,7 +144,7 @@ describe('ENG-09 2014 fixtures', () => {
   });
 
   it("gives golden A's proficiencies from the sources SPEC §6.7 names", () => {
-    const given = compute(a, index, standingIn).proficiencies.map(
+    const given = compute(a, index, fifthEditionModule).proficiencies.map(
       ({ category, key, from }) => `${category} ${key} ← ${from}`,
     );
     expect(given).toEqual([
@@ -180,7 +174,7 @@ describe('ENG-09 2014 fixtures', () => {
   });
 
   it("gives golden A's scores: SPEC §6.7", () => {
-    const { values, breakdown } = compute(a, index, standingIn);
+    const { values, breakdown } = compute(a, index, fifthEditionModule);
     const scores = ['str', 'dex', 'con', 'int', 'wis', 'cha'].map(
       (key) => values[`abilities.${key}.score`],
     );
@@ -194,7 +188,7 @@ describe('ENG-09 2014 fixtures', () => {
   });
 
   it('gathers golden C (2014): two classes, level 6', () => {
-    const computed = compute(c, index, standingIn);
+    const computed = compute(c, index, fifthEditionModule);
     expect(computed.entities.map((had) => [had.entity.id, had.level])).toEqual([
       ['srd-2014:class/wizard', 3],
       ['srd-2014:class/paladin', 3],

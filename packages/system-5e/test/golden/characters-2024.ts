@@ -35,6 +35,8 @@ const choicesB: CharacterInput['choices'] = {
   'srd-2024:background/soldier#tools': ['playingCards'],
   'srd-2024:class/fighter#skills': ['perception', 'survival'],
   'srd-2024:feature/fighter-fighting-style#feat': ['srd-2024:feat/defense'],
+  // ENG-16: the greatsword, whose Graze SPEC §6.7 names; the other two kinds are test data.
+  'srd-2024:feature/fighter-weapon-mastery#kinds': ['greatsword', 'greataxe', 'glaive'],
 };
 
 /** Chain mail and a greatsword, both equipped. */
@@ -84,7 +86,12 @@ export const goldenB4 = {
   ...goldenB,
   id: '8c9d0e1f-2a3b-4c4d-9e5f-6a7b8c9d0e1f',
   name: 'Golden B4',
-  choices: { ...choicesB, 'srd-2024:class/fighter#ability-scores-4': ['str'] },
+  choices: {
+    ...choicesB,
+    'srd-2024:class/fighter#ability-scores-4': ['str'],
+    // ENG-16: the fourth kind of weapon, at level 4: test data.
+    'srd-2024:feature/fighter-weapon-mastery#kinds-4': ['halberd'],
+  },
   systemData: {
     ...goldenB.systemData,
     classes: [

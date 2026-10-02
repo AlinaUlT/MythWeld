@@ -9,4 +9,9 @@ export interface EditionRules {
    * a paladin's or a ranger's.
    */
   readonly halfCasterRounding: 'down' | 'up';
+  /**
+   * ENG-16: whether a weapon's damage with no dice to roll (a Blowgun's 1) adds the attack's
+   * ability modifier (ENG-16 §8).
+   */
+  readonly fixedDamageModifier: boolean;
 }

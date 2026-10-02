@@ -99,8 +99,11 @@ split off an old row got a new id.
 | ENG-47 | The person picks which base AC calculation counts | S | ✅ 2026-10-02 |
 | ENG-48 | The character's size comes from its species | S | ✅ 2026-10-02 |
 | ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | ✅ 2026-10-02 |
-| ENG-16 | Attacks are computed, weapon mastery included | S | 🔲 |
+| ENG-16 | Weapon attacks are computed, weapon mastery included | M | ✅ 2026-10-02 |
 | ENG-49 | A spell or item a grant names that no pack has gives a warning | S | 🔲 |
+| ENG-52 | A roll formula's average is computed, kept dice included | S | 🔲 |
+| ENG-50 | A spell's dice are computed for the character's level | S | 🔲 |
+| ENG-51 | A spell a grant gives with its own stat has its casting numbers | S | 🔲 |
 | ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | S | 🔲 |
 | ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | 🔲 |
 | ENG-46 | Armor worn without training has its edition's penalties | S | 🔲 |
@@ -117,10 +120,9 @@ split off an old row got a new id.
 - **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
   recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
   `regainResource` gives uses back, never below none spent.
-- **ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true, in
-  `test/golden/golden-values.test.ts` (ENG-13). The full goldens A–D are green by ENG-19. Each
-  removes its stand-ins from `STAND_INS` (`test/golden/checks.ts`); a stand-in for a path the
-  module gives fails the tests.
+- **ENG-34** — turns on the golden-test lines it makes true, in
+  `test/golden/golden-values.test.ts` (ENG-13). The full goldens A–D are green by ENG-19. ENG-16
+  removed the last stand-in; every test computes with `fifthEditionModule`.
 - **ENG-34** — found by ENG-17: an effect whose op gives no number (`append`, `advantage`,
   `disadvantage`, `note`) on a path that is not a number value (`defenses.*`, `roll.*`) is left
   alone by the phases, with no warning. The ticket that computes such a list or roll reads its
@@ -133,22 +135,25 @@ split off an old row got a new id.
   `advantageMode × 5`). ENG-13's `skills.<key>.passive` is 10 + the skill's total. Found by
   ENG-14: worn armor with `stealthDisadvantage` gives disadvantage on Dexterity (Stealth) checks
   (SRD 5.1 Armor, "Stealth"; dnd5e `prepareArmorClass`); ENG-14's `armor.worn` names the armor.
-- **ENG-16** — ADR 014 item 6: a spell's current dice for the character's level, with a breakdown.
+  Found by ENG-16: the Heavy weapon property gives disadvantage on attack rolls: in 2024 with a
+  heavy melee weapon below Strength 13 or a heavy ranged one below Dexterity 13, in 2014 to a Small
+  creature (5e-database `heavy`, both editions), an edition difference (ENG-19). ENG-16's
+  `equipmentOf(...).weapons` lists the weapons, each attack under `attacks.<key>`.
+- **ENG-50** — re-cut from ENG-16 (ENG-16 §11). ADR 014 item 6: a spell's current dice for the
+  character's level, with a breakdown; which level a cantrip reads is `[ПРОВЕРИТЬ]` in its §8.
   Found by ENG-09: a spell's healing has no field (Cure Wounds: 1d8 + the modifier, 1d8 more per
-  slot level above 1st); `damage` and `scaling` hold damage only. Weapon proficiency keys are
-  `simple`, `martial` or a weapon's `key` (ENG-09 §4), compared with `weapon.group` and `key`. Found by ENG-08: SPEC §5.6 shows a roll formula with its average, and no function gives
-  it; a term that keeps some dice has no simple average (`2d20kh1`'s is 13.825). A count of dice that
-  grows with level is not notation: a term's count is digits, so the dice are written from the
-  computed count. Found by ENG-10: which kinds of weapons a character uses the mastery of has no
-  place: no grant kind holds it (ENG-32's proficiency categories have no mastery), and the person
-  may change one kind after a long rest. The count is the fighter's table column `weaponMastery`
-  (golden B4: 4). Improved Critical is `crit.range` `min 19`, from a d20's 20 (SPEC §6.5).
-  Found by ENG-15: SPEC §5.4 has two targets for a spell attack, `spell.attack.bonus` (ENG-15 adds
-  it to `classes.<key>.spell.attack`) and `attack.spell.bonus`; this ticket decides how a spell's
-  attack reads the second. A spell a `spell` grant gives with its own `ability` (a feat's, a
-  species') has no DC or attack path yet. Found by ENG-44: a weapon's `magic.bonus` counts only
-  when its magic works, as an armor's does: it needs no attunement (`needsAttunement`,
-  `equipment.ts`) or is attuned.
+  slot level above 1st); `damage` and `scaling` hold damage only. Found by ENG-08: a count of dice
+  that grows with level is not notation: a term's count is digits, so the dice are written from the
+  computed count. ENG-16 gives a weapon's damage as a computed bonus beside the item's own dice;
+  found by ENG-16, Shillelagh changes a weapon's die (the phase 3 note).
+- **ENG-51** — re-cut from ENG-16 (ENG-16 §11). Found by ENG-15: SPEC §5.4 has two targets for a
+  spell attack, `spell.attack.bonus` (ENG-15 adds it to `classes.<key>.spell.attack`) and
+  `attack.spell.bonus`, beside `damage.spell.bonus`; this row decides how a spell's attack reads
+  the second. A spell a `spell` grant gives with its own `ability` (a feat's, a species') has no
+  DC or attack path yet. ENG-16 gives the weapon targets `attack.weapon.<melee|ranged>.bonus`.
+- **ENG-52** — re-cut from ENG-16 (ENG-16 §11). Found by ENG-08: SPEC §5.6 shows a roll formula
+  with its average, and no function gives it; a term that keeps some dice has no simple average
+  (`2d20kh1`'s is 13.825). ENG-16's `diceOf` lists a parsed roll's dice terms.
 - **ENG-49** — found by ENG-15: gathering looks up an `entity` grant's `fixed` ids and every
   grant's chosen ones, so a `spell` grant's `fixed` spell or an `item` grant's `fixed` item that
   no pack has gives no warning (measured: `srd-2014:spell/nothing`, ENG-15 §11). The core does not
@@ -163,7 +168,9 @@ split off an old row got a new id.
 - **ENG-19** — ability increase source, subclass level, exhaustion, rests, inspiration (SPEC §6.3
   table). ENG-15 made the edition files, `rulesets/2014.ts` and `rulesets/2024.ts`
   (`EditionRules`, read through `rulesOf`), with the multiclass half-caster rounding, and closed
-  golden C; this row adds the other differences there. Golden D closes here. ADR 014 item 8:
+  golden C; this row adds the other differences there. Found by ENG-16: a difference SPEC §6.3's
+  table does not list, already there as `fixedDamageModifier` (2024 adds no ability modifier to a
+  fixed damage amount, ENG-16 §8). Golden D closes here. ADR 014 item 8:
   inspiration's SRD text is shown to the owner next to her default of 3. Found by ENG-33: the
   house rules' defaults (`houseRulesSchema`, SPEC §8.4 "by the SRD") are each ruleset's; a new
   character is written with them. The 2024 rules text: 5e-database at `e6edf9a` has no 2024 rules
@@ -243,6 +250,18 @@ split off an old row got a new id.
   (SPEC §6.1 step 4), so an item whose mechanics put a score above the maximum must raise
   `abilities.<key>.max` too (SPEC §5.4's belt, `max 21`). The mechanics' §8 checks which items
   do this.
+- **Phase 3** — found by ENG-16, three things the weapons of the import and its mechanics meet:
+  - Shillelagh (SRD 5.1, SRD 5.2.1) lets a club or a quarterstaff attack and deal damage with the
+    spellcasting stat instead of Strength, and makes its die a d8; in 2024 the die grows at levels
+    5, 11 and 17 (d10, d12, 2d6). ENG-16's attack stat is the weapon's kind's, or the higher with
+    finesse, and its dice are the item's; a key path for the stat (ENG-43's road) and a computed
+    die (ENG-50's) would hold it.
+  - A magic weapon has no kind of its own: dnd5e keeps `type.baseItem`, which its proficiency and
+    mastery read. ENG-16 reads a weapon proficiency by key and a `mastery` kind by the item's own
+    `key`, so a "Longsword, +1" with a key of its own loses both.
+  - A `mastery` choice's filter (`type`, `tag`, `category`) cannot say the barbarian's "Melee
+    weapons" nor the paladin's, ranger's and rogue's "with which you have proficiency" (ENG-16
+    §8). The import widens the filter, tags the weapons, or lists them.
 - **Phase 3** — found by ENG-13: a half proficiency that rounds up (2014's Remarkable Athlete:
   "half your proficiency bonus (round up)") and half a proficiency on every ability check (2014's
   Jack of All Trades). `skills.<key>.prof` 0.5 rounds down (`checkSteps`), and an ability check

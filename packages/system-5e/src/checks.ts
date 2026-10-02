@@ -3,6 +3,7 @@ import {
   type DerivedStep,
   type DeriveInput,
   evaluateNumber,
+  type Gathered,
   type KeyPath,
   LEVEL_PATH,
 } from '@grimoire/engine';
@@ -30,7 +31,7 @@ export function proficiencyBonus(level: number): number {
 }
 
 /** A source of a proficiency level: the level it gives, and its step in the breakdown. */
-interface Source {
+export interface Source {
   level: number;
   step: BreakdownStep;
 }
@@ -39,18 +40,24 @@ interface Source {
 export const zeroStep: DerivedStep = () => ({ value: 0, steps: [] });
 
 /**
- * A part of a total: a path's value, the proficiency bonus times a proficiency level, or a number
- * a rule of the system gives (ENG-15: the spell save DC's 8).
+ * A part of a total: a path's value, the proficiency bonus times a proficiency level, a number
+ * a rule of the system gives (ENG-15: the spell save DC's 8), or a step of its own (ENG-16: a
+ * magic weapon's bonus).
  */
-export type TotalPart = { path: string } | { profLevel: string } | { rule: string; value: number };
+export type TotalPart =
+  | { path: string }
+  | { profLevel: string }
+  | { rule: string; value: number }
+  | { step: BreakdownStep };
 
 /**
  * A total: each path a `path` step, the proficiency bonus's naming `prof` (SPEC §6.2's "+2 ×2"),
- * each rule's number a `rule` step.
+ * each rule's number a `rule` step, each step as it is.
  */
 export function sumOf(parts: readonly TotalPart[]): DerivedStep {
   return (read) => {
     const steps = parts.map((part): BreakdownStep => {
+      if ('step' in part) return part.step;
       if ('path' in part) {
         const value = read(part.path);
         return { kind: 'path', path: part.path, value, change: value };
@@ -70,8 +77,35 @@ export function sumOf(parts: readonly TotalPart[]): DerivedStep {
   };
 }
 
+/**
+ * The sources of each proficiency the character's grants give: by category and key, each
+ * `proficiency` grant naming it, at its level (1 by default), its step the grant. ENG-16 reads
+ * them for weapons as this file does for skills.
+ */
+export function proficiencySources(
+  gathered: Gathered<FifthEditionEntity>,
+): (category: string, key: string) => Source[] {
+  const names = new Map(gathered.entities.map(({ entity }) => [entity.id as string, entity]));
+  const grants = new Map(gathered.grants.map((grant) => [grant.part as string, grant]));
+  return (category, key) =>
+    gathered.proficiencies.flatMap(({ category: each, key: given, level = 1, from }) => {
+      const grant = grants.get(from);
+      if (each !== category || given !== key || grant === undefined) return [];
+      const label = names.get(grant.source)?.name ?? {};
+      const step: BreakdownStep = {
+        kind: 'grant',
+        part: from,
+        source: grant.source,
+        label,
+        value: level,
+        change: level,
+      };
+      return [{ level, step }];
+    });
+}
+
 /** A proficiency level: the highest its sources give, the first of them its one step; else 0. */
-function levelOf(sources: readonly Source[]): DerivedStep {
+export function levelOf(sources: readonly Source[]): DerivedStep {
   let level = 0;
   let steps: BreakdownStep[] = [];
   for (const source of sources) {
@@ -92,24 +126,7 @@ export function checkSteps({
   stats,
 }: DeriveInput<FifthEditionCharacter, FifthEditionEntity>): Record<string, DerivedStep> {
   const names = new Map(gathered.entities.map(({ entity }) => [entity.id as string, entity]));
-  const grants = new Map(gathered.grants.map((grant) => [grant.part as string, grant]));
-
-  /** The `proficiency` grants of a category and key, each a source of its level (1 by default). */
-  const granted = (category: string, key: string): Source[] =>
-    gathered.proficiencies.flatMap(({ category: each, key: given, level = 1, from }) => {
-      const grant = grants.get(from);
-      if (each !== category || given !== key || grant === undefined) return [];
-      const label = names.get(grant.source)?.name ?? {};
-      const step: BreakdownStep = {
-        kind: 'grant',
-        part: from,
-        source: grant.source,
-        label,
-        value: level,
-        change: level,
-      };
-      return [{ level, step }];
-    });
+  const granted = proficiencySources(gathered);
 
   // The first class gives its saves (ENG-13 §8); a later class never does.
   const first = character.systemData.classes[0];

@@ -8358,3 +8358,336 @@ Found, not fixed:
 Changelog: "The published fifth-edition pack JSON Schema asks for `systemSchemaVersion` 2."
 
 ---
+
+---
+
+### ENG-16 Weapon attacks
+
+**Hat:** Weapon attacks are computed, weapon mastery included
+**Depends on:** ENG-13 (`prof`, `d20.all.bonus`, `sumOf`, a proficiency's sources), ENG-17
+(effects and overrides on any path), ENG-44 (`equipmentOf`, an item's magic working), ENG-15
+(`rulesets/`, `rulesOf`), ENG-09 and ENG-10 (the golden fixtures)
+**Size:** M (the row said S; it is narrowed, §11)
+**Screen:** No
+**SPEC:** §5.3 (`ItemDef.weapon`, `magic.bonus`); §5.4 (`attack.<…>.bonus`, `damage.<…>.bonus`,
+`crit.range`); §5.5 (proficiency grants and choices); §6.1 step 5 ("attacks"); §6.3 (weapon
+mastery, 2024 only); §6.5 (the critical range); §6.7 goldens A, B, B4, D; ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/attacks.ts` — new: `attackSteps(input)`, the attack
+paths, `CRITICAL_FACE`, `ATTACK_STATS`, `FINESSE`.
+- `packages/system-5e/src/equipment.ts` — changes: `Equipment.weapons`, each equipped weapon once,
+  with whether its magic works.
+- `packages/system-5e/src/checks.ts` — changes: the sources of a proficiency (`proficiencySources`)
+  and `levelOf` are exported, so attacks read them as skills do.
+- `packages/system-5e/src/system.ts` — changes: the proficiency category `mastery`.
+- `packages/system-5e/src/rulesets/{edition-rules,2014,2024}.ts` — changes: `fixedDamageModifier`.
+- `packages/system-5e/src/module.ts`, `index.ts` — change: `derive` joins the attack steps; export.
+- `packages/engine/src/formula.ts` — changes: `diceOf(roll)`, the dice terms of a parsed roll.
+- `packages/system-5e/test/golden/srd-2024.ts`, `characters-2024.ts` — change: the fighter's Weapon
+  Mastery grants; three weapons, Reach and Cleave; golden B's and B4's chosen kinds.
+- `packages/system-5e/test/golden/checks.ts` — changes: `STAND_INS` and `standingIn` are removed
+  (the last stand-in was `crit.range`); every test computes with `fifthEditionModule`.
+- `packages/system-5e/test/golden/golden-values.test.ts` — changes: the ENG-16 lines.
+- `packages/system-5e/test/attacks.test.ts` — new.
+- `apps/web/public/schema/5e/pack.schema.json` — changes: the category `mastery` (ENG-38's file).
+
+#### 2. What is missing now
+
+Measured on `main` at `d88b0b9`:
+- `grep -rn "attack\|crit\|mastery" packages/system-5e/src` finds only `spell.attack.bonus`,
+  `classes.<key>.spell.attack` (ENG-15) and the schema's `weapon.mastery`. No code reads a weapon.
+- Golden A and golden B computed with `fifthEditionModule` (no stand-ins): the paths matching
+  `attack|crit|damage|mastery` are `spell.attack.bonus`, `classes.cleric.spell.attack` (A) and
+  `spell.attack.bonus` (B); `values['crit.range']` is `undefined`. The tests give `crit.range` 20
+  as the last stand-in (`STAND_INS`, `test/golden/checks.ts`).
+- Golden A's weapon proficiencies are `battleaxe`, `handaxe`, `lightHammer`, `warhammer`, `simple`;
+  golden B's `simple`, `martial`. Neither golden has a place for the kinds of weapons it uses the
+  mastery of: the proficiency categories are `skill`, `save`, `armor`, `weapon`, `tool`,
+  `language` (`system.ts`), and the fixture's Weapon Mastery feature is its name only.
+- `pnpm test`: `Test Files 42 passed (42)`, `Tests 449 passed (449)`.
+
+#### 3. What it should look like when done
+
+1. **Every character** has `attack.weapon.melee.bonus`, `attack.weapon.ranged.bonus`,
+   `damage.weapon.melee.bonus` and `damage.weapon.ranged.bonus`, 0 until an effect changes them,
+   and `crit.range` 20, the lowest d20 face a weapon attack scores a critical hit on: one step
+   `{ kind: 'rule', rule: 'criticalHit', value: 20, change: 20 }`.
+2. **Each equipped weapon** (`equipmentOf(...).weapons`: an equipped item of the category
+   `weapon`, once per entity, in inventory order, dormant or not) gives paths under
+   `attacks.<key>`, its item's `key`:
+   - `attacks.<key>.prof`: the highest level a `weapon` proficiency gives that names its
+     `weapon.group` or its `key`, its step that grant's; 0 with no step when none does.
+   - `attacks.<key>.hit`: its stat's modifier, the proficiency bonus × `.prof`,
+     `attack.weapon.<kind>.bonus`, its `magic.bonus` when its magic works (ENG-44: no attunement
+     needed, or attuned), and `d20.all.bonus`.
+   - `attacks.<key>.damage`, when it has `damage`: its stat's modifier, `damage.weapon.<kind>.bonus`
+     and its magic bonus. The damage dice and type are the item's own (`weapon.damage`, and
+     `weapon.versatile` with two hands), added to this number when rolled. A damage formula with
+     no dice (the Blowgun's `1`) adds the modifier in 2014 and not in 2024 (§8): in 2024 its step
+     is `{ kind: 'rule', rule: 'fixedDamage', value: <the modifier>, change: 0 }`.
+   - `attacks.<key>.mastery`, when it has a `mastery`: 1 when a `mastery` proficiency names its
+     `key`, its step that grant's; else 0 with no step.
+   - Its stat: `str` for a melee weapon, `dex` for a ranged one; with the property `finesse`, the
+     one of the two with the higher modifier, `str` when they are equal.
+   A weapon that is not equipped gives nothing. Two rows of one weapon give one attack.
+3. **A weapon with no key** gives no attack paths, and `attack.weapon.<kind>.bonus` warns
+   `stepRule` `weaponWithoutKey` `{ item }`. A second weapon entity with a key already taken (a
+   2014 and a 2024 greatsword, mixed) gives none either, warned `weaponKeyTaken` `{ item, kept }`.
+4. **The proficiency category `mastery`**: its keys are kinds of weapons (a weapon's `key`), as
+   dnd5e's `weaponProf.mastery`. The pack schema and the published `pack.schema.json` accept it.
+5. **The 2024 fixture**: the Weapon Mastery feature gives `mastery` choices of
+   `{ type: 'item', category: 'weapon' }`: 3 at fighter level 1, then 1 at 4, 10 and 16 (§8). The
+   pack gains the SRD 5.2.1 greataxe, glaive and halberd, the property Reach and the mastery
+   Cleave. Golden B chooses greatsword, greataxe and glaive; golden B4 adds halberd at level 4.
+   These choices are test data; SPEC §6.7 states only that the greatsword's Graze is used.
+6. **Goldens** (SPEC §6.7):
+
+   | Golden | Path | Value |
+   |---|---|---|
+   | A | `attacks.warhammer.hit` | 3 (STR +1, proficiency +2 from Dwarven Combat Training) |
+   | A | `attacks.warhammer.damage` | 1, with the item's `1d8` bludgeoning |
+   | B | `attacks.greatsword.hit` | 5 |
+   | B | `attacks.greatsword.damage` | 3, with the item's `2d6` slashing |
+   | B | `attacks.greatsword.mastery` | 1, the item's mastery `graze` |
+   | B4 | `attacks.greatsword.hit`, `.damage` | 6, 4 |
+   | B4 | `crit.range` | 19 (Improved Critical) |
+   | B4 | the `mastery` kinds | 4, and `classes.fighter.table.weaponMastery` 4 |
+   | D | `attacks.greatsword.hit`, `.damage` | 1, 3; golden B again 5, 3 without exhaustion |
+
+   Every golden gives no warning, and each breakdown adds up to its value.
+7. **Variants** on made-up weapons (`character:`), each value worked out by hand in §7: the
+   finesse stat both ways, a ranged weapon, no proficiency, proficiency by key, a magic bonus
+   with and without attunement, fixed damage in each edition, effects on the four bonus targets,
+   an override on `.hit`, no key, a key taken, an unequipped weapon, a weapon twice.
+8. **The stand-ins are gone**: `STAND_INS` and `standingIn` no longer exist; every test computes
+   with `fifthEditionModule`.
+9. **`diceOf`** (the core, game-free): the dice terms of a parsed roll, in the order written:
+   `2d6` one, `1` none, `1d4 + 2к6 + @prof` two, a term in either branch of `?:` counted.
+10. `compute()` stays pure: frozen inputs give equal results.
+11. The quality gate is green, `pnpm e2e` included (the schema file is in `apps/web`).
+
+#### 4. How to do it
+
+1. `formula.ts`: `diceOf(roll: ParsedRoll): DiceNode[]`, a walk of the tree.
+2. `system.ts`: `mastery` joins `proficiencyCategories`.
+3. `rulesets/`: `EditionRules.fixedDamageModifier`, `true` in 2014, `false` in 2024.
+4. `checks.ts`: `proficiencySources(gathered)` gives `(category, key) => Source[]`; `levelOf` and
+   `Source` are exported; `checkSteps` reads them.
+5. `equipment.ts`: `weapons`, each equipped weapon once, with `magic`.
+6. `attacks.ts`: the four bonus targets, `crit.range`, and each weapon's paths; `module.ts` joins
+   them.
+7. The fixture, the goldens, `attacks.test.ts`; `STAND_INS` and `standingIn` removed; the schema
+   file's snapshot updated with `vitest -u`, its diff read.
+
+Technical choices (ADR 002):
+- **An attack is numbers under `attacks.<key>`.** A derived value is a number with a breakdown
+  (ENG-28); the hit, the damage bonus, the proficiency and the mastery each are one, and each takes
+  effects and an override (ENG-17) with no new kind of value. The key names it: stable, as an id is
+  (SPEC §5.1), so an override stored on `attacks.greatsword.hit` stays on the greatsword when the
+  inventory is reordered. A row's position would move it; a uid is no path step.
+- **The dice are the item's.** No golden changes a weapon's dice; the sheet shows the item's
+  `weapon.damage` beside the computed bonus, and a roll is the two as ENG-26's `RollPart`s. A
+  computed count of dice (a cantrip's) is ENG-50's; the one SRD spell that changes a weapon's die,
+  Shillelagh, is in §11.
+- **The stat is not a key path.** Finesse takes the higher modifier, which a key path's own key
+  cannot read (ENG-43 gives it before any number). No golden changes a weapon's stat by an effect;
+  §11 notes the spell that does.
+- **The weapon's kind decides its bonus targets** (`attack.weapon.melee` or `.ranged`), as both
+  SRDs word Archery and Dueling ("attack rolls you make with Ranged weapons"); a thrown melee
+  weapon stays melee.
+- **The kinds of weapons a character masters are a `mastery` proficiency**, chosen in `choices`
+  like a skill (SPEC §5.5): no stored shape changes, and a choice changed after a long rest is a
+  choice edited. A widened list needs no migration (ENG-02 §4). The grants sit on the Weapon
+  Mastery feature, not the class: a class taken later gives its features, not its starting
+  proficiencies (ENG-13), and SRD 5.2.1 gives a class's features to a multiclass (§8). The count is
+  the grants' (3 + 1 + 1 + 1, as dnd5e's advancements); the table's column stays the table.
+- **`mastery` is 1 or 0**, not a proficiency level: a grant's `level` means nothing for it.
+- **The fixed-damage rule is an edition field** (`rulesets/`), as ENG-15's rounding is: no
+  `if (ruleset …)`. ENG-19's row, every edition difference, keeps it.
+- **A weapon without a key warns on its kind's bonus path**, the one path every weapon of that kind
+  reads, as ENG-44 warns of an extra armor on `armor.worn`.
+- **`diceOf` is the core's**: a roll formula's tree is the core's; ENG-52's average needs the same
+  walk.
+
+#### 5. Stored data
+
+Nothing stored changes shape. The proficiency category list gains `mastery`: a widening, which no
+stored pack or character fails; no `schemaVersion` or `systemSchemaVersion` bump, no migration.
+The published `pack.schema.json` lists the new category.
+
+#### 6. What a person will see
+
+Not a screen. The published pack schema accepts `mastery` (a changelog line).
+
+#### 7. Tests
+
+- `packages/system-5e/test/golden/golden-values.test.ts` — `describe('ENG-16 goldens: weapon
+  attacks')`: §3 item 6.
+- `packages/system-5e/test/attacks.test.ts` — `describe('ENG-16 weapon attacks')`: §3 items 1–3,
+  7 and 10, on golden A (2014: STR 13 (+1), DEX 10 (+0), proficiency +2, simple weapons and the
+  dwarf's four) and golden B (2024: STR 17 (+3), DEX 13 (+1), proficiency +2, simple and martial).
+- `packages/system-5e/test/golden/fixtures-2024.test.ts` — the counts the new entities change, and
+  golden B's `mastery` proficiencies.
+- `packages/engine/test/formula.test.ts` — `describe('ENG-16 dice terms of a roll')`: §3 item 9.
+- `packages/system-5e/test/pack-json-schema.test.ts` — a pack with a `mastery` grant passes both
+  the schema and the JSON Schema.
+- Control values from: SPEC §6.7 (the goldens), the fixtures' data read from 5e-database
+  (`e6edf9a`), the made-up items' own numbers. Each worked out by hand, never copied from a run.
+
+#### 8. Checked against the source
+
+Sources: SRD 5.1 as 5e-database quotes it (5e-bits/5e-srd-api at `e6edf9a`,
+`packages/5e-database/src/2014/en/`); SRD 5.2.1 as dnd5e quotes it (foundryvtt/dnd5e at
+`7bfb3f1`, `packs/_source/content24/`, CC-BY-4.0) and as 5e-database's 2024 files give it. Read
+2026-10-02.
+
+**The attack roll's modifiers.**
+- SRD 5.1 (`5e-SRD-Rules.json`, Attack Rolls, "Modifiers to the Roll"): "The ability modifier used
+  for a melee weapon attack is Strength, and the ability modifier used for a ranged weapon attack
+  is Dexterity. Weapons that have the finesse or thrown property break this rule." "You add your
+  proficiency bonus to your attack roll when you attack using a weapon with which you have
+  proficiency".
+- SRD 5.2.1 (`chapter-1/d20-tests.yml`, Attack Rolls): the Attack Roll Abilities table, "Strength —
+  Melee attack with a weapon", "Dexterity — Ranged attack with a weapon"; "the Finesse property …
+  lets you use Strength or Dexterity"; "You add your Proficiency Bonus to your attack roll when you
+  attack using a weapon you have proficiency with". `chapter-6/equipment.yml`, Weapon Proficiency:
+  "you must have proficiency with it to add your Proficiency Bonus to an attack roll".
+- Finesse, both: "you use your choice of your Strength or Dexterity modifier for the attack and
+  damage rolls. You must use the same modifier for both rolls." dnd5e
+  (`module/data/item/weapon.mjs` `availableAbilities`, `_typeAbilityMod`): finesse offers both and
+  picks the larger modifier, the first (Strength) when equal.
+- Thrown, SRD 5.1: "If the weapon is a melee weapon, you use the same ability modifier for that
+  attack roll and damage roll that you would use for a melee attack with the weapon."
+- Proficiency, dnd5e (`proficiencyMultiplier`): the actor has the weapon's category (`sim`,
+  `mar`) or its base item. ENG-09 §4: our keys are `simple`, `martial`, or the weapon's `key`.
+
+**Damage.**
+- SRD 5.1 (Damage Rolls): "When attacking with a weapon, you add your ability modifier—the same
+  modifier used for the attack roll—to the damage." No exception.
+- SRD 5.2.1 (`chapter-1/damage-and-healing.yml`, Damage Rolls): the same sentence, then "Unless a
+  rule says otherwise, you don't add your ability modifier to a fixed damage amount that doesn't
+  use a roll, such as the damage of a Blowgun." So this is an edition difference that SPEC §6.3's
+  table does not list. dnd5e (`attack-data.mjs` `_processDamagePart`) leaves `@mod` out of a
+  deterministic damage formula in both editions; this ticket follows each SRD's own text.
+- A magic weapon, both: "You have a +1 bonus to attack and damage rolls made with this magic
+  weapon" (2014 `weapon-1`; 2024 `weapon-1`: "attack rolls and damage rolls"). dnd5e adds
+  `magicalBonus` only when `magicAvailable` (attuned, or attunement not required): ENG-44's rule.
+
+**The critical range.**
+- SRD 5.1 (Rolling 1 or 20): "If the d20 roll for an attack is a 20, the attack hits regardless of
+  any modifiers … This is called a critical hit". SRD 5.2.1 (d20-tests.yml) says the same.
+- Improved Critical, 2024 (`5e-SRD-Features.json`, `champion-improved-critical`): "Your attack
+  rolls with weapons and Unarmed Strikes can score a Critical Hit on a roll of 19 or 20 on the
+  d20." dnd5e: `weaponCriticalThreshold`, 20 by default (`attack-data.mjs` `criticalThreshold`).
+
+**Weapon mastery (2024 only).**
+- `chapter-6/equipment.yml`: "Each weapon has a mastery property … To use that property, you must
+  have a feature that lets you use it."
+- `fighter-weapon-mastery`: "use the mastery properties of three kinds of Simple or Martial
+  weapons of your choice. Whenever you finish a Long Rest, you can practice weapon drills and
+  change one of those weapon choices. When you reach certain Fighter levels, you gain the ability
+  to use the mastery properties of more kinds of weapons, as shown in the Weapon Mastery column".
+  The column (ENG-10): 3 at levels 1–3, 4 at 4–9, 5 at 10–15, 6 at 16–20.
+- dnd5e `classes24/fighter/fighter.yml`: a `Trait` advancement in `mode: mastery`, pool
+  `weapon:sim:*`, `weapon:mar:*`, count 3 at level 1, count 1 at levels 4, 10, 16, beside the
+  scale value "Weapon Masteries Known". `weapon.mjs` `masteryOptions`: a weapon's mastery is
+  offered only when the actor's `traits.weaponProf.mastery.value` has its base item.
+- Barbarian ("Simple or Martial Melee weapons"), paladin, ranger, rogue ("with which you have
+  proficiency") choose two kinds each (5e-database 2024 Features). Not in the fixtures (§11).
+- Multiclassing, SRD 5.2.1 (`chapter-2/character-creation.yml`): "When you gain a new level in a
+  class, you get its features for that level"; only "some of the new class's starting
+  proficiencies". So the choices sit on the feature.
+- 5e-database 2024 Equipment: all 38 weapons have a mastery. Greataxe: martial melee, `1d12`
+  slashing, Heavy, Two-Handed, Cleave, 30 gp, 7 lb. Glaive: martial melee, `1d10` slashing, Heavy,
+  Reach, Two-Handed, Graze, 20 gp, 6 lb. Halberd: martial melee, `1d10` slashing, Heavy, Reach,
+  Two-Handed, Cleave, 20 gp, 6 lb.
+
+**Golden A's warhammer**: 5e-database 2014: martial melee, `1d8` bludgeoning, Versatile (`1d10`).
+The cleric's weapons are simple (ENG-09); the warhammer's proficiency is the hill dwarf's Dwarven
+Combat Training, by key: SPEC §6.7 "proficiency from the species".
+
+#### 9. Not in this ticket
+
+- A spell's dice for the character's level, and a spell's healing: ENG-50 (ADR 014 item 6).
+- `attack.spell.bonus` and `damage.spell.bonus`, and a spell a grant gives with its own stat:
+  ENG-51.
+- A roll formula's average (SPEC §5.6): ENG-52.
+- Advantage and disadvantage on attacks, what a critical hit does to the dice: ENG-34.
+- How an attack is made at the table: one hand or two (versatile), a thrown attack's range, an
+  off-hand attack's modifier, damage never below 0, ammunition: phase 2's attack and roll.
+- Unarmed strikes and improvised weapons: no golden has one.
+- What each mastery property does (Graze, Cleave …): text, shown by phase 2; ENG-34 for rolls.
+- Choosing the kinds after a long rest: phase 2's rest and phase 4's wizard edit the choice.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** The ENG-16 lines are SPEC §6.7's values; none changes.
+  Fixture counts change because the fixture gains entities, not to fit the code.
+- **Measure, never estimate.** Every rule in §8 is quoted from its file; every weapon's numbers
+  from 5e-database.
+- **`packages/engine` is pure; the core names no game.** `diceOf` walks a tree; it names no weapon.
+- **Everything is data.** The stats a weapon uses and the finesse key are the module's named
+  constants, as ENG-14's `RULE_STATS`; the kinds come from the item; the mastery count from the
+  grants.
+- **`compute()` is pure.** `attackSteps` reads its arguments only; tested frozen.
+- **A number with no breakdown entry is a bug.** Each path has its steps; the dice are item data.
+- **Manual overrides always win.** Tested on `attacks.greatsword.hit`.
+- **Each system's rules live in its own module.** The fixed-damage rule is `rulesets/` data.
+- **Missing is not broken.** A weapon with no key or a key taken warns; a missing stat reads 0
+  with `missingPath`, never a throw.
+- **Ids are stable.** An attack is named by its item's key, never by its row.
+- **A stored-shape change needs a migration.** Only a list widens (§5).
+- **Licensing.** The three weapons, Reach and Cleave are SRD 5.2.1 (CC-BY-4.0) names and numbers,
+  no rules text; the variants' items are made up.
+
+#### 11. What came out of it
+
+Measured on 2026-10-02, on `main` after ENG-45 and ENG-47 (rebased onto `d7f84cf`):
+- `pnpm lint`: `Checked 155 files`, no errors. `pnpm typecheck`: 6 projects, no errors.
+- `pnpm test`: `Test Files 43 passed (43)`, `Tests 481 passed (481)`, 7.1 s. This ticket's
+  16: 10 in `attacks.test.ts`, 4 golden lines, 1 for `diceOf`, 1 for the schema (measured on
+  `d88b0b9` first: 449 tests before, 465 after).
+- `pnpm e2e`: `12 passed (9.4s)`, with `PLAYWRIGHT_CHROMIUM_PATH` set to the container's Chromium
+  as `RUNNING.md` says. Without it, 11 of 12 fail at `browserType.launch`: the browser build the
+  project's Playwright asks for is not installed here.
+- ENG-47's new test computed with `standingIn` twice; both now use `fifthEditionModule`.
+- The goldens, SPEC §6.7's values, all true: A `attacks.warhammer.hit` 3 and `.damage` 1 (the
+  item's `1d8` bludgeoning), the proficiency's step
+  `srd-2014:feature/dwarven-combat-training#weapons`; B greatsword 5 and 3 (`2d6` slashing),
+  mastery 1 (`graze`); B4 6 and 4, `crit.range` 19, 4 `mastery` kinds and the column 4; D 1 and 3.
+  Every golden gives no warning, and every breakdown adds up.
+- The 2024 fixture's counts, worked out by hand before the run, then measured equal: 57 entities;
+  5 items, 3 weapon properties, 2 masteries; 81 keys named; rolls `2d6`, `1d12`, `1d10`, `1d10`.
+- The published schema's diff is one line: `"mastery"` after `"language"` in the category list.
+
+Against §3: as written. Two things changed while building. The first override test was on
+`.damage`; it was moved to `.hit`, as §3 item 7 says. §4 first said a weapon's dice never change
+in either SRD; Shillelagh changes them (below), so §4 now says no golden does.
+
+Against the row: the row was "Attacks are computed, weapon mastery included", size S, and its note
+held four more things. Checked against the code, three were hats of their own, so the row is
+narrowed to weapon attacks, size M, and the rest became rows: ENG-52 (a roll formula's average),
+ENG-50 (a spell's dice for the character's level: ADR 014 item 6, which names ENG-16), ENG-51
+(`attack.spell.bonus`, and a spell a grant gives with its own stat). Each new row's note in
+`BACKLOG.md` carries what the old note said.
+
+Found, not fixed:
+- The Heavy weapon property gives disadvantage on attack rolls: in 2024 with a heavy melee weapon
+  below Strength 13 or a heavy ranged one below Dexterity 13; in 2014 to a Small creature
+  (5e-database `heavy`, each edition). Roll modes are ENG-34's; the difference is an edition one.
+  Noted on ENG-34.
+- Shillelagh (SRD 5.1, SRD 5.2.1 spells) lets a club or a quarterstaff use the spellcasting stat
+  instead of Strength and makes its die a d8; in 2024 the die grows at levels 5, 11 and 17. Noted
+  for phase 3's mechanics, with a pointer on ENG-50.
+- A magic weapon has no kind of its own (dnd5e's `type.baseItem`), so a "Longsword, +1" with a key
+  of its own loses a proficiency by key and its `mastery` kind. Noted for phase 3.
+- A `mastery` choice's filter cannot say the barbarian's "Melee weapons" nor the paladin's,
+  ranger's and rogue's "with which you have proficiency". Noted for phase 3.
+- `fixedDamageModifier` is an edition difference SPEC §6.3's table does not list. Noted on ENG-19,
+  which holds every difference.
+
+Changelog: "The fifth-edition pack schema accepts a `mastery` proficiency".

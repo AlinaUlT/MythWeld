@@ -1,13 +1,9 @@
-import type { DerivedStep, SystemModule } from '@grimoire/engine';
-import {
-  type FifthEditionCharacter,
-  type FifthEditionEntity,
-  fifthEditionModule,
-} from '../../src/index.ts';
+import type { FifthEditionCharacter, FifthEditionEntity } from '../../src/index.ts';
 
 // ENG-09's checks of a golden pack and its characters, shared by both editions' tests (ENG-10).
 // ENG-10 widened them for 2024: a weapon's mastery is a key; a `formula` prerequisite and a
-// recovery amount are formulas. No 2014 entity has any of these.
+// recovery amount are formulas. No 2014 entity has any of these. ENG-16 removed the stand-ins
+// ENG-13 kept here: the module gives every path the goldens' mechanics read.
 
 /** A file opened, or the test fails with why it did not open. */
 export function opened<T>(result: { ok: true; value: T } | { ok: false; message: string }): T {
@@ -131,31 +127,3 @@ export function idsNamedByCharacter(character: FifthEditionCharacter): string[] 
     ]),
   ];
 }
-
-/**
- * The paths the goldens' mechanics read or change that a later ticket's steps give, each from
- * where it starts (ENG-10 §3 item 9): the critical range is ENG-16's (SPEC §6.5: a d20's highest
- * face). ENG-14 gave hit points, initiative, armor class, armor worn and speed.
- */
-export const STAND_INS: Readonly<Record<string, number>> = {
-  'crit.range': 20,
-};
-
-/**
- * ENG-13: fifth edition's module, with `STAND_INS` for the paths it does not give yet. A stand-in
- * for a path the module gives fails the test: the ticket that gives the path removes its stand-in.
- */
-export const standingIn: SystemModule<FifthEditionCharacter, FifthEditionEntity> = {
-  ...fifthEditionModule,
-  derive: (input) => {
-    const steps: Record<string, DerivedStep> = { ...fifthEditionModule.derive(input) };
-    for (const [path, value] of Object.entries(STAND_INS)) {
-      if (path in steps) throw new Error(`The module gives ${path}; remove its stand-in.`);
-      steps[path] = () => ({
-        value,
-        steps: [{ kind: 'rule', rule: 'standIn', value, change: value }],
-      });
-    }
-    return steps;
-  },
-};

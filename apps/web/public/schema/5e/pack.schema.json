@@ -2224,7 +2224,8 @@
         "armor",
         "weapon",
         "tool",
-        "language"
+        "language",
+        "mastery"
       ]
     },
     "__schema41": {

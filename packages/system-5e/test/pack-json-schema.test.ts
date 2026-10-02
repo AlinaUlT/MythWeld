@@ -9,7 +9,17 @@ import {
   fifthEditionPackJsonSchema,
   fifthEditionPackSchema,
 } from '../src/index.ts';
-import { armor, background, cantrip, everyEntity, gear, klass, spell, weapon } from './entities.ts';
+import {
+  armor,
+  background,
+  cantrip,
+  everyEntity,
+  feature,
+  gear,
+  klass,
+  spell,
+  weapon,
+} from './entities.ts';
 
 // The pack holds ENG-32's made-up entities (pack `hb-test`), so no rules fact is asserted.
 
@@ -127,5 +137,22 @@ describe('ENG-38 fifth-edition pack JSON Schema', () => {
         "- An `item` grant's `fixed` list names each item once.",
       ].join('\n'),
     );
+  });
+});
+
+describe('ENG-16 the proficiency category `mastery`', () => {
+  it('passes the schema and the JSON Schema; a category not listed passes neither', () => {
+    const drills = {
+      id: 'drills',
+      kind: 'proficiency',
+      category: 'mastery',
+      choose: { count: 2, from: { type: 'item', category: 'weapon' } },
+    };
+    const listed = packOf({ ...feature, grants: [drills] });
+    expect(fifthEditionPackSchema.safeParse(listed).success).toBe(true);
+    expect(jsonValid(listed), JSON.stringify(jsonValid.errors)).toBe(true);
+    const unlisted = packOf({ ...feature, grants: [{ ...drills, category: 'drill' }] });
+    expect(fifthEditionPackSchema.safeParse(unlisted).success).toBe(false);
+    expect(jsonValid(unlisted)).toBe(false);
   });
 });

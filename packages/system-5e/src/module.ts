@@ -7,6 +7,7 @@ import {
   type StatDefaults,
   type SystemModule,
 } from '@grimoire/engine';
+import { attackSteps } from './attacks';
 import type { FifthEditionCharacter } from './character';
 import { checkSteps, skillKeys } from './checks';
 import { classesOf } from './classes';
@@ -19,7 +20,8 @@ import { spellcastingSteps } from './spellcasting';
 // ENG-13: fifth edition's module (ADR 004 item 1), what the core asks of it: the character's
 // level, the entities its `systemData` names, a stat's defaults, the grants a class taken after
 // the first and a feat taken in place of a grant leave out, and the derived values. ENG-14 to
-// ENG-16 add their steps to `derive`: ENG-14 the combat steps, ENG-15 the spellcasting steps.
+// ENG-16 add their steps to `derive`: ENG-14 the combat steps, ENG-15 the spellcasting steps,
+// ENG-16 the attack steps.
 // ENG-14: each equipped item is named, with its own paths. ENG-44: as `equipmentOf` counts it.
 // ENG-48 adds the size to `keys`.
 
@@ -108,6 +110,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     ...checkSteps(input),
     ...combatSteps(input),
     ...spellcastingSteps(input),
+    ...attackSteps(input),
   }),
 
   // Each skill's stat, which an effect may set; the character's size.

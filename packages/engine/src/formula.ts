@@ -538,6 +538,35 @@ export function parseRoll(text: string): ParseResult<ParsedRoll> {
   return parse(text, true);
 }
 
+/**
+ * ENG-16: each dice term of a parsed roll formula, in the order written, those in either branch
+ * of a `?:` included. None means its value takes no roll (SRD 5.2.1's "fixed damage amount").
+ */
+export function diceOf(roll: ParsedRoll): DiceNode[] {
+  const found: DiceNode[] = [];
+  const stack: RollNode[] = [roll.root];
+  for (let node = stack.pop(); node !== undefined; node = stack.pop()) {
+    switch (node.kind) {
+      case 'dice':
+        found.push(node);
+        break;
+      case 'unary':
+        stack.push(node.operand);
+        break;
+      case 'binary':
+        stack.push(node.right, node.left);
+        break;
+      case 'choice':
+        stack.push(node.otherwise, node.then, node.test);
+        break;
+      case 'call':
+        stack.push(...[...node.args].reverse());
+        break;
+    }
+  }
+  return found;
+}
+
 // --- The walker ----------------------------------------------------------------------------------
 
 /** A condition's reading of a value: `0`, `false` and `''` are false; anything else is true. */

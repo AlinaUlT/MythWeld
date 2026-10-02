@@ -18,7 +18,7 @@ import {
   openFifthEditionPack,
   proficiencyBonus,
 } from '../src/index.ts';
-import { opened, standingIn } from './golden/checks.ts';
+import { opened } from './golden/checks.ts';
 import {
   goldenA,
   goldenB,
@@ -45,7 +45,7 @@ const index2024 = loadContentIndex(FIFTH_EDITION_SYSTEM, [opened(openFifthEditio
 function computed(character: CharacterInput): Computed<FifthEditionEntity> {
   const one = opened(openFifthEditionCharacter(character));
   const { index } = one.ruleset === '2014' ? index2014 : index2024;
-  return compute(one, index, standingIn);
+  return compute(one, index, fifthEditionModule);
 }
 
 /** Path → value, for the paths named. */

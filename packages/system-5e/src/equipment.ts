@@ -7,12 +7,16 @@ import type { FifthEditionEntity, ItemDef } from './entity-types';
 // 5.2.1 "One at a Time"): the first of each, in inventory order, is worn, and another counts for
 // nothing. An item that needs attunement, not attuned, gives only its nonmagical benefits (SRD 5.1,
 // SRD 5.2.1 Attunement): it is named dormant, so only its effects with a `when` of their own apply.
+// ENG-16: the weapons equipped, for the attacks: every one counts, each entity once.
 
 /** The own paths an equipped item is named with (SPEC §5.6 `@equipped`, `@attuned`). */
 export const EQUIPPED_PATH = 'equipped';
 export const ATTUNED_PATH = 'attuned';
 
-/** An armor or a shield worn, and whether its magic works: it needs no attunement, or is attuned. */
+/**
+ * An armor or a shield worn, or a weapon equipped, and whether its magic works: it needs no
+ * attunement, or is attuned.
+ */
 export interface WornItem {
   readonly item: ItemDef;
   readonly magic: boolean;
@@ -32,6 +36,8 @@ export interface Equipment {
   readonly shield?: WornItem;
   /** Each armor, then each shield, that counts for nothing, in inventory order. */
   readonly extra: { readonly armor: readonly ExtraItem[]; readonly shield: readonly ExtraItem[] };
+  /** Each equipped weapon, once, in inventory order: the first row of it decides its magic. */
+  readonly weapons: readonly WornItem[];
 }
 
 /** The item needs attunement: its `magic.attunement` is `true` or says who may attune (§5.3). */
@@ -51,6 +57,7 @@ export function equipmentOf(
   const named: NamedEntity[] = [];
   const worn: { armor?: WornItem; shield?: WornItem } = {};
   const extra: { armor: ExtraItem[]; shield: ExtraItem[] } = { armor: [], shield: [] };
+  const weapons = new Map<string, WornItem>();
   for (const { itemId, equipped, attuned } of character.systemData.inventory) {
     if (!equipped || itemId === undefined) continue;
     const paths = { [EQUIPPED_PATH]: 1, [ATTUNED_PATH]: attuned ? 1 : 0 };
@@ -69,7 +76,8 @@ export function equipmentOf(
       }
       worn[category] = { item: entity, magic };
     }
+    if (category === 'weapon' && !weapons.has(itemId)) weapons.set(itemId, { item: entity, magic });
     named.push({ id: itemId, paths, ...(!magic && { dormant: true }) });
   }
-  return { named, ...worn, extra };
+  return { named, ...worn, extra, weapons: [...weapons.values()] };
 }

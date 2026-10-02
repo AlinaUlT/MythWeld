@@ -47,10 +47,13 @@ export const ARMOR_GROUPS = ['light', 'medium', 'heavy'] as const;
 /** The coins: a price's unit, a character's money. */
 export const COINS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const;
 
-/** Fifth edition's editions, proficiencies and recovery events. */
+/**
+ * Fifth edition's editions, proficiencies and recovery events. ENG-16: a `mastery` proficiency's
+ * keys are kinds of weapons (a weapon's `key`) whose mastery property the character uses (2024).
+ */
 export const fifthEditionLists = systemListsOf({
   editions: ['2014', '2024'],
-  proficiencyCategories: ['skill', 'save', 'armor', 'weapon', 'tool', 'language'],
+  proficiencyCategories: ['skill', 'save', 'armor', 'weapon', 'tool', 'language', 'mastery'],
   proficiencyLevels: [0.5, 1, 2],
   recoveryEvents: ['short', 'long', 'dawn', 'turn', 'manual'],
 });

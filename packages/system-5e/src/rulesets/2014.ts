@@ -7,4 +7,7 @@ import type { EditionRules } from './edition-rules';
 export const RULES_2014: EditionRules = {
   // "half your levels (rounded down) in the paladin and ranger classes" (Multiclassing, ENG-15 §8).
   halfCasterRounding: 'down',
+  // "When attacking with a weapon, you add your ability modifier … to the damage", with no
+  // exception (Damage Rolls, ENG-16 §8).
+  fixedDamageModifier: true,
 };
