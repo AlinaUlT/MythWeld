@@ -1,39 +1,12 @@
 import type { z } from 'zod';
 import type { fifthEditionCharacterSchema } from '../../src/index.ts';
+import { houseRules, rested, untouched } from './character-parts.ts';
 
 // ENG-09: the 2014 golden characters of SPEC §6.7, on the pack `srd-2014`. What SPEC §6.7 states
 // is written as it states it (golden A's dwarf is the hill dwarf, ADR 016); what it leaves open
 // is test data, marked so. Their expected values are SPEC §6.7's, turned on by ENG-13 onward.
 
 type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
-type DataInput = CharacterInput['systemData'];
-
-/** House rules: test data. Each edition's defaults are ENG-19's. */
-const houseRules: DataInput['houseRules'] = {
-  hitPointMethods: ['roll', 'avg'],
-  abilityMax: 20,
-  feats: 'own',
-  multiclass: true,
-  encumbrance: 'none',
-  skillAbilitySwap: false,
-  inspirationMax: 1,
-};
-
-/** What every character here starts with: no coins, no feats outside grants, no spells chosen. */
-const untouched: Pick<DataInput, 'currency' | 'feats' | 'spells'> = {
-  currency: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
-  feats: [],
-  spells: {},
-};
-
-/** Trackers with nothing spent; each character adds its current hit points. */
-const rested: Omit<DataInput['state'], 'hp'> = {
-  hitDiceSpent: {},
-  slotsSpent: {},
-  pactSlotsSpent: 0,
-  deathSaves: { success: 0, failure: 0 },
-  inspiration: 0,
-};
 
 /** The core part both characters share. */
 const core: Omit<CharacterInput, 'id' | 'name' | 'abilities' | 'choices' | 'systemData'> = {

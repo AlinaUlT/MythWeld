@@ -90,7 +90,7 @@ split off an old row got a new id.
 | ENG-33 | The fifth-edition part of the character document has a schema | S | ✅ 2026-10-01 |
 | ENG-38 | The fifth-edition pack's JSON Schema is published as a file | S | ✅ 2026-10-02 |
 | ENG-09 | 2014 fixtures: every SRD entity golden A or C needs | M | ✅ 2026-10-02 |
-| ENG-10 | 2024 fixtures: every SRD entity golden B, B4, C or D needs | M | 🔲 |
+| ENG-10 | 2024 fixtures: every SRD entity golden B, B4, C or D needs | M | ✅ 2026-10-02 |
 | ENG-13 | Check bonuses are computed: modifiers, proficiency, saves, skills, passives | M | 🔲 |
 | ENG-14 | Combat numbers are computed: hit points, armor class, initiative, speed | M | 🔲 |
 | ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | 🔲 |
@@ -110,14 +110,6 @@ split off an old row got a new id.
 - **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
   recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
   `regainResource` gives uses back, never below none spent.
-- **ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's
-  schemas. Every rules fact in them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`). SPEC §5.3's
-  fields that list what an entity gives (a class's features, a species' traits, domain spells,
-  a background's feat) are grants: ENG-32 §4's table. Found by ENG-09: it follows ENG-09 §4's
-  conventions: the data in `packages/system-5e/test/golden/` (the pack `srd-2024`, the
-  characters beside it); ids with 5e-database's slugs, keys in camelCase; proficiency keys as an
-  item names them; a slot row to the last level with slots; golden C's 2024 column as its own
-  character on the same classes.
 - **ENG-13** — found by ENG-28: the module's `statDefaults` are SPEC §5.3's (the modifier
   formula, a save, a maximum of 20); its saves read `StatOf.hasSave`; its values are `derive`'s
   steps, as Tales' are (`packages/engine/test/tales-module.ts`). A skill's own `totalFormula`
@@ -131,7 +123,11 @@ split off an old row got a new id.
   (`FifthEditionCharacter`): its level is the sum of `classes[].level`; it names the species,
   the background, each class and subclass at that class's level, and `feats` (ENG-33's and
   ENG-09's tests do this). A feat's `replaces` names the grant whose ability score
-  improvement it is taken in place of; this ticket decides how that grant is left out.
+  improvement it is taken in place of; this ticket decides how that grant is left out. Found
+  by ENG-10: golden B's Alert reads `@prof`; Second Wind's maximum reads a class table column,
+  `@classes.fighter.table.secondWindUses` (`ClassDef.levels`); golden D's exhaustion changes
+  `d20.all.bonus`, which goes into every d20 test (checks, saves, initiative, attacks). ENG-10's
+  test gives the three as stand-ins.
 - **ENG-13 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true. The
   full goldens A–D are green by ENG-19.
 - **ENG-13, ENG-14, ENG-34** — found by ENG-17: an effect whose op gives no number (`append`,
@@ -148,6 +144,10 @@ split off an old row got a new id.
   or `max` (dnd5e: `hitDie / 2 + 1` and the die's value, ENG-33 §8). The schema bounds a number by
   12, the largest die; a number above the class's own die warns here. No row computes the size:
   `species.size`, or the species' one size; a species with several and none chosen is pending.
+  Found by ENG-10: Defense reads `@armor.worn` and changes `ac.bonus`; Alert changes
+  `init.bonus`. Exhaustion (2024) changes `speed.all.bonus`, a path SPEC §5.4's catalogue lacks:
+  this ticket gives it and adds it to every speed the character has, never below 0 (dnd5e
+  `prepareMovement`, ENG-10 §8).
 - **ENG-15** — found by ENG-09: a spellcasting class has no level it starts at. In 2014 the
   paladin and the ranger cast from level 2, in 2024 from level 1 (5e-database
   `spellcasting.level`). `srd-2014:class/paladin`'s slot row at level 1 is empty, but its prepared
@@ -158,7 +158,10 @@ split off an old row got a new id.
   note. Found by ENG-08: SPEC §5.6 shows a roll formula with its average, and no function gives
   it; a term that keeps some dice has no simple average (`2d20kh1`'s is 13.825). A count of dice that
   grows with level is not notation: a term's count is digits, so the dice are written from the
-  computed count.
+  computed count. Found by ENG-10: which kinds of weapons a character uses the mastery of has no
+  place: no grant kind holds it (ENG-32's proficiency categories have no mastery), and the person
+  may change one kind after a long rest. The count is the fighter's table column `weaponMastery`
+  (golden B4: 4). Improved Critical is `crit.range` `min 19`, from a d20's 20 (SPEC §6.5).
 - **ENG-20** — ADR 014 item 7: casting with "use a slot: no". Found by ENG-32: a `spell`
   grant's `uses` have no key of their own; the cast action keeps their spent count, by the
   grant's part id or a key it gives them. Found by ENG-33: the trackers it changes are
@@ -220,6 +223,12 @@ split off an old row got a new id.
   (the Acolyte's, and a human's Versatile origin feat). 2024 gives its Ability Score Improvement feature at several levels under
   one id, so each level's choice needs its own class grant. The import, or a core row before it,
   gives a feat taken twice its own choices.
+- **Phase 3** — found by ENG-10: 5e-database at `e6edf9a` gives the 2024 human one size,
+  `Medium`, where the SRD's text, as dnd5e quotes it, is Medium or Small, chosen (ENG-10 §8). Its
+  `prerequisites.feature_named` (the four fighting style feats: "Fighting Style"; Boon of Spell
+  Recall: "Spellcasting") has no prerequisite kind: `entity` names one entity. No 2024 species or
+  background gives a language; dnd5e puts Common and two standard languages on each background.
+  The import decides each.
 - **Phase 3** — found by ENG-29: two `resource` grants of one key give one resource, with the
   highest of their maximums. Mechanics that give one key from two classes (a multiclass) check
   in their §8 what the SRD says for that case; uses that add up are an effect `add` on

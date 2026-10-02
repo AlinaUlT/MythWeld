@@ -1,19 +1,20 @@
-import {
-  compute,
-  loadContentIndex,
-  parseFormula,
-  parseRoll,
-  type SystemModule,
-} from '@grimoire/engine';
+import { compute, loadContentIndex, parseFormula, parseRoll } from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 import {
   FIFTH_EDITION_SYSTEM,
-  type FifthEditionCharacter,
   type FifthEditionEntity,
   type FifthEditionPack,
   openFifthEditionCharacter,
   openFifthEditionPack,
 } from '../../src/index.ts';
+import {
+  formulasOf,
+  gatheringModule,
+  idsNamedBy,
+  idsNamedByCharacter,
+  keysNamedBy,
+  opened,
+} from './checks.ts';
 import { goldenA, goldenC2014, srd2014 } from './index.ts';
 
 // ENG-09: the 2014 golden data is whole, agrees with itself, and gives what SPEC §6.7 says golden
@@ -21,142 +22,14 @@ import { goldenA, goldenC2014, srd2014 } from './index.ts';
 
 const FROM_CURRENT = { schemaVersion: 1, systemSchemaVersion: 1 };
 
-/** A file opened, or the test fails with why it did not open. */
-function opened<T>(result: { ok: true; value: T } | { ok: false; message: string }): T {
-  if (!result.ok) throw new Error(result.message);
-  return result.value;
-}
-
 const pack: FifthEditionPack = opened(openFifthEditionPack(srd2014));
 const entities: readonly FifthEditionEntity[] = pack.entities;
 
-/** Every grant of an entity, a class's multiclass grants included. */
-function grantsOf(entity: FifthEditionEntity) {
-  const multiclass = entity.type === 'class' ? (entity.multiclass?.grants ?? []) : [];
-  return [...(entity.grants ?? []), ...multiclass];
-}
-
-/** The items a choice lists; none when it has no list, or picks by a filter. */
-function listed(choose: { from: readonly string[] | object } | undefined): readonly string[] {
-  return choose !== undefined && Array.isArray(choose.from) ? choose.from : [];
-}
-
-/** The entity ids an entity's grants name. */
-function idsNamedBy(entity: FifthEditionEntity): string[] {
-  const ids: string[] = [];
-  for (const grant of grantsOf(entity)) {
-    if (grant.kind === 'entity' || grant.kind === 'spell') {
-      ids.push(...(grant.fixed ?? []), ...listed(grant.choose));
-    } else if (grant.kind === 'item') {
-      ids.push(...(grant.fixed ?? []).map((item) => item.id), ...listed(grant.choose));
-    }
-  }
-  return ids;
-}
-
-/** The entity type a proficiency's keys name, where the pack has entities of one. */
-const KEYED_CATEGORIES: Readonly<Record<string, string>> = { skill: 'skill', language: 'language' };
-
-/** `<type>:<key>` for every key an entity names that an entity of that type should have. */
-function keysNamedBy(entity: FifthEditionEntity): string[] {
-  const named: [string, string][] = [];
-  const stat = (key: string) => named.push(['ability', key]);
-  for (const grant of grantsOf(entity)) {
-    if (grant.kind === 'proficiency') {
-      const type = KEYED_CATEGORIES[grant.category];
-      if (type === undefined) continue;
-      for (const key of [...(grant.fixed ?? []), ...listed(grant.choose)]) named.push([type, key]);
-    } else if (grant.kind === 'abilityScore') {
-      for (const key of grant.mode === 'fixed' ? Object.keys(grant.values) : grant.from) stat(key);
-    }
-  }
-  const prerequisites = [
-    ...(entity.prerequisites ?? []),
-    ...(entity.type === 'class' ? (entity.multiclass?.prerequisites ?? []) : []),
-  ];
-  for (const prerequisite of prerequisites) {
-    if (prerequisite.kind === 'ability') stat(prerequisite.key);
-  }
-  if (entity.type === 'class') entity.saves.forEach(stat);
-  if (entity.type === 'class' || entity.type === 'subclass') {
-    if (entity.spellcasting !== undefined) {
-      stat(entity.spellcasting.ability);
-      const classKey = entity.spellcasting.spellList.classKey;
-      if (classKey !== undefined) named.push(['class', classKey]);
-    }
-  }
-  if (entity.type === 'subclass') named.push(['class', entity.classKey]);
-  if (entity.type === 'skill') stat(entity.ability);
-  if (entity.type === 'spell') {
-    if (entity.save !== undefined) stat(entity.save);
-    for (const damage of entity.damage ?? []) named.push(['damageType', damage.type]);
-  }
-  if (entity.type === 'item' && entity.weapon !== undefined) {
-    if (entity.weapon.damage !== undefined) named.push(['damageType', entity.weapon.damage.type]);
-    for (const property of entity.weapon.properties ?? []) named.push(['weaponProperty', property]);
-  }
-  return named.map(([type, key]) => `${type}:${key}`);
-}
-
-/** The formulas and the roll formulas an entity holds. */
-function formulasOf(entity: FifthEditionEntity): { formulas: string[]; rolls: string[] } {
-  const formulas: string[] = [];
-  const rolls: string[] = [];
-  for (const effect of entity.effects ?? []) {
-    const numeric = ['add', 'mul', 'max', 'min'].includes(effect.op);
-    if (numeric && typeof effect.value === 'string') formulas.push(effect.value);
-    if (effect.when !== undefined) formulas.push(effect.when);
-  }
-  for (const grant of grantsOf(entity)) {
-    if (grant.kind === 'resource') formulas.push(grant.uses.max);
-  }
-  if (entity.type === 'class' || entity.type === 'subclass') {
-    const count = entity.spellcasting?.preparedCount;
-    if (typeof count === 'string') formulas.push(count);
-  }
-  if (entity.type === 'item' && entity.weapon !== undefined) {
-    if (entity.weapon.damage !== undefined) rolls.push(entity.weapon.damage.formula);
-    if (entity.weapon.versatile !== undefined) rolls.push(entity.weapon.versatile);
-  }
-  if (entity.type === 'spell') {
-    rolls.push(...(entity.damage ?? []).map((damage) => damage.formula));
-    if (entity.scaling !== undefined) rolls.push(entity.scaling.formula);
-  }
-  return { formulas, rolls };
-}
-
-/** The entity ids a character names: its species, background, classes, items and choices. */
-function idsNamedByCharacter(character: FifthEditionCharacter): string[] {
-  const data = character.systemData;
-  return [
-    ...[data.species, data.background].flatMap((entry) => (entry ? [entry.id] : [])),
-    ...data.classes.flatMap((entry) => [entry.id, ...(entry.subclass ? [entry.subclass] : [])]),
-    ...data.inventory.flatMap((row) => (row.itemId ? [row.itemId] : [])),
-    ...Object.entries(character.choices).flatMap(([part, chosen]) => [
-      part.slice(0, part.indexOf('#')),
-      ...(chosen ?? []).filter((item) => item.includes(':')),
-    ]),
-  ];
-}
-
 const { index, refused, warnings } = loadContentIndex(FIFTH_EDITION_SYSTEM, [pack]);
 
-// Gathering and the base phase are under test: a module that names what `systemData` names, with
-// one value of its own, `hp.max.bonus` from 0, the target of Dwarven Toughness. Fifth edition's
-// module, with its defaults and values, is ENG-13's and ENG-14's.
-const gathering: SystemModule<FifthEditionCharacter, FifthEditionEntity> = {
-  level: (one) => one.systemData.classes.reduce((sum, entry) => sum + entry.level, 0),
-  entities: ({ systemData: data }) => [
-    ...[data.species, data.background].flatMap((entry) => (entry ? [{ id: entry.id }] : [])),
-    ...data.classes.flatMap((entry) => [
-      { id: entry.id, level: entry.level },
-      ...(entry.subclass === undefined ? [] : [{ id: entry.subclass, level: entry.level }]),
-    ]),
-    ...data.feats.map((feat) => ({ id: feat.id })),
-  ],
-  statDefaults: { defaultMax: 20, modFormula: '0', hasSave: false },
-  derive: () => ({ 'hp.max.bonus': () => ({ value: 0, steps: [] }) }),
-};
+// Gathering and the base phase are under test, with one value the module will give: `hp.max.bonus`
+// from 0, the target of Dwarven Toughness (ENG-14 gives it).
+const gathering = gatheringModule(index, { 'hp.max.bonus': 0 });
 
 const a = opened(openFifthEditionCharacter(goldenA));
 const c = opened(openFifthEditionCharacter(goldenC2014));

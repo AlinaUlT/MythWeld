@@ -5514,3 +5514,378 @@ Found, not fixed:
 - ENG-10 follows this ticket's conventions (§4). Noted on ENG-10.
 
 Nothing for the changelog.
+
+---
+
+### ENG-10 The 2024 fixtures
+
+**Hat:** 2024 fixtures: every SRD entity golden B, B4, C or D needs
+**Depends on:** ENG-09 (its conventions, its test's checks), ENG-32 (the entity types), ENG-33
+(the character, the pack), ENG-25 (`loadContentIndex`), ENG-11, ENG-12, ENG-17 and ENG-29
+(gathering, stat scores, effects, resource maximums), ENG-07 (`parseFormula`, `parseRoll`)
+**Size:** M
+**Screen:** No
+**SPEC:** §6.7 goldens B, B4, D and C (the 2024 column), §5.1, §5.3, §5.4, §5.5; §6.3's
+exhaustion row
+
+---
+
+#### 1. Where the code lives
+
+**Main folder:** `packages/system-5e/test/golden/` — changes. The golden tests' 2024 data.
+- `golden/srd-2024.ts` — new: `srd2024`, the pack `srd-2024` as a file would hold it, with every
+  SRD 5.2.1 entity goldens B, B4, C and D need.
+- `golden/characters-2024.ts` — new: `goldenB`, `goldenB4`, `goldenC2024` and `goldenD`.
+- `golden/character-parts.ts` — new: the house rules and untouched trackers both editions'
+  characters share, moved out of `characters-2014.ts`.
+- `golden/checks.ts` — new: ENG-09's checks of a pack and a character, moved out of
+  `fixtures-2014.test.ts` so both editions' tests run them, and the test module that gathers.
+- `golden/fixtures-2024.test.ts` — new: the data is whole, agrees with itself, and gives what
+  goldens B, B4, C and D say it gives.
+- `golden/characters-2014.ts`, `golden/fixtures-2014.test.ts` — change: they import the moved
+  parts. No value and no expectation changes.
+- `golden/index.ts` — changes: exports the 2024 files.
+
+#### 2. What is missing now
+
+- `ls packages/system-5e/test/golden` prints `characters-2014.ts fixtures-2014.test.ts index.ts
+  srd-2014.ts`: no 2024 data.
+- `grep -rln "srd-2024:" packages --include=*.ts` finds one file,
+  `packages/schema/test/entity-base.test.ts`, where `srd-2024:feat/alert` is an id in a parse
+  test.
+- `pnpm test`: `Test Files 35 passed (35)`, `Tests 335 passed (335)`.
+
+#### 3. What it should look like when done
+
+1. **The pack** `srd-2024` (`ruleset` `2024`, `system` `5e`, `systemSchemaVersion` 1, license
+   CC-BY-4.0, `redistributable: true`) holds, every entity `ruleset: '2024'`, ids
+   `srd-2024:<type>/<5e-database slug>`:
+   - the 6 stats and the 18 skills of SRD 5.2.1; Perception alone is `passive`;
+   - the human and its three traits;
+   - the Soldier; the feats Alert, Savage Attacker and Defense;
+   - the fighter, its features of levels 1 to 4, the Champion and its two level-3 features;
+   - the wizard and the paladin;
+   - the condition exhaustion;
+   - chain mail and the greatsword; the damage type slashing, the weapon properties heavy and
+     two-handed, the weapon mastery graze.
+   52 entities. Every value in them is §8's.
+2. **What each source gives is in its grants** (ENG-32 §4), with the grant ids each choice is kept
+   under: the human's `traits`; Skillful's `skills` (one of any skill); Versatile's `feat` (one
+   origin feat); the Soldier's `ability-scores` (+2/+1 or +1/+1/+1 among `str`, `dex`, `con`),
+   `feat` (Savage Attacker), `skills` (`athletics`, `intimidation`) and `tools` (one gaming
+   set); the fighter's `features-1` to `features-4` (each at its level), `ability-scores-4` (at
+   level 4: +2 to one stat or +1 to two), `armor`, `weapons`, `skills` (two of eight); Fighting
+   Style's `feat` (one fighting style feat); Second Wind's `uses`; the Champion's `features-3`;
+   each class's `multiclass` (its prerequisites; its proficiencies as `multiclass-…` grants).
+3. **Mechanics only where a golden value reads them,** each as SPEC §5.4's catalogue writes it:
+   - Alert: `init.bonus` add `@prof`;
+   - Defense: `ac.bonus` add 1 when `@armor.worn`;
+   - Second Wind: the resource `secondWind`, its maximum
+     `@classes.fighter.table.secondWindUses`, one use back on a short rest, all on a long rest;
+   - the fighter's table: `secondWindUses` and `weaponMastery`, levels 1 to 20;
+   - Improved Critical: `crit.range` min 19;
+   - Remarkable Athlete: `advantage` on `roll.init` and on `roll.skill.athletics`;
+   - exhaustion: `maxLevel` 6, `d20.all.bonus` add `-2 * @conditions.exhaustion.level`,
+     `speed.all.bonus` add `-5 * @conditions.exhaustion.level`.
+   Every other feature is its name only; its mechanics are phase 3's (SPEC §6.8).
+4. **Golden B** is SPEC §6.7's character: base scores 15, 13, 14, 8, 12, 10; the human, size
+   Medium; the Soldier with +2 STR and +1 CON; Insight from Skillful; Alert from Versatile;
+   fighter 1, hit points `max`; Perception and Survival; Defense; chain mail and a greatsword,
+   equipped. Its gaming set is test data (playing cards).
+5. **Golden B4** is golden B at fighter 4: the Champion; +2 STR at level 4; hit points `max`,
+   then `avg` three times.
+6. **Golden D** is golden B with exhaustion at level 2.
+7. **Golden C (2024)** is wizard 3, then paladin 3, on the 2024 classes, with no species and no
+   background; the scores and the wizard's skills are golden C (2014)'s test data.
+8. **The test, through the code a file goes through** (ENG-09's checks, run on both editions):
+   - the pack opens through `openFifthEditionPack` to an equal object; `loadContentIndex('5e',
+     [srd2024])` loads it with no refusal and no warning;
+   - every entity id a grant names, and every id a character names, is in the pack;
+   - every stat, skill, language, class, damage type, weapon property and weapon mastery key the
+     pack names is one of the pack's;
+   - every formula parses: effects, `when`, resource maximums and recoveries, a `formula`
+     prerequisite, with `parseFormula`; weapon damage with `parseRoll`;
+   - the counts §8 measured: 6 stats, 18 skills;
+   - the four characters open through `openFifthEditionCharacter`, each to an equal object.
+9. **Through `compute()`**, with ENG-09's test module, which gives, besides what `systemData`
+   names, the paths the fixture's mechanics read or change that only the module will give
+   (ENG-13, ENG-14, ENG-16): each target from where it starts, `prof` +2, `armor.worn`, and a
+   class's table column at its level, read from the class:
+   - golden B gathers 12 entities with no warning and no pending choice; its proficiencies are
+     SPEC §6.7's with their sources; its scores are STR 17, DEX 13, CON 15, INT 8, WIS 12, CHA 10,
+     with the Soldier's +2 and +1; Alert gives `init.bonus` 2, Defense `ac.bonus` 1; Second Wind's
+     maximum is 2;
+   - golden B4 is level 4, gathers the Champion's two features with no warning and no pending
+     choice; STR 19 (15, +2 Soldier, +2 at level 4); `crit.range` 19; Second Wind's maximum 3;
+     `weaponMastery` 4;
+   - golden D has exhaustion at level 2: `d20.all.bonus` −4, `speed.all.bonus` −10;
+   - golden C (2024) is level 6, gathers the two classes with no warning, and its one pending
+     choice is the paladin's `skills` (ENG-13's note).
+10. ENG-09's test passes unchanged: 10 tests, the same expectations.
+11. The quality gate is green.
+
+#### 4. How to do it
+
+1. `checks.ts`: ENG-09's helpers, moved as they are, and widened where 2024 needs it: a weapon's
+   `mastery` is a key the pack must have; a `formula` prerequisite and a recovery amount are
+   formulas. The test module is `gatheringModule(values)`: what `systemData` names, the class
+   table's columns at each class's level, and `values`. None of this changes a 2014 count.
+2. `character-parts.ts`: ENG-09's `houseRules`, `untouched`, `rested`, moved.
+3. `srd-2024.ts`: the pack as one object, `satisfies z.input<typeof fifthEditionPackSchema>`,
+   entities grouped by source with a comment naming each group's §8 source.
+4. `characters-2024.ts`: the four characters, `satisfies z.input<typeof
+   fifthEditionCharacterSchema>`.
+5. `fixtures-2024.test.ts`: the checks of §3 items 8–9.
+
+ENG-09 §4's conventions hold (the backlog's note): keys are 5e-database slugs in camelCase, ids
+keep the slug; proficiency keys are what an item names; saves are `ClassDef.saves` only; a slot
+row lists levels 1 to the last with slots; golden C's 2024 column is its own character; the
+attribution text is left to the import; house rules are test data; spell lists are empty.
+
+Technical choices (ADR 002):
+- **Whole at the goldens' levels.** Golden B4 is fighter 4, so the fighter gives every feature
+  and choice of levels 1 to 4, and the Champion its level-3 features. Golden C's 2024 classes, as
+  ENG-09's, carry no features.
+- **A table column is the class's `levels`** (SPEC §5.3), keyed by 5e-database's
+  `class_specific` name in camelCase: `secondWindUses`, `weaponMastery`, as SPEC §5.3 and §5.6
+  name them. All 20 rows, as the slot tables have.
+- **No `abilityScoreImprovement` flag on a level.** The level-4 improvement is the class's grant
+  `ability-scores-4` (ENG-33 §4: a feat in place of it names that grant); a flag would be a second
+  place saying it.
+- **The 2024 improvement is a stat distribution on the class,** not the feat Ability Score
+  Improvement: an entity is gathered once, so a feat given again at level 6 would not give again
+  (the backlog's phase 3 note by ENG-33). Its patterns are the feat's: `[[2], [1, 1]]`.
+- **"Any skill" and "an origin feat" are filters**, `{ type: 'skill' }` and `{ type: 'feat',
+  category: 'origin' }`, as ENG-09's Acolyte chooses any language: a homebrew skill or feat is
+  offered too. A feat's category is 5e-database's `type` in camelCase: `origin`,
+  `fightingStyle`.
+- **Exhaustion slows by `speed.all.bonus`.** dnd5e takes 5 feet per level from every speed the
+  creature has, never below 0 (§8). SPEC §5.4's catalogue has `speed.<kind>.bonus`; one effect per
+  kind would name speeds the character lacks. `speed.all.bonus` is the catalogue's own form
+  (`saves.all.bonus`, `skills.all.bonus`, `d20.all.bonus`, `speed.all.mul`); ENG-14 gives it.
+- **The fighter's multiclass prerequisite is a `formula`**, "Strength 13 or Dexterity 13", as
+  ENG-32 §8 found the core's `formula` prerequisite holds it.
+- **No languages.** No 2024 species or background in 5e-database gives one, and no golden value
+  reads one (§9).
+- **No prerequisite on Defense.** Its prerequisite is any Fighting Style feature (5e-database
+  `feature_named`); an `entity` prerequisite names one feature, and the paladin's is another.
+  Fighting Style's own choice is the only way to it here (§11).
+- **A melee weapon has no range**, as ENG-09's warhammer: 5e-database's `range.normal: 5` is the
+  reach, and the schema's range is a ranged weapon's.
+
+#### 5. Stored data
+
+Nothing stored changes. Test data only; no schema changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/golden/fixtures-2024.test.ts` — `describe('ENG-10 2024 fixtures')`:
+  §3 items 8–9.
+- `packages/system-5e/test/golden/fixtures-2014.test.ts` — `describe('ENG-09 2014 fixtures')`:
+  unchanged expectations, its helpers from `checks.ts`.
+- Control values from: SPEC §6.7 goldens B, B4, D and C (scores, proficiencies and their
+  sources, the mechanics' numbers); the counts and columns in §8. Test data: the gaming set, golden
+  B's size, golden C's scores and skills, the stand-ins of §3 item 9.
+
+#### 8. Checked against the source
+
+Sources: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214` (still its `HEAD` on
+2026-10-02), `packages/5e-database/src/2024/en/`, read with `jq`; foundryvtt/dnd5e at `7bfb3f1`
+(still its `HEAD` on 2026-10-02), `packs/_source/{origins24,classes24,feats24,content24}` and
+`module/`, where 5e-database is silent or disagrees (ENG-33 §8: the 2024 rules chapters are not
+in 5e-database, and the SRD 5.2.1 PDF's host is refused here). Both data sets are SRD 5.2.1
+(CC-BY-4.0).
+
+**The goldens' values agree with the sources** (checked before writing, ADR 007): B's scores
+15 + 2, 14 + 1; hit points 10 + 2; Athletics 3 + 2; initiative 1 + 2; AC 16 + 1; Second Wind 2.
+B4's STR 17 + 2; hit points 12 + 3 × (6 + 2), 6 being dnd5e's `avg` of a d10 (`10 / 2 + 1`,
+ENG-33 §8); Second Wind 3 and weapon mastery 4 at fighter 4; proficiency +2 at levels 1 to 4
+(`prof_bonus`). D's −2 × 2 to every d20 test and 30 − 5 × 2 feet. C's caster level 3 + ⌈3/2⌉ = 5
+and the full caster's row at level 5, `[4, 3, 2]`. No golden value looks wrong; nothing stops.
+
+**Stats and skills:** `5e-SRD-Ability-Scores.json`: `str`, `dex`, `con`, `int`, `wis`, `cha`, with
+their names, as in 2014. `5e-SRD-Skills.json`: the same 18 skills on the same stats as 2014.
+Passive Perception: the rules glossary (dnd5e `content24/appendices/rules-glossary.yml`) has one
+passive score, "Passive Perception"; 5e-database names no other.
+
+**The human:**
+- `human` (`5e-SRD-Species.json`): type Humanoid, speed 30, traits `resourceful`, `skillful`,
+  `versatile`; size `Medium`. dnd5e (`origins24/species/human.yml`) quotes the SRD: "Medium
+  (about 4–7 feet tall) or Small (about 2–4 feet tall), chosen when you select this species",
+  and its `Size` advancement offers `sm`, `med`. The fixture follows the SRD's text: Medium or
+  Small (§11).
+- `5e-SRD-Traits.json`: Resourceful "You gain Heroic Inspiration whenever you finish a Long
+  Rest."; Skillful: one skill of the 18 ("Choose any skill."; dnd5e `skills:*`); Versatile "You
+  gain an Origin feat of your choice" (dnd5e: one feat, restricted to `subtype: origin`).
+
+**The Soldier** (`5e-SRD-Backgrounds.json`): ability scores `str`, `dex`, `con`; feat
+`savage-attacker`; `skill-athletics`, `skill-intimidation`; one of `tool-dice`,
+`tool-dragonchess`, `tool-playing-cards`, `tool-three-dragon-ante` (each `reference` is the
+equipment `dice`, `dragonchess`, `playing-cards`, `three-dragon-ante`). The increases: dnd5e
+(`origins24/backgrounds/soldier.yml`, `AbilityScoreImprovement`, `points: 3`, `cap: 2`, `int`,
+`wis`, `cha` locked): "increase one of them by 2 and a different one by 1, or increase all three
+by 1. None of these increases can raise a score above 20." No language: the background has
+none in 5e-database; dnd5e adds a "Choose Languages" step to each background, whose hint is the
+creation rule "Common plus two languages you roll or choose from the Standard Languages table".
+
+**The feats** (`5e-SRD-Feats.json`): `alert`, `savage-attacker` of type `origin`; `defense` of
+type `fighting-style`, prerequisite `feature_named: "Fighting Style"`.
+- Alert: "When you roll Initiative, you can add your Proficiency Bonus to the roll." — SPEC
+  §5.4's own example, `init.bonus` `+@prof`.
+- Defense: "While you're wearing Light, Medium, or Heavy armor, you gain a +1 bonus to Armor
+  Class." — SPEC §5.4's own example, `ac.bonus` `+1` when `@armor.worn`.
+- Savage Attacker: rerolls weapon damage once per turn; no golden value reads it.
+
+**The fighter** (`5e-SRD-Classes.json`, `-Levels.json`, `-Features.json`):
+- hit die 10; primary ability `str` or `dex`; saves `str`, `con`; `all-armor`, `shields`,
+  `simple-weapons`, `martial-weapons`; choose 2 of Acrobatics, Animal Handling, Athletics,
+  History, Insight, Intimidation, Perception, Survival; multiclass: `str` 13 or `dex` 13
+  (`prerequisite_options`, `choose: 1`), `light-armor`, `medium-armor`, `shields`,
+  `martial-weapons`; subclass `champion`.
+- Levels: `fighter-fighting-style`, `fighter-second-wind`, `fighter-weapon-mastery` at 1;
+  `fighter-action-surge`, `fighter-tactical-mind` at 2; `fighter-subclass` at 3, so the subclass
+  level is 3; `fighter-ability-score-improvement` at 4 ("You gain this feature again at Fighter
+  levels 6, 8, 12, 14, and 16"). `class_specific` per level: `second_wind_uses` 2 at levels 1–3,
+  3 at 4–9, 4 at 10–20; `weapon_mastery` 3 at 1–3, 4 at 4–9, 5 at 10–15, 6 at 16–20.
+- Fighting Style: "gain a Fighting Style feat of your choice". Second Wind: "You can use this
+  feature twice. You regain one expended use when you finish a Short Rest, and you regain all
+  expended uses when you finish a Long Rest", more uses by the Second Wind column. Weapon
+  Mastery: three kinds of weapons, more by the Weapon Mastery column (§11).
+- The improvement: dnd5e (`classes24/fighter/fighter.yml`) has one `AbilityScoreImprovement`
+  advancement per level, `points: 2`, `cap: 2`, no stat locked; the feat Ability Score
+  Improvement (`feats24/general-feats/ability-score-improvement.yml`) the same. 5e-database:
+  "Increase one ability score of your choice by 2, or increase two ability scores of your choice
+  by 1. This feat can't increase an ability score above 20."
+- `champion` (`5e-SRD-Subclasses.json`, `-Levels.json`): `champion-improved-critical` and
+  `champion-remarkable-athlete` at fighter 3. Improved Critical: "can score a Critical Hit on a
+  roll of 19 or 20 on the d20" — SPEC §5.4's `crit.range` `min 19`. Remarkable Athlete: "you have
+  Advantage on Initiative rolls and Strength (Athletics) checks" — SPEC §5.4's `advantage` on
+  `roll.init` and `roll.skill.athletics`.
+
+**Golden C's 2024 classes:**
+- `wizard`: hit die 6; primary ability `int`; saves `int`, `wis`; `simple-weapons`; choose 2 of
+  Arcana, History, Insight, Investigation, Medicine, Religion; multiclass `int` 13, no
+  proficiencies; spellcasting `int` from level 1; `wizard-subclass` at 3. Per level: cantrips
+  3, 3, 3, then 4 to level 9, 5 from 10; prepared spells 4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16,
+  16, 17, 17, 18, 18, 19, 20, 21, 22; slots measured equal, row by row, to ENG-09's full caster
+  rows.
+- `paladin`: hit die 10; primary abilities `str` and `cha`; saves `wis`, `cha`; `all-armor`,
+  `shields`, `simple-weapons`, `martial-weapons`; choose 2 of Athletics, Insight, Intimidation,
+  Medicine, Persuasion, Religion; multiclass `str` 13 and `cha` 13, `light-armor`,
+  `medium-armor`, `shields`, `martial-weapons`; spellcasting `cha` from level 1;
+  `paladin-subclass` at 3. Cantrips 0 at every level; prepared spells 2, 3, 4, 5, 6, 6, 7, 7, 9,
+  9, 10, 10, 11, 11, 12, 12, 14, 14, 15, 15; slots `[2]` at levels 1 and 2, then equal to ENG-09's
+  2014 paladin rows from level 3 (`[3]`) to 20 (`[4, 3, 3, 3, 2]`).
+- Rituals: the glossary's "Ritual": "If you have a spell prepared that has the Ritual tag, you
+  can cast that spell as a Ritual." — every caster of 2024, so both classes have `ritual: true`.
+  The wizard's Ritual Adept (from the spellbook, unprepared) is a feature, left out as golden C's
+  features are.
+
+**Exhaustion** (`5e-SRD-Conditions.json`): "You die if your Exhaustion level is 6."; "When you
+make a D20 Test, the roll is reduced by 2 times your Exhaustion level."; "Your Speed is reduced by
+a number of feet equal to 5 times your Exhaustion level." dnd5e (`module/config.mjs`):
+`levels: 6`, `reduction: { rolls: 2, speed: 5 }`; `prepareMovement`
+(`module/data/actor/templates/attributes.mjs`) takes the reduction from every movement type,
+`Math.max(0, speeds[type] - reduction)`. SPEC §6.3: one formula in 2024, `d20.all.bonus`
+`-2 * @conditions.exhaustion.level` (SPEC §5.4's own example).
+
+**Equipment** (`5e-SRD-Equipment.json`, `-Damage-Types.json`, `-Weapon-Properties.json`,
+`-Weapon-Mastery-Properties.json`): `chain-mail` heavy armor, AC 16, no Dexterity (`max_bonus`
+0), Strength 13, stealth disadvantage, 55 lb, 75 gp. `greatsword` martial melee, `2d6`
+`slashing`, `heavy`, `two-handed`, mastery `graze`, 6 lb, 50 gp, `range.normal` 5 (as the 2014
+warhammer's, which ENG-09 left out).
+
+**Not reachable here:** the SRD 5.2.1 PDF (ENG-33 §8), so its attribution text is the import's
+(ENG-09 §4).
+
+#### 9. Not in this ticket
+
+- How a character's weapon mastery kinds are chosen and kept: ENG-16 (§11). The count is the
+  table's `weaponMastery`.
+- The 2024 starting languages (Common and two standard ones): no 2024 species or background
+  gives them in 5e-database, and no golden value reads them. A creation step: phase 4, or the
+  import if it puts them on backgrounds as dnd5e does.
+- Fifth edition's module and the golden values it computes: ENG-13 to ENG-16, ENG-19, ENG-34.
+  This ticket's test module gathers, and gives the paths of §3 item 9 as stand-ins.
+- How a later class leaves out the first class's grants (golden C's paladin `skills`): ENG-13.
+- The multiclass slot table and the rounding: ENG-15, ENG-19.
+- Features above golden B4's level, the wizard's and the paladin's features, origin and
+  fighting style feats no golden takes, starting equipment, and every feature's mechanics but
+  §3 item 3's: the import and its mechanics (phase 3, SPEC §6.8).
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** No expected value changes; each golden number the test
+  checks is SPEC §6.7's, and §8 shows each one agrees with the sources.
+- **`[ПРОВЕРИТЬ]` and measure, never estimate.** Every rules value is §8's, read with `jq` and
+  `grep`, not from memory. SPEC §6.3's exhaustion row is checked in §8.
+- **Licensing.** Only SRD 5.2.1 (CC-BY-4.0) data. Text is limited to names and one resource label.
+- **Everything is data.** No stat, skill or class is named in code; the fixture is data under
+  `test/`. The test module's stand-ins are test code.
+- **Each system's rules live in its own module.** The fixture is in the fifth-edition module's
+  tests; no core file changes.
+- **Formulas never run code.** Every formula is parsed by ENG-07's parser in the test.
+- **Stored units are feet and pounds.** Speed 30, exhaustion 5 feet a level, weights 55 and 6.
+- **No "D&D" in names.** The pack's title is "SRD 5.2.1".
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `fixtures-2024.test.ts` alone: `Tests 14 passed (14)`, 736 ms.
+- Lint: `Checked 136 files`, no errors (131 before; 5 new files).
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done`.
+- Test: `Test Files 36 passed (36)`, `Tests 349 passed (349)`, 5.43 s (before: 35 files, 335
+  tests).
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The pack holds 52 entities: 6 stats, 18 skills, 1 species, 12 features, 1 background, 3 feats,
+  3 classes, 1 subclass, 1 condition, 2 items, 1 damage type, 2 weapon properties, 1 weapon
+  mastery. Its grants name 13 entity ids and its entities 67 stat, skill, class, damage type,
+  property and mastery keys; it holds 7 formulas and 1 roll formula. Each count was worked out by
+  hand before the run, and the first run agreed.
+- Through `compute()`: golden B gathers 12 entities with no warning and no pending choice; its
+  scores are 17, 13, 15, 8, 12, 10 (STR 15 + 2, CON 14 + 1, both the Soldier's); its 12
+  proficiencies come from the sources SPEC §6.7 names; Alert gives `init.bonus` 2, Defense
+  `ac.bonus` 1, Second Wind a maximum of 2, recovered 1 on a short rest and all on a long one.
+  Golden B4 gathers 19 entities, level 4, no warning, no pending choice: STR 19 (15, +2 Soldier,
+  +2 `ability-scores-4`), `crit.range` 19, Second Wind 3, `weaponMastery` 4. Golden D gathers
+  B's 12 and exhaustion at level 2: `d20.all.bonus` −4, `speed.all.bonus` −10 (golden B: 0 and
+  0). Golden C (2024) is level 6, gathers its two classes with no warning, and has one pending
+  choice, `srd-2024:class/paladin#skills`.
+- The tests bite. Eight breaks, each on its own and restored (`cmp` equal after): the Soldier's
+  `[2, 1]` written `[1, 2]`, 2 tests fail (B's and B4's scores); Improved Critical `max` for
+  `min`, 1; the Second Wind column at level 4 made 2, 1; exhaustion's `-2` made `-1`, 2; Defense's
+  `when` misspelled `@armor.wron`, 6 (the missing path warns in every character that has it);
+  the greatsword's mastery `graz`, 1; Tactical Mind removed, 4; Perception left out of the
+  fighter's list, 4.
+- ENG-09's test: its `describe` block is byte-equal before and after (`diff`), `Tests 10 passed
+  (10)` with its helpers from `checks.ts`.
+
+Differences from §3 and §4:
+- `gatheringModule` takes the content index too (`gatheringModule(index, values)`): it reads each
+  class's table from the class.
+- The fighter's table is written as 20 literal rows, as 5e-database lists them; a first draft
+  built it from two columns with a fallback that could hide a missing row.
+- Golden C's test module gives no stand-ins: nothing of golden C reads one.
+
+Found, not fixed:
+- Which kinds of weapons a character uses the mastery of has no place: no grant kind holds it
+  (ENG-32's proficiency categories have no mastery), and the person may change one kind after a
+  long rest (5e-database). The count is the table's `weaponMastery`. Noted on ENG-16.
+- Exhaustion changes `speed.all.bonus`, a path SPEC §5.4's catalogue does not list (§4). Noted on
+  ENG-14, with dnd5e's floor at 0.
+- The fixture's mechanics read or change values only the module gives: `prof` (Alert),
+  `armor.worn` (Defense), `classes.fighter.table.secondWindUses` (Second Wind), `init.bonus`,
+  `ac.bonus`, `crit.range` from 20, `d20.all.bonus` in every d20 test (golden D). The test gives
+  them as stand-ins. Noted on ENG-13, ENG-14 and ENG-16.
+- 5e-database at `e6edf9a` gives the 2024 human one size, `Medium`, where the SRD's text, as
+  dnd5e quotes it, is Medium or Small; its `feature_named` prerequisite (the four fighting style
+  feats: "Fighting Style"; Boon of Spell Recall: "Spellcasting") has no prerequisite kind, since
+  `entity` names one entity; and no 2024 species or background gives a language. New note for
+  phase 3 in `BACKLOG.md`.
+
+Nothing for the changelog.
