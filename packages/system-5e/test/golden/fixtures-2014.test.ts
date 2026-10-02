@@ -137,6 +137,10 @@ describe('ENG-09 2014 fixtures', () => {
       'srd-2014:subclass/life',
       'srd-2014:feature/bonus-proficiency',
       'srd-2014:feature/disciple-of-life',
+      // ENG-14: the equipped items, in inventory order.
+      'srd-2014:item/chain-mail',
+      'srd-2014:item/shield',
+      'srd-2014:item/warhammer',
     ]);
     expect(computed.pendingChoices).toEqual([]);
     expect(computed.warnings).toEqual([]);

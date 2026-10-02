@@ -10,12 +10,13 @@ import {
 } from '@grimoire/engine';
 import type { FifthEditionCharacter } from './character';
 import { checkSteps, skillKeys } from './checks';
+import { ATTUNED_PATH, combatSteps, EQUIPPED_PATH } from './combat';
 import type { ClassDef, FifthEditionEntity } from './entity-types';
 
 // ENG-13: fifth edition's module (ADR 004 item 1), what the core asks of it: the character's
 // level, the entities its `systemData` names, a stat's defaults, the grants a class taken after
 // the first and a feat taken in place of a grant leave out, and the derived values. ENG-14 to
-// ENG-16 add their steps to `derive`.
+// ENG-16 add their steps to `derive`. ENG-14: each equipped item is named, with its own paths.
 
 /** A stat's defaults (SPEC §5.3): the modifier, a save, a highest score of 20 (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: StatDefaults = {
@@ -80,6 +81,12 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
       ...(entry.subclass === undefined ? [] : [{ id: entry.subclass, level: entry.level }]),
     ]),
     ...data.feats.map((feat) => ({ id: feat.id })),
+    // Only an equipped item's effects and grants apply (SPEC §5.3), so only those are named.
+    ...data.inventory.flatMap(({ itemId, equipped, attuned }) =>
+      equipped && itemId !== undefined
+        ? [{ id: itemId, paths: { [EQUIPPED_PATH]: 1, [ATTUNED_PATH]: attuned ? 1 : 0 } }]
+        : [],
+    ),
   ],
 
   statDefaults: FIFTH_EDITION_STAT_DEFAULTS,
@@ -103,7 +110,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     return grants.filter((grant) => !replaced.has(`${entity.id}#${grant.id}`));
   },
 
-  derive: (input) => ({ ...classSteps(input), ...checkSteps(input) }),
+  derive: (input) => ({ ...classSteps(input), ...checkSteps(input), ...combatSteps(input) }),
 
   // Each skill's stat, which an effect may set.
   keys: skillKeys,

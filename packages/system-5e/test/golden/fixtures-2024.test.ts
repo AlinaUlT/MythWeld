@@ -68,6 +68,9 @@ const GATHERED_B = [
   'srd-2024:feature/fighter-weapon-mastery',
 ];
 
+/** Golden B's equipped items, gathered after everything else its part names (ENG-14). */
+const ITEMS_B = ['srd-2024:item/chain-mail', 'srd-2024:item/greatsword'];
+
 describe('ENG-10 2024 fixtures', () => {
   it('opens and loads the pack as a file', () => {
     expect(openFifthEditionPack(srd2024)).toEqual({ ok: true, value: srd2024, from: FROM_CURRENT });
@@ -153,7 +156,7 @@ describe('ENG-10 2024 fixtures', () => {
 
   it('gathers golden B whole, every choice made', () => {
     const computed = compute(b, index, standingIn);
-    expect(computed.entities.map((had) => had.entity.id)).toEqual(GATHERED_B);
+    expect(computed.entities.map((had) => had.entity.id)).toEqual([...GATHERED_B, ...ITEMS_B]);
     expect(computed.pendingChoices).toEqual([]);
     expect(computed.warnings).toEqual([]);
     expect(computed.values.level).toBe(1);
@@ -224,6 +227,7 @@ describe('ENG-10 2024 fixtures', () => {
       'srd-2024:subclass/champion',
       'srd-2024:feature/champion-improved-critical',
       'srd-2024:feature/champion-remarkable-athlete',
+      ...ITEMS_B,
     ]);
     expect(computed.pendingChoices).toEqual([]);
     expect(computed.warnings).toEqual([]);
@@ -259,6 +263,7 @@ describe('ENG-10 2024 fixtures', () => {
     const computed = compute(d, index, standingIn);
     expect(computed.entities.map((had) => had.entity.id)).toEqual([
       ...GATHERED_B,
+      ...ITEMS_B,
       'srd-2024:condition/exhaustion',
     ]);
     expect(computed.pendingChoices).toEqual([]);

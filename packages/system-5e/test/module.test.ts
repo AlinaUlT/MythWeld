@@ -142,6 +142,9 @@ describe("ENG-13 fifth edition's module", () => {
       { id: 'srd-2024:background/soldier' },
       { id: 'srd-2024:class/fighter', level: 4 },
       { id: 'srd-2024:subclass/champion', level: 4 },
+      // ENG-14: each equipped item, with its own paths.
+      { id: 'srd-2024:item/chain-mail', paths: { equipped: 1, attuned: 0 } },
+      { id: 'srd-2024:item/greatsword', paths: { equipped: 1, attuned: 0 } },
     ]);
     expect(fifthEditionModule.level(b4)).toBe(4);
     const c = opened(openFifthEditionCharacter(goldenC2014));

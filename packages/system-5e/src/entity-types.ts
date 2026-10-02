@@ -9,7 +9,14 @@ import {
   visibleTextSchema,
 } from '@grimoire/schema';
 import { z } from 'zod';
-import { COINS, fifthEdition, HIT_DIE_SIZES, MAX_LEVEL, MAX_SPELL_LEVEL } from './system';
+import {
+  COINS,
+  fifthEdition,
+  HIT_DIE_SIZES,
+  MAX_LEVEL,
+  MAX_SPELL_LEVEL,
+  SPEED_KINDS,
+} from './system';
 
 // ENG-32: fifth edition's entity types (SPEC §5.3), each built on the system's base, so its
 // editions, grant kinds and proficiencies are checked by fifth edition's lists. What an entity
@@ -38,7 +45,7 @@ const damageSchema = z.strictObject({ formula: formulaSchema, type: entityKeySch
 
 /** Speeds in feet, by kind; at least one. */
 const speedSchema = z
-  .partialRecord(z.enum(['walk', 'fly', 'swim', 'climb', 'burrow']), z.int().nonnegative())
+  .partialRecord(z.enum(SPEED_KINDS), z.int().nonnegative())
   .refine((speed) => Object.keys(speed).length > 0, 'Needs at least one speed.')
   .meta({ minProperties: 1 });
 

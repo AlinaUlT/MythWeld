@@ -2,6 +2,7 @@ import {
   type ComputeWarning,
   compute,
   type DerivedStep,
+  type EffectWarning,
   evaluateNumber,
   loadContentIndex,
   type StatOf,
@@ -489,6 +490,45 @@ describe('ENG-43 a step reads a key path', () => {
     expect(codes(result)).toEqual([
       { code: 'pathTaken', path: 'level' },
       { code: 'pathTaken', path: 'skills.all.bonus' },
+    ]);
+  });
+});
+
+describe("ENG-14 a step's own warnings", () => {
+  it('warns each rule warning as `stepRule`, naming its path; effect warnings pass as they are', () => {
+    const notAppended: EffectWarning = {
+      code: 'notAppended',
+      part: 'tales-core:talent/quick-step#nimble',
+      op: 'note',
+      target: 'guard.formulas',
+      message: 'Made up for the test.',
+    };
+    const result = computed(
+      ash,
+      withSteps(() => ({
+        guard: () => ({
+          value: 3,
+          steps: [{ kind: 'rule', rule: 'guard', value: 3, change: 3 }],
+          ruleWarnings: [
+            { rule: 'tooLow', data: { least: 5, part: 'warden' }, message: 'Below 5.' },
+            { rule: 'unsure', message: 'Unsure.' },
+          ],
+          effectWarnings: [notAppended],
+        }),
+        calm: () => ({ value: 0, steps: [] }),
+      })),
+    );
+    expect(result.values.guard).toBe(3);
+    expect(result.warnings).toEqual([
+      {
+        code: 'stepRule',
+        path: 'guard',
+        rule: 'tooLow',
+        data: { least: 5, part: 'warden' },
+        message: 'Below 5.',
+      },
+      { code: 'stepRule', path: 'guard', rule: 'unsure', message: 'Unsure.' },
+      notAppended,
     ]);
   });
 });

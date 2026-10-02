@@ -1,5 +1,5 @@
 import type { EntityId, EntityPartId } from '@grimoire/schema';
-import { STAT_FIELDS } from './effects';
+import { type EffectWarning, STAT_FIELDS } from './effects';
 import { evaluateNumber, type FormulaWarning } from './formula';
 import { type GatherableEntity, type Gathered, isCoreKind } from './gather';
 import { type BreakdownStep, type KeyStep, STAT_TYPE, type Stats } from './stats';
@@ -37,12 +37,24 @@ export interface StatOf<E extends GatherableEntity> {
   readonly hasSave: boolean;
 }
 
+/** Something a step met by a rule of its system: `rule` is the module's name for it (ENG-14). */
+export interface RuleWarning {
+  readonly rule: string;
+  /** What the screen shows with it. */
+  readonly data?: Readonly<Record<string, string | number>>;
+  readonly message: string;
+}
+
 /** A number a step gives, and the steps that made it (SPEC §6.2). */
 export interface Derived {
   readonly value: number;
   readonly steps: readonly BreakdownStep[];
   /** What a formula the step evaluated met; each is warned as `stepFormula` (ENG-13). */
   readonly warnings?: readonly FormulaWarning[];
+  /** What a rule of its system met; each is warned as `stepRule` (ENG-14). */
+  readonly ruleWarnings?: readonly RuleWarning[];
+  /** What working out an effect it read met (`appendedNumbers`); each is warned as it is. */
+  readonly effectWarnings?: readonly EffectWarning[];
 }
 
 /** A computed path's value, computed first when it is not yet. A path nothing gives reads 0. */
@@ -99,14 +111,22 @@ export interface DeriveInput<C, E extends GatherableEntity> {
 }
 
 /** Something the derived step met. `code` and its data are for the screen; `message` is for logs. */
-export type DerivedWarning = { message: string } & (
-  | { code: 'modFormula'; key: string; of: 'stat' | 'system'; warning: FormulaWarning }
-  | { code: 'resourceFormula'; key: string; part: EntityPartId; warning: FormulaWarning }
-  | { code: 'stepFormula'; path: string; warning: FormulaWarning }
-  | { code: 'missingPath'; path: string; for: string }
-  | { code: 'cycle'; path: string; for: string; loop: readonly LoopLink[] }
-  | { code: 'pathTaken'; path: string }
-);
+export type DerivedWarning =
+  | EffectWarning
+  | ({ message: string } & (
+      | { code: 'modFormula'; key: string; of: 'stat' | 'system'; warning: FormulaWarning }
+      | { code: 'resourceFormula'; key: string; part: EntityPartId; warning: FormulaWarning }
+      | { code: 'stepFormula'; path: string; warning: FormulaWarning }
+      | {
+          code: 'stepRule';
+          path: string;
+          rule: string;
+          data?: Readonly<Record<string, string | number>>;
+        }
+      | { code: 'missingPath'; path: string; for: string }
+      | { code: 'cycle'; path: string; for: string; loop: readonly LoopLink[] }
+      | { code: 'pathTaken'; path: string }
+    ));
 
 /** Each path's value and breakdown, in the order of `computeDerived`; each key path's key. */
 export interface DerivedValues {
@@ -330,6 +350,10 @@ export function computeDerived<E extends GatherableEntity>(input: {
         message: `${warning.message} (a formula computing ${path}).`,
       });
     }
+    for (const { rule, data, message } of own.ruleWarnings ?? []) {
+      warnings.push({ code: 'stepRule', path, rule, ...(data && { data }), message });
+    }
+    warnings.push(...(own.effectWarnings ?? []));
     const result = finish(path, own, readBy);
     computing.delete(path);
     values.set(path, result.value);

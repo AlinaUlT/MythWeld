@@ -160,3 +160,46 @@ describe('ENG-13 goldens: check bonuses', () => {
     }
   });
 });
+
+describe('ENG-14 goldens: combat numbers', () => {
+  const a = computed(goldenA);
+  const b = computed(goldenB);
+  const b4 = computed(goldenB4);
+  const d = computed(goldenD);
+  const combat = ['hp.max', 'ac.total', 'init.total', 'speed.walk'];
+
+  it('golden A: hit points 12, AC 18, speed 25, initiative +0', () => {
+    // 12 = 8 + 3 + 1 (Dwarven Toughness); 18 = chain mail 16 + shield 2.
+    expect(valuesOf(a, combat)).toEqual({
+      'hp.max': 12,
+      'ac.total': 18,
+      'init.total': 0,
+      'speed.walk': 25,
+    });
+  });
+
+  it('golden B: hit points 12, initiative +3, AC 17, speed 30', () => {
+    // +3 = DEX +1, Alert +2; 17 = chain mail 16 + Defense 1.
+    expect(valuesOf(b, combat)).toEqual({
+      'hp.max': 12,
+      'ac.total': 17,
+      'init.total': 3,
+      'speed.walk': 30,
+    });
+  });
+
+  it('golden B4: hit points 36 = 12 + 3 × (6 + 2), initiative +3', () => {
+    expect(valuesOf(b4, ['hp.max', 'init.total'])).toEqual({ 'hp.max': 36, 'init.total': 3 });
+  });
+
+  it('golden D: initiative −1, speed 20; without exhaustion, golden B again', () => {
+    expect(valuesOf(d, ['init.total', 'speed.walk'])).toEqual({
+      'init.total': -1,
+      'speed.walk': 20,
+    });
+    expect(valuesOf(b, ['init.total', 'speed.walk'])).toEqual({
+      'init.total': 3,
+      'speed.walk': 30,
+    });
+  });
+});

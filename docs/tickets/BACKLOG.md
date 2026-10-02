@@ -93,11 +93,16 @@ split off an old row got a new id.
 | ENG-10 | 2024 fixtures: every SRD entity golden B, B4, C or D needs | M | ✅ 2026-10-02 |
 | ENG-13 | Check bonuses are computed: modifiers, proficiency, saves, skills, passives | M | ✅ 2026-10-02 |
 | ENG-43 | An effect sets the stat a skill uses | S | ✅ 2026-10-02 |
-| ENG-14 | Combat numbers are computed: hit points, armor class, initiative, speed | M | 🔲 |
+| ENG-14 | Combat numbers are computed: hit points, armor class, initiative, speed | M | ✅ 2026-10-02 |
+| ENG-44 | Equipped items count only as the rules allow | S | 🔲 |
+| ENG-45 | Heavy armor's Strength requirement slows its wearer | XS | 🔲 |
+| ENG-47 | The person picks which base AC calculation counts | S | 🔲 |
+| ENG-48 | The character's size comes from its species | XS | 🔲 |
 | ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | 🔲 |
 | ENG-16 | Attacks are computed, weapon mastery included | S | 🔲 |
 | ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | S | 🔲 |
 | ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | 🔲 |
+| ENG-46 | Armor worn without training has its edition's penalties | S | 🔲 |
 | ENG-35 | The ability-bonus source is a choice, the rules base by default | S | 🔲 |
 | ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | 🔲 |
 | ENG-21 | A rest changes the character by its edition's rules | S | 🔲 |
@@ -111,44 +116,49 @@ split off an old row got a new id.
 - **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
   recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
   `regainResource` gives uses back, never below none spent.
-- **ENG-14 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true, in
+- **ENG-15, ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true, in
   `test/golden/golden-values.test.ts` (ENG-13). The full goldens A–D are green by ENG-19. Each
   removes its stand-ins from `STAND_INS` (`test/golden/checks.ts`); a stand-in for a path the
   module gives fails the tests.
-- **ENG-14, ENG-34** — found by ENG-17: an effect whose op gives no number (`append`,
-  `advantage`, `disadvantage`, `note`) on a path that is not a number value (`ac.formulas`,
-  `defenses.*`, `roll.*`) is left alone by the phases, with no warning. The ticket that computes
-  such a list or roll reads its effects through `activeEffects` (`effects.ts`) and warns for its
-  own targets. Found by ENG-43: a path of text is a key path, given by the module
-  (`SystemModule.keys`) and finished by the core (`finishKey`) with its own warnings; a list or a
-  roll can take the same road.
+- **ENG-34** — found by ENG-17: an effect whose op gives no number (`append`, `advantage`,
+  `disadvantage`, `note`) on a path that is not a number value (`defenses.*`, `roll.*`) is left
+  alone by the phases, with no warning. The ticket that computes such a list or roll reads its
+  effects through `activeEffects` (`effects.ts`) and warns for its own targets, as ENG-14's
+  `appendedNumbers` does for `ac.formulas`. Found by ENG-43: a path of text is a key path, given
+  by the module (`SystemModule.keys`) and finished by the core (`finishKey`) with its own
+  warnings; a list or a roll can take the same road.
 - **ENG-34** — found by ENG-13: a passive value is 5 higher with advantage on its check and 5
   lower with disadvantage (SRD 5.1 Passive Checks; SRD 5.2.1 Passive Perception; dnd5e
-  `advantageMode × 5`). ENG-13's `skills.<key>.passive` is 10 + the skill's total.
-- **ENG-14** — found by ENG-09: no code gives `@equipped`, which the shield's effect reads (SPEC
-  §5.3's example, `srd-2014:item/shield`); an item's own effects read it per item (SPEC §5.6).
-  Armor proficiency keys are `light`, `medium`, `heavy` and `shield`; weapon keys are `simple`,
-  `martial` or a weapon's `key` (ENG-09 §4), compared with `armor.group`, `category`,
-  `weapon.group` and `key`. ENG-09's test module gives `hp.max.bonus` from 0; this module gives it.
-  Found by ENG-33: a level's hit points are a `classes[].hp` entry: a number, `avg`
-  or `max` (dnd5e: `hitDie / 2 + 1` and the die's value, ENG-33 §8). The schema bounds a number by
-  12, the largest die; a number above the class's own die warns here. No row computes the size:
-  `species.size`, or the species' one size; a species with several and none chosen is pending.
-  Found by ENG-10: Defense reads `@armor.worn` and changes `ac.bonus`; Alert changes
-  `init.bonus`. Exhaustion (2024) changes `speed.all.bonus`, a path SPEC §5.4's catalogue lacks:
-  this ticket gives it and adds it to every speed the character has, never below 0 (dnd5e
-  `prepareMovement`, ENG-10 §8).
-  Found by ENG-13: dnd5e's initiative adds the Dexterity check bonus and the roll reduction
-  (`prepareInitiative`); the module gives `checks.dex.bonus` and `d20.all.bonus`, and golden D's
-  initiative −1 needs the second.
+  `advantageMode × 5`). ENG-13's `skills.<key>.passive` is 10 + the skill's total. Found by
+  ENG-14: worn armor with `stealthDisadvantage` gives disadvantage on Dexterity (Stealth) checks
+  (SRD 5.1 Armor, "Stealth"; dnd5e `prepareArmorClass`); ENG-14's `armor.worn` names the armor.
+- **ENG-44** — found by ENG-14 (its §4): ENG-14 gathers each equipped item and takes the first
+  armor gathered as the one worn. Left: a second armor or shield equipped is warned and counts for
+  nothing (SRD 5.1 "You can benefit from only one shield at a time"; SRD 5.2.1 "One at a Time";
+  dnd5e `prepareArmorClass` warns and takes the first); today a second shield's effect adds its +2
+  again. An item that needs attunement (`magic.attunement`) counts only when attuned (SPEC §5.3);
+  ENG-14 gives `@attuned` as the row's flag. A magic armor's or shield's `magic.bonus` adds to AC,
+  and no code reads it. SPEC §5.6's `@armor.group` is a text, and a derived value is a number
+  (ENG-28), so it has no path.
+- **ENG-45** — found by ENG-14: armor whose `strRequirement` is above the wearer's Strength score
+  takes 10 feet from its speed (SRD 5.1, SRD 5.2.1, ENG-14 §8; dnd5e `armorSpeedReduction`). dnd5e
+  lets a species trait ignore it (`ignoreArmorSpeedReduction`); whether an SRD species does is
+  this ticket's §8 to check (5e-database's 2014 dwarf holds only `speed: 25`). ENG-14's
+  `speed.<kind>` adds `speed.<kind>.bonus` and `speed.all.bonus`, at least 0.
+- **ENG-47** — found by ENG-14: SPEC §6.1 step 5 takes the best AC candidate, or the one the
+  person pins; SRD 5.2.1: "you choose which calculation to use". ENG-14's `ac.base` takes the
+  highest. A pinned choice is a stored field: a `schemaVersion` bump and a migration.
+- **ENG-48** — found by ENG-33, re-cut from ENG-14: the character's size is `species.size`, or the
+  species' one size; a species with several and none chosen is pending. A size is a text, and
+  ENG-28's derived values are numbers.
 - **ENG-15** — found by ENG-09: a spellcasting class has no level it starts at. In 2014 the
   paladin and the ranger cast from level 2, in 2024 from level 1 (5e-database
   `spellcasting.level`). `srd-2014:class/paladin`'s slot row at level 1 is empty, but its prepared
   count, `max(1, …)` as the SRD writes it, gives 1 at paladin level 1.
 - **ENG-16** — ADR 014 item 6: a spell's current dice for the character's level, with a breakdown.
   Found by ENG-09: a spell's healing has no field (Cure Wounds: 1d8 + the modifier, 1d8 more per
-  slot level above 1st); `damage` and `scaling` hold damage only. Weapon proficiency keys: ENG-14's
-  note. Found by ENG-08: SPEC §5.6 shows a roll formula with its average, and no function gives
+  slot level above 1st); `damage` and `scaling` hold damage only. Weapon proficiency keys are
+  `simple`, `martial` or a weapon's `key` (ENG-09 §4), compared with `weapon.group` and `key`. Found by ENG-08: SPEC §5.6 shows a roll formula with its average, and no function gives
   it; a term that keeps some dice has no simple average (`2d20kh1`'s is 13.825). A count of dice that
   grows with level is not notation: a term's count is digits, so the dice are written from the
   computed count. Found by ENG-10: which kinds of weapons a character uses the mastery of has no
@@ -169,6 +179,12 @@ split off an old row got a new id.
   dnd5e at `7bfb3f1` quotes SRD 5.2.1's rules chapters and glossary in `packs/_source/content24/`,
   read there by ENG-10 and ENG-13 §8. `statDefaults` is one value for every character
   (`SystemModule.statDefaults`), so the house rule `abilityMax` is read by no code.
+- **ENG-46** — found by ENG-14: armor worn without its training gives disadvantage on Strength
+  and Dexterity rolls and no spellcasting, in both editions (SRD 5.1 Armor Proficiency, SRD 5.2.1
+  Armor Training, ENG-14 §8); in 2024 a shield gives its AC only with training, a ruleset
+  difference. Armor proficiency keys are `light`, `medium`, `heavy` and `shield` (ENG-09 §4),
+  compared with `armor.group` and `category`. It needs ENG-34's roll modes and ENG-19's ruleset
+  files.
 - **ENG-35** — ADR 014 item 1 (from ADR 013 item 10): a 2014 race with a 2024 background gives
   ability increases from the race, the background or both; `both` warns, never blocks; the
   default is the rules base's source. Its §8 reads both SRDs for other bonuses of one kind given

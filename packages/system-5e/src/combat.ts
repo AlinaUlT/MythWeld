@@ -1,0 +1,256 @@
+import {
+  activeEffects,
+  appendedNumbers,
+  type BreakdownStep,
+  type Derived,
+  type DerivedStep,
+  type DeriveInput,
+  type EffectWarning,
+  type RuleWarning,
+} from '@grimoire/engine';
+import type { FifthEditionCharacter } from './character';
+import type { FifthEditionEntity, ItemDef, LineageDef, SpeciesDef } from './entity-types';
+import { SPEED_KINDS } from './system';
+
+// ENG-14: fifth edition's combat numbers (SPEC §6.1 step 5): the hit point maximum, armor class,
+// initiative and speeds, one rule in both editions (ENG-14 §8). What an item, a feat or a
+// condition adds is its effect on a target given here (`hp.max.bonus`, `ac.bonus`, `ac.formulas`,
+// `init.bonus`, `speed.*`); a total adds its parts as `path` steps, as ENG-13's do.
+
+/** The stats the rules name: initiative and AC read Dexterity, hit points Constitution (§8). */
+export const RULE_STATS = { initiative: 'dex', armorClass: 'dex', hitPoints: 'con' } as const;
+
+/** AC without armor, before the Dexterity modifier (SRD 5.2.1; dnd5e `unarmored`). */
+export const UNARMORED_AC = 10;
+
+/** The list effects add AC candidates to (SPEC §5.4 `ac.formulas`). */
+export const AC_FORMULAS = 'ac.formulas';
+
+/** The own paths an equipped item is named with (SPEC §5.6 `@equipped`, `@attuned`). */
+export const EQUIPPED_PATH = 'equipped';
+export const ATTUNED_PATH = 'attuned';
+
+/** A level's hit points as stored: a number rolled, the die's average, or its maximum. */
+export type LevelHitPoints = FifthEditionCharacter['systemData']['classes'][number]['hp'][number];
+
+/** A level's hit points before Constitution: `max` the die, `avg` half the die + 1 (dnd5e). */
+export function hitPointsOf(die: number, entry: LevelHitPoints): number {
+  if (entry === 'max') return die;
+  if (entry === 'avg') return die / 2 + 1;
+  return entry;
+}
+
+/** A path whose value is 0 until an effect changes it. */
+const zero: DerivedStep = () => ({ value: 0, steps: [] });
+
+/** A total of other paths, each a `path` step. */
+function sumOf(paths: readonly string[]): DerivedStep {
+  return (read) => {
+    const steps = paths.map((path): BreakdownStep => {
+      const value = read(path);
+      return { kind: 'path', path, value, change: value };
+    });
+    return { value: steps.reduce((sum, step) => sum + step.change, 0), steps };
+  };
+}
+
+/** A path that is 1 when the character has `item`, with a step naming it; else 0. */
+function presence(item: ItemDef | undefined): DerivedStep {
+  return () =>
+    item === undefined
+      ? { value: 0, steps: [] }
+      : {
+          value: 1,
+          steps: [{ kind: 'entity', source: item.id, label: item.name, value: 1, change: 1 }],
+        };
+}
+
+/** The first item of a category the character has, in the order gathered. */
+function firstOf(
+  entities: DeriveInput<FifthEditionCharacter, FifthEditionEntity>['gathered']['entities'],
+  category: ItemDef['category'],
+): ItemDef | undefined {
+  for (const { entity } of entities) {
+    if (entity.type === 'item' && entity.category === category) return entity;
+  }
+  return undefined;
+}
+
+/** The hit point maximum: each class's levels, Constitution per level (at least 1), the bonus. */
+function hitPoints({
+  character,
+  gathered,
+}: DeriveInput<FifthEditionCharacter, FifthEditionEntity>): DerivedStep {
+  const had = new Map(gathered.entities.map(({ entity }) => [entity.id as string, entity]));
+  return (read) => {
+    const con = `abilities.${RULE_STATS.hitPoints}.mod`;
+    const mod = read(con);
+    const steps: BreakdownStep[] = [];
+    const ruleWarnings: RuleWarning[] = [];
+    let levels = 0;
+    let raised = 0;
+    for (const { id, hp } of character.systemData.classes) {
+      const entity = had.get(id);
+      if (entity?.type !== 'class') continue;
+      const die = entity.hitDie;
+      let sum = 0;
+      for (const [at, entry] of hp.entries()) {
+        let value = hitPointsOf(die, entry);
+        if (value > die) {
+          ruleWarnings.push({
+            rule: 'hitPointsAboveDie',
+            data: { class: id, level: at + 1, value, die },
+            message: `"${id}" stores ${value} hit points at its level ${at + 1}, above its d${die}; ${die} is used.`,
+          });
+          value = die;
+        }
+        sum += value;
+        raised += Math.max(1 - (value + mod), 0);
+      }
+      levels += hp.length;
+      steps.push({
+        kind: 'entity',
+        source: entity.id,
+        label: entity.name,
+        value: sum,
+        change: sum,
+      });
+    }
+    steps.push({ kind: 'path', path: con, value: mod, change: mod * levels });
+    if (raised > 0) {
+      steps.push({ kind: 'rule', rule: 'hitPointsMinimum', value: 1, change: raised });
+    }
+    const bonus = read('hp.max.bonus');
+    steps.push({ kind: 'path', path: 'hp.max.bonus', value: bonus, change: bonus });
+    return { value: steps.reduce((sum, step) => sum + step.change, 0), steps, ruleWarnings };
+  };
+}
+
+/**
+ * The base AC: the highest of the module's own candidate (the worn armor's, else 10 + DEX) and
+ * each number an effect appends to `ac.formulas`, the first of equal ones.
+ */
+function armorClassBase(
+  { character, gathered }: DeriveInput<FifthEditionCharacter, FifthEditionEntity>,
+  armor: ItemDef | undefined,
+): DerivedStep {
+  return (read, readBy) => {
+    const dexPath = `abilities.${RULE_STATS.armorClass}.mod`;
+    const dex = read(dexPath);
+    const worn = armor?.armor;
+    let best: Derived;
+    if (armor !== undefined && worn !== undefined) {
+      // `dexCap` 0 adds none, not even a negative one; `null` adds all (ENG-14 §8).
+      const { baseAC, dexCap } = worn;
+      const adds = dexCap === null ? dex : dexCap === 0 ? 0 : Math.min(dex, dexCap);
+      const steps: BreakdownStep[] = [
+        { kind: 'entity', source: armor.id, label: armor.name, value: baseAC, change: baseAC },
+      ];
+      if (dexCap !== 0) steps.push({ kind: 'path', path: dexPath, value: dex, change: adds });
+      best = { value: baseAC + adds, steps };
+    } else {
+      best = {
+        value: UNARMORED_AC + dex,
+        steps: [
+          { kind: 'rule', rule: 'unarmoredAC', value: UNARMORED_AC, change: UNARMORED_AC },
+          { kind: 'path', path: dexPath, value: dex, change: dex },
+        ],
+      };
+    }
+    const effectWarnings: EffectWarning[] = [];
+    const appended = appendedNumbers(
+      activeEffects(gathered.entities, character.state.toggles),
+      AC_FORMULAS,
+      (active) => ({ read: readBy(active.part) }),
+      (warning) => effectWarnings.push(warning),
+    );
+    for (const { value, part, source, label } of appended) {
+      if (value <= best.value) continue;
+      best = {
+        value,
+        steps: [{ kind: 'effect', part, source, label, op: 'append', value, change: value }],
+      };
+    }
+    return { ...best, effectWarnings };
+  };
+}
+
+/** The species, and each lineage with speeds of its own, the character has. */
+function speedSources({
+  character,
+  gathered,
+}: DeriveInput<FifthEditionCharacter, FifthEditionEntity>): (SpeciesDef | LineageDef)[] {
+  const id = character.systemData.species?.id;
+  const lineages: LineageDef[] = [];
+  let species: SpeciesDef | undefined;
+  for (const { entity } of gathered.entities) {
+    if (entity.type === 'lineage' && entity.speed !== undefined) lineages.push(entity);
+    if (entity.type === 'species' && entity.id === id) species = entity;
+  }
+  return species === undefined ? lineages : [...lineages, species];
+}
+
+/**
+ * A kind of speed: its source's (a lineage's own before the species'), + its bonus + every
+ * speed's, at least 0, × the multiplier rounded down. A speed the character lacks is 0.
+ */
+function speedOf(
+  kind: (typeof SPEED_KINDS)[number],
+  sources: readonly (SpeciesDef | LineageDef)[],
+): DerivedStep {
+  const giver = sources.find(({ speed }) => speed?.[kind] !== undefined);
+  const base = giver?.speed?.[kind] ?? 0;
+  return (read) => {
+    if (giver === undefined || base <= 0) return { value: 0, steps: [] };
+    const steps: BreakdownStep[] = [
+      { kind: 'entity', source: giver.id, label: giver.name, value: base, change: base },
+    ];
+    for (const path of [`speed.${kind}.bonus`, 'speed.all.bonus']) {
+      const value = read(path);
+      steps.push({ kind: 'path', path, value, change: value });
+    }
+    let sum = steps.reduce((total, step) => total + step.change, 0);
+    if (sum < 0) {
+      steps.push({ kind: 'rule', rule: 'speedFloor', value: 0, change: -sum });
+      sum = 0;
+    }
+    const mul = read('speed.all.mul');
+    const value = Math.max(0, Math.floor(sum * mul));
+    steps.push({ kind: 'path', path: 'speed.all.mul', value: mul, change: value - sum });
+    return { value, steps };
+  };
+}
+
+/**
+ * The combat steps of a character: `hp.max.bonus`, `hp.max`; `armor.worn`, `shield`, `ac.bonus`,
+ * `ac.base`, `ac.total`; `init.bonus`, `init.total`; `speed.all.bonus`, `speed.all.mul`, then each
+ * kind's bonus and speed.
+ */
+export function combatSteps(
+  input: DeriveInput<FifthEditionCharacter, FifthEditionEntity>,
+): Record<string, DerivedStep> {
+  const { entities } = input.gathered;
+  const armor = firstOf(entities, 'armor');
+  const steps: Record<string, DerivedStep> = {
+    'hp.max.bonus': zero,
+    'hp.max': hitPoints(input),
+    'armor.worn': presence(armor),
+    shield: presence(firstOf(entities, 'shield')),
+    'ac.bonus': zero,
+    'ac.base': armorClassBase(input, armor),
+    'ac.total': sumOf(['ac.base', 'ac.bonus']),
+    'init.bonus': zero,
+    'init.total': sumOf([`checks.${RULE_STATS.initiative}.total`, 'init.bonus']),
+    'speed.all.bonus': zero,
+    'speed.all.mul': () => ({
+      value: 1,
+      steps: [{ kind: 'rule', rule: 'speedMultiplier', value: 1, change: 1 }],
+    }),
+  };
+  const sources = speedSources(input);
+  for (const kind of SPEED_KINDS) {
+    steps[`speed.${kind}.bonus`] = zero;
+    steps[`speed.${kind}`] = speedOf(kind, sources);
+  }
+  return steps;
+}

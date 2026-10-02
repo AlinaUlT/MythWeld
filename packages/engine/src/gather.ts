@@ -22,11 +22,12 @@ const CHARACTER = 'character';
 /** Where an entity was given: by the character, or by one grant of another entity. */
 export type Origin = typeof CHARACTER | EntityPartId;
 
-/** One entity to visit: its id, the level its grants count, and where it was given. */
+/** One entity to visit: its id, the level its grants count, where it was given, its own paths. */
 interface Step {
   id: string;
   level: number;
   from: Origin;
+  paths?: OwnPaths;
 }
 
 /** What a filter matches: every field it names (SPEC §5.5 `Choose`). */
@@ -82,17 +83,31 @@ export interface CharacterCore<E extends GatherableEntity> {
   readonly localEntities: readonly E[];
 }
 
-/** An entity the module's part of a character names; `level` when its grants count their own. */
+/**
+ * ENG-14: values only an entity's own effects read, before any computed path: what the module
+ * knows of that entity on this character (SPEC §5.6's `@equipped`, `@attuned`).
+ */
+export type OwnPaths = Readonly<Record<string, number>>;
+
+/**
+ * An entity the module's part of a character names; `level` when its grants count their own,
+ * `paths` when its effects read values of their own.
+ */
 export interface NamedEntity {
   readonly id: string;
   readonly level?: number;
+  readonly paths?: OwnPaths;
 }
 
-/** An entity the character has: every place that gave it, and the level its grants count. */
+/**
+ * An entity the character has: every place that gave it, the level its grants count, and its own
+ * paths when the module named it with some (the first naming's, when named twice).
+ */
 export interface HadEntity<E extends GatherableEntity> {
   entity: E;
   level: number;
   from: readonly Origin[];
+  paths?: OwnPaths;
 }
 
 /** A grant that applies, with the items chosen for it (none when it is not a choice). */
@@ -279,14 +294,19 @@ export function gather<E extends GatherableEntity>(
   }
 
   // The walk: depth first, each entity once, with an explicit stack.
-  const had = new Map<string, { entity: E; level: number; from: Origin[] }>();
+  const had = new Map<string, { entity: E; level: number; from: Origin[]; paths?: OwnPaths }>();
   const grants: ReachedGrant<E>[] = [];
   const proficiencies: ProficiencyGiven[] = [];
   const resources: ResourceGiven[] = [];
   const unmade: ReachedGrant<E>[] = [];
   const roots: Step[] = [
     ...named.map(
-      (entity): Step => ({ id: entity.id, level: entity.level ?? level, from: CHARACTER }),
+      (entity): Step => ({
+        id: entity.id,
+        level: entity.level ?? level,
+        from: CHARACTER,
+        ...(entity.paths !== undefined && { paths: entity.paths }),
+      }),
     ),
     ...character.state.conditions.map(
       (condition): Step => ({ id: condition.id, level, from: CHARACTER }),
@@ -306,7 +326,12 @@ export function gather<E extends GatherableEntity>(
       continue;
     }
     const entity = found.entity;
-    had.set(id, { entity, level: step.level, from: [from] });
+    had.set(id, {
+      entity,
+      level: step.level,
+      from: [from],
+      ...(step.paths !== undefined && { paths: step.paths }),
+    });
     if (!inRulesBase(entity)) {
       warnings.push({
         code: 'otherRuleset',

@@ -32,6 +32,9 @@ export const MAX_SPELL_LEVEL = 9;
 /** The sizes of a hit die: a class's `hitDie`, a character's spent hit dice. */
 export const HIT_DIE_SIZES = [6, 8, 10, 12] as const;
 
+/** The kinds of speed, in feet: a species' speeds, a character's `speed.<kind>` (ENG-14). */
+export const SPEED_KINDS = ['walk', 'fly', 'swim', 'climb', 'burrow'] as const;
+
 /** The coins: a price's unit, a character's money. */
 export const COINS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const;
 

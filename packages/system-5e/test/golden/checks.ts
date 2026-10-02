@@ -134,16 +134,10 @@ export function idsNamedByCharacter(character: FifthEditionCharacter): string[] 
 
 /**
  * The paths the goldens' mechanics read or change that a later ticket's steps give, each from
- * where it starts (ENG-10 §3 item 9): hit points, initiative, armor class, armor worn and speed
- * are ENG-14's, the critical range ENG-16's (SPEC §6.5: a d20's highest face). Chain mail is the
- * armor goldens B, B4 and D wear.
+ * where it starts (ENG-10 §3 item 9): the critical range is ENG-16's (SPEC §6.5: a d20's highest
+ * face). ENG-14 gave hit points, initiative, armor class, armor worn and speed.
  */
 export const STAND_INS: Readonly<Record<string, number>> = {
-  'hp.max.bonus': 0,
-  'init.bonus': 0,
-  'ac.bonus': 0,
-  'armor.worn': 1,
-  'speed.all.bonus': 0,
   'crit.range': 20,
 };
 

@@ -1,8 +1,12 @@
 import {
+  activeEffects,
+  appendedNumbers,
   type BreakdownStep,
   type ComputeWarning,
   compute,
+  type EffectWarning,
   loadContentIndex,
+  type OwnPaths,
   type SystemModule,
 } from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
@@ -762,5 +766,165 @@ describe('ENG-43 a key path: the stat a skill uses', () => {
       // A skill Ash lacks: a number op warns as before; a set with a text, as any op, does not.
       { code: 'noTarget', part: of('swim'), target: 'skills.swim.ability' },
     ]);
+  });
+});
+
+/** Tales' module, naming each talent of the character's own with the paths given for its id. */
+function naming(paths: Readonly<Record<string, OwnPaths>>, more: OwnPaths[] = []): Module {
+  return {
+    ...talesModule,
+    entities: (character) => [
+      ...talesModule.entities(character).map((named) => {
+        const own = paths[named.id];
+        return own === undefined ? named : { ...named, paths: own };
+      }),
+      // Named again after the others: the first naming's paths are kept.
+      ...more.map((again) => ({ id: 'character:talent/lantern', paths: again })),
+    ],
+  };
+}
+
+describe("ENG-14 an entity's own paths", () => {
+  // The lantern reads `@carried`, its own path, in the base phase (`warm`, a `when`) and in the
+  // derived phase (`light`, a value); the moth reads it too, and has no such path.
+  const lantern = talent('lantern', [
+    { id: 'warm', target: 'abilities.grit.score', op: 'add', value: 1, when: '@carried' },
+    { id: 'light', target: 'skills.sneak.bonus', op: 'add', value: '2 * @carried' },
+  ]);
+  const moth = talent('moth', [
+    { id: 'drawn', target: 'skills.climb.bonus', op: 'add', value: 1, when: '@carried' },
+  ]);
+  const character = ashWith([lantern, moth]);
+  // A derived-phase formula reads a missing path through the derived values, which warn (ENG-28).
+  const mothWarning = { code: 'missingPath', path: 'carried', for: 'skills.climb.bonus' };
+
+  it("are read first by the entity's own effects, in the base and the derived phase", () => {
+    const result = computed(character, naming({ 'character:talent/lantern': { carried: 1 } }));
+    expect(result.values).toMatchObject({
+      // 7 + `warm` 1, allowed in the base phase; mod floor(8 / 2).
+      'abilities.grit.score': 8,
+      'abilities.grit.mod': 4,
+      // wits 2 + 2 × 1 + `shadow` 1 + `light` 2 × 1 - 1.
+      'skills.sneak.total': 6,
+      // grit 4 + 2 × 1 + `nimble` 2 - 1; the moth's `drawn` reads no `@carried`.
+      'skills.climb.total': 7,
+    });
+    expect(result.breakdown['abilities.grit.score']).toContainEqual(
+      own('lantern', 'warm', 'add', 1, 1),
+    );
+    expect(codes(result)).toEqual([mothWarning]);
+    const had = new Map(result.entities.map((each) => [each.entity.id, each]));
+    expect(had.get('character:talent/lantern')?.paths).toEqual({ carried: 1 });
+    expect(had.get('character:talent/moth')).not.toHaveProperty('paths');
+  });
+
+  it('give 0 as they are given: a `when` false, a value of 0', () => {
+    const result = computed(character, naming({ 'character:talent/lantern': { carried: 0 } }));
+    expect(result.values).toMatchObject({
+      'abilities.grit.score': 7,
+      // wits 2 + 2 × 1 + `shadow` 1 + `light` 0 - 1.
+      'skills.sneak.total': 4,
+      'skills.climb.total': 6,
+    });
+    expect(result.breakdown['skills.sneak.bonus']).toContainEqual(
+      own('lantern', 'light', 'add', 0, 0),
+    );
+    expect(codes(result)).toEqual([mothWarning]);
+  });
+
+  it("are read by a key effect's `when` too (ENG-43)", () => {
+    const compass = talent('compass', [
+      { id: 'sight', target: 'skills.sneak.ability', op: 'set', value: 'grit', when: '@carried' },
+    ]);
+    const sneakWith = (carried: number) => {
+      const result = computed(
+        ashWith([compass]),
+        naming({ 'character:talent/compass': { carried } }),
+      );
+      return [result.keys['skills.sneak.ability']?.key, result.values['skills.sneak.total']];
+    };
+    // Grit 3 + 2 × 1 + `shadow` 1 - 1; else wits 2 + 2 × 1 + 1 - 1.
+    expect(sneakWith(1)).toEqual(['grit', 5]);
+    expect(sneakWith(0)).toEqual(['wits', 4]);
+  });
+
+  it("are the first naming's when an entity is named twice", () => {
+    const result = computed(
+      character,
+      naming({ 'character:talent/lantern': { carried: 1 } }, [{ carried: 0 }]),
+    );
+    expect(result.values['skills.sneak.total']).toBe(6);
+    const lit = result.entities.find(({ entity }) => entity.id === 'character:talent/lantern');
+    expect(lit).toMatchObject({ from: ['character'], paths: { carried: 1 } });
+  });
+});
+
+describe('ENG-14 appended numbers', () => {
+  // A list of formulas of Tales' own, `guard.formulas`, which no step computes. Ash: level 2,
+  // wits mod 2. The lamp is named with `{ carried: 1 }`.
+  const lamp = talent('lamp', [
+    { id: 'a', target: 'guard.formulas', op: 'append', value: '10 + @abilities.wits.mod' },
+    { id: 'b', target: 'guard.formulas', op: 'append', value: '14' },
+    { id: 'c', target: 'guard.formulas', op: 'append', value: '20', when: '@level > 5' },
+    { id: 'd', target: 'guard.formulas', op: 'append', value: '1 +' },
+    { id: 'e', target: 'guard.formulas', op: 'append', value: '@carried * 3' },
+    { id: 'f', target: 'guard.formulas', op: 'advantage', value: true },
+    { id: 'g', target: 'guard.formulas', op: 'note', value: { en: 'Lit' } },
+    { id: 'h', target: 'guard.formulas', op: 'set', value: 'high' },
+    { id: 'i', target: 'guard.formulas', op: 'add', value: 1 },
+    { id: 'j', target: 'skills.sneak.bonus', op: 'append', value: '1' },
+  ]);
+  const result = computed(ashWith([lamp]), naming({ 'character:talent/lamp': { carried: 1 } }));
+
+  it("gives each append's formula worked out, in order; warns any other op giving no number", () => {
+    const warnings: EffectWarning[] = [];
+    const numbers = appendedNumbers(
+      activeEffects(result.entities, {}),
+      'guard.formulas',
+      () => ({ read: (path) => result.values[path] }),
+      (warning) => warnings.push(warning),
+    );
+    const by = (id: string) => ({
+      part: `character:talent/lamp#${id}`,
+      source: 'character:talent/lamp',
+      label: { en: 'lamp' },
+    });
+    expect(numbers).toEqual([
+      { value: 12, formula: '10 + @abilities.wits.mod', ...by('a') },
+      { value: 14, formula: '14', ...by('b') },
+      // `c`'s `when` is false at level 2; `d` does not parse.
+      { value: 3, formula: '@carried * 3', ...by('e') },
+    ]);
+    expect(codes({ warnings })).toEqual([
+      { code: 'formula', part: 'character:talent/lamp#d', field: 'value', inner: 'unexpected' },
+      {
+        code: 'notAppended',
+        part: 'character:talent/lamp#f',
+        op: 'advantage',
+        target: 'guard.formulas',
+      },
+      {
+        code: 'notAppended',
+        part: 'character:talent/lamp#g',
+        op: 'note',
+        target: 'guard.formulas',
+      },
+      { code: 'notAppended', part: 'character:talent/lamp#h', op: 'set', target: 'guard.formulas' },
+    ]);
+  });
+
+  it("leaves a number op to the phases' `noTarget`, and other targets to the phases", () => {
+    // `j` appends to a number path, which gives no number (ENG-17); `i` adds to a path no step
+    // computes, warned when the phases end.
+    expect(codes(result)).toEqual([
+      {
+        code: 'notANumber',
+        part: 'character:talent/lamp#j',
+        op: 'append',
+        target: 'skills.sneak.bonus',
+      },
+      { code: 'noTarget', part: 'character:talent/lamp#i', target: 'guard.formulas' },
+    ]);
+    expect(result.values['skills.sneak.total']).toBe(4);
   });
 });

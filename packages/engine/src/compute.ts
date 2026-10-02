@@ -34,7 +34,8 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
   /**
    * The entities the module's part of the character names, in order (a fifth-edition species,
    * classes, feats; a Tales calling and talents). `level`, when given, is what that entity's
-   * grants are measured against instead (a class's own level).
+   * grants are measured against instead (a class's own level); `paths`, values its own effects read
+   * first (ENG-14: a fifth-edition item's `@equipped`).
    */
   entities(character: C): readonly NamedEntity[];
   /** What a stat takes when it lacks the field. */

@@ -7,7 +7,7 @@ import {
   type ParsedFormula,
   parseFormula,
 } from './formula';
-import type { GatherableEntity, HadEntity } from './gather';
+import type { GatherableEntity, HadEntity, OwnPaths } from './gather';
 
 // SPEC §6.1 step 3: the effects of every entity a character has, each with where it came from.
 // A toggle is the person's switch: what the trackers store, else the toggle's default. A
@@ -32,6 +32,8 @@ export interface ActiveEffect {
   source: EntityId;
   /** What the breakdown calls it: the effect's own label, else its entity's name. */
   label: L10n;
+  /** Its entity's own paths (ENG-14), read by its formulas before any computed path. */
+  paths?: OwnPaths;
 }
 
 /** An effect's number, worked out: what it does to its target, and where it came from. */
@@ -48,6 +50,7 @@ export interface EffectNumber {
 export type EffectWarning = { message: string } & (
   | { code: 'notANumber'; part: EntityPartId; op: EffectOp; target: string }
   | { code: 'notAKey'; part: EntityPartId; op: EffectOp; target: string }
+  | { code: 'notAppended'; part: EntityPartId; op: EffectOp; target: string }
   | { code: 'unknownKey'; part: EntityPartId; target: string; key: string; keys: readonly string[] }
   | { code: 'notInBasePhase'; part: EntityPartId; paths: readonly string[] }
   | { code: 'formula'; part: EntityPartId; field: 'value' | 'when'; warning: FormulaWarning }
@@ -80,12 +83,13 @@ export function activeEffects<E extends GatherableEntity>(
   toggles: Readonly<Partial<Record<string, boolean>>>,
 ): ActiveEffect[] {
   const active: ActiveEffect[] = [];
-  for (const { entity } of entities) {
+  for (const { entity, paths } of entities) {
     for (const effect of entity.effects ?? []) {
       const part: EntityPartId = `${entity.id}#${effect.id}`;
       if (effect.situational !== undefined) continue;
       if (effect.toggle !== undefined && !(toggles[part] ?? effect.toggle.default)) continue;
-      active.push({ effect, part, source: entity.id, label: effect.label ?? entity.name });
+      const label = effect.label ?? entity.name;
+      active.push({ effect, part, source: entity.id, label, ...(paths && { paths }) });
     }
   }
   return active;
@@ -118,6 +122,18 @@ export function applied(op: NumberOp, n: number, value: number): number {
     set: () => value,
   }[op]();
   return next === 0 ? 0 : next;
+}
+
+/**
+ * ENG-14: `reader`, with the effect's entity's own paths read first; the base-phase rule allows
+ * them. Every op reads its formulas through it.
+ */
+function withOwnPaths({ paths }: ActiveEffect, reader: EffectReader): EffectReader {
+  if (paths === undefined) return reader;
+  const own = (path: string) => Object.hasOwn(paths, path);
+  const read: FormulaReader = (path) => (own(path) ? paths[path] : reader.read(path));
+  const allows = reader.allows;
+  return allows === undefined ? { read } : { read, allows: (path) => own(path) || allows(path) };
 }
 
 /** A warning of one of an effect's formulas; `skipped` when the effect is not applied for it. */
@@ -186,10 +202,11 @@ function applies(
  */
 export function effectNumber(
   active: ActiveEffect,
-  reader: EffectReader,
+  outer: EffectReader,
   warn: (warning: EffectWarning) => void,
 ): EffectNumber | undefined {
   const { effect, part, source, label } = active;
+  const reader = withOwnPaths(active, outer);
   const change = numberChangeOf(effect);
   if (change === undefined) {
     warn({
@@ -233,10 +250,11 @@ export interface EffectKey {
 export function effectKey(
   active: ActiveEffect,
   keys: readonly string[],
-  reader: EffectReader,
+  outer: EffectReader,
   warn: (warning: EffectWarning) => void,
 ): EffectKey | undefined {
   const { effect, part, source, label } = active;
+  const reader = withOwnPaths(active, outer);
   const { target } = effect;
   if (effect.op !== 'set' || typeof effect.value !== 'string') {
     warn({
@@ -263,4 +281,52 @@ export function effectKey(
   if (applies(active, undefined, reader, warn) === undefined) return undefined;
   const priority = effect.priority ?? NUMBER_OPS.set;
   return { key, priority, part, source, label };
+}
+
+/** A number an `append` effect adds to a list of formulas (SPEC §5.4 `ac.formulas`), worked out. */
+export interface AppendedNumber {
+  value: number;
+  /** The formula as the effect writes it. */
+  formula: string;
+  part: EntityPartId;
+  source: EntityId;
+  label: L10n;
+}
+
+/**
+ * ENG-14: the numbers the active effects on `target`, a list of formulas, give: each `append`'s
+ * text as a formula, worked out as `effectNumber` works one out, in the effects' order. Another op
+ * that gives no number is warned `notAppended`; a number op is left to the phases, which warn
+ * `noTarget` for it.
+ */
+export function appendedNumbers(
+  effects: readonly ActiveEffect[],
+  target: string,
+  readerOf: (active: ActiveEffect) => EffectReader,
+  warn: (warning: EffectWarning) => void,
+): AppendedNumber[] {
+  const numbers: AppendedNumber[] = [];
+  for (const active of effects) {
+    const { effect, part, source, label } = active;
+    if (effect.target !== target) continue;
+    if (effect.op !== 'append') {
+      if (numberChangeOf(effect) !== undefined) continue;
+      warn({
+        code: 'notAppended',
+        part,
+        op: effect.op,
+        target,
+        message: `"${part}" (${effect.op}) appends no formula to ${target}; it is not used.`,
+      });
+      continue;
+    }
+    const reader = withOwnPaths(active, readerOf(active));
+    const formula = effect.value;
+    const parsed = applies(active, formula, reader, warn);
+    if (parsed?.value === undefined) continue;
+    const result = evaluateNumber(parsed.value, reader.read);
+    for (const warning of result.warnings) formulaWarner(part, warn)('value', warning);
+    numbers.push({ value: result.value, formula, part, source, label });
+  }
+  return numbers;
 }

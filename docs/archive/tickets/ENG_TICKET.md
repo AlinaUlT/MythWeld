@@ -6557,3 +6557,412 @@ Found, not fixed:
   ENG-34 in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-14 Combat numbers
+
+**Hat:** Combat numbers are computed: hit points, armor class, initiative, speed
+**Depends on:** ENG-13 (`fifthEditionModule`, `checks.<stat>.total`), ENG-17 (effects on a path),
+ENG-11 (`gather`), ENG-09 and ENG-10 (the golden fixtures)
+**Size:** M
+**Screen:** No
+**SPEC:** §6.1 step 5 (hit point maximum, AC from formula candidates, initiative, speed); §5.3
+(`ClassDef.hitDie`, `SpeciesDef.speed`, `ItemDef.armor`, the shield's effect and "item effects
+apply only when `@equipped`"); §5.4's targets `init.bonus`, `ac.bonus`, `ac.formulas`,
+`hp.max.bonus`, `speed.<kind>`, `speed.<kind>.bonus`, `speed.all.mul`; §5.6 (`@armor.worn`,
+`@shield`, `@equipped`, `@attuned`); §5.8 (`classes[].hp`, `inventory`); §6.7 goldens A, B, B4
+and D (their combat lines); ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/combat.ts` — new: `combatSteps`, the hit points, armor
+class, initiative and speed steps, and `hitPointsOf(die, entry)`.
+- `packages/system-5e/src/module.ts` — changes: `entities` names each equipped item with its own
+  paths; `derive` adds `combatSteps`.
+- `packages/system-5e/src/system.ts` — changes: `SPEED_KINDS`, the five kinds of speed, which
+  `entity-types.ts`'s speed schema now reads.
+- `packages/engine/src/gather.ts` — changes: `NamedEntity.paths` and `HadEntity.paths`, an
+  entity's own paths.
+- `packages/engine/src/effects.ts` — changes: `ActiveEffect.paths`, read before any computed
+  path by a number, a key (ENG-43's `effectKey`) and an append alike; `appendedNumbers`, the
+  numbers `append` effects give a list of formulas; the warning `notAppended`.
+- `packages/engine/src/derived.ts` — changes: a step may return `ruleWarnings` (warned
+  `stepRule`) and `effectWarnings` (warned as they are).
+- `packages/engine/src/stats.ts` — changes: an `effect` step's `op` may be `append`.
+- `packages/engine/test/phases.test.ts` — changes: two `ENG-14` blocks, on Tales.
+  `packages/engine/test/derived.test.ts` — changes: an `ENG-14` block.
+- `packages/engine/src/compute.ts` — changes: the doc of `SystemModule.entities`.
+- `packages/system-5e/test/combat.test.ts` — new: the steps on the goldens and on made-up
+  variants of them.
+- `packages/system-5e/test/golden/golden-values.test.ts` — changes: the ENG-14 lines.
+- `packages/system-5e/test/golden/checks.ts` — changes: five stand-ins go; `crit.range` stays.
+- `packages/system-5e/test/golden/fixtures-2014.test.ts`, `fixtures-2024.test.ts`,
+  `packages/system-5e/test/module.test.ts` — change: the equipped items are gathered.
+- `docs/tickets/BACKLOG.md` — the re-cut rows ENG-44 to ENG-48 (§4).
+
+#### 2. What is missing now
+
+Measured on `main` at `36f1450`:
+- `grep -rn "hp.max\|ac\.\|init\.\|speed\." packages/engine/src packages/system-5e/src` finds
+  two lines of `entity-types.ts`, a schema's message and a comment: no step gives hit points,
+  armor class, initiative or speed.
+- `hp.max.bonus`, `init.bonus`, `ac.bonus`, `armor.worn` and `speed.all.bonus` are the golden
+  test's stand-ins (`STAND_INS`, `test/golden/checks.ts`); `armor.worn` is 1 whatever is worn.
+- `grep -rn equipped packages/engine/src packages/system-5e/src` finds only the inventory schema:
+  no code gathers an inventory item, so the shield's effect (`ac.bonus` +2 when `@equipped`) is
+  never read. Golden A gathers 17 entities, none of them its three items.
+- An `append` effect is left alone by the phases with no warning (ENG-17 §3 item 5); no code reads
+  `ac.formulas`.
+- `pnpm test`: `Test Files 38 passed (38)`, `Tests 373 passed (373)`.
+
+#### 3. What it should look like when done
+
+1. **Equipped items are gathered.** `fifthEditionModule.entities` names, after the feats, each
+   inventory row that is `equipped` and has an `itemId`, in inventory order, with its own paths
+   `{ equipped: 1, attuned: 1 or 0 }`. A row not equipped is not named, so its effects and grants
+   do not apply (SPEC §5.3: item effects apply only when equipped).
+2. **An entity's own paths** (the core, game-free): `NamedEntity.paths` is kept on the gathered
+   entity (`HadEntity.paths`; the first naming's when named twice). Its own effects read them before
+   any computed path, in every phase; the base-phase rule allows them. Another entity's formula
+   reading `@equipped` gets `missingPath`, as before.
+3. **A step's own warnings** (the core): a step may return `ruleWarnings` (`{ rule, data?,
+   message }`), each warned `{ code: 'stepRule', path, rule, data? }`, and `effectWarnings`,
+   warned as they are.
+4. **Appended numbers** (the core): `appendedNumbers(effects, target, readerOf, warn)` gives, for
+   each active effect on `target` whose op is `append`, its text worked out as a formula, as
+   `effectNumber` works one out (`when`, formula warnings, own paths). Any other op that gives no
+   number is warned `notAppended`; a number op is left to the phases' `noTarget`. An `effect`
+   step's `op` may be `append`.
+5. **Hit points**: `hp.max.bonus` 0; `hp.max` = for each class the character has, in order, each
+   level's hit points: `max` the class's die, `avg` half the die + 1, a number itself; each level
+   adds the Constitution modifier, at least 1 a level; then `hp.max.bonus`. Steps: an `entity`
+   step per class (the sum of its levels' hit points), a `path` step `abilities.con.mod` (`change`
+   the modifier × the levels), a `rule` step `hitPointsMinimum` when a level is raised to 1, a
+   `path` step `hp.max.bonus`. A number above the class's die is warned `stepRule`
+   `hitPointsAboveDie`, and the die is used. A class no pack has gives no hit points.
+6. **Armor class**:
+   - `armor.worn` 1 when the character has an item of the category `armor` (the first, in the order
+     gathered), with an `entity` step naming it; else 0. `shield` the same for the category
+     `shield`;
+   - `ac.bonus` 0, a target for effects (the shield's +2, Defense's +1);
+   - `ac.base` the highest of the candidates, the first of equal ones: the worn armor's `baseAC`
+     plus the Dexterity modifier (all of it when `dexCap` is `null`, none when it is 0, else at
+     most `dexCap`), or 10 + the Dexterity modifier when no armor is worn; then each number
+     `appendedNumbers` gives for `ac.formulas`. The chosen candidate's steps are its breakdown;
+   - `ac.total` = `ac.base` + `ac.bonus`.
+7. **Initiative**: `init.bonus` 0; `init.total` = `checks.dex.total` + `init.bonus`.
+8. **Speed**: `speed.all.bonus` 0; `speed.all.mul` 1; for each kind (`walk`, `fly`, `swim`,
+   `climb`, `burrow`): `speed.<kind>.bonus` 0 and `speed.<kind>`: the species' speed of that kind,
+   or a gathered lineage's own; then + `speed.<kind>.bonus` + `speed.all.bonus`, at least 0; then
+   × `speed.all.mul`, rounded down. A kind the character has no speed of is 0 with no step.
+9. **Goldens** (SPEC §6.7):
+
+   | Golden | Line | Expected |
+   |---|---|---|
+   | A | hit points | 12 = 8 + 3 + 1 |
+   | A | AC | 18 = chain mail 16 + shield 2 |
+   | A | speed, initiative | 25, +0 |
+   | B | hit points | 12 |
+   | B | initiative | +3 = DEX +1 + Alert +2 |
+   | B | AC | 17 = chain mail 16 + Defense 1 |
+   | B | speed | 30 |
+   | B4 | hit points | 36 = 12 + 3 × (6 + 2) |
+   | B4 | initiative | +3 |
+   | D | initiative, speed | −1, 20; golden B's +3 and 30 without exhaustion |
+
+   Every golden's breakdowns add up to their values, and none of them gets a warning.
+10. **The stand-ins left**: `crit.range` (ENG-16) only; the test fails if the module gives it.
+11. **Made-up variants, worked out by hand** (§7): light, medium and heavy armor at DEX +3 and −1,
+    no armor; an `ac.formulas` candidate with a `when`; a second armor; a shield not equipped; an
+    item effect reading `@attuned`; the minimum of 1 hit point a level; a number above the die; a
+    lineage's own speed, a speed bonus of one kind, the floor at 0, the multiplier; a bonus to
+    Dexterity checks in initiative.
+12. `compute()` stays pure: frozen inputs give equal results.
+13. The quality gate is green.
+
+#### 4. How to do it
+
+1. **Re-cut first.** Five rules the sources name (§8) are not this hat, and each changes more
+   than the four numbers; they become rows after this one in `BACKLOG.md`, each "found by
+   ENG-14":
+   - **ENG-44 Equipped items count only as the rules allow** (S): one armor and one shield at a
+     time (SRD 5.1, SRD 5.2.1 "One at a Time"), an item that needs attunement only when attuned
+     (SPEC §5.3), a magic armor's or shield's `magic.bonus`, and `@armor.group`, a text, which no
+     derived value can be (ENG-28 gives numbers).
+   - **ENG-45 Heavy armor's Strength requirement slows its wearer** (XS): −10 feet below the
+     armor's `strRequirement` (dnd5e `armorSpeedReduction`), which a species trait may ignore
+     (dnd5e's flag `ignoreArmorSpeedReduction`).
+   - **ENG-46 Armor worn without training has its edition's penalties** (S), after ENG-34 and
+     ENG-19: disadvantage on Strength and Dexterity rolls and no spellcasting (both editions);
+     in 2024 a shield's AC only with training. The proficiency keys `light`, `medium`, `heavy`,
+     `shield` (ENG-09 §4) are compared with `armor.group` and `category`.
+   - **ENG-47 The person picks which base AC calculation counts** (S): SPEC §6.1 step 5 lets the
+     person pin a candidate, which needs a stored field, so a migration.
+   - **ENG-48 The character's size comes from its species** (XS): `species.size`, or the
+     species' one size; several and none chosen is pending (found by ENG-33, noted on ENG-14). A
+     size is a text, not a combat number.
+2. `gather.ts`: `NamedEntity.paths`, `HadEntity.paths`.
+3. `effects.ts`: `ActiveEffect.paths`; the formula work of `effectNumber` moves to one function
+   that both `effectNumber` and `appendedNumbers` call, reading own paths first; `notAppended`.
+4. `stats.ts`: `op: NumberOp | 'append'`. `derived.ts`: `RuleWarning`, `ruleWarnings`,
+   `effectWarnings`, `stepRule`.
+5. `system.ts`: `SPEED_KINDS`. `combat.ts`: `combatSteps`. `module.ts`: the items, `derive`.
+6. Tests (§7), then the golden tests' stand-ins and gathered lists.
+
+Technical choices (ADR 002):
+- **Only equipped items are named.** SPEC §5.3 says an item's effects apply only when equipped;
+  naming only those makes that rule hold for every effect and grant of an item, with no
+  per-effect default the core would have to learn. Their own paths still give `@equipped` 1, so the
+  shield's own `when: '@equipped'` (SPEC's example) reads true; `@attuned` is the row's flag.
+- **Own paths are the core's, named by the module.** SPEC §5.6 lists `@equipped` and `@attuned`
+  as contextual: read per entity, not one value for the character. The core keeps a number per
+  path for an entity the module names and reads it before the computed values for that entity's
+  effects; it never learns what an item is.
+- **The first armor gathered is the one worn**, in inventory order (dnd5e takes `armors[0]`).
+  Warning of a second, and leaving a second shield's effect out, is ENG-44's.
+- **AC is the best candidate plus `ac.bonus`** (SPEC §5.4 and §6.1): the module's own base is the
+  armor's when armor is worn, else 10 + DEX (dnd5e `armored` and `unarmored`, §8); effects add
+  candidates to `ac.formulas`, and their own `when` says when they hold (`!@armor.worn` for an
+  unarmored one). `ac.base` is a path of its own, so a formula reads it and its breakdown is the
+  chosen candidate's.
+- **`dexCap` 0 adds no Dexterity, not even a negative one**: "Heavy armor doesn't let you add your
+  Dexterity modifier to your Armor Class, but it also doesn't penalize you" (§8); the schema says
+  `dexCap` 0 is "none". Any other cap is a maximum: a negative modifier still counts (medium and
+  light armor, §8).
+- **The rules' stats are named once in the module** (`RULE_STATS`: initiative and AC Dexterity,
+  hit points Constitution), as dnd5e's `defaultAbilities` (§8). They are the SRD's rules, which
+  live in the module (ADR 004); no list of stats is written. A pack without the stat warns
+  `missingPath` and reads 0.
+- **Initiative is the Dexterity check's total plus `init.bonus`**: "they make a Dexterity check"
+  (§8), so `checks.dex.bonus` and `d20.all.bonus` are in it, as dnd5e adds them.
+- **Hit points per class, not per level, in the breakdown**, with the Constitution modifier as
+  one step "×levels", as ENG-13 shows the proficiency bonus. The minimum of 1 is dnd5e's
+  `getAdjustedTotal` and SRD 5.2.1's "(minimum of 1)"; it gets its own step when it raises a level.
+- **A stored number above the die uses the die**, with a warning (ENG-33 §4: the schema bounds it
+  by 12, the largest die). The person's data is kept; the sheet shows the warning.
+- **All five kinds of speed are paths**, 0 when the character has none of a kind, so an effect
+  giving a speed (`speed.fly` `max @speed.walk`) has a path to change. Bonuses apply only to a
+  speed the character has (dnd5e: only when the speed is above 0). An effect on `speed.<kind>`
+  itself applies after the bonuses (ENG-17's order).
+- **The multiplier rounds down**: "Whenever you divide or multiply a number in the game, round
+  down" (SRD 5.2.1, §8).
+- **A lineage's speed replaces its species' kind by kind**: no SRD lineage has a speed (ENG-32 §8),
+  so this is for homebrew; a lineage giving `{ swim: 30 }` keeps the species' walking speed.
+- **One function works out an effect's formula** for `effectNumber` and `appendedNumbers`, so
+  `when`, the formula warnings and own paths are written once (`effects.ts`'s header rule). Since
+  the rebase onto ENG-43 that function is ENG-43's `applies`, and own paths are one reader,
+  `withOwnPaths`, which numbers, keys and appends all read through.
+- **`ac.formulas` is not a key path.** ENG-43's note offers its key paths to lists; a key path
+  holds one key, and `ac.formulas` is a list of formulas whose numbers are compared, so its
+  appends are worked out where the AC is computed (`appendedNumbers`).
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, no `schemaVersion`, no Dexie table changes. `equipped`,
+`attuned`, `classes[].hp` and `ItemDef.armor` were stored already; they are now read.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/phases.test.ts` — `describe("ENG-14 an entity's own paths")`: on
+  Tales, a module naming a talent with `{ carried: 1 }`: its derived-phase and base-phase effects
+  reading `@carried` apply; with `{ carried: 0 }` they do not; another entity reading it warns;
+  a key effect's `when` reads it (ENG-43's `skills.<key>.ability`); the gathered entity keeps its
+  paths; an entity named twice keeps the first's.
+- `packages/engine/test/derived.test.ts` — `describe("ENG-14 a step's own warnings")`:
+  `ruleWarnings` give `stepRule` naming the path; `effectWarnings` pass as they are.
+- `packages/engine/test/phases.test.ts` — `describe('ENG-14 appended numbers')`: a formula, a
+  number's text, a `when` false, a formula that does not parse, an own path; `advantage`, `note`
+  and a `set` with a text warn `notAppended`; `add` is left to `noTarget`.
+- `packages/system-5e/test/combat.test.ts` — `describe('ENG-14 combat numbers')`: §3 items 1,
+  5–8, 11, 12.
+- `packages/system-5e/test/golden/golden-values.test.ts` — `describe('ENG-14 goldens: combat
+  numbers')`: §3 item 9.
+- Control numbers from: SPEC §6.7 (item 9); §8's sources; the variants worked out by hand from
+  their data, never copied from a run.
+
+#### 8. Checked against the source
+
+Sources: foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (ENG-13's), `module/` and
+`packs/_source/{rules,content24}`, which quote SRD 5.1 and SRD 5.2.1 (CC-BY-4.0); 5e-bits/
+5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`,
+`packages/5e-database/src/{2014,2024}/en/`.
+
+**Hit points.** SRD 5.2.1 (`content24/chapter-2/character-creation.yml`): level 1 "Fighter,
+Paladin, or Ranger 10 + Con. modifier", "Bard, Cleric, … 8 + Con. modifier"; gaining a level: "Roll
+that die, add your Constitution modifier to the roll, and add the total (minimum of 1) to your Hit
+Point maximum. Instead of rolling, you can use the fixed value shown in the Fixed Hit Points by
+Class table" (the fighter "6 + Con. modifier"); "When your Constitution modifier increases by 1,
+your Hit Point maximum increases by 1 for each level". Multiclassing, both editions
+(`rules/chapter-6-customization-options.yml`, `character-creation.yml`): "You gain the hit points
+from your new class as described for levels after 1st. You gain the 1st-level hit points for a
+class only when you are a 1st-level character." dnd5e (`documents/advancement/hit-points.mjs`):
+`valueForLevel` gives `max` the die, `avg` `hitDieValue / 2 + 1`, a number itself;
+`getAdjustedTotal(mod)` adds `Math.max(value + mod, 1)` per level; `prepareHitPoints` adds the
+bonus. 5e-database: the cleric's and the wizard's dice 8 and 6, the fighter's and the paladin's 10.
+SRD 5.1 Dwarven Toughness (`5e-SRD-Traits.json`): "Your hit point maximum increases by 1, and it
+increases by 1 every time you gain a level."
+
+**Armor class.** SRD 5.1 (`rules/chapter-5-equipment.yml`): "The armor (and shield) you wear
+determines your base Armor Class"; light armor: "you add your Dexterity modifier to the base number
+from your armor type"; medium: "you add your Dexterity modifier, to a maximum of +2"; heavy:
+"Heavy armor doesn't let you add your Dexterity modifier to your Armor Class, but it also doesn't
+penalize you if your Dexterity modifier is negative"; "Wielding a shield increases your Armor Class
+by 2. You can benefit from only one shield at a time"; chain mail AC 16, "Str 13". SRD 5.2.1
+(`content24/chapter-6/equipment.yml`): "The table's Armor Class column tells you what your base AC
+is when you wear a type of armor … your AC is 16 in Chain Mail"; the Shield "+2"; "A creature can
+wear only one suit of armor at a time and wield only one Shield at a time"; "You gain the Armor
+Class benefit of a Shield only if you have training with it" (ENG-46). The rules glossary (Armor
+Class): "Your base AC calculation is 10 plus your Dexterity modifier. If a rule gives you another
+base AC calculation, you choose which calculation to use; you can't use more than one."
+`character-creation.yml`: "Without armor or a shield, your base Armor Class is 10 plus your
+Dexterity modifier." SRD 5.1 has no sentence for the unarmored base; dnd5e (`config.mjs`
+`armorClasses`) uses `unarmored` `10 + @abilities.dex.mod`, `armored: false`, for both editions.
+dnd5e (`data/actor/templates/attributes.mjs`, `prepareArmorClass`): the first equipped armor and
+shield count, a second of either warned; heavy armor clamps DEX to 0, else `Math.min(mod,
+armor.dex ?? Infinity)`; a formula is valid only when `armored` matches; the highest result is
+the base (`result > ac.base`, so the first of equal ones); `value = base + shield + bonus`.
+
+**Initiative.** SRD 5.1 (`5e-SRD-Rules.json`, Initiative): "every participant makes a Dexterity
+check"; "you roll initiative by making a Dexterity check". SRD 5.2.1 (`content24/chapter-1/
+combat.yml`): "they make a Dexterity check that determines their place in the Initiative order";
+`character-creation.yml`: "Write your Dexterity modifier in the space for Initiative". dnd5e
+(`prepareInitiative`): the DEX modifier, the initiative bonus, the DEX check bonus, every check's
+bonus and the roll reduction; Alert's +proficiency in 2024 is its effect here (SPEC §5.4).
+
+**Speed.** 5e-database: the 2014 dwarf `speed` 25; the 2024 human 30. SRD 5.2.1 Exhaustion (rules
+glossary): "Your Speed is reduced by a number of feet equal to 5 times your Exhaustion level."
+dnd5e (`prepareMovement`): every kind `Math.max(0, speed - reduction)`, then, only when above 0,
+`Math.max(0, speed + bonus) * multiplier`; heavy armor's `armorSpeedReduction` (10) when its
+Strength is above the wearer's, unless `ignoreArmorSpeedReduction` (ENG-45). SRD 5.1 and 5.2.1:
+"the armor reduces the wearer's speed by 10 feet unless the wearer has a Strength score equal to or
+higher than the listed score" (ENG-45). SRD 5.2.1 (`playing-the-game.yml`): "Whenever you divide or
+multiply a number in the game, round down if you end up with a fraction".
+
+**Armor training** (ENG-46). SRD 5.1: "If you wear armor that you lack proficiency with, you have
+disadvantage on any ability check, saving throw, or attack roll that involves Strength or
+Dexterity, and you can't cast spells." SRD 5.2.1: "If you wear Light, Medium, or Heavy armor and
+lack training with it, you have Disadvantage on any D20 Test that involves Strength or Dexterity,
+and you can't cast spells."
+
+**The goldens' combat lines agree with these** (worked out before the test was written): A's
+hit points 8 (the cleric's d8, `max`) + 3 (CON 16) + 1 (Dwarven Toughness, level 1); AC chain mail
+16, no DEX (heavy), + the shield's 2 (equipped); speed the dwarf's 25; initiative DEX 10's +0. B's
+10 (the fighter's d10) + 2 (CON 15); initiative DEX 13's +1 + Alert's `@prof` 2; AC 16 + Defense 1
+(`@armor.worn` 1); speed the human's 30. B4's 10 + 6 + 6 + 6 (`avg`: 10 / 2 + 1) + 2 × 4 = 36;
+initiative +1 + 2 (`prof` +2 at level 4). D's −4 on the DEX check: +1 − 4 + 2 = −1; speed 30 − 10.
+No golden value looks wrong; nothing stops.
+
+#### 9. Not in this ticket
+
+- One armor and one shield, attunement, a magic armor's bonus, `@armor.group`: ENG-44.
+- Heavy armor's Strength requirement: ENG-45. Armor without training: ENG-46.
+- Choosing the base AC calculation by hand: ENG-47. The character's size: ENG-48.
+- Advantage on initiative (Remarkable Athlete 2024, golden B4's "with advantage"): ENG-34.
+- Hit dice as a tracker, spent and regained: ENG-21. Current hit points and damage: ENG-20.
+- 2014 exhaustion's speed (halved at level 2, 0 at level 5): ENG-19.
+- Encumbrance's speed: the house rule `encumbrance`, a later phase.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** Each expected value is SPEC §6.7's; §8 shows each agrees
+  with the sources.
+- **`packages/engine` is pure; the core names no game.** Own paths, `appendedNumbers`, `stepRule`
+  name no game; they are tested on Tales.
+- **Everything is data.** No list of stats; the rules' two stats are named once in the module, as
+  dnd5e's config does. Armor, shield and speeds are read from the items and species; the shield's
+  +2 and Defense's +1 stay their effects.
+- **`compute()` is pure.** The module reads its arguments only; the purity test runs it frozen.
+- **A number with no breakdown entry is a bug.** Every path has its steps, and they add up:
+  `speed.all.mul`'s 1 is a `rule` step.
+- **Manual overrides always win.** The new paths are finished by ENG-17's phases.
+- **Each system's rules live in its own module.** No `if (ruleset === …)`: both editions share
+  each rule here (§8); the 2024 shield rule is ENG-46's, in the ruleset files.
+- **Formulas never run code.** `ac.formulas` candidates go through ENG-07's evaluator.
+- **Missing is not broken.** A class or item no pack has, a stat a pack lacks, a bad formula: a
+  warning and 0, never a throw.
+- **Stored units are feet.** Speeds are feet as stored.
+- **Licensing.** Variants are made up (`character:`); §8 quotes the SRDs (CC-BY-4.0) only.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `combat.test.ts` alone: `Tests 13 passed (13)`, 902 ms. `golden-values.test.ts` alone: `Tests 10
+  passed (10)`, 1.03 s.
+- Lint: `Checked 142 files`, no fixes, no error (140 before; 2 new files).
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done`.
+- Test: `Test Files 39 passed (39)`, `Tests 407 passed (407)`, 7.09 s, after the rebase onto
+  ENG-43 (`9fffa99`). Before this ticket, at `36f1450`: 38 files, 373 tests; before the rebase,
+  this ticket alone: 39 files, 396 tests.
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`. The published
+  pack JSON Schema is unchanged: its test passed with `SPEED_KINDS` in the speed schema.
+- Golden A has 131 paths (was 115): the 21 of §3 items 5–8, and five stand-ins fewer. It gathers
+  20 entities (was 17): chain mail, the shield and the warhammer.
+- Every line of §3 item 9 is met: A 12, 18, 25, +0; B 12, +3, 17, 30; B4 36, +3; D −1, 20, and B
+  again without exhaustion. Every golden computes with no warning, and each of its breakdowns adds
+  up to its value.
+- The tests bite. Before the rebase, 27 breaks, each on its own and restored, the `engine` and
+  `system-5e` tests run (268 tests). In `combat.ts`: `avg` without its +1, 4 fail; no minimum of 1 a
+  level, 1; a number above the die kept, 1; CON counted once, 3; no `hp.max.bonus`, 2; `dexCap` 0
+  taking a negative DEX, 1; `dexCap` `null` adding none, 2; the unarmored base 11, 2; an equal
+  candidate winning, 1; no appended candidate, 1; the last armor worn, 1; initiative without
+  `init.bonus`, 4; initiative from the DEX modifier, not the check, 2; no floor at 0, 1; the
+  multiplier not rounded, 1; the species before a lineage, 1; bonuses given to a speed the character
+  lacks, 2; no `speed.all.bonus`, 3; hit points from STR, 5. In `module.ts`: items named unequipped,
+  1; `@attuned` always 0, 1. In the core: own paths not read, 9; the base phase refusing them, 2;
+  gathering dropping them, 9; no `notAppended`, 2; rule warnings dropped, 2; effect warnings
+  dropped, 2.
+- One break first failed by a crash, not by its rule (35 tests, `giver.id` on nothing); written
+  again so only the rule broke, it fails 2.
+- After the rebase onto ENG-43, the core's breaks again on the merged `effects.ts` (279 tests):
+  own paths not read, 11; the base phase refusing them, 2; a number not reading them, 9; a key not
+  reading them, 1; an append not reading them, 1; no `notAppended`, 2.
+
+Differences from §3 and §4:
+- No value differs from §3.
+- ENG-43 reached `main` while this ticket was built. Its `applies` and `effectKey` replaced the
+  formula function §4 split out; own paths moved into one reader (`withOwnPaths`) used by all
+  three, and a key effect reading `@carried` got a test. Its note on `ac.formulas` is answered in
+  §4; `BACKLOG.md` keeps both tickets' rows and notes.
+- The own-paths tests went into `phases.test.ts`, whose Tales helpers they use, not
+  `compute.test.ts`; §1 and §7 say so.
+- An `append`'s value is always a text (ENG-04's schema), so `appendedNumbers` reads only texts; §3
+  item 4 and §7 were reworded: no yes/no can reach it.
+- Two expected warnings of this ticket's own Tales tests were first written wrong. A derived-phase
+  formula reading a path no step gives is warned by the derived values (`missingPath` with `for`,
+  ENG-28's `valueAt`), not as the effect's formula warning; an `append` on a number path is warned
+  `notANumber` by ENG-17's `finish`. The run showed both; the code says the same; no value changed.
+- §4's ENG-45 line first said the 2014 dwarf ignores the slowing; 5e-database's dwarf holds only
+  `speed: 25`, so it now says a species trait may (dnd5e's flag), and ENG-45's §8 checks.
+- A helper of `combat.test.ts` took any text as an item id; typecheck refused it (`TS2322`), and it
+  now takes an entity id.
+
+Against the row and its notes:
+- Each point of ENG-14's backlog note is done or moved: `@equipped` is read per item, as its own
+  path (§3 items 1–2); `hp.max.bonus` is the module's, its stand-in gone; a level's hit points are
+  `max`, `avg` or a number, one above the die warned (item 5); Defense reads `@armor.worn` and
+  changes `ac.bonus` (B's 17), Alert changes `init.bonus` (B's +3); `speed.all.bonus` goes into
+  every speed the character has, never below 0 (item 8); initiative adds `checks.dex.bonus` and
+  `d20.all.bonus` (item 7, D's −1). The armor proficiency keys moved to ENG-46's note, the weapon
+  keys to ENG-16's; the size is ENG-48.
+- ENG-17's note: `ac.formulas` is read through `activeEffects`, and its own target warns
+  `notAppended`; the note now names ENG-34 only, with ENG-43's road for lists beside it.
+- The golden lines this ticket makes true are on in `golden-values.test.ts` (§3 item 9).
+
+Found, not fixed:
+- ENG-44 to ENG-48, the re-cut of §4, each a row with its note.
+- Worn armor with `stealthDisadvantage` gives disadvantage on Stealth (SRD 5.1; dnd5e
+  `prepareArmorClass`). Noted on ENG-34.
+- An effect on `speed.<kind>` applies after the bonuses (ENG-17's order), so `speed.all.bonus`
+  does not lower a speed an effect gives a kind the species lacks (`speed.swim` `max 30`); dnd5e
+  lowers every speed. An effect reading `@speed.walk` is lowered with it. No row: no source in hand
+  gives such a speed yet; phase 3's mechanics meet it first.
+
+Nothing for the changelog.

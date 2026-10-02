@@ -7,6 +7,7 @@
 
 export * from './character';
 export * from './checks';
+export * from './combat';
 export * from './entity-types';
 export * from './module';
 export * from './pack';
