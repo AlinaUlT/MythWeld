@@ -691,3 +691,176 @@ describe("ENG-45 heavy armor's Strength requirement", () => {
     expect(a.warnings).toEqual([]);
   });
 });
+
+describe('ENG-47 the base AC calculation the person picks', () => {
+  // Golden B: DEX +1, CON +2, chain mail 16, Defense +1 in armor. Worked out by hand: `guarded`
+  // 10 + 1 + 2 = 13, only without armor; `plated` 13 + 1 = 14; `plain` 10 + 1 = 11; `stance`
+  // 12 + 1 = 13, switched off until the person switches it on. The module's own: 16 in chain mail,
+  // 10 + 1 = 11 without armor.
+  const guarded = feat('guarded', [
+    {
+      id: 'unarmored',
+      target: 'ac.formulas',
+      op: 'append',
+      value: '10 + @abilities.dex.mod + @abilities.con.mod',
+      when: '!@armor.worn',
+    },
+  ]);
+  const plated = feat('plated', [
+    { id: 'plates', target: 'ac.formulas', op: 'append', value: '13 + @abilities.dex.mod' },
+  ]);
+  const plain = feat('plain', [
+    { id: 'same', target: 'ac.formulas', op: 'append', value: '10 + @abilities.dex.mod' },
+  ]);
+  const stance = feat('stance', [
+    {
+      id: 'stance',
+      target: 'ac.formulas',
+      op: 'append',
+      value: '12 + @abilities.dex.mod',
+      toggle: { label: { en: 'Stance' }, default: false },
+    },
+  ]);
+  const GUARDED = 'character:feat/guarded#unarmored';
+  const PLATES = 'character:feat/plated#plates';
+  const SAME = 'character:feat/plain#same';
+  const STANCE = 'character:feat/stance#stance';
+  const GONE = 'character:feat/gone#plates';
+
+  const chosen = { kind: 'rule', rule: 'acCalcChosen', value: 0, change: 0 };
+  const unarmored = [
+    { kind: 'rule', rule: 'unarmoredAC', value: 10, change: 10 },
+    { kind: 'path', path: 'abilities.dex.mod', value: 1, change: 1 },
+  ];
+  const inChainMail = [
+    { kind: 'entity', source: chainMail, label: { en: 'Chain Mail' }, value: 16, change: 16 },
+  ];
+
+  /** The step of the candidate a made-up feat's effect `part` appends, worth `value`. */
+  function appended(part: `character:feat/${string}#${string}`, value: number) {
+    const [source = ''] = part.split('#');
+    const label = { en: source.slice('character:feat/'.length) };
+    return { kind: 'effect', part, source, label, op: 'append', value, change: value };
+  }
+
+  /** The warning of a pin that applies nowhere. */
+  function notApplying(calc: string) {
+    return { code: 'stepRule', path: 'ac.base', rule: 'acCalcNotApplying', data: { calc } };
+  }
+
+  /** Golden B with these feats, armor or none, and a pin or none. */
+  function pinned(
+    own: EntityInput[],
+    armored: boolean,
+    acCalc?: CharacterInput['systemData']['acCalc'],
+  ): CharacterInput {
+    return goldenBWith(own, {
+      ...(!armored && { inventory: [] }),
+      ...(acCalc !== undefined && { acCalc }),
+    });
+  }
+
+  it('takes the pinned calculation over the highest, without armor', () => {
+    const none = computed(pinned([guarded, plated], false));
+    expect(valuesOf(none, ['ac.base', 'ac.total'])).toEqual({ 'ac.base': 14, 'ac.total': 14 });
+    expect(none.breakdown['ac.base']).toEqual([appended(PLATES, 14)]);
+
+    const own = computed(pinned([guarded, plated], false, 'equipment'));
+    expect(valuesOf(own, ['ac.base', 'ac.total'])).toEqual({ 'ac.base': 11, 'ac.total': 11 });
+    expect(own.breakdown['ac.base']).toEqual([chosen, ...unarmored]);
+
+    const lower = computed(pinned([guarded, plated], false, GUARDED));
+    expect(valuesOf(lower, ['ac.base', 'ac.total'])).toEqual({ 'ac.base': 13, 'ac.total': 13 });
+    expect(lower.breakdown['ac.base']).toEqual([chosen, appended(GUARDED, 13)]);
+
+    const highest = computed(pinned([guarded, plated], false, PLATES));
+    expect(valuesOf(highest, ['ac.base', 'ac.total'])).toEqual({ 'ac.base': 14, 'ac.total': 14 });
+    expect(highest.breakdown['ac.base']).toEqual([chosen, appended(PLATES, 14)]);
+
+    for (const result of [none, own, lower, highest]) expect(result.warnings).toEqual([]);
+  });
+
+  it('takes the pinned calculation over the highest, in chain mail', () => {
+    const none = computed(pinned([guarded, plated], true));
+    expect(valuesOf(none, ['ac.base', 'ac.total'])).toEqual({ 'ac.base': 16, 'ac.total': 17 });
+    expect(none.breakdown['ac.base']).toEqual(inChainMail);
+
+    // Plated 14, + Defense 1.
+    const lower = computed(pinned([guarded, plated], true, PLATES));
+    expect(valuesOf(lower, ['ac.base', 'ac.total'])).toEqual({ 'ac.base': 14, 'ac.total': 15 });
+    expect(lower.breakdown['ac.base']).toEqual([chosen, appended(PLATES, 14)]);
+
+    const own = computed(pinned([guarded, plated], true, 'equipment'));
+    expect(valuesOf(own, ['ac.base', 'ac.total'])).toEqual({ 'ac.base': 16, 'ac.total': 17 });
+    expect(own.breakdown['ac.base']).toEqual([chosen, ...inChainMail]);
+
+    for (const result of [none, lower, own]) expect(result.warnings).toEqual([]);
+  });
+
+  it('warns of a pin that does not apply now, and the highest counts', () => {
+    // In chain mail, guarded's `when` is false.
+    const off = computed(pinned([guarded, plated], true, GUARDED));
+    expect(valuesOf(off, ['ac.base', 'ac.total'])).toEqual({ 'ac.base': 16, 'ac.total': 17 });
+    expect(off.breakdown['ac.base']).toEqual(inChainMail);
+    expect(codes(off)).toEqual([notApplying(GUARDED)]);
+
+    // No entity has the part.
+    const gone = computed(pinned([guarded, plated], true, GONE));
+    expect(valuesOf(gone, ['ac.base', 'ac.total'])).toEqual({ 'ac.base': 16, 'ac.total': 17 });
+    expect(codes(gone)).toEqual([notApplying(GONE)]);
+
+    // Switched off: 10 + 1. Switched on: stance's 13.
+    const switchedOff = computed(pinned([stance], false, STANCE));
+    expect(switchedOff.values['ac.base']).toBe(11);
+    expect(switchedOff.breakdown['ac.base']).toEqual(unarmored);
+    expect(codes(switchedOff)).toEqual([notApplying(STANCE)]);
+    const on = pinned([stance], false, STANCE);
+    const switchedOn = computed({ ...on, state: { ...on.state, toggles: { [STANCE]: true } } });
+    expect(switchedOn.values['ac.base']).toBe(13);
+    expect(switchedOn.breakdown['ac.base']).toEqual([chosen, appended(STANCE, 13)]);
+    expect(switchedOn.warnings).toEqual([]);
+  });
+
+  it("breaks a tie: the module's own without a pin, the pinned one with it", () => {
+    const none = computed(pinned([plain], false));
+    expect(none.values['ac.base']).toBe(11);
+    expect(none.breakdown['ac.base']).toEqual(unarmored);
+    const same = computed(pinned([plain], false, SAME));
+    expect(same.values['ac.base']).toBe(11);
+    expect(same.breakdown['ac.base']).toEqual([chosen, appended(SAME, 11)]);
+    expect(same.warnings).toEqual([]);
+  });
+
+  it('gives way to an override', () => {
+    const result = computed({
+      ...pinned([guarded, plated], true, PLATES),
+      overrides: [{ path: 'ac.base', value: 20 }],
+    });
+    // The override's 20, + Defense 1.
+    expect(valuesOf(result, ['ac.base', 'ac.total'])).toEqual({ 'ac.base': 20, 'ac.total': 21 });
+    expect(result.breakdown['ac.base']?.at(-1)).toMatchObject({ kind: 'override', value: 20 });
+  });
+
+  it('is pinned by no golden', () => {
+    for (const golden of [goldenA, goldenB, goldenB4, goldenC2014, goldenD]) {
+      expect(
+        opened(openFifthEditionCharacter(golden)).systemData.acCalc,
+        golden.name,
+      ).toBeUndefined();
+      const steps = computed(golden).breakdown['ac.base'] ?? [];
+      expect(steps.filter((step) => step.kind === 'rule' && step.rule === 'acCalcChosen')).toEqual(
+        [],
+      );
+    }
+  });
+
+  it('stays pure: frozen inputs with a pin give equal results', () => {
+    const one = pinned([guarded, plated], false, GUARDED);
+    const character = deepFreeze(opened(openFifthEditionCharacter(one)));
+    const { index } = index2024;
+    deepFreeze(index);
+    const result = compute(character, index, standingIn);
+    expect(result.values['ac.base']).toBe(13);
+    expect(compute(character, index, standingIn)).toEqual(result);
+  });
+});

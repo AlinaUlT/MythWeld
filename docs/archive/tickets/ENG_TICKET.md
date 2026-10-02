@@ -8091,3 +8091,270 @@ Found, not fixed:
   `encumbrance: 'variant'` is read by no code. A phase 4 note in `BACKLOG.md`.
 
 Changelog: nothing. No screen shows a speed yet.
+
+---
+
+### ENG-47 The person picks the base AC calculation
+
+**Hat:** The person picks which base AC calculation counts
+**Depends on:** ENG-14 (`ac.base`, the highest candidate; `appendedNumbers`), ENG-33
+(`systemData`, `FIFTH_EDITION_CHARACTER_MIGRATIONS`), ENG-39 (one module version for packs and
+characters), ENG-38 (the published pack JSON Schema), ENG-09 and ENG-10 (the golden fixtures)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.1 step 5 (AC: the formula candidates, then the best one or the one the person pins);
+§5.4 (`ac.formulas`, an `append` of a candidate); §5.8 (the character document, migrations);
+§8.2 (missing is not broken); ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/combat.ts` — changes: `armorClassBase` takes the pinned
+candidate, when it applies, over the highest.
+- `packages/system-5e/src/system.ts` — changes: `FIFTH_EDITION_SCHEMA_VERSION` 2;
+  `EQUIPMENT_AC_CALC`, the key of the module's own candidate.
+- `packages/system-5e/src/character.ts` — changes: `systemData.acCalc`; the character's step from
+  version 1 to 2.
+- `packages/system-5e/src/pack.ts` — changes: the pack's step from version 1 to 2.
+- `packages/system-5e/test/combat.test.ts` — changes: an `ENG-47` block.
+- `packages/system-5e/test/character.test.ts` — changes: an `ENG-47` block; ENG-33's version
+  literals say 2, and its full character has `acCalc`.
+- `packages/system-5e/test/golden/characters-2014.ts`, `characters-2024.ts`, `srd-2014.ts`,
+  `srd-2024.ts`, `fixtures-2014.test.ts`, `fixtures-2024.test.ts` — change: written as files of
+  version 2.
+- `apps/web/public/schema/5e/pack.schema.json` — rewritten by its test: `systemSchemaVersion` 2.
+- `docs/tickets/BACKLOG.md` — a note for phase 2 (§11). `docs/CHANGELOG.md` — one line.
+
+#### 2. What is missing now
+
+Measured on `main` at `d88b0b9`:
+- `grep -rn "acCalc\|pinned" packages/system-5e/src packages/engine/src` finds nothing: no code
+  reads a pinned calculation.
+- Golden B with a stored pin, `systemData.acCalc: 'equipment'`, is refused:
+  `unrecognized_keys`, path `systemData`, `Unrecognized key: "acCalc"`.
+- Golden B without armor, with a made-up feat appending `10 + @abilities.dex.mod +
+  @abilities.con.mod` when `!@armor.worn`: `ac.base` 13, its one step the feat's `append`. Its
+  10 + DEX (11) cannot be chosen.
+- `pnpm test`: `Test Files 42 passed (42)`, `Tests 449 passed (449)`.
+
+#### 3. What it should look like when done
+
+1. **The stored pin.** `systemData.acCalc` is optional: `equipment` (the module's own
+   calculation) or the part id of an `ac.formulas` effect (`<entityId>#<effectId>`). Without it,
+   no calculation is pinned. Another key (`armored`) or an entity id without a part is refused at
+   `systemData.acCalc`.
+2. **The base AC.** `ac.base` is the pinned candidate when it is one that applies now; else the
+   highest, the first of equal ones, as ENG-14 gives it. A pinned candidate's breakdown is a
+   `rule` step `acCalcChosen` (value 0, change 0), then its own steps. A pin that applies nowhere
+   (its entity not had, its `when` false, its switch off, a part nothing has) is warned once,
+   `stepRule` `acCalcNotApplying` with `{ calc }`, and the highest counts, with no `acCalcChosen`.
+3. **Made-up variants of golden B** (DEX +1, CON +2, chain mail 16, Defense +1 in armor), with
+   `guarded` (`10 + @abilities.dex.mod + @abilities.con.mod` when `!@armor.worn`), `plated`
+   (`13 + @abilities.dex.mod`), `plain` (`10 + @abilities.dex.mod`) and `stance` (`12 +
+   @abilities.dex.mod`, switched off by default):
+
+   | Worn | Feats | `acCalc` | `ac.base` | `ac.total` | Warning |
+   |---|---|---|---|---|---|
+   | nothing | guarded, plated | none | 14 (plated) | 14 | none |
+   | nothing | guarded, plated | `equipment` | 11 (10 + 1) | 11 | none |
+   | nothing | guarded, plated | guarded's | 13 | 13 | none |
+   | nothing | guarded, plated | plated's | 14 | 14 | none |
+   | chain mail | guarded, plated | none | 16 | 17 | none |
+   | chain mail | guarded, plated | plated's | 14 | 15 | none |
+   | chain mail | guarded, plated | `equipment` | 16 | 17 | none |
+   | chain mail | guarded, plated | guarded's | 16 | 17 | `acCalcNotApplying` guarded's |
+   | chain mail | guarded, plated | `character:feat/gone#plates` | 16 | 17 | `acCalcNotApplying` it |
+   | nothing | plain | none | 11 (10 + 1, the module's) | 11 | none |
+   | nothing | plain | plain's | 11 (plain's step) | 11 | none |
+   | nothing | stance, off | stance's | 11 | 11 | `acCalcNotApplying` stance's |
+   | nothing | stance, switched on | stance's | 13 | 13 | none |
+
+   Every breakdown adds up to its value.
+4. **An override still wins:** chain mail, plated pinned, an override of `ac.base` 20: `ac.base`
+   20, `ac.total` 21.
+5. **Goldens:** none pins; every golden value is unchanged, with no warning.
+6. **The version.** `FIFTH_EDITION_SCHEMA_VERSION` is 2, with one character step and one pack
+   step. A character and a pack of version 1 open: `from` `{ schemaVersion: 1,
+   systemSchemaVersion: 1 }`, the value the file with `systemSchemaVersion` 2. Version 3 is
+   refused, `newer`, `current` 2. Each step leaves its frozen argument as it was.
+7. **The published pack schema** (`apps/web/public/schema/5e/pack.schema.json`) has
+   `systemSchemaVersion` `const` 2; no other line changes.
+8. `compute()` stays pure: frozen inputs with a pin give equal results.
+9. The quality gate is green, `pnpm e2e` included (a file in `apps/web` changes).
+
+#### 4. How to do it
+
+1. `system.ts`: `EQUIPMENT_AC_CALC`; the version 2.
+2. `character.ts`: `acCalc`; the step 1 → 2. `pack.ts`: its step 1 → 2.
+3. `combat.ts`: the candidates keep their keys; the pinned one counts when it applies; the step
+   and the warning of §3 item 2.
+4. The golden files and ENG-33's tests say 2; the published file is rewritten with its test's
+   `--update` (`docs/RUNNING.md`).
+5. The tests of §7.
+
+Technical choices (ADR 002):
+- **The pin is a field of the module's part, `systemData.acCalc`.** AC is fifth edition's, so the
+  core's part stays as it is. It is the rules' own choice ("you choose which calculation to use",
+  §8), as the size is (`species.size`, ENG-48), so it is stored where the module reads it. An
+  override (SPEC §6.1 step 7) is a manual edit over the rules, labelled so, and gives a number
+  with no breakdown of its own; a toggle switches an effect off, and the module's own
+  calculation is no effect.
+- **Optional, with no value for "none".** Absent is the one spelling of "no pin", as `species.size`
+  and `concentration` are absent until chosen. A required field would need a made-up value for it.
+- **A candidate's key is stable.** The module's own is `equipment`: the worn armor's, else 10 +
+  DEX, one calculation, so a pin on it holds when armor comes off or goes on. An effect's is its
+  part id, stable as ids are (SPEC §5.1). The stored value takes that literal or a part id;
+  widening it later needs no migration.
+- **A pin that does not apply warns, and the highest counts.** Missing is not broken (SPEC §8.2):
+  the choice stays stored; armor put on over Unarmored Defense gives the armor's AC and the
+  warning, not 0.
+- **A pin breaks a tie too**: of two equal candidates, the pinned one's steps are the breakdown.
+- **`acCalcChosen` is a step of 0.** The breakdown says the person chose this calculation, so a
+  lower AC than the highest is explained on the sheet; the steps still add up.
+- **One rule in both editions** (§8): no `rulesets/` change.
+- **The version.** ENG-39 gives the module one version for its packs and its characters, so the
+  bump has a pack step, which returns the pack as it is (ENG-39 §4), and the character step
+  returns the file as it is: a version 1 character pinned nothing. The golden fixtures are written
+  as current files, so they say 2; the published JSON Schema carries the version, so its file is
+  rewritten.
+
+#### 5. Stored data
+
+The character's stored shape changes: `systemData.acCalc`, optional.
+`FIFTH_EDITION_SCHEMA_VERSION` 1 → 2. `FIFTH_EDITION_CHARACTER_MIGRATIONS` gains the step 1 → 2,
+which returns the character as it is (a version 1 character pinned nothing).
+`FIFTH_EDITION_PACK_MIGRATIONS` gains the step 1 → 2, which returns the pack as it is (a pack's
+shape does not change). Their test: `character.test.ts`, `describe('ENG-47 …')` (§3 item 6). No
+Dexie table changes. No saved data is rewritten: the steps change nothing but the version.
+
+#### 6. What a person will see
+
+Not a screen. The published pack JSON Schema asks for `systemSchemaVersion` 2.
+
+#### 7. Tests
+
+- `packages/system-5e/test/combat.test.ts` — `describe('ENG-47 the base AC calculation the
+  person picks')`: §3 items 2–5, 8.
+- `packages/system-5e/test/character.test.ts` — `describe('ENG-47 the pinned AC calculation is
+  stored')`: §3 items 1 and 6.
+- `apps/web/test/pack-schema.test.ts` (ENG-38's, unchanged): §3 item 7.
+- Control numbers from: golden B's data (ENG-14 §7: DEX 13, CON 15, chain mail 16, Defense +1)
+  and the made-up feats' formulas, worked out by hand in §3, never copied from a run.
+
+#### 8. Checked against the source
+
+Sources: foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (ENG-13's), read on
+2026-10-02: `packs/_source/content24/` and `classes24/`, `spells24/` (`rules: '2024'`,
+`license: CC-BY-4.0` where the file carries it) quote SRD 5.2.1; `packs/_source/rules/`,
+`classfeatures/`, `spells/` (`rules: '2014'`) quote SRD 5.1.
+
+**SRD 5.2.1.** The rules glossary, Armor Class (`content24/appendices/rules-glossary.yml`): "Your
+base AC calculation is 10 plus your Dexterity modifier. If a rule gives you another base AC
+calculation, you choose which calculation to use; you can't use more than one." Armor
+(`content24/chapter-6/equipment.yml`): "The table's Armor Class column tells you what your base
+AC is when you wear a type of armor". The barbarian's Unarmored Defense
+(`classes24/barbarian/class-features/unarmored-defense.yml`): "While you aren't wearing any armor,
+your base Armor Class equals 10 plus your Dexterity and Constitution modifiers." Mage Armor
+(`spells24/1st-level/mage-armor.yml`): "the target's base AC becomes 13 plus its Dexterity
+modifier".
+
+**SRD 5.1.** Armor (`rules/chapter-5-equipment.yml`): "The armor (and shield) you wear determines
+your base Armor Class." Unarmored Defense (`classfeatures/barbarian/barbarian-features/
+unarmored-defense-barbarian.yml`): "While you are not wearing any armor, your Armor Class equals
+10 + your Dexterity modifier + your Constitution modifier." Draconic Resilience
+(`classfeatures/sorcerer/draconic-bloodline-features/draconic-resilience.yml`): "When you aren't
+wearing armor, your AC equals 13 + your Dexterity modifier." Mage Armor
+(`spells/1st-level/mage-armor.yml`): "The target's base AC becomes 13 + its Dexterity modifier."
+SRD 5.1 has no sentence on two such calculations at once. SPEC §6.1 step 5 takes the best or the
+pinned one in both editions and notes that 2024 writes it as a rule; a source that is silent does
+not disagree, so nothing stops, and the rule is one for both editions.
+
+**dnd5e.** `module/data/actor/templates/attributes.mjs`, `prepareArmorClass`: the person keeps a
+set of calculations, `attributes.ac.calcs` (by default `unarmored` and `armored`); each feature
+above adds its own by an effect on `ac.calc` (`unarmoredBarb`, `mage`); of those that are valid
+(`armored` matching the armor worn), the highest counts (`result > ac.base`, so the first of equal
+ones); `calc` is not stored (`persisted: false`). `_migrateArmorClass` turns an old stored single
+`calc` into that set. SPEC's one pin differs from dnd5e's set; SPEC is followed. Both keep one
+calculation, never a sum of two.
+
+No golden pins a calculation (SPEC §6.7); no golden value changes.
+
+#### 9. Not in this ticket
+
+- The sheet's control that pins a calculation, and the list of candidates it shows: phase 2
+  (§11).
+- Unarmored Defense, Mage Armor, Draconic Resilience as mechanics: phase 3.
+- A shield's AC without training (2024): ENG-46.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** No golden pins; no expected value changes. The goldens'
+  files change only their `systemSchemaVersion`.
+- **A stored-shape change needs a migration.** The version is 2, with a step for characters and
+  one for packs, each tested.
+- **Everything is data.** The candidates are the armor worn and the effects' formulas; the only
+  name written is the module's own calculation's key, once, in `system.ts`.
+- **`compute()` is pure.** The step reads the character it is given; the purity test runs it
+  frozen with a pin.
+- **A number with no breakdown entry is a bug.** The pinned candidate's steps are the breakdown,
+  with `acCalcChosen` naming the choice.
+- **Manual overrides always win.** An override of `ac.base` replaces the pinned value (§3 item 4).
+- **Each system's rules live in its own module.** The pin is the module's field and step; no
+  `if (ruleset === …)`.
+- **Ids are stable.** A pin names a part id, never a name.
+- **Missing is not broken.** A pin that does not apply warns, and the highest counts.
+- **Licensing.** The feats in the tests are made up (`character:`); §8 quotes SRD 5.1 and SRD
+  5.2.1 (CC-BY-4.0) only.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `combat.test.ts` alone: `Tests 26 passed (26)`, 1.21 s (7 new). `character.test.ts` alone:
+  `Tests 16 passed (16)`, 903 ms (3 new).
+- Lint: `Checked 153 files`, no fixes, no error. Typecheck: all 6 projects `Done`.
+- Test: `Test Files 42 passed (42)`, `Tests 465 passed (465)`, 6.60 s, after the rebase onto
+  ENG-45 (`c80a260`: 42 files, 455 tests, measured there). Before the rebase, this ticket on
+  `d88b0b9`: 459 tests (449 before it).
+- Build: `apps/web build: Done`. `pnpm e2e`: `12 passed (9.3s)`, run with
+  `PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, as
+  `docs/RUNNING.md` says for this container; without it, 11 of 12 failed at the browser's launch
+  (`Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1243/…`).
+- The published pack schema: one line changed, `"const": 1` → `"const": 2` under
+  `systemSchemaVersion`, written by `pnpm vitest run apps/web/test/pack-schema.test.ts --update`;
+  before the rewrite its test failed (`Snapshot … mismatched`).
+- Every row of §3 item 3 is met, and items 4–8. No golden pins; the golden tests pass unchanged
+  (`test/golden`: 3 files, 36 tests).
+- The tests bite. 10 breaks, each on its own and restored, the `system-5e` and `apps/web` unit
+  tests run (162 tests, after the rebase): the pin ignored, 5 fail; no `acCalcChosen` step, 4; no
+  `acCalcNotApplying`, 1; the module's own candidate under another key, 1; an equal later
+  candidate winning, 2; any text taken as a pin, 1; the pin required, 65; a character step that
+  pins the module's own, 1; a pack step that changes the pack, 1; no character step, 13 test files
+  fail to load (the opener's count of steps throws, ENG-39). Before the rebase (156 tests) the
+  same, but the pin required: 59.
+
+Differences from §3 and §4:
+- No value differs from §3.
+- The golden test of §3 item 5 first read `golden.systemData.acCalc`; typecheck refused it
+  (`TS2339`: a golden's own type has no such field), so it reads the opened character's.
+- ENG-45 reached `main` while this ticket was built. Its speed steps and its dwarf effect in
+  `srd-2014.ts` sit beside this ticket's changes; `combat.ts`'s header, the two test blocks, the
+  backlog rows and this archive were joined by hand. No value of either ticket changed.
+
+Against the row and its note:
+- The row's note is done: the best candidate, or the pinned one (SPEC §6.1 step 5, SRD 5.2.1 "you
+  choose which calculation to use"); the pin is a stored field, with the version bump and a step
+  for characters and one for packs.
+
+Found, not fixed:
+- The sheet's control that pins a calculation needs the candidates: each one's key, name and
+  value. `Computed` gives only the chosen one's breakdown (an `append` step names its part). A pin
+  whose entity is removed stays stored and warns `acCalcNotApplying` on every compute, as a
+  switch does (`toggleGone`, ENG-17). New note for phase 2 in `BACKLOG.md`.
+- dnd5e keeps a set of calculations the person turns on, not one pin (§8). No row: SPEC §6.1
+  step 5 is followed, and both keep one calculation.
+
+Changelog: "The published fifth-edition pack JSON Schema asks for `systemSchemaVersion` 2."
+
+---

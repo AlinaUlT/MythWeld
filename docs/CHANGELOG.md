@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-10-02 · ENG-47 · The published fifth-edition pack JSON Schema asks for
+  `systemSchemaVersion` 2.
 - 2026-10-02 · ENG-38 · The public link serves the JSON Schema of a fifth-edition content pack, at
   `schema/5e/pack.schema.json`: an editor or a validator checks a pack written by hand with it.
 - 2026-09-28 · SETUP-08 · The app has a public link: https://alinault.github.io/MythWeld/. It

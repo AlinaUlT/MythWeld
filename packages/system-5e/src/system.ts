@@ -21,7 +21,7 @@ export const FIFTH_EDITION_SYSTEM = '5e';
  * The stored shape of the module's part of a file: a pack's entities, a character's own entities
  * and its `systemData` (ENG-39). A change to it needs a step in each list of migrations.
  */
-export const FIFTH_EDITION_SCHEMA_VERSION = 1;
+export const FIFTH_EDITION_SCHEMA_VERSION = 2;
 
 /** The highest level a class or a character reaches, in both editions. */
 export const MAX_LEVEL = 20;
@@ -34,6 +34,12 @@ export const HIT_DIE_SIZES = [6, 8, 10, 12] as const;
 
 /** The kinds of speed, in feet: a species' speeds, a character's `speed.<kind>` (ENG-14). */
 export const SPEED_KINDS = ['walk', 'fly', 'swim', 'climb', 'burrow'] as const;
+
+/**
+ * The key of the module's own base AC calculation: the worn armor's, else 10 + DEX (ENG-14). A
+ * character pins it, or an `ac.formulas` effect's part id, in `acCalc` (ENG-47).
+ */
+export const EQUIPMENT_AC_CALC = 'equipment';
 
 /** The groups of armor: an armor's `group`, a character's `armor.<group>` (ENG-44). */
 export const ARMOR_GROUPS = ['light', 'medium', 'heavy'] as const;

@@ -96,7 +96,7 @@ split off an old row got a new id.
 | ENG-14 | Combat numbers are computed: hit points, armor class, initiative, speed | M | ✅ 2026-10-02 |
 | ENG-44 | Equipped items count only as the rules allow | S | ✅ 2026-10-02 |
 | ENG-45 | Heavy armor's Strength requirement slows its wearer | S | ✅ 2026-10-02 |
-| ENG-47 | The person picks which base AC calculation counts | S | 🔲 |
+| ENG-47 | The person picks which base AC calculation counts | S | ✅ 2026-10-02 |
 | ENG-48 | The character's size comes from its species | S | ✅ 2026-10-02 |
 | ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | ✅ 2026-10-02 |
 | ENG-16 | Attacks are computed, weapon mastery included | S | 🔲 |
@@ -133,9 +133,6 @@ split off an old row got a new id.
   `advantageMode × 5`). ENG-13's `skills.<key>.passive` is 10 + the skill's total. Found by
   ENG-14: worn armor with `stealthDisadvantage` gives disadvantage on Dexterity (Stealth) checks
   (SRD 5.1 Armor, "Stealth"; dnd5e `prepareArmorClass`); ENG-14's `armor.worn` names the armor.
-- **ENG-47** — found by ENG-14: SPEC §6.1 step 5 takes the best AC candidate, or the one the
-  person pins; SRD 5.2.1: "you choose which calculation to use". ENG-14's `ac.base` takes the
-  highest. A pinned choice is a stored field: a `schemaVersion` bump and a migration.
 - **ENG-16** — ADR 014 item 6: a spell's current dice for the character's level, with a breakdown.
   Found by ENG-09: a spell's healing has no field (Cure Wounds: 1d8 + the modifier, 1d8 more per
   slot level above 1st); `damage` and `scaling` hold damage only. Weapon proficiency keys are
@@ -309,6 +306,12 @@ split off an old row got a new id.
   `Computed.pendingKeys` (`{ path, options }`), beside the grants' `pendingChoices`; the answer is
   written to `systemData.species.size`, not to `choices`. A stored size the species does not offer
   warns `stepRule` `sizeNotOffered`.
+- **Phase 2** — found by ENG-47: the pinned base AC calculation is `systemData.acCalc`:
+  `equipment` (the armor worn, else 10 + DEX) or an `ac.formulas` effect's part id; without it the
+  highest counts. The control that pins one needs each candidate's key, name and value, and
+  `Computed` gives only the chosen one's breakdown (`acCalcChosen` first when pinned); the row
+  that builds it gives `Computed` the candidates. A pin that does not apply warns `stepRule`
+  `acCalcNotApplying` on every compute, so removing its entity clears it, as a switch is cleared.
 - **Phase 2** — found by ENG-43: a skill's stat is `Computed.keys['skills.<key>.ability']`, with
   steps naming the skill, each effect and a manual edit; the sheet shows that key, never the
   skill's own `ability`. An override of it applies only when its value is one of its keys (a

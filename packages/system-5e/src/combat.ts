@@ -2,7 +2,6 @@ import {
   activeEffects,
   appendedNumbers,
   type BreakdownStep,
-  type Derived,
   type DerivedStep,
   type DeriveInput,
   type EffectWarning,
@@ -11,7 +10,7 @@ import {
 import type { FifthEditionCharacter } from './character';
 import type { FifthEditionEntity, ItemDef, LineageDef, SpeciesDef } from './entity-types';
 import { type Equipment, type ExtraItem, equipmentOf, type WornItem } from './equipment';
-import { ARMOR_GROUPS, SPEED_KINDS } from './system';
+import { ARMOR_GROUPS, EQUIPMENT_AC_CALC, SPEED_KINDS } from './system';
 
 // ENG-14: fifth edition's combat numbers (SPEC §6.1 step 5): the hit point maximum, armor class,
 // initiative and speeds, one rule in both editions (ENG-14 §8). What an item, a feat or a
@@ -19,7 +18,8 @@ import { ARMOR_GROUPS, SPEED_KINDS } from './system';
 // `init.bonus`, `speed.*`); a total adds its parts as `path` steps, as ENG-13's do. ENG-44: the
 // armor and the shield worn are `equipmentOf`'s. ENG-45: armor whose Strength requirement is above
 // its wearer's Strength takes 10 feet from every speed, through `speed.armorReduction`, which an
-// effect may set to 0 (the SRD 5.1 dwarf, ENG-45 §8).
+// effect may set to 0 (the SRD 5.1 dwarf, ENG-45 §8). ENG-47: the base AC calculation the person
+// pins counts over the highest while it applies; one that does not apply warns.
 
 /**
  * The stats the rules name: initiative and AC read Dexterity, hit points Constitution (ENG-14 §8);
@@ -153,19 +153,28 @@ function hitPoints({
   };
 }
 
+/** A base AC calculation that applies, by its key: `EQUIPMENT_AC_CALC` or an effect's part. */
+interface Candidate {
+  readonly key: string;
+  readonly value: number;
+  readonly steps: readonly BreakdownStep[];
+}
+
 /**
- * The base AC: the highest of the module's own candidate (the worn armor's, else 10 + DEX) and
- * each number an effect appends to `ac.formulas`, the first of equal ones.
+ * The base AC: the candidate pinned in `acCalc` when it applies (ENG-47), else the highest of the
+ * module's own (the worn armor's, else 10 + DEX) and each number an effect appends to
+ * `ac.formulas`, the first of equal ones.
  */
 function armorClassBase(
   { character, gathered }: DeriveInput<FifthEditionCharacter, FifthEditionEntity>,
   armor: ItemDef | undefined,
 ): DerivedStep {
+  const pinned = character.systemData.acCalc;
   return (read, readBy) => {
     const dexPath = `abilities.${RULE_STATS.armorClass}.mod`;
     const dex = read(dexPath);
     const worn = armor?.armor;
-    let best: Derived;
+    let own: Candidate;
     if (armor !== undefined && worn !== undefined) {
       // `dexCap` 0 adds none, not even a negative one; `null` adds all (ENG-14 §8).
       const { baseAC, dexCap } = worn;
@@ -174,9 +183,10 @@ function armorClassBase(
         { kind: 'entity', source: armor.id, label: armor.name, value: baseAC, change: baseAC },
       ];
       if (dexCap !== 0) steps.push({ kind: 'path', path: dexPath, value: dex, change: adds });
-      best = { value: baseAC + adds, steps };
+      own = { key: EQUIPMENT_AC_CALC, value: baseAC + adds, steps };
     } else {
-      best = {
+      own = {
+        key: EQUIPMENT_AC_CALC,
         value: UNARMORED_AC + dex,
         steps: [
           { kind: 'rule', rule: 'unarmoredAC', value: UNARMORED_AC, change: UNARMORED_AC },
@@ -191,14 +201,36 @@ function armorClassBase(
       (active) => ({ read: readBy(active.part) }),
       (warning) => effectWarnings.push(warning),
     );
-    for (const { value, part, source, label } of appended) {
-      if (value <= best.value) continue;
-      best = {
-        value,
-        steps: [{ kind: 'effect', part, source, label, op: 'append', value, change: value }],
-      };
+    const candidates: Candidate[] = [
+      own,
+      ...appended.map(
+        ({ value, part, source, label }): Candidate => ({
+          key: part,
+          value,
+          steps: [{ kind: 'effect', part, source, label, op: 'append', value, change: value }],
+        }),
+      ),
+    ];
+    const chosen = candidates.find(({ key }) => key === pinned);
+    if (chosen !== undefined) {
+      const steps: BreakdownStep[] = [
+        { kind: 'rule', rule: 'acCalcChosen', value: 0, change: 0 },
+        ...chosen.steps,
+      ];
+      return { value: chosen.value, steps, effectWarnings };
     }
-    return { ...best, effectWarnings };
+    const best = candidates.reduce((high, each) => (each.value > high.value ? each : high));
+    const ruleWarnings: RuleWarning[] =
+      pinned === undefined
+        ? []
+        : [
+            {
+              rule: 'acCalcNotApplying',
+              data: { calc: pinned },
+              message: `The base AC calculation "${pinned}" is pinned but does not apply now; the highest one counts.`,
+            },
+          ];
+    return { value: best.value, steps: best.steps, effectWarnings, ruleWarnings };
   };
 }
 

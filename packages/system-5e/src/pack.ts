@@ -10,7 +10,10 @@ import { FIFTH_EDITION_SCHEMA_VERSION, FIFTH_EDITION_SYSTEM, fifthEdition } from
 // returns it; the app's test writes it.
 
 /** The steps to `FIFTH_EDITION_SCHEMA_VERSION` for a pack: step N takes N + 1 to N + 2. */
-export const FIFTH_EDITION_PACK_MIGRATIONS: readonly Migration[] = [];
+export const FIFTH_EDITION_PACK_MIGRATIONS: readonly Migration[] = [
+  // 1 → 2: ENG-47 changed a character's `systemData` only.
+  (file) => ({ ...file }),
+];
 
 /** A fifth-edition content pack: its entities are fifth edition's union (ENG-32). */
 export const fifthEditionPackSchema = packSchemaOf({

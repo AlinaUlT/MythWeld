@@ -83,6 +83,7 @@ const systemData = {
   advancement: { mode: 'xp', xp: 450 },
   species: { id: 'hb-test:species/lantern-folk', size: 'small' },
   background: { id: 'hb-test:background/lamplighter' },
+  acCalc: 'hb-test:class/warden#ward',
   classes: [
     {
       id: 'hb-test:class/warden',
@@ -143,7 +144,7 @@ const character = {
   createdAt: '2026-10-01T09:00:00.000Z',
   updatedAt: '2026-10-01T09:30:00.000Z',
   system: '5e',
-  systemSchemaVersion: 1,
+  systemSchemaVersion: 2,
   ruleset: '2024',
   allowMixedRulesets: true,
   kind: 'pc',
@@ -184,18 +185,19 @@ const state = systemData.state;
 describe('ENG-33 fifth-edition character', () => {
   it('parses a full character to an equal object', () => {
     expect(fifthEditionCharacterSchema.parse(character)).toEqual(character);
-    expect(FIFTH_EDITION_SCHEMA_VERSION).toBe(1);
-    expect(FIFTH_EDITION_CHARACTER_MIGRATIONS).toEqual([]);
-    expect(FIFTH_EDITION_PACK_MIGRATIONS).toEqual([]);
+    expect(FIFTH_EDITION_SCHEMA_VERSION).toBe(2);
+    expect(FIFTH_EDITION_CHARACTER_MIGRATIONS).toHaveLength(1);
+    expect(FIFTH_EDITION_PACK_MIGRATIONS).toHaveLength(1);
     expect(HIT_DIE_SIZES).toEqual([6, 8, 10, 12]);
     expect(COINS).toEqual(['cp', 'sp', 'ep', 'gp', 'pp']);
     expect(DEATH_SAVES).toBe(3);
   });
 
-  it('needs every field but the species and the background; its lists may be empty', () => {
+  it('needs every field but the species, the background and the AC pin; lists may be empty', () => {
     for (const field of Object.keys(systemData)) {
       const { [field as keyof Data]: _left, ...without } = systemData;
-      const expected = ['species', 'background'].includes(field) ? [] : [`systemData.${field}`];
+      const optional = ['species', 'background', 'acCalc'];
+      const expected = optional.includes(field) ? [] : [`systemData.${field}`];
       expect(issuePaths({ ...character, systemData: without }), field).toEqual(expected);
     }
     const bare = withData({
@@ -379,7 +381,7 @@ describe('ENG-33 fifth-edition character', () => {
     expect(issuePaths({ ...character, ruleset: '2014' })).toEqual([]);
     expect(issuePaths({ ...character, ruleset: 'any' })).toEqual(['ruleset']);
     expect(issuePaths({ ...character, system: 'tales' })).toEqual(['system']);
-    expect(issuePaths({ ...character, systemSchemaVersion: 2 })).toEqual(['systemSchemaVersion']);
+    expect(issuePaths({ ...character, systemSchemaVersion: 1 })).toEqual(['systemSchemaVersion']);
     expect(issuePaths({ ...character, localEntities: [{ ...luckyFind, type: 'talent' }] })).toEqual(
       ['localEntities.0.type'],
     );
@@ -501,7 +503,7 @@ describe('ENG-33 fifth-edition character', () => {
     type Character = z.infer<typeof fifthEditionCharacterSchema>;
     expectTypeOf<Character>().toEqualTypeOf<FifthEditionCharacter>();
     expectTypeOf<Character['ruleset']>().toEqualTypeOf<'2014' | '2024'>();
-    expectTypeOf<Character['systemSchemaVersion']>().toEqualTypeOf<1>();
+    expectTypeOf<Character['systemSchemaVersion']>().toEqualTypeOf<2>();
     type Part = Character['systemData'];
     expectTypeOf<Part['classes'][number]['hp'][number]>().toEqualTypeOf<number | 'avg' | 'max'>();
     expectTypeOf<Part['currency']>().toEqualTypeOf<
@@ -526,7 +528,7 @@ const pack = {
   version: '1.0.0',
   schemaVersion: 1,
   system: '5e',
-  systemSchemaVersion: 1,
+  systemSchemaVersion: 2,
   title: { en: 'Test pack' },
   ruleset: 'any',
   license: { name: 'Made up for the tests', redistributable: false },
@@ -538,14 +540,14 @@ describe('ENG-33 fifth-edition files open through both chains', () => {
     expect(openFifthEditionCharacter(character)).toEqual({
       ok: true,
       value: character,
-      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+      from: { schemaVersion: 1, systemSchemaVersion: 2 },
     });
-    expect(openFifthEditionCharacter({ ...character, systemSchemaVersion: 2 })).toMatchObject({
+    expect(openFifthEditionCharacter({ ...character, systemSchemaVersion: 3 })).toMatchObject({
       ok: false,
       code: 'newer',
       field: 'systemSchemaVersion',
-      found: 2,
-      current: 1,
+      found: 3,
+      current: 2,
     });
   });
 
@@ -554,14 +556,14 @@ describe('ENG-33 fifth-edition files open through both chains', () => {
     expect(openFifthEditionPack(pack)).toEqual({
       ok: true,
       value: pack,
-      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+      from: { schemaVersion: 1, systemSchemaVersion: 2 },
     });
-    expect(openFifthEditionPack({ ...pack, systemSchemaVersion: 2 })).toMatchObject({
+    expect(openFifthEditionPack({ ...pack, systemSchemaVersion: 3 })).toMatchObject({
       ok: false,
       code: 'newer',
       field: 'systemSchemaVersion',
-      found: 2,
-      current: 1,
+      found: 3,
+      current: 2,
     });
     const talent = { ...pack.entities[0], id: 'hb-test:talent/lucky-find', type: 'talent' };
     const opened = openFifthEditionPack({ ...pack, entities: [talent] });
@@ -570,5 +572,46 @@ describe('ENG-33 fifth-edition files open through both chains', () => {
     expect(
       fifthEditionPackSchema.safeParse({ ...pack, entities: [talent] }).error?.issues[0]?.path,
     ).toEqual(['entities', 0, 'type']);
+  });
+});
+
+describe('ENG-47 the pinned AC calculation is stored', () => {
+  it("takes the module's own calculation or an effect's part, and nothing else", () => {
+    expect(refused({ acCalc: 'equipment' })).toEqual([]);
+    expect(refused({ acCalc: 'hb-test:feat/steady-hand#plates' })).toEqual([]);
+    expect(refused({ acCalc: 'armored' })).toEqual(['systemData.acCalc']);
+    expect(refused({ acCalc: 'hb-test:feat/steady-hand' })).toEqual(['systemData.acCalc']);
+    expect(refused({ acCalc: '' })).toEqual(['systemData.acCalc']);
+    expectTypeOf<FifthEditionCharacter['systemData']['acCalc']>().toEqualTypeOf<
+      'equipment' | `${string}:${string}/${string}#${string}` | undefined
+    >();
+  });
+
+  it('opens a character of version 1 as version 2, with no pin', () => {
+    const { acCalc: _, ...unpinned } = systemData;
+    const old = { ...character, systemSchemaVersion: 1, systemData: unpinned };
+    expect(openFifthEditionCharacter(old)).toEqual({
+      ok: true,
+      value: { ...old, systemSchemaVersion: 2 },
+      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+    });
+    const [step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
+    const frozen = Object.freeze({ ...old });
+    expect(step?.(frozen)).toEqual(old);
+    expect(step?.(frozen)).not.toBe(frozen);
+    expect(frozen).toEqual(old);
+  });
+
+  it('opens a pack of version 1 as version 2, as it is', () => {
+    const old = { ...pack, systemSchemaVersion: 1 };
+    expect(openFifthEditionPack(old)).toEqual({
+      ok: true,
+      value: pack,
+      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+    });
+    const [step] = FIFTH_EDITION_PACK_MIGRATIONS;
+    const frozen = Object.freeze({ ...old });
+    expect(step?.(frozen)).toEqual(old);
+    expect(frozen).toEqual(old);
   });
 });

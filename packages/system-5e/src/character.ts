@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { fifthEditionEntitySchema, levelSchema } from './entity-types';
 import {
   COINS,
+  EQUIPMENT_AC_CALC,
   FIFTH_EDITION_SCHEMA_VERSION,
   FIFTH_EDITION_SYSTEM,
   fifthEditionLists,
@@ -31,7 +32,10 @@ import {
 // (missing is not broken).
 
 /** The steps to `FIFTH_EDITION_SCHEMA_VERSION` for a character: step N takes N + 1 to N + 2. */
-export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [];
+export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
+  // 1 → 2 (ENG-47): `acCalc` is new and optional, and a character of version 1 pinned nothing.
+  (file) => ({ ...file }),
+];
 
 /** The successes, or the failures, that end a run of death saves (ENG-33 §8). */
 export const DEATH_SAVES = 3;
@@ -209,6 +213,11 @@ export const fifthEditionDataSchema = z
     /** The species, with the size chosen from its list when it offers more than one. */
     species: z.strictObject({ id: entityIdSchema, size: entityKeySchema.optional() }).optional(),
     background: z.strictObject({ id: entityIdSchema }).optional(),
+    /**
+     * The base AC calculation the person picked (ENG-47): the module's own, or an `ac.formulas`
+     * effect's part. Without it, the highest counts.
+     */
+    acCalc: z.union([z.literal(EQUIPMENT_AC_CALC), entityPartIdSchema]).optional(),
     classes: classesSchema,
     feats: featsSchema,
     /** Class or subclass id → the spells it knows and has prepared. */
