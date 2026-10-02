@@ -17,5 +17,6 @@ export * from './module';
 export * from './pack';
 export * from './rulesets';
 export * from './size';
+export * from './spell-dice';
 export * from './spellcasting';
 export * from './system';

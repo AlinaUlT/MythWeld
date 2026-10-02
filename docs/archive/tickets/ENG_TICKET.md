@@ -9320,3 +9320,240 @@ Found, not fixed:
   rules file was read here, for text it does not have; no fixture was compared against it.
 
 Nothing for the changelog.
+
+---
+
+### ENG-50 A spell's dice for the character's level
+
+**Hat:** A spell's dice are computed for the character's level
+**Depends on:** ENG-32 (`SpellDef.damage`, `scaling`), ENG-08 (roll formulas), ENG-16 (`diceOf`),
+ENG-17 (effects and overrides on any path), ENG-28 (the module's derived steps)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.3 (`SpellDef.damage`, `scaling`); §5.6 (roll formulas); §6.1 step 5; ADR 013 item 6;
+ADR 014 item 6
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/spell-dice.ts` — new: `CANTRIP_LEVELS`,
+`CANTRIP_UPGRADES_PATH`, `cantripUpgrades`, `spellDiceSteps`, `spellDice` and its types.
+- `packages/engine/src/formula.ts` — changes: `addDice(base, added, times)`, a roll formula with
+  more dice written out.
+- `packages/system-5e/src/module.ts`, `index.ts` — change: `derive` joins `spellDiceSteps`; export.
+- `packages/engine/test/formula.test.ts` — changes: the ENG-50 block.
+- `packages/system-5e/test/spell-dice.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on `main` at `7633984`:
+- `git grep scaling` in `packages/system-5e/src` and `packages/engine/src` finds only the schema
+  (`entity-types.ts`, lines 234–277). No code reads a spell's `scaling`.
+- No computed path says how far a cantrip has grown: `cantrip` in `packages/system-5e/src` is only
+  `cantripsKnown` and `classes.<key>.spell.cantrips` (ENG-15), a count of cantrips known.
+- A count of dice is digits, not a formula: `parseRoll('(1 + @level)d10')` gives
+  `{"code":"unexpected","found":"d10","at":12}`. So dice that grow must be written out (ENG-08's
+  note).
+- `pnpm test`: `Test Files 43 passed (43)`, `Tests 481 passed (481)`.
+
+#### 3. What it should look like when done
+
+1. **Every character** has `cantrip.upgrades`: how many of the levels 5, 11 and 17 its total level
+   (`level`) has reached: 0 at levels 1–4, 1 at 5–10, 2 at 11–16, 3 at 17–20. One step:
+   `{ kind: 'path', path: 'level', value: <level>, change: <upgrades> }`. Effects and an override
+   change it as on any derived path (ENG-17).
+2. **`spellDice(spell, values, slot?)`** gives `{ times, damage, warnings }`.
+   - `times`: how many times the spell's `scaling.formula` joins its first damage. For a cantrip
+     (`scaling.kind: 'cantrip'`), `values['cantrip.upgrades']`; for another spell (`'slot'`), the
+     slot levels above its own, 0 with no slot or a lower one; 0 with no `scaling`. A number that
+     is not whole counts as the whole number below it, and as 0 below 0.
+   - `damage`: each damage in order, `{ formula, type }`, the first with the scaling joined.
+3. **Control values:**
+
+   | Spell | Input | Dice |
+   |---|---|---|
+   | SRD 5.1 Fire Bolt (1d10; 1d10 per upgrade) | 0, 1, 2, 3 upgrades | 1d10, 2d10, 3d10, 4d10 |
+   | SRD 5.1 Fire Bolt | golden C (level 6), golden A (level 1) computed | 2d10, 1d10 |
+   | SRD 5.1 Fireball (level 3; 8d6; 1d6 per slot level above) | slots 3 to 9 | 8d6 to 14d6 |
+   | SRD 5.1 Fireball | no slot, slot 2 | 8d6, `times` 0 |
+   | `cantrip.upgrades` | golden A, B4, C 2014, C 2024 | 0, 0, 1, 1 |
+
+4. **`addDice(base, added, times)`** (the core, game-free) gives the parsed roll formula `base`
+   with `added` added `times` times:
+   - one dice term that keeps every die joins the first dice term `base` adds at its top with its
+     faces: `1d10` + 3 × `1d10` = `4d10`; `1к10` + 2 × `1d10` = `3к10`;
+     `d8 + @stats.grit.mod` + 2 × `1d8` = `3d8 + @stats.grit.mod`;
+   - with no such term, it follows after ` + `: `2d4` + 3 × `1d6` = `2d4 + 3d6`;
+     `2 * 1d6` + `1d6` = `2 * 1d6 + 1d6`; a base whose top binds less than `+` goes in brackets:
+     `(@gear.worn ? 1d6 : 1d8) + 1d6`;
+   - any other `added` follows `times` times in brackets: `3d4 + 3` + 2 × `1d4 + 1` =
+     `3d4 + 3 + (1d4 + 1) + (1d4 + 1)`;
+   - `times` 0, below 0, or not finite gives `base`; 1.9 counts as 1;
+   - errors, never a throw: `1d` does not parse (`unexpected`); `990d6` + 10 × `1d6` is
+     `diceCount` 1000; `1d6` + 200 × `1d4 + 1` is `tooLong` 2403; at most 1000 copies are written.
+5. **Never throws.** `spellDice` warns `missingPath` when the values have no number at
+   `cantrip.upgrades` (0 steps used), `scalingWithoutDamage` for a scaling with no damage to join,
+   and `scalingFormula` with the error when the formulas do not parse or join past the limits (the
+   damage's own formula is used).
+6. **Pure**: frozen inputs, equal results.
+7. The quality gate is green. No file in `apps/web` changes, so no `pnpm e2e`.
+
+#### 4. How to do it
+
+1. `formula.ts`: `addDice`, reading the parsed trees of both formulas and writing the text.
+2. `spell-dice.ts`: the levels, `cantripUpgrades`, the step of `cantrip.upgrades`, `spellDice`.
+3. `module.ts`: `derive` joins `spellDiceSteps()`.
+4. The tests of §7.
+
+Technical choices (ADR 002):
+- **One number for every cantrip, not a path per spell.** In both SRDs a cantrip reads the
+  character's total level, and every SRD cantrip that grows by dice grows at 5, 11 and 17 (§8).
+  So the step is one number, with a breakdown; an effect or an override on it changes every
+  cantrip, as a homebrew "your cantrips count one step higher" would. Paths per spell would need
+  the list of the character's spells, which no code gives yet.
+- **The dice are text made from the number, outside `compute()`.** A derived value is a number
+  (ENG-28); a roll formula is text. The sheet shows a spell's dice as
+  `spellDice(spell, computed.values)`: the rule is the module's, the number and its breakdown are
+  `Computed`'s, the dice the spell's own fields, as ENG-16's sheet shows an item's dice beside
+  its computed bonus.
+- **The path is `cantrip.upgrades`.** SRD 5.2.1 calls each step a "Cantrip Upgrade". It is not
+  under `spell.`, ENG-15's casting numbers: a character who casts nothing can have a cantrip from a
+  feat or a species.
+- **The scaling joins the first damage.** `scaling` is one formula with no damage type, so it
+  joins one damage: the first. A spell whose upgrade goes to another damage, or to two, is in §11.
+- **Joining dice is the core's.** It is text of a roll formula, game-free, beside `diceOf`. It
+  works on the parsed tree, so the pack's `d` or `к`, its spaces and its paths stay as written,
+  and it parses the result with the same limits as any roll.
+- **A count that is not whole is rounded down, and 0 below 0**: dice come whole, as `sumOf` rounds
+  a half proficiency down. An effect may give such a number; nothing throws.
+- **The slot is a parameter.** The same field holds a slot spell's growth; ENG-20's cast passes
+  the slot. Without one, a spell shows its own dice.
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, pack or character field changes; the published
+`pack.schema.json` does not change.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/spell-dice.test.ts` — `describe('ENG-50 cantrip upgrades')` and
+  `describe("ENG-50 a spell's dice")`: §3 items 1–3, 5, 6.
+- `packages/engine/test/formula.test.ts` — `describe('ENG-50 dice added to a roll formula')`: §3
+  item 4.
+- Control values from: 5e-database `e6edf9a` (Fire Bolt's `damage_at_character_level`,
+  Fireball's `damage_at_slot_level`), the levels of the goldens (SPEC §6.7), made-up spells. Each
+  worked out by hand, never copied from a run.
+
+#### 8. Checked against the source
+
+Sources: 5e-bits/5e-srd-api at `e6edf9a` (`packages/5e-database/src/{2014,2024}/en/`); foundryvtt/
+dnd5e at `7bfb3f1` (SRD 5.1 in `packs/_source/rules/`, SRD 5.2.1 in `packs/_source/content24/` and
+`packs/_source/spells24/`, CC-BY-4.0). Read 2026-10-02.
+
+**`[ПРОВЕРИТЬ]` (ADR 014 item 6): which level a cantrip reads.**
+- SRD 5.2.1 (`content24/chapter-2/character-creation.yml`, Multiclassing, Spellcasting):
+  "Cantrips. If a cantrip of yours increases in power at higher levels, the increase is based on
+  your total character level, not your level in a particular class, unless the spell says
+  otherwise."
+- SRD 5.1 has no such sentence. Its Multiclassing "Spellcasting" (`rules/chapter-6-customization-
+  options.yml`) covers spells known, prepared and slots only. Its spells say "when you reach 5th
+  level" (Fire Bolt: "increases by 1d10 when you reach 5th level (2d10), 11th level (3d10), and
+  17th level (4d10)"), and 5e-database names the table `damage_at_character_level`
+  (`{"1": "1d10", "5": "2d10", "11": "3d10", "17": "4d10"}`).
+- dnd5e: `module/data/actor/character.mjs` `cantripLevel` gives `details.level`, the total;
+  `module/data/item/spell.mjs` `scalingIncrease` gives a cantrip `floor((level + 1) / 6)`: 0 at
+  1–4, 1 at 5–10, 2 at 11–16, 3 at 17–20. Another spell gets its slot level minus its own.
+- Result: the total character level, in both editions. Not an edition difference.
+
+**The levels 5, 11 and 17.** All 10 SRD 5.1 cantrips with a table (5e-database) have the keys 1,
+5, 11, 17. All 15 SRD 5.2.1 Cantrip Upgrade paragraphs name levels 5, 11 and 17.
+
+**A slot.** SRD 5.1 Fireball (`higher_level`): "the damage increases by 1d6 for each slot level
+above 3rd"; its table: 3: `8d6`, 4: `9d6` … 9: `14d6`. SRD 5.2.1 Fireball
+(`spells24/3rd-level/fireball.yml`): "The damage increases by 1d6 for each spell slot level above
+3"; dnd5e's data: 8 dice of 6, scaling `whole`, `number: 1`.
+
+**How much `scaling` holds** (a script over 5e-database `e6edf9a`):
+- SRD 5.1: 38 spells have a damage table by level (10 cantrips, 28 by slot). 35 grow by the same
+  dice once per step, which `scaling` holds: Magic Missile with `1d4 + 1`; Eldritch Blast's table
+  stays `1d10` (it gains beams, not dice), so it has none. 3 do not: Flame Blade (`3d6` at 2, `4d6`
+  at 4) and Spiritual Weapon (`1d8 + MOD` at 2–3, `2d8 + MOD` at 4–5) grow every two slot levels;
+  Flame Strike's die goes to its fire or its radiant damage (`4d6 OR 5d6`).
+- SRD 5.2.1: 11 of the 15 Cantrip Upgrades are "The damage increases by 1dX … (2dX) … (3dX) …
+  (4dX)". 4 are not: Eldritch Blast (beams), Shillelagh ("The damage die changes … (d10) … (d12)
+  … (2d6)"), Spare the Dying (its range), True Strike (extra Radiant damage 1d6, 2d6, 3d6, with
+  none at levels 1–4). 5e-database's 2024 spells give one table entry each (Fireball:
+  `{"3": "8d6"}`), so 2024's slot spells were not counted.
+
+#### 9. Not in this ticket
+
+- A spell's healing (Cure Wounds: 1d8 + the modifier, 1d8 more per slot level above 1st): no field
+  holds it (found by ENG-09). New row ENG-53.
+- A spell's casting stat, which a formula's "modifier" reads: ENG-51.
+- Casting with a slot, and which slots a cast may use: ENG-20.
+- The growth `scaling` cannot hold (§8): phase 3's import.
+- A roll formula's average: ENG-52. Advantage and critical hits: ENG-34.
+- Showing the dice: phase 2.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** No SPEC §6.7 value changes; the new lines read the goldens'
+  levels.
+- **`[ПРОВЕРИТЬ]`.** Which level a cantrip reads is checked in §8, both SRDs and dnd5e.
+- **Measure, never estimate.** Every count in §8 comes from a script over the source files; every
+  dice text in §3 from 5e-database or worked out by hand.
+- **`packages/engine` is pure; the core names no game.** `addDice` reads and writes formula text;
+  it names no spell and no level.
+- **Everything is data.** The dice are the spell's fields; the levels 5, 11, 17 are one named
+  constant of the module, as ENG-16's `CRITICAL_FACE`.
+- **`compute()` is pure.** The step reads `level` only; `spellDice` is tested frozen.
+- **A number with no breakdown entry is a bug.** `cantrip.upgrades` has its step; `spellDice`
+  returns `times` with the dice, and the spell's own fields are the rest.
+- **Manual overrides always win.** Tested on `cantrip.upgrades`.
+- **Each system's rules live in its own module.** Which level and which levels are the module's;
+  the editions agree, so nothing goes to `rulesets/`.
+- **Formulas never run code.** `addDice` writes text and parses it with ENG-07's limits.
+- **Missing is not broken.** A missing number, a scaling with no damage, a formula that fails:
+  warnings, the spell's own dice, never a throw.
+- **A stored-shape change needs a migration.** Nothing stored changes.
+- **Licensing.** Fire Bolt's and Fireball's numbers are SRD 5.1 (CC-BY-4.0); the code and tests
+  hold no rules text.
+
+#### 11. What came out of it
+
+Measured on 2026-10-02, on `main` after ENG-22, ENG-49 and ENG-36 (rebased onto `fcccd77`):
+- `pnpm lint`: `Checked 160 files`, no errors. `pnpm typecheck`: 6 projects, no errors.
+- `pnpm test`: `Test Files 45 passed (45)`, `Tests 534 passed (534)`, 6.9 s. This ticket's 20: 13
+  in `spell-dice.test.ts`, 7 in `formula.test.ts` (514 before, at `fcccd77`; first measured on
+  `7633984`: 481 before, 501 after).
+- `pnpm e2e` not run: no file in `apps/web` changed.
+- The tests catch a wrong rule. Each break below, made alone and undone: a level counted only
+  above 5, 11, 17 (`>`): 2 of 13 fail; the slot not minus the spell's level: 3 fail; the scaling
+  joined to every damage: 1 fails.
+- The values of §3, all true: `cantrip.upgrades` 0, 0, 1, 1 for goldens A, B4, C 2014, C 2024,
+  with the step `level 6 → 1` on golden C; 0, 1, 1, 2, 2, 3, 3 for a fighter of levels 4, 5, 10,
+  11, 16, 17, 20; Fire Bolt 1d10 to 4d10, 2d10 on golden C; Fireball 8d6 to 14d6.
+
+Against §3: as written. Changed while building: `addDice` first wrote ` + ` after any base, which
+changes a `?:` formula's meaning (`a ? b : c + 1d6` reads as `a ? b : (c + 1d6)`); a base whose top
+binds less than `+` now goes in brackets, tested. The purity test copied the spell with
+`structuredClone`, which the module's test settings refuse (ENG-42); it freezes in place.
+
+Against the row: as the row. Its note held three things. ENG-08's: done, `addDice`. ENG-09's, a
+spell's healing: a field of its own and a modifier only ENG-51 gives, so a new row, ENG-53.
+ENG-16's, Shillelagh: its die changes faces, which `scaling` cannot hold (§8); the phase 3 note
+says so now.
+
+Found, not fixed:
+- Growth `scaling` cannot hold (§8): SRD 5.1 Flame Blade and Spiritual Weapon (every two slot
+  levels) and Flame Strike (the caster picks which damage grows); SRD 5.2.1 Eldritch Blast (beams),
+  Shillelagh (a die that changes), Spare the Dying (range) and True Strike (extra damage with none
+  at first). And 5e-database's 2024 spells have no table by slot. Noted for phase 3.
+- A spell's healing: ENG-53.
+
+Nothing for the changelog: no screen and no published file changes.

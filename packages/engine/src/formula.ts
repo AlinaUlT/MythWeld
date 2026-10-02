@@ -567,6 +567,60 @@ export function diceOf(roll: ParsedRoll): DiceNode[] {
   return found;
 }
 
+/** The parts a roll formula adds at its top: both sides of each `+`, the left side of each `-`. */
+function addedParts(node: RollNode): RollNode[] {
+  if (node.kind !== 'binary' || (node.op !== '+' && node.op !== '-')) return [node];
+  return node.op === '+'
+    ? [...addedParts(node.left), ...addedParts(node.right)]
+    : addedParts(node.left);
+}
+
+/** A formula as the left side of `+`: in brackets when its top binds less than `+` does. */
+function beforePlus(text: string, root: RollNode): string {
+  const loose =
+    root.kind === 'choice' ||
+    (root.kind === 'binary' && (BINARY.get(root.op) as number) < (BINARY.get('+') as number));
+  return loose ? `(${text})` : text;
+}
+
+/** A dice term as written, with another count: `1к10` with 3 is `3к10`. */
+function withCount(term: DiceNode, count: number): string {
+  return `${count}${term.text.replace(/^[0-9]*/, '')}`;
+}
+
+/**
+ * ENG-50: the roll formula `base` with `added` added `times` times. A count of dice is digits, not
+ * a formula (ENG-08), so the dice are written out. When `added` is one dice term that keeps every
+ * die, its count is multiplied by `times`, and the dice join the first dice term `base` adds at its
+ * top with the same faces and every die kept (`1d10` and 2 × `1d10` give `3d10`); with no such
+ * term they follow `base` after ` + `. Any other `added` follows `base` `times` times, each in
+ * brackets. `times` counts as a whole number, rounded down, and as 0 below 0; 0 gives `base` as
+ * it is. Never throws: when `base` or `added` does not parse, or the formula made is past the
+ * limits (999 dice in a term, 1000 characters), the result is that error.
+ */
+export function addDice(base: string, added: string, times: number): ParseResult<ParsedRoll> {
+  const own = parseRoll(base);
+  if (!own.ok) return own;
+  const more = parseRoll(added);
+  if (!more.ok) return more;
+  const count = Number.isFinite(times) ? Math.max(Math.floor(times), 0) : 0;
+  if (count === 0) return own;
+  const left = beforePlus(base, own.formula.root);
+  const term = more.formula.root;
+  if (term.kind !== 'dice' || term.keep !== undefined) {
+    // More copies than characters allowed always give a formula past the length limit.
+    const copies = Array.from({ length: Math.min(count, FORMULA_LIMITS.length) }, () => added);
+    return parseRoll([left, ...copies.map((copy) => `(${copy})`)].join(' + '));
+  }
+  const into = addedParts(own.formula.root).find(
+    (part): part is DiceNode =>
+      part.kind === 'dice' && part.faces === term.faces && part.keep === undefined,
+  );
+  if (into === undefined) return parseRoll(`${left} + ${withCount(term, term.count * count)}`);
+  const joined = withCount(into, into.count + term.count * count);
+  return parseRoll(`${base.slice(0, into.at)}${joined}${base.slice(into.at + into.text.length)}`);
+}
+
 // --- The walker ----------------------------------------------------------------------------------
 
 /** A condition's reading of a value: `0`, `false` and `''` are false; anything else is true. */

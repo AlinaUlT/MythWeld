@@ -102,8 +102,9 @@ split off an old row got a new id.
 | ENG-16 | Weapon attacks are computed, weapon mastery included | M | ✅ 2026-10-02 |
 | ENG-49 | A spell or item a grant names that no pack has gives a warning | S | ✅ 2026-10-02 |
 | ENG-52 | A roll formula's average is computed, kept dice included | S | 🔲 |
-| ENG-50 | A spell's dice are computed for the character's level | S | 🔲 |
+| ENG-50 | A spell's dice are computed for the character's level | S | ✅ 2026-10-02 |
 | ENG-51 | A spell a grant gives with its own stat has its casting numbers | S | 🔲 |
+| ENG-53 | A spell's healing is a roll formula of its own | S | 🔲 |
 | ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | S | 🔲 |
 | ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | 🔲 |
 | ENG-46 | Armor worn without training has its edition's penalties | S | 🔲 |
@@ -137,18 +138,16 @@ split off an old row got a new id.
   heavy melee weapon below Strength 13 or a heavy ranged one below Dexterity 13, in 2014 to a Small
   creature (5e-database `heavy`, both editions), an edition difference (ENG-19). ENG-16's
   `equipmentOf(...).weapons` lists the weapons, each attack under `attacks.<key>`.
-- **ENG-50** — re-cut from ENG-16 (ENG-16 §11). ADR 014 item 6: a spell's current dice for the
-  character's level, with a breakdown; which level a cantrip reads is `[ПРОВЕРИТЬ]` in its §8.
-  Found by ENG-09: a spell's healing has no field (Cure Wounds: 1d8 + the modifier, 1d8 more per
-  slot level above 1st); `damage` and `scaling` hold damage only. Found by ENG-08: a count of dice
-  that grows with level is not notation: a term's count is digits, so the dice are written from the
-  computed count. ENG-16 gives a weapon's damage as a computed bonus beside the item's own dice;
-  found by ENG-16, Shillelagh changes a weapon's die (the phase 3 note).
 - **ENG-51** — re-cut from ENG-16 (ENG-16 §11). Found by ENG-15: SPEC §5.4 has two targets for a
   spell attack, `spell.attack.bonus` (ENG-15 adds it to `classes.<key>.spell.attack`) and
   `attack.spell.bonus`, beside `damage.spell.bonus`; this row decides how a spell's attack reads
   the second. A spell a `spell` grant gives with its own `ability` (a feat's, a species') has no
   DC or attack path yet. ENG-16 gives the weapon targets `attack.weapon.<melee|ranged>.bonus`.
+- **ENG-53** — found by ENG-09, made a row by ENG-50 (ENG-50 §9): a spell's healing has no field;
+  `damage` and `scaling` hold damage only. Cure Wounds heals 1d8 + the spellcasting modifier, 1d8
+  more per slot level above 1st; 10 SRD 5.1 spells have 5e-database's `heal_at_slot_level`.
+  ENG-50's `spellDice` joins a `scaling` to the first damage with the core's `addDice`; healing
+  grows the same way. The modifier is the stat a spell is cast with, which ENG-51 gives.
 - **ENG-52** — re-cut from ENG-16 (ENG-16 §11). Found by ENG-08: SPEC §5.6 shows a roll formula
   with its average, and no function gives it; a term that keeps some dice has no simple average
   (`2d20kh1`'s is 13.825). ENG-16's `diceOf` lists a parsed roll's dice terms.
@@ -244,14 +243,22 @@ split off an old row got a new id.
   - Shillelagh (SRD 5.1, SRD 5.2.1) lets a club or a quarterstaff attack and deal damage with the
     spellcasting stat instead of Strength, and makes its die a d8; in 2024 the die grows at levels
     5, 11 and 17 (d10, d12, 2d6). ENG-16's attack stat is the weapon's kind's, or the higher with
-    finesse, and its dice are the item's; a key path for the stat (ENG-43's road) and a computed
-    die (ENG-50's) would hold it.
+    finesse, and its dice are the item's; a key path for the stat (ENG-43's road) would hold the
+    stat. ENG-50's `scaling` adds dice and never changes a die's faces, so the growing die needs
+    its own field.
   - A magic weapon has no kind of its own: dnd5e keeps `type.baseItem`, which its proficiency and
     mastery read. ENG-16 reads a weapon proficiency by key and a `mastery` kind by the item's own
     `key`, so a "Longsword, +1" with a key of its own loses both.
   - A `mastery` choice's filter (`type`, `tag`, `category`) cannot say the barbarian's "Melee
     weapons" nor the paladin's, ranger's and rogue's "with which you have proficiency" (ENG-16
     §8). The import widens the filter, tags the weapons, or lists them.
+- **Phase 3** — found by ENG-50: growth a spell's `scaling` cannot hold (one formula, added to
+  the first damage once per step; ENG-50 §8). SRD 5.1: Flame Blade and Spiritual Weapon grow every
+  two slot levels; Flame Strike's die goes to the fire or the radiant damage, the caster's choice.
+  SRD 5.2.1: Eldritch Blast gains beams, Shillelagh's die changes, Spare the Dying's range grows,
+  True Strike gains extra damage it has none of at first. 5e-database `e6edf9a` gives the 2024
+  spells no table by slot (one entry each), so the import reads 2024's growth from the text or
+  dnd5e's data. The import widens the field (no migration) or maps each.
 - **Phase 3** — found by ENG-13: a half proficiency that rounds up (2014's Remarkable Athlete:
   "half your proficiency bonus (round up)") and half a proficiency on every ability check (2014's
   Jack of All Trades). `skills.<key>.prof` 0.5 rounds down (`checkSteps`), and an ability check

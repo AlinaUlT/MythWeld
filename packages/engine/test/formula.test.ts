@@ -1,4 +1,5 @@
 import {
+  addDice,
   diceOf,
   evaluateCondition,
   evaluateFormula,
@@ -528,5 +529,85 @@ describe('ENG-16 dice terms of a roll', () => {
     expect(termsOf('1d4 + 2к6 + @prof')).toEqual(['1d4', '2к6']);
     expect(termsOf('1d20 >= 10 ? 2d6 : 1d6')).toEqual(['1d20', '2d6', '1d6']);
     expect(termsOf('max(1d6, -1d4) + 2d20kh1')).toEqual(['1d6', '1d4', '2d20kh1']);
+  });
+});
+
+describe('ENG-50 dice added to a roll formula', () => {
+  /** The formula `addDice` writes, or its error's code. */
+  function added(base: string, more: string, times: number): string {
+    const result = addDice(base, more, times);
+    return result.ok ? result.formula.text : `error ${result.error.code}`;
+  }
+
+  it('joins one dice term into the first top term of its faces, keeping its letter', () => {
+    expect(added('1d10', '1d10', 1)).toBe('2d10');
+    expect(added('1d10', '1d10', 3)).toBe('4d10');
+    expect(added('8d6', '1d6', 6)).toBe('14d6');
+    expect(added('d8 + @stats.grit.mod', '1d8', 2)).toBe('3d8 + @stats.grit.mod');
+    expect(added('1к10', '1d10', 2)).toBe('3к10');
+    expect(added('1d4 + 2d6 + 1d6', '2d6', 2)).toBe('1d4 + 6d6 + 1d6');
+    expect(added('5 - 1d4 + 1d6', '1d6', 1)).toBe('5 - 1d4 + 2d6');
+  });
+
+  it('adds the dice after the formula when no top term has their faces, or one keeps some', () => {
+    expect(added('2d4', '1d6', 3)).toBe('2d4 + 3d6');
+    expect(added('2d4', '1к6', 2)).toBe('2d4 + 2к6');
+    expect(added('2d6kh1', '1d6', 1)).toBe('2d6kh1 + 1d6');
+    expect(added('2 * 1d6', '1d6', 1)).toBe('2 * 1d6 + 1d6');
+    expect(added('5 - 1d6', '1d6', 2)).toBe('5 - 1d6 + 2d6');
+    expect(added('-1d6', '1d6', 1)).toBe('-1d6 + 1d6');
+    expect(added('max(1d6, 2)', '1d6', 1)).toBe('max(1d6, 2) + 1d6');
+  });
+
+  it('puts in brackets a formula whose top binds less than `+`', () => {
+    expect(added('@gear.worn ? 1d6 : 1d8', '1d6', 1)).toBe('(@gear.worn ? 1d6 : 1d8) + 1d6');
+    expect(added('1d6 || 2', '1d6', 1)).toBe('(1d6 || 2) + 1d6');
+  });
+
+  it('adds any other formula once per time, each in brackets', () => {
+    expect(added('3d4 + 3', '1d4 + 1', 2)).toBe('3d4 + 3 + (1d4 + 1) + (1d4 + 1)');
+    expect(added('1d20', '2d20kh1', 1)).toBe('1d20 + (2d20kh1)');
+    expect(added('1d8', '@stats.grit.mod', 1)).toBe('1d8 + (@stats.grit.mod)');
+  });
+
+  it('counts times as a whole number from 0: 0 gives the formula as it is', () => {
+    expect(added('1d10', '1d10', 0)).toBe('1d10');
+    expect(added('1d10', '1d10', 1.9)).toBe('2d10');
+    expect(added('1d10', '1d10', -2)).toBe('1d10');
+    expect(added('1d10', '1d10', Number.NaN)).toBe('1d10');
+    expect(added('1d10', '1d10', Number.POSITIVE_INFINITY)).toBe('1d10');
+  });
+
+  it('gives the parsed formula, with the paths it names', () => {
+    const result = addDice('1d8 + @stats.grit.mod', '1d8', 1);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.formula.text).toBe('2d8 + @stats.grit.mod');
+    expect(result.formula.paths).toEqual(['stats.grit.mod']);
+    expect(diceOf(result.formula).map(({ count, faces }) => [count, faces])).toEqual([[2, 8]]);
+  });
+
+  it('gives the error of a formula that does not parse, or of one made past the limits', () => {
+    expect(addDice('1d', '1d6', 1)).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'unexpected', found: 'd', at: 1 }),
+    });
+    expect(addDice('1d6', '1d', 0)).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'unexpected', found: 'd', at: 1 }),
+    });
+    expect(addDice('990d6', '1d6', 10)).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'diceCount', term: '1000d6', found: 1000 }),
+    });
+    // 3 + 200 × " + (1d4 + 1)" (12 characters) = 2403.
+    expect(addDice('1d6', '1d4 + 1', 200)).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'tooLong', length: 2403, limit: 1000 }),
+    });
+    // At most 1000 copies are written: 3 + 1000 × 12 = 12003.
+    expect(addDice('1d6', '1d4 + 1', 1e9)).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'tooLong', length: 12003 }),
+    });
   });
 });

@@ -15,13 +15,14 @@ import { combatSteps } from './combat';
 import type { FifthEditionEntity } from './entity-types';
 import { equipmentOf } from './equipment';
 import { sizeKeys } from './size';
+import { spellDiceSteps } from './spell-dice';
 import { spellcastingSteps } from './spellcasting';
 
 // ENG-13: fifth edition's module (ADR 004 item 1), what the core asks of it: the character's
 // level, the entities its `systemData` names, a stat's defaults, the grants a class taken after
 // the first and a feat taken in place of a grant leave out, and the derived values. ENG-14 to
 // ENG-16 add their steps to `derive`: ENG-14 the combat steps, ENG-15 the spellcasting steps,
-// ENG-16 the attack steps.
+// ENG-16 the attack steps. ENG-50 adds `cantrip.upgrades`.
 // ENG-14: each equipped item is named, with its own paths. ENG-44: as `equipmentOf` counts it.
 // ENG-48 adds the size to `keys`. ENG-49: a `spell` or `item` grant's own ids are looked up.
 
@@ -119,6 +120,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     ...combatSteps(input),
     ...spellcastingSteps(input),
     ...attackSteps(input),
+    ...spellDiceSteps(),
   }),
 
   // Each skill's stat, which an effect may set; the character's size.
