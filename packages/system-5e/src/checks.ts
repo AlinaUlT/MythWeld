@@ -36,18 +36,27 @@ interface Source {
 }
 
 /** A path whose value is 0 until an effect changes it. */
-const zero: DerivedStep = () => ({ value: 0, steps: [] });
+export const zeroStep: DerivedStep = () => ({ value: 0, steps: [] });
 
-/** A part of a total: a path's value, or the proficiency bonus times a proficiency level. */
-type Part = { path: string } | { profLevel: string };
+/**
+ * A part of a total: a path's value, the proficiency bonus times a proficiency level, or a number
+ * a rule of the system gives (ENG-15: the spell save DC's 8).
+ */
+export type TotalPart = { path: string } | { profLevel: string } | { rule: string; value: number };
 
-/** A total: each part a `path` step, the proficiency bonus's naming `prof` (SPEC §6.2's "+2 ×2"). */
-function sumOf(parts: readonly Part[]): DerivedStep {
+/**
+ * A total: each path a `path` step, the proficiency bonus's naming `prof` (SPEC §6.2's "+2 ×2"),
+ * each rule's number a `rule` step.
+ */
+export function sumOf(parts: readonly TotalPart[]): DerivedStep {
   return (read) => {
     const steps = parts.map((part): BreakdownStep => {
       if ('path' in part) {
         const value = read(part.path);
         return { kind: 'path', path: part.path, value, change: value };
+      }
+      if ('rule' in part) {
+        return { kind: 'rule', rule: part.rule, value: part.value, change: part.value };
       }
       const bonus = read(PROF_PATH);
       return {
@@ -129,20 +138,20 @@ export function checkSteps({
         steps: [{ kind: 'rule', rule: 'proficiencyBonus', value: bonus, change: bonus }],
       };
     },
-    [D20_BONUS_PATH]: zero,
-    'saves.all.bonus': zero,
-    'skills.all.bonus': zero,
+    [D20_BONUS_PATH]: zeroStep,
+    'saves.all.bonus': zeroStep,
+    'skills.all.bonus': zeroStep,
   };
 
   for (const { key, hasSave } of stats) {
     const mod = { path: `abilities.${key}.mod` };
     const check = `checks.${key}`;
-    steps[`${check}.bonus`] = zero;
+    steps[`${check}.bonus`] = zeroStep;
     steps[`${check}.total`] = sumOf([mod, { path: `${check}.bonus` }, { path: D20_BONUS_PATH }]);
     if (!hasSave) continue;
     const save = `abilities.${key}.save`;
     steps[`${save}Prof`] = levelOf([...classSaves(key), ...granted('save', key)]);
-    steps[`${save}Bonus`] = zero;
+    steps[`${save}Bonus`] = zeroStep;
     steps[save] = sumOf([
       mod,
       { profLevel: `${save}Prof` },
@@ -156,7 +165,7 @@ export function checkSteps({
     if (skill.type !== 'skill') continue;
     const path = `skills.${key}`;
     steps[`${path}.prof`] = levelOf(granted('skill', key));
-    steps[`${path}.bonus`] = zero;
+    steps[`${path}.bonus`] = zeroStep;
     const own = skill.totalFormula;
     steps[`${path}.total`] =
       own === undefined

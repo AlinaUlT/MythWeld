@@ -6966,3 +6966,388 @@ Found, not fixed:
   gives such a speed yet; phase 3's mechanics meet it first.
 
 Nothing for the changelog.
+
+---
+
+### ENG-15 Spellcasting numbers
+
+**Hat:** Spellcasting numbers are computed, multiclass slots included
+**Depends on:** ENG-13 (the module, `prof`, `d20.all.bonus`, the class paths), ENG-28 (`derive`),
+ENG-17 (effects on a path), ENG-32 (`SpellcastingDef`, the `spell` grant), ENG-09 and ENG-10 (the
+golden fixtures)
+**Size:** M
+**Screen:** No
+**SPEC:** §6.1 step 5 (the spell save DC and attack bonus; slots: one class by its own table,
+several by the multiclass table with the ruleset's rounding); §5.3 (`SpellcastingDef`,
+`SubclassDef.spellcasting`); §5.4's targets `spell.dc.bonus`, `spell.attack.bonus`; §5.8
+(`slotsSpent`, `pactSlotsSpent`); §6.3's rows "Подготовка заклинаний" and "Мультикласс: вклад
+паладина и следопыта" (`[ПРОВЕРИТЬ]`, §8); §6.7 golden A's spell lines and golden C; ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/spellcasting.ts` — new: the multiclass table, and the
+spellcasting steps: each casting class's save DC, attack bonus and spell counts, the caster level,
+the slots, the pact slots, and the two bonus targets.
+- `packages/system-5e/src/rulesets/edition-rules.ts` — new: `EditionRules`, what differs between
+  the editions (SPEC §6.3). This ticket gives it one field; ENG-19 adds the rest.
+- `packages/system-5e/src/rulesets/2014.ts`, `rulesets/2024.ts` — new: each edition's rules.
+- `packages/system-5e/src/rulesets/index.ts` — new: the rules of a character's edition.
+- `packages/system-5e/src/classes.ts` — new: `classesOf`, moved out of `module.ts`, now with each
+  class's subclass.
+- `packages/system-5e/src/module.ts` — changes: `derive` adds the spellcasting steps.
+- `packages/system-5e/src/checks.ts` — changes: `sumOf` is exported and takes a rule's number as
+  a part; the zero step is exported as `zeroStep`.
+- `packages/system-5e/src/index.ts` — changes: exports the new files.
+- `packages/engine/src/stats.ts` — changes: an `entity` step may carry the `formula` its field
+  holds.
+- `packages/system-5e/test/spellcasting.test.ts` — new: the steps on the goldens and on made-up
+  variants of them.
+- `packages/system-5e/test/golden/golden-values.test.ts` — changes: golden A's spell lines and
+  golden C.
+- `docs/tickets/BACKLOG.md` — the notes of ENG-16 and ENG-19 (§4).
+
+#### 2. What is missing now
+
+Measured on `main` at `36f1450`:
+- `grep -rln "spellcasting\|slotsTable\|preparedCount" packages/system-5e/src packages/engine/src`
+  finds only `entity-types.ts`, the schema: no code reads a class's spellcasting.
+- `grep -rn "spell.dc\|spell.attack" packages --include=*.ts` finds nothing: SPEC §5.4's two
+  targets are no path. An effect on them warns `noTarget`.
+- `ls packages/system-5e/src/rulesets` fails: no such folder. The editions share every rule the
+  module computes so far (ENG-13 §10).
+- Golden A has no path for its save DC, attack bonus, prepared count, cantrips or slots; golden C
+  none for its caster level or slots.
+- The note under the backlog (found by ENG-09): a class has no level it starts casting at. The
+  2014 paladin's slot row at level 1 is empty, but its prepared count, `max(1, …)`, gives 1.
+- `pnpm test`: `Test Files 38 passed (38)`, `Tests 373 passed (373)`.
+
+#### 3. What it should look like when done
+
+1. **A class casts** when it has `spellcasting`, its own or else its subclass's (SPEC §5.3: a
+   subclass may cast, as a homebrew third caster does). It casts **at its level** when the row of
+   its `slotsTable` at that level has a slot, or its `cantripsKnown` there is above 0. With neither
+   column, it casts from level 1. So the 2014 paladin casts from level 2, the 2024 one from level
+   1, as their fixtures' tables say (§8). A class that does not cast at its level gives no
+   spellcasting path.
+2. **Each casting class** gives, under its class's key (a subclass's spellcasting too):
+   - `classes.<key>.spell.dc` = 8 + its stat's modifier + `prof` + `spell.dc.bonus`;
+   - `classes.<key>.spell.attack` = its stat's modifier + `prof` + `spell.attack.bonus` +
+     `d20.all.bonus` (a spell attack is a d20 test, §8);
+   - `classes.<key>.spell.prepared`: its `preparedCount` at its level, a formula's value or the
+     column's number;
+   - `classes.<key>.spell.cantrips`: its `cantripsKnown` at its level;
+   - `classes.<key>.spell.known`: its `spellsKnown` at its level.
+   A count is given only when the class has its field.
+3. **The bonus targets** `spell.dc.bonus` and `spell.attack.bonus` are 0 for every character,
+   targets for effects (SPEC §5.4).
+4. **The caster level**, `spell.casterLevel`, when a class casts by slots (`full`, `half`,
+   `third`): each such class's share of its levels: all of a full caster's; half a half caster's,
+   rounded down in 2014 and up in 2024; a third of a third caster's, rounded down in both (§8).
+   A class alone in casting by slots counts its levels divided, rounded up, once its share is
+   above 0 (dnd5e, §8): with it, the multiclass table gives the SRD paladin's own table at every
+   level, in both editions. The 2014/2024 rounding is in the edition files, `rulesets/2014.ts` and
+   `rulesets/2024.ts`, and nowhere else.
+5. **The slots**, `spell.slots.level1` to `spell.slots.level9`, when a class casts by slots:
+   - one such class: its own `slotsTable` row at its level; a class without a `slotsTable` takes
+     the multiclass table's row at `spell.casterLevel`;
+   - several: the multiclass table's row at `spell.casterLevel` (SRD 5.1 and SRD 5.2.1 give one
+     table, measured equal, §8).
+   A level with no slot is 0.
+6. **The pact slots**, `spell.pact.level` and `spell.pact.slots`, when a class casts by `pact`:
+   its row at its level holds its slots at one spell level; the highest level with a slot is the
+   pact level, its count the slots. Pact slots never join the caster level (§8). With two pact
+   classes, the first taken gives them (§4).
+7. **Breakdowns.** A total names each part as a `path` step; the DC's 8 is a `rule` step,
+   `spellDcBase`. A count or a slot from a class's own table is an `entity` step naming the class
+   or subclass whose `spellcasting` it is; a count from a formula is that step with its `formula`.
+   A share of the caster level is a `path` step on `classes.<key>.level` (its `value` the level,
+   its `change` the share). A slot from the multiclass table is a `path` step on
+   `spell.casterLevel` (its `value` the caster level, its `change` the slots). A slot level, a pact
+   level or a pact slot count of 0 has no step; a spell count always has its one step. A prepared
+   count's formula that does not parse gives 0 and a `stepFormula` warning.
+8. **Goldens** (SPEC §6.7):
+
+   | Golden | Line | Expected |
+   |---|---|---|
+   | A | spell save DC / attack bonus | 13 / +5 |
+   | A | spells | prepared 4; Bless and Cure Wounds always prepared; 2 slots of level 1; 3 cantrips |
+   | C, 2014 | caster level; slots | 3 + ⌊3/2⌋ = 4; level 1: 4, level 2: 3 |
+   | C, 2024 | caster level; slots | 3 + ⌈3/2⌉ = 5; level 1: 4, level 2: 3, level 3: 2 |
+
+   Golden A's always-prepared spells are the Life domain's `domain-spells-1` grant, reached with
+   `alwaysPrepared` (ENG-11 gathers it); the prepared count does not include them (§8). Every
+   golden's breakdowns add up to their values, and none of them gets a warning.
+9. **Made-up variants, worked out by hand** (§7): golden C's per-class numbers in both editions; a
+   2014 and a 2024 paladin at level 1 beside a wizard; a class without a `slotsTable`, alone, at
+   levels 1 and 5, in both editions; two half casters, each rounded on its own; a class that
+   starts casting with its cantrips; a subclass that casts; a pact caster alone and beside a
+   wizard; effects on the bonus targets, a slot and `d20.all.bonus`; a class casting by a stat the
+   character lacks; a prepared formula that does not parse; golden B, which casts nothing.
+10. `compute()` stays pure: frozen inputs give equal results.
+11. The quality gate is green.
+
+#### 4. How to do it
+
+1. `stats.ts`: the `entity` step's optional `formula`.
+2. `rulesets/`: `EditionRules` with `halfCasterRounding: 'down' | 'up'`; `RULES_2014`,
+   `RULES_2024`; `rulesOf(character)`, a lookup by the character's edition.
+3. `classes.ts`: `classesOf(character, gathered)` from `module.ts`, each entry with the gathered
+   subclass its `systemData` names.
+4. `checks.ts`: export `sumOf`; a part may be `{ rule, value }`.
+5. `spellcasting.ts`: `MULTICLASS_SLOTS`, `SPELL_DC_BASE`, `spellcastingSteps(input)`.
+6. `module.ts`: `derive` joins the class, check and spellcasting steps.
+7. Tests (§7). Then the backlog notes: ENG-19's says the multiclass rounding and golden C closed
+   in ENG-15; ENG-16's names SPEC §5.4's second spell target, `attack.spell.bonus` (below).
+
+Technical choices (ADR 002):
+- **The 2014/2024 rounding is a field of the edition files** (`halfCasterRounding`), read through
+  `rulesOf(character)`, a lookup by edition: no `if (ruleset === …)`. This ticket makes the files
+  with the one difference it needs; ENG-19's row, "the ruleset files hold every 2014/2024 rules
+  difference", adds the others. The third caster's rounding is not a difference (§8), so it stays
+  in `spellcasting.ts`.
+- **When a class starts casting is read from its tables**, not from a new field: the first level
+  whose slot row has a slot or whose cantrips are above 0. 5e-database's `spellcasting.level` (2
+  for the 2014 paladin and ranger, 1 for every other caster, §8) agrees with the tables of every
+  SRD class; a new field would say the same twice and change the stored shape.
+- **One casting class uses its own table** (SPEC §6.1 step 5, and both SRDs: "If you multiclass
+  but have the Spellcasting feature from only one class, follow the rules for that class"). A
+  class without a `slotsTable` takes the multiclass row at `spell.casterLevel`. Classes that do
+  not cast at their level do not count, so a 2014 paladin 1 beside a wizard leaves the wizard
+  alone.
+- **A lone class's caster level is dnd5e's**: its levels divided, rounded up, once its share is
+  above 0 (`computeProgression`, §8). A homebrew half or third caster without a table then gets
+  the slots the SRD's own tables give (a 2014 half caster 5: row 3, 4 and 2 slots, as the 2014
+  paladin 5; not row 2's 3), and the caster level a lone class shows agrees with its slots. The
+  test checks it against both fixture paladins' tables at all 20 levels.
+- **Each class's share is rounded on its own**, then the shares add up, as dnd5e's
+  `computeProgression` does (§8). The SRDs' "half your levels … in the Paladin and Ranger classes"
+  does not say; no golden has two half casters.
+- **The multiclass table is one constant**: both SRDs print the same table, equal to the full
+  caster table (§8). A table that differed by edition would move into the edition files.
+- **Pact magic is its own pool**: SRD 5.1 and SRD 5.2.1 leave the warlock out of the caster level
+  and let pact slots and spellcasting slots cast each other's spells (§8). `pactSlotsSpent` is one
+  number (ENG-33), so the pool is one: the first pact class taken gives it. No SRD has two pact
+  classes.
+- **Per-class numbers sit under `classes.<key>.spell`**, beside ENG-13's `classes.<key>.level`
+  and `.table`: a multiclass caster has a DC and attack per class ("you use the spellcasting
+  ability of that class", §8). The character's numbers sit under `spell.`, beside SPEC §5.4's
+  `spell.dc.bonus`. A path's steps start with a letter (`computedPathSchema`), so the slot levels
+  are `level1` to `level9`; `slotsSpent`'s key `"1"` is `spell.slots.level1`.
+- **SPEC §5.4 has two targets for a spell attack**: `spell.attack.bonus` (with `spell.dc.bonus`)
+  and `attack.spell.bonus` (with the weapon attacks). This ticket's attack bonus adds the first;
+  ENG-16, which computes attacks, decides how a spell's attack reads the second. Noted there.
+- **Spell attack reads `d20.all.bonus`; the DC does not**: an attack roll is a d20 test, a DC is
+  not a roll (§8; dnd5e adds the roll reduction to the attack, not the DC).
+- **The bonus targets are given to every character**, as ENG-13's `saves.all.bonus` is; the other
+  paths only to a character with a class that casts, so a fighter's sheet has none.
+- **A prepared count's formula is read with `read`**, as ENG-13's `totalFormula`: it is a field of
+  the class, not a grant's part. Its warnings become `stepFormula`.
+- **What a `spell` grant gives is already gathered**: ENG-11 reaches the grant with its `fixed`
+  and `chosen` spells and its `alwaysPrepared` in `Computed.grants`. No list is built twice.
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, no `schemaVersion`, no Dexie table changes. `spellcasting` was
+stored already; it is now read.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/spellcasting.test.ts` — `describe('ENG-15 spellcasting')`: §3 items
+  1–7, 9, 10: the multiclass table, the editions' rounding, golden A's and golden C's paths and
+  breakdowns, the variants, purity.
+- `packages/system-5e/test/golden/golden-values.test.ts` — `describe('ENG-15 goldens:
+  spellcasting')`: §3 item 8; the "no warning, breakdowns add up" check covers the new paths.
+- Control numbers from: SPEC §6.7 (item 8); the multiclass tables of both SRDs (§8); the variants
+  worked out by hand from their data, never copied from a run.
+
+#### 8. Checked against the source
+
+Sources: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`,
+`packages/5e-database/src/{2014,2024}/en/`, read with `jq`; foundryvtt/dnd5e at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`: `module/` and `packs/_source/{rules,content24}`, which
+quote SRD 5.1 and SRD 5.2.1 (CC-BY-4.0). The same commits as ENG-13 §8.
+
+**Save DC and attack bonus.** SRD 5.1, each caster's Spellcasting Ability (`5e-SRD-Classes.json`,
+`spellcasting.info`; the cleric's): "Spell save DC = 8 + your proficiency bonus + your Wisdom
+modifier. Spell attack modifier = your proficiency bonus + your Wisdom modifier", the paladin's
+with Charisma, the wizard's with Intelligence. SRD 5.2.1 (`content24/chapter-7/spells.yml`): "Spell
+save DC = 8 + your spellcasting ability modifier + your Proficiency Bonus"; "Spell attack modifier
+= your spellcasting ability + your Proficiency Bonus". Multiclassing, both editions: "Each spell
+you … prepare is associated with one of your classes, and you use the spellcasting ability of that
+class when you cast the spell." dnd5e (`data/actor/templates/common.mjs`): `abl.dc = 8 + abl.mod +
+prof + dcBonus` (`bonuses.spell.dc`); `abl.attack.value = abl.mod + prof + abl.attack.bonus +
+rollReduction`. SRD 5.2.1 (rules glossary, D20 Test): "D20 Tests encompass … ability checks,
+attack rolls, and saving throws"; a DC is not one. So the attack reads `d20.all.bonus`, the DC
+does not.
+
+**SPEC §6.3, "Подготовка заклинаний" (`[ПРОВЕРИТЬ]`).** 5e-database's level-1 rows: 2014, the
+bard, ranger, sorcerer and warlock have `spells_known`; the cleric, druid, paladin and wizard
+prepare by a formula (`spellcasting.info`: the cleric "equal to your Wisdom modifier + your cleric
+level (minimum of one spell)", the wizard "your Intelligence modifier + your wizard level (minimum
+of one spell)", the paladin "your Charisma modifier + half your paladin level, rounded down
+(minimum of one spell)"). 2024: every caster has `prepared_spells`, a column. The SPEC row agrees;
+both are data (`preparation`, `preparedCount`, `spellsKnown`), so no edition code reads them.
+
+**When a class starts casting.** 5e-database `spellcasting.level`: 2014, the paladin and the
+ranger 2, every other caster 1; 2024, every caster 1. 2014 `paladin-1`: every `spell_slots_level_N`
+is 0; `paladin-3`: `spell_slots_level_1` 3. 2024 `paladin-1`: 2 slots of level 1, 0 cantrips,
+`prepared_spells` 2. The fixtures hold these rows (ENG-09, ENG-10).
+
+**Always prepared.** SRD 5.1 (`5e-SRD-Features.json`, `domain-spells-1`): "Once you gain a domain
+spell, you always have it prepared, and it doesn't count against the number of spells you can
+prepare each day." `5e-SRD-Subclasses.json`, `life`: `bless` and `cure-wounds` at `cleric-1`. SRD
+5.2.1 (the cleric's Spellcasting, `5e-SRD-Classes.json`): "If another Cleric feature gives you
+spells that you always have prepared, those spells don't count against the number of spells you
+can prepare with this feature".
+
+**SPEC §6.3, "Мультикласс: вклад паладина и следопыта" (`[ПРОВЕРИТЬ]`).** SRD 5.1
+(`rules/chapter-6-customization-options.yml`): "Once you have the Spellcasting feature from more
+than one class, use the rules below. If you multiclass but have the Spellcasting feature from only
+one class, you follow the rules as described in that class"; "adding together all your levels in
+the bard, cleric, druid, sorcerer, and wizard classes, and half your levels (rounded down) in the
+paladin and ranger classes. Use this total to determine your spell slots by consulting the
+Multiclass Spellcaster table." SRD 5.2.1 (`content24/chapter-2/character-creation.yml`): the same
+first two sentences; "All your levels in the Bard, Cleric, Druid, Sorcerer, and Wizard classes /
+Half your levels (round up) in the Paladin and Ranger classes". The SPEC row agrees: down in 2014,
+up in 2024. dnd5e (`config.mjs`): `half: { divisor: 2, roundUp: true }`; `settings.mjs`,
+`applyLegacyRules`: "Set half-casters to round down." `data/spellcasting/spellcasting-model.mjs`,
+`computeProgression`: each class's levels are divided and rounded on their own, then added; a
+lone class with a divisor above 1 takes `Math.ceil(levels / divisor)` once it has any (`count`,
+`documents/actor/actor.mjs` `_prepareSpellcasting`: the classes with that kind of spellcasting).
+Measured with this ticket's `casterShare`: a lone half caster's share at levels 1 to 20, read in
+the multiclass table, gives the 2014 paladin's table (no slot at level 1) and the 2024 paladin's
+table, row for row.
+
+**Third casters.** Neither SRD has one: no subclass in `5e-SRD-Subclasses.json` (2014 or 2024)
+has `spellcasting`, and neither multiclass rule names one. dnd5e: `third: { divisor: 3 }`, no
+`roundUp`, and `applyLegacyRules` changes only `half`; so a third rounds down in both editions.
+
+**The multiclass table.** Both SRDs' "Multiclass Spellcaster: Spell Slots per Spell Level", read
+from the two files above: 20 rows each, measured equal to each other, to dnd5e's
+`SPELL_SLOT_TABLE`, and to the fixtures' cleric and wizard tables (`FULL_CASTER_SLOTS`,
+`WIZARD_SLOTS`). Row 4: 4, 3; row 5: 4, 3, 2.
+
+**Pact magic.** 5e-database 2014 warlock rows: one slot level per row (`warlock-1` 1 of level 1,
+`warlock-3` 2 of level 2, `warlock-5` 2 of level 3, `warlock-11` 3 of level 5, `warlock-17` 4 of
+level 5). Neither SRD's caster level counts the warlock; both: "you can use the spell slots you
+gain from Pact Magic to cast spells you … have prepared from classes with the Spellcasting
+feature, and you can use the spell slots you gain from the Spellcasting feature to cast Warlock
+spells". dnd5e: `pactCastingProgression`, one level per row, a pool of its own.
+
+**The goldens' spell lines agree with these** (worked out before the tests were written): A:
+WIS 16 → +3, level 1 → +2; DC 8 + 3 + 2 = 13; attack 3 + 2 = 5; prepared max(1, 3 + 1) = 4;
+cleric row 1: 2 slots of level 1, 3 cantrips; Bless and Cure Wounds from the Life domain at
+cleric 1. C: wizard 3 is a full caster's 3; paladin 3 gives ⌊1.5⌋ = 1 in 2014, ⌈1.5⌉ = 2 in 2024;
+the multiclass table's row 4 is 4, 3 and row 5 is 4, 3, 2. No golden value looks wrong; nothing
+stops.
+
+#### 9. Not in this ticket
+
+- A spell's dice, its attack as an attack, and `attack.spell.bonus`: ENG-16.
+- Spending a slot, casting through a grant's `uses`, concentration: ENG-20. Slots back on a rest:
+  ENG-21.
+- The spells a person picks (`systemData.spells`): the sheet (phase 2) and the wizard (phase 4).
+  Whether more are prepared than the count allows is not checked here (§11).
+- The DC of a spell a feat or species gives with its own `ability`: §11.
+- A wizard's spellbook size (six at level 1, two more a level): it is no column of either SRD's
+  table; phase 4's level-up wizard.
+- Every other 2014/2024 difference in the edition files: ENG-19.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** Each expected value is SPEC §6.7's; §8 shows each agrees
+  with the sources.
+- **`packages/engine` is pure; the core names no game.** The core gains one optional field on a
+  step kind, naming no game.
+- **Each system's rules live in its own module; no `if (ruleset === …)`.** Every rule is in
+  `packages/system-5e`; the one rounding that differs is a field of `rulesets/2014.ts` and
+  `rulesets/2024.ts`, read by a lookup.
+- **Everything is data.** No class, stat or spell is named in code: a class casts by its own
+  `spellcasting`, with any stat key; a pack's `san` caster works as a `wis` one.
+- **`compute()` is pure.** The steps read their arguments only; the purity test runs it frozen.
+- **A number with no breakdown entry is a bug.** Every path has its steps, and they add up.
+- **Manual overrides always win.** The new paths are finished by ENG-17's phases.
+- **Formulas never run code.** `preparedCount` goes through ENG-07's evaluator.
+- **Missing is not broken.** A stat the character lacks reads 0 with `missingPath`; a formula that
+  does not parse gives 0 with `stepFormula`; never a throw.
+- **Licensing.** Variants are made up (`character:`); §8 quotes the SRDs (CC-BY-4.0) only.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- Measured on `main` with ENG-43 and ENG-14 in (`d2d44ee`), which reached `main` while this
+  ticket was built; the ticket was rebased onto them (below).
+- `spellcasting.test.ts` alone: `Tests 15 passed (15)`, 797 ms. `golden-values.test.ts` alone:
+  `Tests 12 passed (12)`, 905 ms.
+- Lint: `Checked 149 files`, no fixes, no error (142 before; 7 new files).
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done`.
+- Test: `Test Files 40 passed (40)`, `Tests 424 passed (424)`, 6.10 s (before, at `d2d44ee`: 39
+  files, 407 tests).
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- Golden A has 147 paths, 16 of them spellcasting: the two bonus targets, the cleric's `dc`,
+  `attack`, `prepared`, `cantrips`, `spell.casterLevel`, and the 9 slot levels. Golden B has 2
+  (the bonus targets). Golden C has 19 in each edition. No golden gets a warning.
+- Every line of §3 item 8 is met, and each golden's breakdowns add up to their values.
+- The tests bite. 36 breaks, each on its own and restored, the `system-5e` tests run (10 files,
+  113 tests). In `spellcasting.ts`: pact joins the caster level, 1 fails; the rounding map
+  swapped, 7; a third rounded up, 1; every class casts, 3; a class with no column never casts, 3; cantrips
+  ignored, 1; a lone class's own table ignored, 3; the first class's table for several, 3; the
+  subclass ignored, 1; the subclass first, 3; the DC's base 7, 9; the DC reads `d20.all.bonus`, 2;
+  the DC without its bonus, 2; without `prof`, 9; the attack without `d20.all.bonus`, 2; without
+  its bonus, 2; no prepared count, 5; no known count, 1; a column read one level off, 3; a
+  formula's warnings dropped, 1; its text dropped, 1; the multiclass row one off, 6; a class's own
+  row one off, 5; the pact level one off, 1; the pact slots read one off, 1; no pact, 1; no bonus
+  targets, 20; a slot of 0 given a step, 1 (own table) and 1 (multiclass); the share taken as the
+  level, 5; the lone rule ignored, 2; the lone rule without its "share above 0", 3. In
+  `rulesets/`: 2014 rounding up, 6; 2024 rounding down, 6; `rulesOf` always 2014, 5. In
+  `classes.ts`: no subclass found, 1.
+
+Differences from §3 and §4:
+- The lone-caster rule came after the first green run. The first version gave a lone class without
+  a `slotsTable` the multiclass row at its plain share: a 2014 half caster 5 got row 2, 3 slots,
+  where the 2014 paladin 5's own table has 4 and 2. dnd5e's lone count (§8) gives the SRD tables;
+  §3 item 4, §4 and §8 were rewritten, and a test checks both fixture paladins at 20 levels.
+- §3 item 7's "a 0 has no step" was narrowed to slot levels and pact numbers: a spell count keeps
+  its step, so a prepared count of 0 from a formula still shows the formula.
+- A class with neither column casts from level 1 even when its share is 0: a 2014 homebrew half
+  caster at level 1 has its DC and attack and no slot. The 2014 paladin, whose table says when it
+  starts, has no spellcasting path at level 1.
+- ENG-13's test listing golden C's `classes.` paths now leaves out the `.spell.` paths this ticket
+  adds. No expected value of it changed.
+- `checks.ts`: `sumOf` and the zero step (`zeroStep`) are exported for the spellcasting steps;
+  ENG-13's private `Part` is exported as `TotalPart`. `classesOf` moved to `classes.ts`.
+- ENG-43 and ENG-14 reached `main` while this ticket was built. The rebase kept both: `derive`
+  joins the class, check, combat and spellcasting steps, and `keys` stays ENG-43's; ENG-15's
+  golden lines sit in their own `describe`, after ENG-14's. ENG-14 had taken the ids ENG-44 to
+  ENG-48, so the row this ticket adds is ENG-49. No expected value changed; the gate and the 36
+  breaks were run again on the result.
+
+Against the row and its note:
+- The note (found by ENG-09): a class starts casting at the first level its tables give a slot or
+  a cantrip (§3 item 1), so the 2014 paladin 1 has no prepared count and its `max(1, …)` is never
+  shown; beside a wizard it adds nothing, and the wizard reads its own table.
+- Golden A's spell line and golden C's two columns are on in `golden-values.test.ts`. Golden C is
+  whole: its proficiency bonus was ENG-13's.
+- The multiclass rounding sits in one place, `rulesets/2014.ts` and `rulesets/2024.ts`; ENG-19's
+  note says so.
+
+Found, not fixed:
+- A `spell` grant's `fixed` spell that no pack has gives no warning. Measured on golden A with a
+  made-up feat: `srd-2014:spell/nothing` in `fixed`, no warning; `srd-2014:spell/missing` chosen,
+  `missing` twice (as chosen, then among the options) and `fewOptions`. Gathering looks up only an
+  `entity` grant's `fixed` ids, so an `item` grant's are not looked up either. New row ENG-49.
+- Spells the person prepares (`systemData.spells`) above `classes.<key>.spell.prepared` give no
+  warning. Noted for phase 2's Spells tab, where the person prepares them.
+- A spell a feat or a species gives with its own `ability` (`spell` grant) has no DC or attack
+  path. Noted on ENG-16, with SPEC §5.4's second target `attack.spell.bonus`.
+- Two pact classes: the first taken gives the pool. Neither SRD has two, and neither says what
+  they give; not a row.
+
+Nothing for the changelog.

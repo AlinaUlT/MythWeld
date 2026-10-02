@@ -268,8 +268,11 @@ describe("ENG-13 fifth edition's module", () => {
         change: 4,
       },
     ]);
+    // A class's level and table; its spellcasting paths are ENG-15's (`spellcasting.test.ts`).
     const c = computed(goldenC2014);
-    const classPaths = Object.keys(c.values).filter((path) => path.startsWith('classes.'));
+    const classPaths = Object.keys(c.values).filter(
+      (path) => path.startsWith('classes.') && !path.includes('.spell.'),
+    );
     expect(classPaths).toEqual(['classes.wizard.level', 'classes.paladin.level']);
 
     // The scribe as a first class: a number column and a text one; its own saves, INT and CHA.

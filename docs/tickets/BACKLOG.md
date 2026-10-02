@@ -98,8 +98,9 @@ split off an old row got a new id.
 | ENG-45 | Heavy armor's Strength requirement slows its wearer | XS | 🔲 |
 | ENG-47 | The person picks which base AC calculation counts | S | 🔲 |
 | ENG-48 | The character's size comes from its species | XS | 🔲 |
-| ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | 🔲 |
+| ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | ✅ 2026-10-02 |
 | ENG-16 | Attacks are computed, weapon mastery included | S | 🔲 |
+| ENG-49 | A spell or item a grant names that no pack has gives a warning | S | 🔲 |
 | ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | S | 🔲 |
 | ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | 🔲 |
 | ENG-46 | Armor worn without training has its edition's penalties | S | 🔲 |
@@ -116,7 +117,7 @@ split off an old row got a new id.
 - **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
   recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
   `regainResource` gives uses back, never below none spent.
-- **ENG-15, ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true, in
+- **ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true, in
   `test/golden/golden-values.test.ts` (ENG-13). The full goldens A–D are green by ENG-19. Each
   removes its stand-ins from `STAND_INS` (`test/golden/checks.ts`); a stand-in for a path the
   module gives fails the tests.
@@ -151,10 +152,6 @@ split off an old row got a new id.
 - **ENG-48** — found by ENG-33, re-cut from ENG-14: the character's size is `species.size`, or the
   species' one size; a species with several and none chosen is pending. A size is a text, and
   ENG-28's derived values are numbers.
-- **ENG-15** — found by ENG-09: a spellcasting class has no level it starts at. In 2014 the
-  paladin and the ranger cast from level 2, in 2024 from level 1 (5e-database
-  `spellcasting.level`). `srd-2014:class/paladin`'s slot row at level 1 is empty, but its prepared
-  count, `max(1, …)` as the SRD writes it, gives 1 at paladin level 1.
 - **ENG-16** — ADR 014 item 6: a spell's current dice for the character's level, with a breakdown.
   Found by ENG-09: a spell's healing has no field (Cure Wounds: 1d8 + the modifier, 1d8 more per
   slot level above 1st); `damage` and `scaling` hold damage only. Weapon proficiency keys are
@@ -165,18 +162,30 @@ split off an old row got a new id.
   place: no grant kind holds it (ENG-32's proficiency categories have no mastery), and the person
   may change one kind after a long rest. The count is the fighter's table column `weaponMastery`
   (golden B4: 4). Improved Critical is `crit.range` `min 19`, from a d20's 20 (SPEC §6.5).
+  Found by ENG-15: SPEC §5.4 has two targets for a spell attack, `spell.attack.bonus` (ENG-15 adds
+  it to `classes.<key>.spell.attack`) and `attack.spell.bonus`; this ticket decides how a spell's
+  attack reads the second. A spell a `spell` grant gives with its own `ability` (a feat's, a
+  species') has no DC or attack path yet.
+- **ENG-49** — found by ENG-15: gathering looks up an `entity` grant's `fixed` ids and every
+  grant's chosen ones, so a `spell` grant's `fixed` spell or an `item` grant's `fixed` item that
+  no pack has gives no warning (measured: `srd-2014:spell/nothing`, ENG-15 §11). The core does not
+  know which of a module's grant kinds name entities; the module says so, as ENG-13's `grantsOf`
+  does for grants. A chosen one that is missing warns `missing` twice (as chosen, then among the
+  options); this row gives one warning per id.
 - **ENG-20** — ADR 014 item 7: casting with "use a slot: no". Found by ENG-32: a `spell`
   grant's `uses` have no key of their own; the cast action keeps their spent count, by the
   grant's part id or a key it gives them. Found by ENG-33: the trackers it changes are
   `systemData.state`; the schema refuses a death save count above 3 and inspiration above
   `houseRules.inspirationMax`, so the actions stop there.
-- **ENG-19** — ability increase source, subclass level, multiclass rounding, exhaustion, rests,
-  inspiration (SPEC §6.3 table). Golden C and golden D close here. ADR 014 item 8: inspiration's
-  SRD text is shown to the owner next to her default of 3. Found by ENG-33: the house rules'
-  defaults (`houseRulesSchema`, SPEC §8.4 "by the SRD") are each ruleset's; a new character is
-  written with them. The 2024 rules text: 5e-database at `e6edf9a` has no 2024 rules file, and
-  this environment's network refuses the SRD 5.2.1 PDF's host (ENG-33 §8). Found by ENG-13:
-  dnd5e at `7bfb3f1` quotes SRD 5.2.1's rules chapters and glossary in `packs/_source/content24/`,
+- **ENG-19** — ability increase source, subclass level, exhaustion, rests, inspiration (SPEC §6.3
+  table). ENG-15 made the edition files, `rulesets/2014.ts` and `rulesets/2024.ts`
+  (`EditionRules`, read through `rulesOf`), with the multiclass half-caster rounding, and closed
+  golden C; this row adds the other differences there. Golden D closes here. ADR 014 item 8:
+  inspiration's SRD text is shown to the owner next to her default of 3. Found by ENG-33: the
+  house rules' defaults (`houseRulesSchema`, SPEC §8.4 "by the SRD") are each ruleset's; a new
+  character is written with them. The 2024 rules text: 5e-database at `e6edf9a` has no 2024 rules
+  file, and this environment's network refuses the SRD 5.2.1 PDF's host (ENG-33 §8). Found by
+  ENG-13: dnd5e at `7bfb3f1` quotes SRD 5.2.1's rules chapters and glossary in `packs/_source/content24/`,
   read there by ENG-10 and ENG-13 §8. `statDefaults` is one value for every character
   (`SystemModule.statDefaults`), so the house rule `abilityMax` is read by no code.
 - **ENG-46** — found by ENG-14: armor worn without its training gives disadvantage on Strength

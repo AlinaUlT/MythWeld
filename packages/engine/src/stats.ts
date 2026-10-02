@@ -48,8 +48,11 @@ export type BreakdownStep = {
   | { kind: 'level' }
   /** A formula's result: the stat's own, a skill's own, or its system's default. */
   | { kind: 'formula'; formula: string; of: 'stat' | 'skill' | 'system' }
-  /** A number an entity gives by one of its own fields, not by a grant or an effect (ENG-13). */
-  | { kind: 'entity'; source: EntityId; label: L10n }
+  /**
+   * A number an entity gives by one of its own fields, not by a grant or an effect (ENG-13);
+   * `formula` when the field is one (ENG-15: a class's prepared count).
+   */
+  | { kind: 'entity'; source: EntityId; label: L10n; formula?: string }
   /** Another computed path: `value` is that path's, `change` what it adds here. */
   | { kind: 'path'; path: string }
   /** A number a rule of the system gives; `rule` is the module's name for it. */

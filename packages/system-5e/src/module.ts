@@ -2,7 +2,6 @@ import {
   type BreakdownStep,
   type DerivedStep,
   type DeriveInput,
-  type Gathered,
   type GrantOf,
   ownGrants,
   type StatDefaults,
@@ -10,13 +9,16 @@ import {
 } from '@grimoire/engine';
 import type { FifthEditionCharacter } from './character';
 import { checkSteps, skillKeys } from './checks';
+import { classesOf } from './classes';
 import { ATTUNED_PATH, combatSteps, EQUIPPED_PATH } from './combat';
-import type { ClassDef, FifthEditionEntity } from './entity-types';
+import type { FifthEditionEntity } from './entity-types';
+import { spellcastingSteps } from './spellcasting';
 
 // ENG-13: fifth edition's module (ADR 004 item 1), what the core asks of it: the character's
 // level, the entities its `systemData` names, a stat's defaults, the grants a class taken after
 // the first and a feat taken in place of a grant leave out, and the derived values. ENG-14 to
-// ENG-16 add their steps to `derive`. ENG-14: each equipped item is named, with its own paths.
+// ENG-16 add their steps to `derive`: ENG-14 the combat steps, ENG-15 the spellcasting steps.
+// ENG-14: each equipped item is named, with its own paths.
 
 /** A stat's defaults (SPEC §5.3): the modifier, a save, a highest score of 20 (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: StatDefaults = {
@@ -28,18 +30,6 @@ export const FIFTH_EDITION_STAT_DEFAULTS: StatDefaults = {
 /** A class's grant only the first class gives: a starting proficiency or item (ENG-13 §8). */
 function isStarting(grant: GrantOf<FifthEditionEntity>): boolean {
   return (grant.kind === 'proficiency' || grant.kind === 'item') && (grant.atLevel ?? 1) <= 1;
-}
-
-/** Each class the character has that a pack holds, with its level, in the order taken. */
-function classesOf(
-  character: FifthEditionCharacter,
-  gathered: Gathered<FifthEditionEntity>,
-): { entity: ClassDef; level: number }[] {
-  const had = new Map(gathered.entities.map(({ entity }) => [entity.id as string, entity]));
-  return character.systemData.classes.flatMap(({ id, level }) => {
-    const entity = had.get(id);
-    return entity?.type === 'class' ? [{ entity, level }] : [];
-  });
 }
 
 /** Each class's level, `classes.<key>.level`, and its table's numbers at that level. */
@@ -110,7 +100,12 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     return grants.filter((grant) => !replaced.has(`${entity.id}#${grant.id}`));
   },
 
-  derive: (input) => ({ ...classSteps(input), ...checkSteps(input), ...combatSteps(input) }),
+  derive: (input) => ({
+    ...classSteps(input),
+    ...checkSteps(input),
+    ...combatSteps(input),
+    ...spellcastingSteps(input),
+  }),
 
   // Each skill's stat, which an effect may set.
   keys: skillKeys,

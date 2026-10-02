@@ -7,8 +7,11 @@
 
 export * from './character';
 export * from './checks';
+export * from './classes';
 export * from './combat';
 export * from './entity-types';
 export * from './module';
 export * from './pack';
+export * from './rulesets';
+export * from './spellcasting';
 export * from './system';

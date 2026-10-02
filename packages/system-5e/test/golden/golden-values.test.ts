@@ -203,3 +203,51 @@ describe('ENG-14 goldens: combat numbers', () => {
     });
   });
 });
+
+describe('ENG-15 goldens: spellcasting', () => {
+  const a = computed(goldenA);
+
+  it('golden A: spell save DC 13, attack +5; 4 prepared and the domain spells; 2 slots, 3 cantrips', () => {
+    expect(
+      valuesOf(a, [
+        'classes.cleric.spell.dc',
+        'classes.cleric.spell.attack',
+        'classes.cleric.spell.prepared',
+        'spell.slots.level1',
+        'classes.cleric.spell.cantrips',
+      ]),
+    ).toEqual({
+      'classes.cleric.spell.dc': 13,
+      'classes.cleric.spell.attack': 5,
+      'classes.cleric.spell.prepared': 4,
+      'spell.slots.level1': 2,
+      'classes.cleric.spell.cantrips': 3,
+    });
+    // Bless and Cure Wounds, always prepared: the Life domain's spell grant, reached at cleric 1.
+    const alwaysPrepared = a.grants.flatMap(({ part, grant }) =>
+      grant.kind === 'spell' && grant.alwaysPrepared === true ? [[part, grant.fixed]] : [],
+    );
+    expect(alwaysPrepared).toEqual([
+      [
+        'srd-2014:subclass/life#domain-spells-1',
+        ['srd-2014:spell/bless', 'srd-2014:spell/cure-wounds'],
+      ],
+    ]);
+  });
+
+  it('golden C: caster level 4 and slots 4, 3 in 2014; 5 and 4, 3, 2 in 2024', () => {
+    const slots = ['spell.slots.level1', 'spell.slots.level2', 'spell.slots.level3'];
+    expect(valuesOf(computed(goldenC2014), ['spell.casterLevel', ...slots])).toEqual({
+      'spell.casterLevel': 4,
+      'spell.slots.level1': 4,
+      'spell.slots.level2': 3,
+      'spell.slots.level3': 0,
+    });
+    expect(valuesOf(computed(goldenC2024), ['spell.casterLevel', ...slots])).toEqual({
+      'spell.casterLevel': 5,
+      'spell.slots.level1': 4,
+      'spell.slots.level2': 3,
+      'spell.slots.level3': 2,
+    });
+  });
+});
