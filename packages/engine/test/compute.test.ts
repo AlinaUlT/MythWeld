@@ -689,3 +689,35 @@ describe("ENG-13 a module's rule for an entity's grants", () => {
     ]);
   });
 });
+
+describe('ENG-44 the module looks up ids', () => {
+  const lookedUp = [
+    'tales-core:calling/seeker',
+    'character:talent/lucky-charm',
+    'tales-core:x/none',
+  ];
+
+  it("finds a pack's entity and the character's own as gathering does; `undefined` for none", () => {
+    const found: Record<string, (string | undefined)[]> = {};
+    const looking: SystemModule<TalesCharacter, TalesEntity> = {
+      ...talesModule,
+      entities: (character, find) => {
+        found.entities = lookedUp.map((id) => find(id)?.name.en);
+        return talesModule.entities(character, find);
+      },
+      derive: (input) => {
+        found.derive = lookedUp.map((id) => input.find(id)?.name.en);
+        return talesModule.derive(input);
+      },
+      keys: (input) => {
+        found.keys = lookedUp.map((id) => input.find(id)?.name.en);
+        return talesModule.keys?.(input) ?? {};
+      },
+    };
+    const result = computed(brook, looking);
+    // Brook's pack has the seeker; the lucky charm is Brook's own; no one has the third.
+    const names = ['Seeker', 'Lucky charm', undefined];
+    expect(found).toEqual({ entities: names, derive: names, keys: names });
+    expect(result.values).toEqual(computed(brook).values);
+  });
+});

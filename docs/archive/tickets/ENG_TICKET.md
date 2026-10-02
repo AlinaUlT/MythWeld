@@ -7595,3 +7595,295 @@ Found, not fixed:
   in `BACKLOG.md`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-44 Equipped items count only as the rules allow
+
+**Hat:** Equipped items count only as the rules allow
+**Depends on:** ENG-14 (`combatSteps`, the equipped items named with their own paths), ENG-11
+(`gather`), ENG-17 (`activeEffects`)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.3 (`ItemDef.magic`: `attunement`, `bonus`; "item effects by default apply only when
+`@equipped`, and `@attuned` if attunement is needed"); §5.6 (`@armor.worn`, `@armor.group`,
+`@shield`, `@equipped`, `@attuned`); §6.1 steps 1 and 3 (equipped and attuned items); ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/equipment.ts` — new: `equipmentOf`, what the character's
+equipped items count as, and `needsAttunement`. `EQUIPPED_PATH` and `ATTUNED_PATH` move here from
+`combat.ts`.
+- `packages/system-5e/src/module.ts` — changes: `entities` names what `equipmentOf` names.
+- `packages/system-5e/src/combat.ts` — changes: `armor.worn` and `shield` from `equipmentOf`, each
+  warning of a second; `armor.<group>`; `ac.bonus` starts at the worn armor's and shield's
+  `magic.bonus`.
+- `packages/system-5e/src/system.ts` — changes: `ARMOR_GROUPS`, which `entity-types.ts`'s armor
+  schema now reads.
+- `packages/engine/src/gather.ts` — changes: `EntityFinder`, `finderOf`; `NamedEntity.dormant` and
+  `HadEntity.dormant`: a dormant entity's grants give nothing.
+- `packages/engine/src/effects.ts` — changes: `activeEffects` leaves out a dormant entity's effects
+  that have no `when` of their own.
+- `packages/engine/src/compute.ts`, `derived.ts` — change: `SystemModule.entities` and
+  `DeriveInput` get `find`.
+- `packages/engine/test/phases.test.ts` — changes: an `ENG-44` block, on Tales.
+- `packages/engine/test/compute.test.ts` — changes: an `ENG-44` block, `find`.
+- `packages/system-5e/test/equipment.test.ts` — new: §3 items 1–6 on golden B and made-up items.
+- `packages/system-5e/test/combat.test.ts`, `module.test.ts` — change: a second armor is warned;
+  `entities` takes `find`.
+
+#### 2. What is missing now
+
+Measured on `main` at `c79449b`, with a scratch test (deleted): golden B (2024) with its own items,
+equipped in this order: plate armor +1 (heavy, base 18, `magic.bonus` 1), the SRD's chain mail, two
+shields of different ids (each `ac.bonus` +2 `when: '@equipped'`), and a charm that needs
+attunement, not attuned (`ac.bonus` +1, no `when`):
+- `ac.base` 18, `ac.bonus` 6, `ac.total` 24. The `ac.bonus` steps: Defense 1, the first shield 2,
+  the second shield 2, the charm 1.
+- `warnings`: `[]`. Every item is gathered, chain mail and the second shield included.
+- The plate's `magic.bonus` adds nothing: `grep -rn "magic" packages/system-5e/src/combat.ts`
+  finds nothing.
+- `armor.group` has no value, and no path names the worn armor's group.
+- `pnpm test`: `Test Files 40 passed (40)`, `Tests 424 passed (424)`.
+
+#### 3. What it should look like when done
+
+1. **One armor, one shield.** Of the equipped inventory rows, in inventory order, the first whose
+   item is of the category `armor` is the armor worn, and the first of the category `shield` the
+   shield. Another equipped armor or shield counts for nothing: it is not named, so its effects
+   and grants do not apply, and its `magic.bonus` is not read. Each is warned `stepRule` on
+   `armor.worn` (or `shield`), rule `oneAtATime`, data `{ item, worn }`. The same item id in two
+   rows is two: the second is warned.
+2. **Attunement.** An item needs attunement when its `magic.attunement` is `true` or a text (SPEC
+   §5.3). Equipped and not attuned, it gives only its nonmagical benefits (§8): it is named
+   **dormant**, so its grants give nothing, and of its effects only those with a `when` of their
+   own apply (SPEC §5.3's shield writes `when: '@equipped'`); `@attuned` reads 0. An armor or a
+   shield that is dormant is still the one worn: its base AC counts, and it takes the one place.
+   Attuned, or needing no attunement, an item is named as ENG-14 names it.
+3. **Dormant, in the core** (game-free): `NamedEntity.dormant` is kept on the gathered entity
+   (`HadEntity.dormant`, the first naming's). A dormant entity's grants are not reached: no
+   proficiency, resource, entity or pending choice from them. `activeEffects` leaves out each of
+   its effects with no `when`; one with a `when` applies as any other.
+4. **The module looks up ids** (the core): `SystemModule.entities(character, find)` and
+   `DeriveInput.find`, where `find(id)` gives the entity the character's id names, its own entities
+   first, then its packs, as gathering looks them up; `undefined` when none has it.
+5. **A magic bonus.** `ac.bonus` starts at the worn armor's `magic.bonus` plus the worn shield's,
+   each only when its magic works (it needs no attunement, or is attuned), each an `entity` step
+   naming the item; then effects change it, as before.
+6. **The worn armor's group**: `armor.light`, `armor.medium`, `armor.heavy`: 1, with an `entity`
+   step naming the armor, when the worn armor is of that group; else 0, with no step.
+7. **Golden values do not move.** Every golden line ENG-13, ENG-14 and ENG-15 turned on still
+   passes; golden A gives `armor.heavy` 1 (chain mail), golden B 1, and none of them a warning.
+8. **The §2 character, after**: `ac.base` 18 (plate), `ac.bonus` 4 = the plate's `magic.bonus` 1 +
+   Defense 1 + the first shield 2; `ac.total` 22. Warnings: `oneAtATime` for chain mail on
+   `armor.worn` and for the second shield on `shield`. The charm is gathered dormant and adds
+   nothing.
+9. `compute()` stays pure: frozen inputs give equal results.
+10. The quality gate is green.
+
+#### 4. How to do it
+
+1. `gather.ts`: `EntityFinder<E>`, `finderOf(character, index)`; gathering looks ids up through it.
+   `NamedEntity.dormant`, `HadEntity.dormant`, the walk skips a dormant entity's grants.
+2. `effects.ts`: `activeEffects` skips a dormant entity's effect that has no `when`.
+3. `compute.ts`, `derived.ts`: `entities(character, find)`, `DeriveInput.find`.
+4. `system.ts`: `ARMOR_GROUPS`. `equipment.ts`: `equipmentOf`, `needsAttunement`, the two own
+   paths. `module.ts`: `entities` names `equipmentOf(...).named`.
+5. `combat.ts`: `armor.worn` and `shield` from `equipmentOf`, with the `oneAtATime` warnings;
+   `armor.<group>`; `ac.bonus`'s own step; `ac.base` reads the worn armor from `equipmentOf`.
+6. Tests (§7).
+
+Technical choices (ADR 002):
+- **A second armor or shield is not named.** SRD 5.2.1: "A creature can wear only one suit of
+  armor at a time and wield only one Shield at a time"; SRD 5.1: "You can benefit from only one
+  shield at a time" (§8). Not worn, it is as an item not equipped, whose effects never apply (SPEC
+  §5.3, ENG-14). dnd5e warns and takes the first, but still applies a second armor's effects; its
+  shield's AC is a field, so a second shield's never adds. Here a shield's +2 is an effect, so
+  leaving the second out is how "only one" holds. Inventory order decides, as ENG-14's "first
+  gathered" did.
+- **The decision is made once**, by `equipmentOf(character, find)`, called by `entities` (what is
+  named) and by the combat steps (what is worn, what is warned). Both read the same `find`, so they
+  agree. A second armor is never gathered, so the combat steps need `find` to name it in its
+  warning: hence `DeriveInput.find`. Gathering looks ids up the same way, through `finderOf`.
+- **Dormant, not unnamed**, for an item not attuned: SRD 5.1 and 5.2.1 give it "only its
+  nonmagical benefits ... a magic shield that requires attunement provides the benefits of a
+  normal shield" (§8). Unnamed, it would lose its base AC and its shield's +2. dnd5e suppresses
+  every effect of such an item but still counts its armor; here the shield's +2 is an effect, so
+  "an effect with its own `when` still applies" is what keeps it, as SPEC §5.3 says: effects apply
+  only when attuned **by default**. A pack writes a magic item's nonmagical effect with a `when`
+  (`@equipped`, as SPEC's shield does) and its magical ones without. Its grants are magical
+  properties (a staff's spells, a wand's charges), so a dormant entity's grants give nothing.
+- **`dormant` is the core's word, set by the module.** The core does not learn what attunement is;
+  it learns that a module may name an entity the character has in part. Tales tests it.
+- **A magic bonus adds to `ac.bonus`, not to the armor's base.** SRD 5.1 and 5.2.1: "You have a +1
+  bonus to AC while wearing this armor"; the shield's, "in addition to the Shield's normal bonus to
+  AC" (§8). A bonus while worn, whichever base AC counts. dnd5e adds the armor's to its base
+  value, which counts only when the armored base wins; no SRD content tells the two apart.
+- **`@armor.group` is three numbers.** A derived value is a number (ENG-28), and a formula reads a
+  computed path as a number, so a text path would need every step reader to give texts. `@armor.heavy`
+  says what `@armor.group == 'heavy'` would (SRD 5.1 and 5.2.1 Fast Movement: "while you aren't
+  wearing Heavy armor", §8): a pack writes `!@armor.heavy`. The groups are the schema's
+  (`ARMOR_GROUPS`), not a list written twice. This departs from SPEC §5.6's letter, not its use.
+- **An item no pack has, or an id that is not an item, is named as before**, so gathering warns
+  `missing` for the one and nothing changes for the other. Neither can be armor.
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, no `schemaVersion`, no Dexie table changes. `equipped`,
+`attuned` and `ItemDef.magic` were stored already; `magic.attunement` and `magic.bonus` are now
+read. The armor schema's groups come from `ARMOR_GROUPS`, the same three values; the published
+pack JSON Schema does not change.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/phases.test.ts` — `describe('ENG-44 a dormant entity')`: on Tales, a module
+  naming a talent dormant: its effect without `when` does not apply, its effect with a `when`
+  reading its own path does, its toggled effect without `when` does not even when switched on; its
+  grants give no entity, proficiency, resource or pending choice; the gathered entity has
+  `dormant: true`; named twice, the first naming's flag is kept.
+- `packages/engine/test/compute.test.ts` — `describe('ENG-44 the module looks up ids')`: `find`
+  gives a pack's entity, the character's own one, and `undefined` for an id none has; `entities`,
+  `derive` and `keys` get the same.
+- `packages/system-5e/test/equipment.test.ts` — `describe('ENG-44 equipped items')`: §3 items 1,
+  2, 5, 6, 8, 9; `equipmentOf` directly on rows not equipped, a missing item, a non-item id.
+- `packages/system-5e/test/combat.test.ts` — the ENG-14 test of the first armor now expects the
+  second's warning; `module.test.ts` — `entities` with `find`.
+- `packages/system-5e/test/golden/golden-values.test.ts` — unchanged; it must still pass (§3 item 7).
+- Control numbers from: §8's sources; the made-up items' values worked out by hand from their data,
+  never copied from a run.
+
+#### 8. Checked against the source
+
+Sources: foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (ENG-13's), `module/` and
+`packs/_source/{rules,content24}`, which quote SRD 5.1 and SRD 5.2.1 (CC-BY-4.0); 5e-bits/
+5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`,
+`packages/5e-database/src/{2014,2024}/en/5e-SRD-Magic-Items.json`.
+
+**One at a time.** SRD 5.1 (`rules/chapter-5-equipment.yml`, quoted in ENG-14 §8): "Wielding a
+shield increases your Armor Class by 2. You can benefit from only one shield at a time." SRD 5.2.1
+(`content24/chapter-6/equipment.yml`, ENG-14 §8): "A creature can wear only one suit of armor at a
+time and wield only one Shield at a time." dnd5e (`data/actor/templates/attributes.mjs`,
+`prepareArmorClass`): equipped armors and shields are gathered in item order; more than one of
+either pushes the warning `DND5E.WarnMultipleArmor` or `DND5E.WarnMultipleShields`, and
+`armors[0]`, `shields[0]` count.
+
+**Attunement.** SRD 5.1 (`rules/appendix-e-rules.yml`, the page "Attunement"): "Without becoming
+attuned to an item that requires attunement, a creature gains only its nonmagical benefits, unless
+its description states otherwise. For example, a magic shield that requires attunement provides the
+benefits of a normal shield to a creature not attuned to it, but none of its magical properties."
+SRD 5.2.1 (`content24/chapter-6/magic-items.yml`): "Without becoming attuned to an item that
+requires Attunement, you gain only its nonmagical benefits unless its description states otherwise.
+For example, a magic Shield that requires Attunement provides the benefits of a normal Shield if you
+aren't attuned to it, but none of its magical properties." Both: "no more than three magic items
+at a time" (§9). dnd5e (`documents/item.mjs`, `areEffectsSuppressed`): an item's effects are
+suppressed when it is not equipped, or `!attuned && attunement === "required"`; its armor still
+counts in `prepareArmorClass`, which reads only `equipped`.
+
+**A magic bonus.** 5e-database 2014 `armor-1`: "You have a +1 bonus to AC while wearing this
+armor."; 2024 `armor-1`: "You have a +1 bonus to Armor Class while wearing this armor.",
+`attunement: false`; 2024 `shield-1`: "While holding this Shield, you have a +1 bonus to Armor
+Class, in addition to the Shield's normal bonus to AC.", `attunement: false`. The 2014 file has no
++1 shield. dnd5e (`data/item/equipment.mjs`, `prepareDerivedData`): `armor.value += magicalBonus`
+when `magicAvailable`, which is `attuned || attunement !== "required"` and the item magical
+(`templates/equippable-item.mjs`).
+
+**Armor group.** 5e-database `5e-SRD-Features.json`: 2014 `fast-movement` "Starting at 5th
+level, your speed increases by 10 feet while you aren't wearing heavy armor."; 2024
+`barbarian-fast-movement` "Your speed increases by 10 feet while you aren't wearing Heavy armor.";
+2024 `ranger-roving` "Your Speed increases by 10 feet while you aren't wearing Heavy armor." The
+2014 Rage: "you gain the following benefits if you aren't wearing heavy armor". Each asks one
+group, as a yes or no.
+
+No golden value is touched; nothing stops.
+
+#### 9. Not in this ticket
+
+- No more than three attuned items, and one copy of an item (§8): SPEC §13.2 holds "attunement
+  slots (3 items) with a reminder" as an idea, not a stage; no row.
+- Who may attune (`magic.attunement` as a text, "by a cleric"): a prerequisite, which warns and
+  never blocks; the text is shown, not checked.
+- A weapon's `magic.bonus` to attack and damage: ENG-16, which reads `needsAttunement` from here.
+- Heavy armor's Strength requirement: ENG-45. Armor without training: ENG-46. Stealth
+  disadvantage: ENG-34. Choosing the base AC calculation: ENG-47.
+- A consumable that works unequipped (dnd5e: potions): a later phase's mechanics meet it first.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** No expected value changes; §3 item 7 runs them all.
+- **`packages/engine` is pure; the core names no game.** `dormant` and `find` name no item and no
+  attunement; they are tested on Tales.
+- **Everything is data.** Armor groups are `ARMOR_GROUPS`, which the schema reads; categories,
+  attunement and bonuses are read from each item.
+- **`compute()` is pure.** `find` reads the index and the character only; the purity test runs it
+  frozen.
+- **A number with no breakdown entry is a bug.** Each magic bonus is an `entity` step of
+  `ac.bonus`; each `armor.<group>` names its armor.
+- **Manual overrides always win.** The new paths are finished by ENG-17's phases.
+- **Each system's rules live in its own module.** Both editions share each rule (§8); no
+  `if (ruleset === …)`.
+- **Missing is not broken.** A missing item is still named and warned `missing`; a second armor is
+  a warning, never a throw.
+- **Licensing.** The test items are made up (`character:`); §8 quotes the SRDs (CC-BY-4.0) only.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `equipment.test.ts` alone: `Tests 8 passed (8)`, 721 ms.
+- Lint: `Checked 153 files`, no fixes, no error, after the rebase onto ENG-48 (`108c755`). This
+  ticket alone, on `c79449b`: 151 files, 149 before it.
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done`.
+- Test: `Test Files 42 passed (42)`, `Tests 449 passed (449)`, 6.36 s, after the rebase. This
+  ticket alone, on `c79449b`: 41 files, 437 tests (424 before it). New: 4 in `phases.test.ts`, 1 in
+  `compute.test.ts`, 8 in `equipment.test.ts`.
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`. The published
+  pack JSON Schema test passed with `ARMOR_GROUPS` in the armor schema.
+- §3 item 8, the §2 character after: `ac.base` 18, `ac.bonus` 4 (the plate's 1, Defense 1, the
+  first shield 2), `ac.total` 22; two `oneAtATime` warnings, chain mail on `armor.worn` and the
+  second shield on `shield`; the charm gathered dormant. Before: 18, 6, 24, no warning.
+- Golden A has 150 paths (was 147 at `c79449b`): `armor.light`, `armor.medium`, `armor.heavy`. It
+  gathers 20 entities, as before, and gives no warning. Every golden line still passes, none
+  changed (§3 item 7).
+- The tests bite. 14 breaks, each on its own and restored, the `engine` and `system-5e` tests run
+  (308 tests before the rebase; the same breaks after it, of 321, fail as many, but `derive` 18
+  and the finder 93). In `equipment.ts`: a second armor named, 2 fail; never dormant, 2; a text attunement
+  read as none, 2; the `attuned` flag ignored, 2. In `combat.ts`: no `oneAtATime` warning, 2; a
+  magic bonus without attunement, 2; no magic bonus, 3; groups always 0, 2. In the core: a dormant
+  entity's grants reached, 2; `dormant` not kept, 5; its effects applied, 5; all its effects left
+  out, `when` or not, 4; `derive` given a `find` that finds nothing, 17; the finder skipping the
+  character's own entities, 87.
+
+Differences from §3 and §4:
+- No value differs from §3. Every expected value of the new tests was worked out by hand before
+  the first run, and the first run passed.
+- §7's `compute.test.ts` line first said "the character's own one over a pack's of the same id":
+  an own entity's id starts with `character:` (`packages/schema/src/character.ts`), so no pack
+  shares one; the test finds a pack's, an own one and none, through `entities`, `derive` and `keys`.
+- The purity check of §3 item 9 is its own test in `equipment.test.ts` (dormant and extra items
+  frozen), beside ENG-14's on golden A.
+- `ENG-14`'s test "takes the first armor gathered as the one worn" keeps its values; its second
+  armor is now also warned, which `equipment.test.ts` checks.
+- ENG-48 reached `main` while this ticket was built. The rebase met two places both changed:
+  `module.ts`'s imports and header comment (both kept), and the end of this archive (ENG-48's
+  ticket first, this one after it). ENG-48's `sizeKeys` reads `DeriveInput`, which now has `find`;
+  nothing else of it changed.
+
+Against the row and its note:
+- One armor and one shield: §3 item 1. An item that needs attunement: §3 items 2–3, with the SRD's
+  "only its nonmagical benefits" (§8), not "counts for nothing" as the note put it: an unattuned
+  magic shield keeps its normal +2. `magic.bonus`: §3 item 5. `@armor.group`: §3 item 6, as
+  three numbers (§4).
+
+Found, not fixed:
+- No more than three attuned items, one copy of an item (both SRDs): SPEC §13.2 holds it as an
+  idea; no row (§9).
+- ENG-16, ENG-45 and ENG-46 read the worn armor or an item's attunement; their notes now point
+  at `equipmentOf` and `needsAttunement`.
+
+Nothing for the changelog.

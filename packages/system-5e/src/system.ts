@@ -35,6 +35,9 @@ export const HIT_DIE_SIZES = [6, 8, 10, 12] as const;
 /** The kinds of speed, in feet: a species' speeds, a character's `speed.<kind>` (ENG-14). */
 export const SPEED_KINDS = ['walk', 'fly', 'swim', 'climb', 'burrow'] as const;
 
+/** The groups of armor: an armor's `group`, a character's `armor.<group>` (ENG-44). */
+export const ARMOR_GROUPS = ['light', 'medium', 'heavy'] as const;
+
 /** The coins: a price's unit, a character's money. */
 export const COINS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const;
 

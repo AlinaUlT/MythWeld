@@ -1,11 +1,5 @@
 import type { Effect, EntityId, EntityPartId, Grant, L10n, UsesDef } from '@grimoire/schema';
-import {
-  ANY_RULESET,
-  type ContentIndex,
-  type IndexedEntity,
-  type Lookup,
-  shareRuleset,
-} from './content-index';
+import { ANY_RULESET, type ContentIndex, type IndexedEntity, shareRuleset } from './content-index';
 
 // ENG-11: SPEC §6.1 steps 1 and 2. The entities a character has are the ones its module names and
 // the conditions in its trackers, then, depth first, what their grants give. The core reads every
@@ -22,12 +16,16 @@ const CHARACTER = 'character';
 /** Where an entity was given: by the character, or by one grant of another entity. */
 export type Origin = typeof CHARACTER | EntityPartId;
 
-/** One entity to visit: its id, the level its grants count, where it was given, its own paths. */
+/**
+ * One entity to visit: its id, the level its grants count, where it was given, its own paths, and
+ * whether it is dormant.
+ */
 interface Step {
   id: string;
   level: number;
   from: Origin;
   paths?: OwnPaths;
+  dormant?: boolean;
 }
 
 /** What a filter matches: every field it names (SPEC §5.5 `Choose`). */
@@ -91,23 +89,45 @@ export type OwnPaths = Readonly<Record<string, number>>;
 
 /**
  * An entity the module's part of a character names; `level` when its grants count their own,
- * `paths` when its effects read values of their own.
+ * `paths` when its effects read values of their own. `dormant` when the character has it only in
+ * part (ENG-44: a fifth-edition item that needs attunement, not attuned): its grants give
+ * nothing, and of its effects only those with a `when` of their own apply.
  */
 export interface NamedEntity {
   readonly id: string;
   readonly level?: number;
   readonly paths?: OwnPaths;
+  readonly dormant?: boolean;
 }
 
 /**
- * An entity the character has: every place that gave it, the level its grants count, and its own
- * paths when the module named it with some (the first naming's, when named twice).
+ * An entity the character has: every place that gave it, the level its grants count, its own
+ * paths when the module named it with some, and `dormant` when it was named so (each the first
+ * naming's, when named twice).
  */
 export interface HadEntity<E extends GatherableEntity> {
   entity: E;
   level: number;
   from: readonly Origin[];
   paths?: OwnPaths;
+  dormant?: true;
+}
+
+/** An entity by its id, as a character finds it; `undefined` when none has the id (ENG-44). */
+export type EntityFinder<E> = (id: string) => E | undefined;
+
+/** How a character finds an entity by its id: its own entities first, then its packs'. */
+export function finderOf<E extends GatherableEntity>(
+  character: CharacterCore<E>,
+  index: ContentIndex<E>,
+): EntityFinder<E> {
+  const own = new Map(character.localEntities.map((entity) => [entity.id as string, entity]));
+  return (id) => {
+    const entity = own.get(id);
+    if (entity !== undefined) return entity;
+    const found = index.get(id);
+    return found.ok ? found.entity : undefined;
+  };
 }
 
 /** A grant that applies, with the items chosen for it (none when it is not a choice). */
@@ -263,11 +283,7 @@ export function gather<E extends GatherableEntity>(
   const usable = (entity: E) => mixingAllowed || inRulesBase(entity);
 
   // The character's own entities join the index after its packs (item 3 of §3).
-  const own = new Map(character.localEntities.map((entity) => [entity.id as string, entity]));
-  const get = (id: string): Lookup<E> => {
-    const entity = own.get(id);
-    return entity === undefined ? index.get(id) : { ok: true, entity };
-  };
+  const find = finderOf(character, index);
   const everyEntry = [...index.entities, ...character.localEntities];
   const ownSoFar: E[] = [];
   for (const entity of character.localEntities) {
@@ -294,7 +310,10 @@ export function gather<E extends GatherableEntity>(
   }
 
   // The walk: depth first, each entity once, with an explicit stack.
-  const had = new Map<string, { entity: E; level: number; from: Origin[]; paths?: OwnPaths }>();
+  const had = new Map<
+    string,
+    { entity: E; level: number; from: Origin[]; paths?: OwnPaths; dormant?: true }
+  >();
   const grants: ReachedGrant<E>[] = [];
   const proficiencies: ProficiencyGiven[] = [];
   const resources: ResourceGiven[] = [];
@@ -306,6 +325,7 @@ export function gather<E extends GatherableEntity>(
         level: entity.level ?? level,
         from: CHARACTER,
         ...(entity.paths !== undefined && { paths: entity.paths }),
+        ...(entity.dormant === true && { dormant: true }),
       }),
     ),
     ...character.state.conditions.map(
@@ -320,17 +340,17 @@ export function gather<E extends GatherableEntity>(
       if (!known.from.includes(from)) known.from.push(from);
       continue;
     }
-    const found = get(id);
-    if (!found.ok) {
+    const entity = find(id);
+    if (entity === undefined) {
       warnings.push(missing(id, from));
       continue;
     }
-    const entity = found.entity;
     had.set(id, {
       entity,
       level: step.level,
       from: [from],
       ...(step.paths !== undefined && { paths: step.paths }),
+      ...(step.dormant === true && { dormant: true }),
     });
     if (!inRulesBase(entity)) {
       warnings.push({
@@ -342,8 +362,9 @@ export function gather<E extends GatherableEntity>(
       });
     }
 
+    // ENG-44: a dormant entity's grants are not reached.
     const given: Step[] = [];
-    for (const grant of grantsOf(entity)) {
+    for (const grant of step.dormant === true ? [] : grantsOf(entity)) {
       if (grant.atLevel !== undefined && grant.atLevel > step.level) continue;
       const part: EntityPartId = `${entity.id}#${grant.id}`;
       const chosen = chosenFor(grant, part);
@@ -393,19 +414,19 @@ export function gather<E extends GatherableEntity>(
       let offered: boolean;
       if (!isFilter(choose.from)) {
         offered = choose.from.includes(item);
-        if (!takesKeys && !get(item).ok) {
+        if (!takesKeys && find(item) === undefined) {
           warnings.push(missing(item, part));
           continue;
         }
       } else if (takesKeys) {
         offered = keysFound?.has(item) ?? false;
       } else {
-        const found = get(item);
-        if (!found.ok) {
+        const found = find(item);
+        if (found === undefined) {
           warnings.push(missing(item, part));
           continue;
         }
-        offered = matches(found.entity, choose.from);
+        offered = matches(found, choose.from);
       }
       if (!offered) {
         warnings.push({
@@ -478,7 +499,7 @@ export function gather<E extends GatherableEntity>(
     if (!isFilter(choose.from)) {
       options = choose.from.filter((item) => {
         if (takesKeys) return offered(item);
-        if (!get(item).ok) {
+        if (find(item) === undefined) {
           warnings.push(missing(item, part));
           return false;
         }

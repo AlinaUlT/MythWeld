@@ -10,8 +10,9 @@ import {
 import type { FifthEditionCharacter } from './character';
 import { checkSteps, skillKeys } from './checks';
 import { classesOf } from './classes';
-import { ATTUNED_PATH, combatSteps, EQUIPPED_PATH } from './combat';
+import { combatSteps } from './combat';
 import type { FifthEditionEntity } from './entity-types';
+import { equipmentOf } from './equipment';
 import { sizeKeys } from './size';
 import { spellcastingSteps } from './spellcasting';
 
@@ -19,7 +20,8 @@ import { spellcastingSteps } from './spellcasting';
 // level, the entities its `systemData` names, a stat's defaults, the grants a class taken after
 // the first and a feat taken in place of a grant leave out, and the derived values. ENG-14 to
 // ENG-16 add their steps to `derive`: ENG-14 the combat steps, ENG-15 the spellcasting steps.
-// ENG-14: each equipped item is named, with its own paths. ENG-48 adds the size to `keys`.
+// ENG-14: each equipped item is named, with its own paths. ENG-44: as `equipmentOf` counts it.
+// ENG-48 adds the size to `keys`.
 
 /** A stat's defaults (SPEC §5.3): the modifier, a save, a highest score of 20 (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: StatDefaults = {
@@ -65,20 +67,20 @@ function classSteps({
 export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditionEntity> = {
   level: ({ systemData }) => systemData.classes.reduce((sum, entry) => sum + entry.level, 0),
 
-  entities: ({ systemData: data }) => [
-    ...[data.species, data.background].flatMap((entry) => (entry ? [{ id: entry.id }] : [])),
-    ...data.classes.flatMap((entry) => [
-      { id: entry.id, level: entry.level },
-      ...(entry.subclass === undefined ? [] : [{ id: entry.subclass, level: entry.level }]),
-    ]),
-    ...data.feats.map((feat) => ({ id: feat.id })),
-    // Only an equipped item's effects and grants apply (SPEC §5.3), so only those are named.
-    ...data.inventory.flatMap(({ itemId, equipped, attuned }) =>
-      equipped && itemId !== undefined
-        ? [{ id: itemId, paths: { [EQUIPPED_PATH]: 1, [ATTUNED_PATH]: attuned ? 1 : 0 } }]
-        : [],
-    ),
-  ],
+  entities: (character, find) => {
+    const data = character.systemData;
+    return [
+      ...[data.species, data.background].flatMap((entry) => (entry ? [{ id: entry.id }] : [])),
+      ...data.classes.flatMap((entry) => [
+        { id: entry.id, level: entry.level },
+        ...(entry.subclass === undefined ? [] : [{ id: entry.subclass, level: entry.level }]),
+      ]),
+      ...data.feats.map((feat) => ({ id: feat.id })),
+      // Only an equipped item's effects and grants apply (SPEC §5.3), so only those are named,
+      // and of those only what the rules let count (ENG-44).
+      ...equipmentOf(character, find).named,
+    ];
+  },
 
   statDefaults: FIFTH_EDITION_STAT_DEFAULTS,
 

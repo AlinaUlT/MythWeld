@@ -14,6 +14,8 @@ import {
 import type { FormulaValue } from './formula';
 import {
   type CharacterCore,
+  type EntityFinder,
+  finderOf,
   type GatherableEntity,
   type Gathered,
   type GatherWarning,
@@ -36,9 +38,10 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    * The entities the module's part of the character names, in order (a fifth-edition species,
    * classes, feats; a Tales calling and talents). `level`, when given, is what that entity's
    * grants are measured against instead (a class's own level); `paths`, values its own effects read
-   * first (ENG-14: a fifth-edition item's `@equipped`).
+   * first (ENG-14: a fifth-edition item's `@equipped`); `dormant`, when the character has it only
+   * in part (ENG-44). `find` looks an id up as gathering will (ENG-44: an item's category).
    */
-  entities(character: C): readonly NamedEntity[];
+  entities(character: C, find: EntityFinder<E>): readonly NamedEntity[];
   /** What a stat takes when it lacks the field. */
   readonly statDefaults: StatDefaults;
   /**
@@ -104,11 +107,12 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
 ): Computed<E> {
   const level = system.level(character);
   const grantsOf = system.grantsOf;
+  const find = finderOf(character, index);
   const gathered = gather(
     character,
     index,
     level,
-    system.entities(character),
+    system.entities(character, find),
     grantsOf === undefined ? ownGrants : (entity) => grantsOf(character, entity),
   );
   const defaults = system.statDefaults;
@@ -118,8 +122,8 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
   };
   const base = computeStats(character, gathered, basePhase);
   const stats = statsOf(gathered, defaults);
-  const steps = system.derive({ character, gathered, stats });
-  const keys = system.keys?.({ character, gathered, stats }) ?? {};
+  const steps = system.derive({ character, gathered, stats, find });
+  const keys = system.keys?.({ character, gathered, stats, find }) ?? {};
   const phases = phasesOf(character, gathered, basePhase);
   const { finish, finishKey } = phases;
   const derived = computeDerived({

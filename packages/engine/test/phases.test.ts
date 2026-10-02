@@ -837,8 +837,8 @@ describe('ENG-48 a key path with no key of its own', () => {
 function naming(paths: Readonly<Record<string, OwnPaths>>, more: OwnPaths[] = []): Module {
   return {
     ...talesModule,
-    entities: (character) => [
-      ...talesModule.entities(character).map((named) => {
+    entities: (character, find) => [
+      ...talesModule.entities(character, find).map((named) => {
         const own = paths[named.id];
         return own === undefined ? named : { ...named, paths: own };
       }),
@@ -990,5 +990,112 @@ describe('ENG-14 appended numbers', () => {
       { code: 'noTarget', part: 'character:talent/lamp#i', target: 'guard.formulas' },
     ]);
     expect(result.values['skills.sneak.total']).toBe(4);
+  });
+});
+
+describe('ENG-44 a dormant entity', () => {
+  // Ember, a talent of Ash's own, named with `{ carried: 1 }`. Its effects: `glow` with no `when`,
+  // `spark` with one reading its own path, `flare` toggled on with no `when`. Its grants: an
+  // entity (Deep Lungs, which gives the resource `breath`), a lore, a resource, a choice.
+  const ember: TalesEntity = {
+    ...talent('ember', [
+      { id: 'glow', target: 'skills.sneak.bonus', op: 'add', value: 1 },
+      { id: 'spark', target: 'skills.climb.bonus', op: 'add', value: 2, when: '@carried' },
+      {
+        id: 'flare',
+        target: 'skills.sneak.bonus',
+        op: 'add',
+        value: 4,
+        toggle: { label: { en: 'Flaring' }, default: true },
+      },
+    ]),
+    grants: [
+      { id: 'lungs', kind: 'entity', fixed: ['tales-core:talent/deep-lungs'] },
+      { id: 'embers', kind: 'proficiency', category: 'lore', fixed: ['embers'] },
+      {
+        id: 'heat',
+        kind: 'resource',
+        key: 'heat',
+        label: { en: 'Heat' },
+        uses: { max: '3', recovery: [{ on: 'scene', amount: 'all' }] },
+      },
+      {
+        id: 'pick',
+        kind: 'proficiency',
+        category: 'knack',
+        choose: { count: 1, from: ['steady'] },
+      },
+    ],
+  };
+  const character = ashWith([ember]);
+  const emberId = 'character:talent/ember';
+  const ids = (result: ReturnType<typeof computed>) =>
+    result.entities.map(({ entity }) => entity.id);
+
+  /** Tales' module, naming Ember with `{ carried: 1 }`, dormant when `dormant`. */
+  function emberNamed(dormant: boolean, again: boolean | undefined = undefined): Module {
+    return {
+      ...talesModule,
+      entities: (one, find) => [
+        ...talesModule
+          .entities(one, find)
+          .map((named) =>
+            named.id === emberId ? { ...named, paths: { carried: 1 }, dormant } : named,
+          ),
+        ...(again === undefined ? [] : [{ id: emberId, dormant: again }]),
+      ],
+    };
+  }
+
+  it('applies only the effects with a `when` of their own; its grants give nothing', () => {
+    const result = computed(character, emberNamed(true));
+    expect(result.values).toMatchObject({
+      // wits 2 + 2 × 1 + `shadow` 1 - 1: neither `glow` nor `flare`, though switched on.
+      'skills.sneak.total': 4,
+      // grit 3 + 2 × 1 + `nimble` 2 + `spark` 2 - 1.
+      'skills.climb.total': 8,
+    });
+    expect(result.breakdown['skills.climb.bonus']).toContainEqual(
+      own('ember', 'spark', 'add', 2, 2),
+    );
+    const had = result.entities.find(({ entity }) => entity.id === emberId);
+    expect(had).toMatchObject({ paths: { carried: 1 }, dormant: true });
+    expect(ids(result)).not.toContain('tales-core:talent/deep-lungs');
+    expect(result.grants.map(({ part }) => part)).not.toContain(`${emberId}#lungs`);
+    expect(result.proficiencies.map(({ key }) => key)).not.toContain('embers');
+    expect(result.resources.map(({ key }) => key)).toEqual(['luck']);
+    expect(result.pendingChoices).toEqual([]);
+    expect(codes(result)).toEqual([]);
+  });
+
+  it('gives all of it when not dormant', () => {
+    const result = computed(character, emberNamed(false));
+    expect(result.values).toMatchObject({
+      // 4 + `glow` 1 + `flare` 4.
+      'skills.sneak.total': 9,
+      'skills.climb.total': 8,
+      'resources.heat.max': 3,
+      'resources.breath.max': 2,
+    });
+    const had = result.entities.find(({ entity }) => entity.id === emberId);
+    expect(had).not.toHaveProperty('dormant');
+    expect(ids(result)).toContain('tales-core:talent/deep-lungs');
+    expect(result.proficiencies.map(({ key }) => key)).toContain('embers');
+    expect(result.pendingChoices.map(({ part }) => part)).toEqual([`${emberId}#pick`]);
+  });
+
+  it("is the first naming's when an entity is named twice", () => {
+    expect(computed(character, emberNamed(true, false)).values['skills.sneak.total']).toBe(4);
+    const woken = computed(character, emberNamed(false, true));
+    expect(woken.values['skills.sneak.total']).toBe(9);
+    expect(woken.entities.find(({ entity }) => entity.id === emberId)).not.toHaveProperty(
+      'dormant',
+    );
+  });
+
+  it('leaves out of `activeEffects` only the effects without a `when`', () => {
+    const result = computed(character, emberNamed(true));
+    const parts = activeEffects(result.entities, {}).map(({ part }) => part);
+    expect(parts.filter((part) => part.startsWith(emberId))).toEqual([`${emberId}#spark`]);
   });
 });

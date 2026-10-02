@@ -1,7 +1,7 @@
 import type { EntityId, EntityPartId } from '@grimoire/schema';
 import { type EffectWarning, STAT_FIELDS } from './effects';
 import { evaluateNumber, type FormulaWarning } from './formula';
-import { type GatherableEntity, type Gathered, isCoreKind } from './gather';
+import { type EntityFinder, type GatherableEntity, type Gathered, isCoreKind } from './gather';
 import { type BreakdownStep, type KeyStep, STAT_TYPE, type Stats } from './stats';
 
 // ENG-28: SPEC §6.1 step 5, the derived values. The core gives the character's level and each
@@ -122,6 +122,8 @@ export interface DeriveInput<C, E extends GatherableEntity> {
   readonly gathered: Gathered<E>;
   /** Each stat the character has, in `byKey`'s order. */
   readonly stats: readonly StatOf<E>[];
+  /** Any entity by its id, as the character finds it, had or not (ENG-44). */
+  readonly find: EntityFinder<E>;
 }
 
 /** Something the derived step met. `code` and its data are for the screen; `message` is for logs. */

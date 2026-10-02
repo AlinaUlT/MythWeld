@@ -94,7 +94,7 @@ split off an old row got a new id.
 | ENG-13 | Check bonuses are computed: modifiers, proficiency, saves, skills, passives | M | ✅ 2026-10-02 |
 | ENG-43 | An effect sets the stat a skill uses | S | ✅ 2026-10-02 |
 | ENG-14 | Combat numbers are computed: hit points, armor class, initiative, speed | M | ✅ 2026-10-02 |
-| ENG-44 | Equipped items count only as the rules allow | S | 🔲 |
+| ENG-44 | Equipped items count only as the rules allow | S | ✅ 2026-10-02 |
 | ENG-45 | Heavy armor's Strength requirement slows its wearer | XS | 🔲 |
 | ENG-47 | The person picks which base AC calculation counts | S | 🔲 |
 | ENG-48 | The character's size comes from its species | S | ✅ 2026-10-02 |
@@ -133,19 +133,12 @@ split off an old row got a new id.
   `advantageMode × 5`). ENG-13's `skills.<key>.passive` is 10 + the skill's total. Found by
   ENG-14: worn armor with `stealthDisadvantage` gives disadvantage on Dexterity (Stealth) checks
   (SRD 5.1 Armor, "Stealth"; dnd5e `prepareArmorClass`); ENG-14's `armor.worn` names the armor.
-- **ENG-44** — found by ENG-14 (its §4): ENG-14 gathers each equipped item and takes the first
-  armor gathered as the one worn. Left: a second armor or shield equipped is warned and counts for
-  nothing (SRD 5.1 "You can benefit from only one shield at a time"; SRD 5.2.1 "One at a Time";
-  dnd5e `prepareArmorClass` warns and takes the first); today a second shield's effect adds its +2
-  again. An item that needs attunement (`magic.attunement`) counts only when attuned (SPEC §5.3);
-  ENG-14 gives `@attuned` as the row's flag. A magic armor's or shield's `magic.bonus` adds to AC,
-  and no code reads it. SPEC §5.6's `@armor.group` is a text, and a derived value is a number
-  (ENG-28), so it has no path.
 - **ENG-45** — found by ENG-14: armor whose `strRequirement` is above the wearer's Strength score
   takes 10 feet from its speed (SRD 5.1, SRD 5.2.1, ENG-14 §8; dnd5e `armorSpeedReduction`). dnd5e
   lets a species trait ignore it (`ignoreArmorSpeedReduction`); whether an SRD species does is
   this ticket's §8 to check (5e-database's 2014 dwarf holds only `speed: 25`). ENG-14's
-  `speed.<kind>` adds `speed.<kind>.bonus` and `speed.all.bonus`, at least 0.
+  `speed.<kind>` adds `speed.<kind>.bonus` and `speed.all.bonus`, at least 0. Found by ENG-44:
+  the armor worn is `equipmentOf(...).armor` (`equipment.ts`), worn even when not attuned.
 - **ENG-47** — found by ENG-14: SPEC §6.1 step 5 takes the best AC candidate, or the one the
   person pins; SRD 5.2.1: "you choose which calculation to use". ENG-14's `ac.base` takes the
   highest. A pinned choice is a stored field: a `schemaVersion` bump and a migration.
@@ -162,7 +155,9 @@ split off an old row got a new id.
   Found by ENG-15: SPEC §5.4 has two targets for a spell attack, `spell.attack.bonus` (ENG-15 adds
   it to `classes.<key>.spell.attack`) and `attack.spell.bonus`; this ticket decides how a spell's
   attack reads the second. A spell a `spell` grant gives with its own `ability` (a feat's, a
-  species') has no DC or attack path yet.
+  species') has no DC or attack path yet. Found by ENG-44: a weapon's `magic.bonus` counts only
+  when its magic works, as an armor's does: it needs no attunement (`needsAttunement`,
+  `equipment.ts`) or is attuned.
 - **ENG-49** — found by ENG-15: gathering looks up an `entity` grant's `fixed` ids and every
   grant's chosen ones, so a `spell` grant's `fixed` spell or an `item` grant's `fixed` item that
   no pack has gives no warning (measured: `srd-2014:spell/nothing`, ENG-15 §11). The core does not
@@ -190,7 +185,9 @@ split off an old row got a new id.
   Armor Training, ENG-14 §8); in 2024 a shield gives its AC only with training, a ruleset
   difference. Armor proficiency keys are `light`, `medium`, `heavy` and `shield` (ENG-09 §4),
   compared with `armor.group` and `category`. It needs ENG-34's roll modes and ENG-19's ruleset
-  files.
+  files. Found by ENG-44: the armor and the shield worn are `equipmentOf`'s (`equipment.ts`); a
+  shield's +2 is its own effect, so a shield without training gives none only if that function
+  leaves it out or names it dormant.
 - **ENG-35** — ADR 014 item 1 (from ADR 013 item 10): a 2014 race with a 2024 background gives
   ability increases from the race, the background or both; `both` warns, never blocks; the
   default is the rules base's source. Its §8 reads both SRDs for other bonuses of one kind given

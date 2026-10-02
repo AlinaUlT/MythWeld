@@ -10,12 +10,14 @@ import {
 } from '@grimoire/engine';
 import type { FifthEditionCharacter } from './character';
 import type { FifthEditionEntity, ItemDef, LineageDef, SpeciesDef } from './entity-types';
-import { SPEED_KINDS } from './system';
+import { type Equipment, type ExtraItem, equipmentOf, type WornItem } from './equipment';
+import { ARMOR_GROUPS, SPEED_KINDS } from './system';
 
 // ENG-14: fifth edition's combat numbers (SPEC §6.1 step 5): the hit point maximum, armor class,
 // initiative and speeds, one rule in both editions (ENG-14 §8). What an item, a feat or a
 // condition adds is its effect on a target given here (`hp.max.bonus`, `ac.bonus`, `ac.formulas`,
-// `init.bonus`, `speed.*`); a total adds its parts as `path` steps, as ENG-13's do.
+// `init.bonus`, `speed.*`); a total adds its parts as `path` steps, as ENG-13's do. ENG-44: the
+// armor and the shield worn are `equipmentOf`'s.
 
 /** The stats the rules name: initiative and AC read Dexterity, hit points Constitution (§8). */
 export const RULE_STATS = { initiative: 'dex', armorClass: 'dex', hitPoints: 'con' } as const;
@@ -25,10 +27,6 @@ export const UNARMORED_AC = 10;
 
 /** The list effects add AC candidates to (SPEC §5.4 `ac.formulas`). */
 export const AC_FORMULAS = 'ac.formulas';
-
-/** The own paths an equipped item is named with (SPEC §5.6 `@equipped`, `@attuned`). */
-export const EQUIPPED_PATH = 'equipped';
-export const ATTUNED_PATH = 'attuned';
 
 /** A level's hit points as stored: a number rolled, the die's average, or its maximum. */
 export type LevelHitPoints = FifthEditionCharacter['systemData']['classes'][number]['hp'][number];
@@ -54,7 +52,7 @@ function sumOf(paths: readonly string[]): DerivedStep {
   };
 }
 
-/** A path that is 1 when the character has `item`, with a step naming it; else 0. */
+/** A path that is 1 when `item` is worn, with a step naming it; else 0. */
 function presence(item: ItemDef | undefined): DerivedStep {
   return () =>
     item === undefined
@@ -65,15 +63,28 @@ function presence(item: ItemDef | undefined): DerivedStep {
         };
 }
 
-/** The first item of a category the character has, in the order gathered. */
-function firstOf(
-  entities: DeriveInput<FifthEditionCharacter, FifthEditionEntity>['gathered']['entities'],
-  category: ItemDef['category'],
-): ItemDef | undefined {
-  for (const { entity } of entities) {
-    if (entity.type === 'item' && entity.category === category) return entity;
+/** `presence` of the item worn, warning of each one of its category that counts for nothing. */
+function wornOf(worn: WornItem | undefined, extra: readonly ExtraItem[]): DerivedStep {
+  const ruleWarnings: RuleWarning[] = extra.map(({ item, worn: first }) => ({
+    rule: 'oneAtATime',
+    data: { item: item.id, worn: first.id },
+    message: `"${item.id}" is equipped while "${first.id}" is worn; only one counts at a time, so "${item.id}" counts for nothing.`,
+  }));
+  const step = presence(worn?.item);
+  return (...read) => ({ ...step(...read), ruleWarnings });
+}
+
+/** The magic bonuses of the armor and the shield worn, each when its magic works (ENG-44 §8). */
+function magicBonus({ armor, shield }: Equipment): DerivedStep {
+  const steps: BreakdownStep[] = [];
+  for (const worn of [armor, shield]) {
+    const bonus = worn?.magic === true ? worn.item.magic?.bonus : undefined;
+    if (worn === undefined || bonus === undefined) continue;
+    const { id: source, name: label } = worn.item;
+    steps.push({ kind: 'entity', source, label, value: bonus, change: bonus });
   }
-  return undefined;
+  const value = steps.reduce((sum, step) => sum + step.change, 0);
+  return () => ({ value, steps });
 }
 
 /** The hit point maximum: each class's levels, Constitution per level (at least 1), the bonus. */
@@ -223,20 +234,20 @@ function speedOf(
 
 /**
  * The combat steps of a character: `hp.max.bonus`, `hp.max`; `armor.worn`, `shield`, `ac.bonus`,
- * `ac.base`, `ac.total`; `init.bonus`, `init.total`; `speed.all.bonus`, `speed.all.mul`, then each
- * kind's bonus and speed.
+ * `ac.base`, `ac.total`; `init.bonus`, `init.total`; `speed.all.bonus`, `speed.all.mul`; each
+ * armor group's `armor.<group>`; then each kind's speed bonus and speed.
  */
 export function combatSteps(
   input: DeriveInput<FifthEditionCharacter, FifthEditionEntity>,
 ): Record<string, DerivedStep> {
-  const { entities } = input.gathered;
-  const armor = firstOf(entities, 'armor');
+  const equipment = equipmentOf(input.character, input.find);
+  const armor = equipment.armor?.item;
   const steps: Record<string, DerivedStep> = {
     'hp.max.bonus': zero,
     'hp.max': hitPoints(input),
-    'armor.worn': presence(armor),
-    shield: presence(firstOf(entities, 'shield')),
-    'ac.bonus': zero,
+    'armor.worn': wornOf(equipment.armor, equipment.extra.armor),
+    shield: wornOf(equipment.shield, equipment.extra.shield),
+    'ac.bonus': magicBonus(equipment),
     'ac.base': armorClassBase(input, armor),
     'ac.total': sumOf(['ac.base', 'ac.bonus']),
     'init.bonus': zero,
@@ -247,6 +258,9 @@ export function combatSteps(
       steps: [{ kind: 'rule', rule: 'speedMultiplier', value: 1, change: 1 }],
     }),
   };
+  for (const group of ARMOR_GROUPS) {
+    steps[`armor.${group}`] = presence(armor?.armor?.group === group ? armor : undefined);
+  }
   const sources = speedSources(input);
   for (const kind of SPEED_KINDS) {
     steps[`speed.${kind}.bonus`] = zero;

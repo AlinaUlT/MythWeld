@@ -10,6 +10,7 @@ import {
 } from '@grimoire/schema';
 import { z } from 'zod';
 import {
+  ARMOR_GROUPS,
   COINS,
   fifthEdition,
   HIT_DIE_SIZES,
@@ -297,7 +298,7 @@ const weaponSchema = z.strictObject({
 
 /** Armor's numbers. `dexCap` is the most Dexterity adds: `null` for no cap, 0 for none. */
 const armorSchema = z.strictObject({
-  group: z.enum(['light', 'medium', 'heavy']),
+  group: z.enum(ARMOR_GROUPS),
   baseAC: z.int().positive(),
   dexCap: z.int().nonnegative().nullable(),
   strRequirement: z.int().positive().optional(),

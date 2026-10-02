@@ -10,6 +10,7 @@ export * from './checks';
 export * from './classes';
 export * from './combat';
 export * from './entity-types';
+export * from './equipment';
 export * from './module';
 export * from './pack';
 export * from './rulesets';
