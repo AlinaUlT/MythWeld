@@ -247,11 +247,6 @@ function matches(entity: GatherableEntity, filter: ChooseFilter): boolean {
   );
 }
 
-/** The warning for an id looked up and not found, with where it was given. */
-function missing(id: string, from: Origin): GatherWarning {
-  return { code: 'missing', id, from, message: `Missing: ${id} (given by ${from}).` };
-}
-
 /** A condition's highest level: its `maxLevel`, or 1 when it has no levels. */
 export function maxLevelOf(entity: GatherableEntity): number {
   const max = (entity as { readonly maxLevel?: unknown }).maxLevel;
@@ -263,11 +258,17 @@ export function ownGrants<E extends GatherableEntity>(entity: E): readonly Grant
   return (entity.grants ?? []) as readonly GrantOf<E>[];
 }
 
+/** The ids a grant names besides what gathering walks: none, when its module says none. */
+function namesNone(): readonly string[] {
+  return [];
+}
+
 /**
  * Gathers what a character has (SPEC §6.1 steps 1–2). `level` is the character's level, which a
  * grant's `atLevel` is measured against; `named` are the entities its module part names, each
  * with its own level when its grants count one. `grantsOf` gives the grants an entity gives this
- * character, its own by default. Pure: nothing passed in is changed.
+ * character, its own by default; `namedIds`, the ids a grant of a module's own kind names, which
+ * are looked up and not gathered (none by default). Pure: nothing passed in is changed.
  */
 export function gather<E extends GatherableEntity>(
   character: CharacterCore<E>,
@@ -275,8 +276,10 @@ export function gather<E extends GatherableEntity>(
   level: number,
   named: readonly NamedEntity[],
   grantsOf: (entity: E) => readonly GrantOf<E>[] = ownGrants,
+  namedIds: (grant: GrantOf<E>) => readonly string[] = namesNone,
 ): Gathered<E> {
   const warnings: GatherWarning[] = [];
+  const warnedMissing = new Map<Origin, Set<string>>();
   const ruleset = character.ruleset;
   const mixingAllowed = character.allowMixedRulesets;
   const inRulesBase = (entity: E) => entity.ruleset === ANY_RULESET || entity.ruleset === ruleset;
@@ -342,7 +345,7 @@ export function gather<E extends GatherableEntity>(
     }
     const entity = find(id);
     if (entity === undefined) {
-      warnings.push(missing(id, from));
+      warnMissing(id, from);
       continue;
     }
     had.set(id, {
@@ -392,6 +395,11 @@ export function gather<E extends GatherableEntity>(
         }
       } else if (isCoreKind(grant, 'resource')) {
         resources.push({ key: grant.key, label: grant.label, uses: grant.uses, from: part });
+      } else {
+        // The ids a module's own kind names are looked up only: they are not had (ENG-49).
+        for (const each of namedIds(grant)) {
+          if (find(each) === undefined) warnMissing(each, part);
+        }
       }
     }
     stack.push(...given.reverse());
@@ -415,7 +423,7 @@ export function gather<E extends GatherableEntity>(
       if (!isFilter(choose.from)) {
         offered = choose.from.includes(item);
         if (!takesKeys && find(item) === undefined) {
-          warnings.push(missing(item, part));
+          warnMissing(item, part);
           continue;
         }
       } else if (takesKeys) {
@@ -423,7 +431,7 @@ export function gather<E extends GatherableEntity>(
       } else {
         const found = find(item);
         if (found === undefined) {
-          warnings.push(missing(item, part));
+          warnMissing(item, part);
           continue;
         }
         offered = matches(found, choose.from);
@@ -439,6 +447,18 @@ export function gather<E extends GatherableEntity>(
       used.push(item);
     }
     return used;
+  }
+
+  /**
+   * ENG-49: warns that an id looked up was not found, with where it was given: once per id and
+   * place, however many lookups of that place miss it.
+   */
+  function warnMissing(id: string, from: Origin): void {
+    const ids = warnedMissing.get(from) ?? new Set<string>();
+    warnedMissing.set(from, ids);
+    if (ids.has(id)) return;
+    ids.add(id);
+    warnings.push({ code: 'missing', id, from, message: `Missing: ${id} (given by ${from}).` });
   }
 
   /** Warns when more items are stored than a choice takes; the first `count` are used. */
@@ -500,7 +520,7 @@ export function gather<E extends GatherableEntity>(
       options = choose.from.filter((item) => {
         if (takesKeys) return offered(item);
         if (find(item) === undefined) {
-          warnings.push(missing(item, part));
+          warnMissing(item, part);
           return false;
         }
         return offered(item);

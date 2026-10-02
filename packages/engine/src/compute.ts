@@ -58,6 +58,14 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    */
   grantsOf?(character: C, entity: E): readonly GrantOf<E>[];
   /**
+   * ENG-49: the entity ids a grant of the module's own kind names (a fifth-edition `spell`
+   * grant's `fixed` spells, an `item` grant's `fixed` items). Gathering asks it of each grant it
+   * reaches but an `entity`, `proficiency` or `resource` one, and looks each id up: one not found
+   * warns `missing`. They are not gathered, so their effects and grants do nothing. Every
+   * grant's chosen ids are looked up whether the module gives this or not.
+   */
+  namedIds?(grant: GrantOf<E>): readonly string[];
+  /**
    * The system's derived values (SPEC §6.1 step 5): computed path → its step. A step reads any
    * other path, the core's or the module's; a pack's formula of an entity part is read through
    * `readBy(part)`, so a loop it closes names the part. The core gives `level`, each stat's
@@ -114,6 +122,7 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
     level,
     system.entities(character, find),
     grantsOf === undefined ? ownGrants : (entity) => grantsOf(character, entity),
+    system.namedIds,
   );
   const defaults = system.statDefaults;
   const basePhase: BasePhase = {

@@ -108,7 +108,8 @@ const scribe: EntityInput = {
   levels: [{ level: 1, table: { inks: 2, title: 'Novice' } }],
   grants: [
     { id: 'tools', kind: 'proficiency', category: 'tool', fixed: ['quills'] },
-    { id: 'kit', kind: 'item', atLevel: 1, fixed: [{ id: 'srd-2014:item/shield', qty: 1 }] },
+    // Its item is the 2024 pack's: the tests that give it compute on that pack (ENG-49).
+    { id: 'kit', kind: 'item', atLevel: 1, fixed: [{ id: 'srd-2024:item/greatsword', qty: 1 }] },
     { id: 'late-tools', kind: 'proficiency', category: 'tool', atLevel: 2, fixed: ['seals'] },
   ],
   multiclass: {
@@ -805,5 +806,90 @@ describe('ENG-43 an effect sets the stat a skill uses', () => {
     expect(result.values['skills.omens.total']).toBe(2);
     expect(result.keys['skills.omens.ability']?.key).toBe('int');
     expect(result.warnings).toEqual([]);
+  });
+});
+
+describe('ENG-49 a spell or item a grant names that no pack has', () => {
+  // `srd-2014.ts` has `spell/bless` and `item/shield`; no pack has the `nothing` and `missing` ids.
+  const finder: EntityInput = {
+    id: 'character:feat/finder',
+    type: 'feat',
+    ruleset: 'any',
+    name: { en: 'Finder' },
+    source,
+    grants: [
+      { id: 'spells', kind: 'spell', fixed: ['srd-2014:spell/nothing', 'srd-2014:spell/bless'] },
+      {
+        id: 'kit',
+        kind: 'item',
+        fixed: [
+          { id: 'srd-2014:item/nothing', qty: 2 },
+          { id: 'srd-2014:item/shield', qty: 1 },
+        ],
+      },
+      {
+        id: 'pick',
+        kind: 'spell',
+        choose: { count: 1, from: ['srd-2014:spell/missing', 'srd-2014:spell/bless'] },
+      },
+    ],
+  };
+  const finding: CharacterInput = {
+    ...goldenA,
+    localEntities: [finder],
+    choices: { ...goldenA.choices, 'character:feat/finder#pick': ['srd-2014:spell/missing'] },
+    systemData: { ...goldenA.systemData, feats: [{ id: finder.id }] },
+  };
+
+  it('warns once for each id no pack has, from its grant, and gathers none of them', () => {
+    const result = computed(finding);
+    expect(codes(result)).toEqual([
+      { code: 'missing', id: 'srd-2014:spell/nothing', from: 'character:feat/finder#spells' },
+      { code: 'missing', id: 'srd-2014:item/nothing', from: 'character:feat/finder#kit' },
+      { code: 'missing', id: 'srd-2014:spell/missing', from: 'character:feat/finder#pick' },
+    ]);
+    expect(
+      result.pendingChoices.map(({ part, chosen, options }) => [part, chosen, options]),
+    ).toEqual([['character:feat/finder#pick', [], ['srd-2014:spell/bless']]]);
+    const had = result.entities.map(({ entity }) => entity.id);
+    expect(had).toContain(finder.id);
+    expect(had).not.toContain('srd-2014:spell/bless');
+    // Golden A wears the shield: the character names it, the feat's kit does not.
+    const shield = result.entities.find(({ entity }) => entity.id === 'srd-2014:item/shield');
+    expect(shield?.from).toEqual(['character']);
+  });
+
+  it("names a spell grant's and an item grant's fixed ids, and no other kind's", () => {
+    const named = (finder.grants ?? []).map((grant) => fifthEditionModule.namedIds?.(grant));
+    expect(named).toEqual([
+      ['srd-2014:spell/nothing', 'srd-2014:spell/bless'],
+      ['srd-2014:item/nothing', 'srd-2014:item/shield'],
+      [],
+    ]);
+    expect((trained.grants ?? []).map((grant) => fifthEditionModule.namedIds?.(grant))).toEqual([
+      [],
+      [],
+      [],
+      [],
+    ]);
+  });
+
+  it('gives every golden no warning; frozen inputs give the result of unfrozen ones', () => {
+    for (const golden of [goldenA, goldenB, goldenB4, goldenC2014, goldenC2024, goldenD]) {
+      expect(computed(golden).warnings).toEqual([]);
+    }
+    const character = opened(openFifthEditionCharacter(finding));
+    const frozen = opened(openFifthEditionCharacter(finding));
+    const freeze = <T>(value: T): T => {
+      if (typeof value === 'object' && value !== null && !Object.isFrozen(value)) {
+        Object.freeze(value);
+        for (const inner of Object.values(value)) freeze(inner);
+      }
+      return value;
+    };
+    freeze(frozen);
+    expect(compute(frozen, index2014.index, fifthEditionModule)).toEqual(
+      compute(character, index2014.index, fifthEditionModule),
+    );
   });
 });

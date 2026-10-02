@@ -23,7 +23,7 @@ import { spellcastingSteps } from './spellcasting';
 // ENG-16 add their steps to `derive`: ENG-14 the combat steps, ENG-15 the spellcasting steps,
 // ENG-16 the attack steps.
 // ENG-14: each equipped item is named, with its own paths. ENG-44: as `equipmentOf` counts it.
-// ENG-48 adds the size to `keys`.
+// ENG-48 adds the size to `keys`. ENG-49: a `spell` or `item` grant's own ids are looked up.
 
 /** A stat's defaults (SPEC §5.3): the modifier, a save, a highest score of 20 (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: StatDefaults = {
@@ -103,6 +103,14 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     }
     const replaced = new Set(systemData.feats.flatMap(({ replaces }) => replaces ?? []));
     return grants.filter((grant) => !replaced.has(`${entity.id}#${grant.id}`));
+  },
+
+  // A spell grant's spells and an item grant's items are known or carried, not had: gathering
+  // looks them up, and warns for one no pack has.
+  namedIds: (grant) => {
+    if (grant.kind === 'spell') return grant.fixed ?? [];
+    if (grant.kind === 'item') return (grant.fixed ?? []).map(({ id }) => id);
+    return [];
   },
 
   derive: (input) => ({

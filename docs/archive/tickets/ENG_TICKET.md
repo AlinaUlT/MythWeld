@@ -8855,3 +8855,207 @@ and the test only; no source file changed. The row's note (the pack gains `syste
 Found, not fixed: nothing.
 
 Changelog: nothing. No screen shows a character yet.
+
+---
+
+### ENG-49 A spell or item a grant names that no pack has gives a warning
+
+**Hat:** A spell or item a grant names that no pack has gives a warning
+**Depends on:** ENG-11 (`gather`, the `missing` warning), ENG-13 (`SystemModule.grantsOf`, the
+model for a module telling the core about its grants), ENG-32 (the `spell` and `item` grant
+kinds), ENG-27 (Tales and its `boon` kind)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.5 (grants: `fixed` and `choose`); §6.1 steps 1–2 (gathering); §8.2 (a missing
+reference is a placeholder and a warning, never a crash); ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/gather.ts` — changes: `gather` takes the ids a grant of a
+module's own kind names, and looks each one up; a `missing` warning is given once per id and
+place.
+- `packages/engine/src/compute.ts` — changes: `SystemModule.namedIds`, passed to `gather`.
+- `packages/system-5e/src/module.ts` — changes: `namedIds` gives a `spell` grant's `fixed` spells
+  and an `item` grant's `fixed` items.
+- `packages/engine/test/tales-module.ts` — changes: Tales' `namedIds` gives a `boon` grant's talent.
+- `packages/engine/test/compute.test.ts` — changes: a `describe('ENG-49 …')` block, on Tales and
+  on the made-up card system.
+- `packages/system-5e/test/module.test.ts` — changes: a `describe('ENG-49 …')` block, on golden A
+  with a made-up feat; ENG-13's made-up class `scribe` gives an item the 2024 pack has (§11).
+
+#### 2. What is missing now
+
+Measured on `main` at `7633984`, with a scratch test (deleted after):
+- Golden A with a made-up feat whose grants are a `spell` grant with `fixed:
+  ['srd-2014:spell/nothing']`, an `item` grant with `fixed: [{ id: 'srd-2014:item/nothing', qty:
+  1 }]`, and a `spell` grant with `choose: { count: 1, from: ['srd-2014:spell/missing',
+  'srd-2014:spell/bless'] }` whose stored choice is `['srd-2014:spell/missing']`. Its warnings:
+
+  ```
+  [{"code":"missing","id":"srd-2014:spell/missing","from":"character:feat/test#pick"},
+   {"code":"missing","id":"srd-2014:spell/missing","from":"character:feat/test#pick"}]
+  ```
+
+  The fixed spell and the fixed item give nothing; the chosen spell warns twice, once as chosen
+  (`chosenFor`) and once among the pending choice's options.
+- `gather.ts` looks up only an `entity` grant's `fixed` ids (the walk) and every grant's chosen
+  ids. `SystemModule` has no way to say which ids a module's own grant kind names.
+- Goldens A, B, B4, C 2014, C 2024: 0 warnings each.
+- `pnpm test`: `Test Files 43 passed (43)`, `Tests 481 passed (481)`.
+
+#### 3. What it should look like when done
+
+1. **The module names the ids** (the core, game-free): `SystemModule.namedIds?(grant)` gives the
+   entity ids a grant of the module's own kind names that gathering does not walk. Gathering asks
+   it for each grant it reaches that is not a core `entity`, `proficiency` or `resource` grant,
+   looks each id up (the character's own entities, then the packs), and warns `missing` with the
+   grant's part id as `from` for each one not found. The ids are not gathered: they join no
+   `entities`, and their effects and grants do nothing. Without `namedIds`, nothing is looked up.
+2. A grant not reached names nothing: one whose `atLevel` is above the level, one of a dormant
+   entity, one a module's `grantsOf` leaves out.
+3. **One warning per id and place.** A `missing` warning with the same `id` and `from` is given
+   once. A chosen id that is missing from a list choice warns once, not twice. The same missing id
+   given from two places warns once for each place.
+4. **Fifth edition**: `namedIds` gives a `spell` grant's `fixed` and an `item` grant's `fixed`
+   entries' `id`s; every other kind gives none. Golden A with a made-up feat
+   `character:feat/finder`, the feat of §2 with `srd-2014:spell/bless` added to the spell grant's
+   `fixed` and `{ id: 'srd-2014:item/shield', qty: 1 }` to the item grant's (its missing item at
+   `qty: 2`), gives exactly these warnings, in this order (the order the grants are reached):
+   - `missing` `srd-2014:spell/nothing` from `character:feat/finder#spells`;
+   - `missing` `srd-2014:item/nothing` from `character:feat/finder#kit`;
+   - `missing` `srd-2014:spell/missing` from `character:feat/finder#pick`.
+
+   Its pending choice `character:feat/finder#pick` has `chosen: []` and options
+   `['srd-2014:spell/bless']`. Nothing is gathered from the feat's grants: Bless is not in
+   `entities`, and the shield, which golden A wears, has `from: ['character']` only.
+5. **Tales** (core tests): Tales' `namedIds` gives a `boon` grant's `boon`. Brook with a talent of
+   its own whose boon names `tales-core:talent/gone` warns `missing` once, from that talent's
+   boon part; with a module without `namedIds`, it does not. Brook's own boon (Deep Lungs, in the
+   pack) warns nothing and still gathers nothing. A boon whose `atLevel` is above Brook's level 3
+   warns nothing.
+6. Goldens A, B, B4, C 2014, C 2024 and D still give 0 warnings; no expected value changes.
+7. `compute()` stays pure: frozen inputs give equal results.
+8. The quality gate is green.
+
+#### 4. How to do it
+
+1. `gather.ts`: a sixth parameter, `namedIds` (default: none). In the walk, a grant that is not
+   an `entity`, `proficiency` or `resource` grant has its `namedIds` looked up with `find`, each
+   not found warned `missing` from its part. A `warnMissing(id, from)` inside `gather` keeps the
+   `(from, id)` pairs it warned, and every lookup that warns `missing` goes through it.
+2. `compute.ts`: `SystemModule.namedIds`, passed to `gather`.
+3. `module.ts` (fifth edition): `namedIds` for `spell` and `item`.
+4. `tales-module.ts`: `namedIds` for `boon`.
+5. The tests of §7.
+
+Technical choices (ADR 002):
+- **The module says which ids its kinds name**, as the row's note says and as ENG-13's `grantsOf`
+  says which grants apply. The core cannot know that a `spell` grant's `fixed` is a list of ids
+  and an `item` grant's is a list of `{ id, qty }`: they are the module's kinds (ENG-32).
+- **A function of the grant alone**, not of the character: which ids a grant names is its shape,
+  never a rule of the character. `grantsOf` takes the character because its rule reads the class
+  order.
+- **Looked up, not gathered.** A spell a subclass gives is known or prepared, not an entity whose
+  effects apply; an item a background gives goes into the inventory, and only an equipped one is
+  named (ENG-44). Gathering them would apply their effects.
+- **Only `fixed` ids are the module's to give.** Every grant's chosen ids are looked up by
+  gathering already (`chosenFor`), so the module gives only what the grant names itself.
+- **Asked of every grant but `entity`, `proficiency` and `resource`.** An `entity` grant's ids are
+  walked; a `proficiency` grant names keys, a `resource` grant a key. The core's `abilityScore`
+  kind is asked too and names nothing; a module gives `[]` for it.
+- **One warning per id and place, not per id.** A `missing` warning has one `from`; the person
+  fixes the reference where it is. Two places naming the same missing id are two references to
+  fix (SPEC §8.2: each missing reference has its placeholder and warning). The same place looking
+  the same id up twice is one reference. The row's "one warning per id" was said of the double
+  warning of one choice (§11).
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, no `schemaVersion`, no Dexie table changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/compute.test.ts` — `describe('ENG-49 ids a module's grant names, looked
+  up once')`: §3 items 1, 2, 3 and 5 on Tales and on the card system of ENG-11's test.
+- `packages/system-5e/test/module.test.ts` — `describe('ENG-49 a spell or item a grant names that
+  no pack has')`: §3 items 4, 6, 7.
+- Control values from: the made-up entities' own ids, and the fixture pack `srd-2014.ts`, which
+  has `srd-2014:spell/bless` (line 466) and `srd-2014:item/shield` (line 521) and no
+  `…/nothing` or `…/missing`. Each expected value was read from that data by hand, never copied
+  from a run.
+
+#### 8. Checked against the source
+
+Nothing to check: no rule of a game. Which grant fields name entities is ENG-32's schema
+(`spellGrantSchema`, `itemGrantSchema` in `system.ts`); what a missing reference does is SPEC §8.2.
+
+#### 9. Not in this ticket
+
+- A named spell or item of the other edition gets no `otherRuleset` warning, as a spell grant's
+  chosen one gets none today: only entities the character has are warned so (ENG-11).
+- What a spell grant's spells do on the sheet (known, prepared, cast): phase 2's Spells tab,
+  ENG-20, ENG-51. What an item grant's items do (the starting inventory): the creation wizard.
+- A `Missing: <id>` placeholder on screen: phase 2.
+
+#### 10. Rake check
+
+- **`packages/engine` is pure; the core names no game.** `namedIds` and the one-warning rule name
+  no spell or item; the core is tested on Tales' `boon` and the card system.
+- **Each system's rules live in its own module.** Which fields of `spell` and `item` are ids is
+  in `module.ts`; no `if (system === …)` in the core.
+- **Missing is not broken.** A missing id warns and nothing throws; the grant still applies.
+- **`compute()` is pure.** `namedIds` reads the grant only; a frozen character and index give
+  equal results.
+- **Golden values do not move.** No golden names a missing spell or item; their 0 warnings stay.
+- **Licensing.** The feat, talent and ids in the tests are made up (`character:`, `…/nothing`).
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `compute.test.ts` and `module.test.ts` together: `Tests 44 passed (44)` (7 new: 4 on Tales and
+  the made-up feat's talent, 3 on fifth edition).
+- Lint: `Checked 155 files`, no fixes, no error. Typecheck: all 6 projects `Done`.
+- Test: `Test Files 43 passed (43)`, `Tests 488 passed (488)`, 5.86 s (before, at `7633984`: 43
+  files, 481 tests).
+- ENG-22 reached `main` while this ticket was built (`b23b984`); the ticket was rebased onto it.
+  On the result: lint `Checked 156 files`, no error; typecheck all 6 `Done`; `Test Files 43
+  passed (43)`, `Tests 497 passed (497)`, 6.07 s. Golden E with its pack off still gives its one
+  `Missing: hb-local:feat/arcane-scholar (given by character).`: the Appendix Д pack has no
+  `spell` or `item` grant.
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The made-up feat of §2, run again on the new code (scratch test, deleted after):
+  `spell/nothing` from `#spells`, `item/nothing` from `#kit`, `spell/missing` from `#pick`, once
+  each. Before: `spell/missing` twice, the other two not at all.
+- Goldens A, B, B4, C 2014, C 2024 and D: 0 warnings each, as before. No expected value changed.
+- The tests bite. 8 breaks, each on its own and restored, the `engine` and `system-5e` tests run
+  (360 tests): `namedIds` not passed to `gather`, 3 fail; no once-per-place check, 2; the named
+  ids gathered, 11; found ids warned too, 22; one warning per id whatever the place, 1; no spell
+  ids in fifth edition, 2; no item ids, 2; no boon ids in Tales, 2.
+
+Differences from §3 and §4:
+- ENG-13's made-up class `scribe` (`module.test.ts`) gave `srd-2014:item/shield` from its `kit`
+  grant, and two of its tests compute it as golden B's first class, on the 2024 pack, which has no
+  such id. The new lookup warned `missing` there, rightly: the test data named an id its pack
+  lacks. Its kit now gives `srd-2024:item/greatsword`; the tests' expected values did not change.
+- §3 item 4 first said none of the feat's four spells and items is in `entities`. Golden A wears
+  the shield, so it is there, named by the character; the test checks that its `from` is the
+  character's only.
+
+Against the row and its note:
+- The note said "one warning per id". It was said of one chosen id warned twice by the same
+  choice; the built rule is one warning per id and place (§4), so two places naming the same
+  missing id still give two warnings, each naming where to fix it.
+
+Found, not fixed:
+- A spell or item a grant names that is of the other edition gets no `otherRuleset` warning (§9),
+  nor does a `spell` grant's chosen one. Only entities the character has are warned so. New note
+  for phase 2 in `BACKLOG.md`: the Spells tab and the starting inventory show the edition there.
+
+Nothing for the changelog.

@@ -721,3 +721,113 @@ describe('ENG-44 the module looks up ids', () => {
     expect(result.values).toEqual(computed(brook).values);
   });
 });
+
+describe("ENG-49 ids a module's grant names, looked up once", () => {
+  /** Brook's one warning: a talent no pack has, named by the character (ENG-27). */
+  const brookMissing = { code: 'missing', id: 'tales-core:talent/gone-missing', from: 'character' };
+
+  /** Brook with one more talent, of its own, `character:talent/wish`, which has `grants`. */
+  function wishing(grants: GrantOf<TalesEntity>[], change: Partial<TalesCharacter> = {}) {
+    const wish: TalesEntity = {
+      id: 'character:talent/wish',
+      type: 'talent',
+      ruleset: 'any',
+      name: { en: 'Wish' },
+      tier: 1,
+      grants,
+      source,
+    };
+    return variant(brook, {
+      localEntities: [...brook.localEntities, wish],
+      systemData: { ...brook.systemData, talents: [...brook.systemData.talents, wish.id] },
+      ...change,
+    });
+  }
+  const boonOf = (boon: EntityId, atLevel?: number): GrantOf<TalesEntity> => ({
+    id: 'wish',
+    kind: 'boon',
+    boon,
+    ...(atLevel !== undefined && { atLevel }),
+  });
+
+  it("warns for a boon's talent no pack has, from the boon's part, and gathers no boon's talent", () => {
+    const result = computed(wishing([boonOf('tales-core:talent/gone')]));
+    expect(codes(result)).toEqual([
+      brookMissing,
+      { code: 'missing', id: 'tales-core:talent/gone', from: 'character:talent/wish#wish' },
+    ]);
+    expect(result.warnings[1]?.message).toBe(
+      'Missing: tales-core:talent/gone (given by character:talent/wish#wish).',
+    );
+    expect(ids(result)).toContain('character:talent/wish');
+    expect(ids(result)).not.toContain('tales-core:talent/gone');
+    expect(result.grants.map(({ part }) => part)).toContain('character:talent/wish#wish');
+
+    // Deep Lungs is in the pack: no warning, and still not gathered.
+    const found = computed(wishing([boonOf('tales-core:talent/deep-lungs')]));
+    expect(codes(found)).toEqual([brookMissing]);
+    expect(ids(found)).not.toContain('tales-core:talent/deep-lungs');
+  });
+
+  it('looks nothing up without namedIds, nor for a grant not reached', () => {
+    const gone = wishing([boonOf('tales-core:talent/gone')]);
+    const { namedIds: _, ...unnamed } = talesModule;
+    expect(codes(computed(gone, unnamed))).toEqual([brookMissing]);
+    // Brook is level 3.
+    expect(codes(computed(wishing([boonOf('tales-core:talent/gone', 4)])))).toEqual([brookMissing]);
+    const dormant: SystemModule<TalesCharacter, TalesEntity> = {
+      ...talesModule,
+      entities: (character, find) =>
+        talesModule
+          .entities(character, find)
+          .map((entity) =>
+            entity.id === 'character:talent/wish' ? { ...entity, dormant: true } : entity,
+          ),
+    };
+    expect(codes(computed(gone, dormant))).toEqual([brookMissing]);
+    const leftOut: SystemModule<TalesCharacter, TalesEntity> = {
+      ...talesModule,
+      grantsOf: (_, entity) => (entity.id === 'character:talent/wish' ? [] : (entity.grants ?? [])),
+    };
+    expect(codes(computed(gone, leftOut))).toEqual([brookMissing]);
+  });
+
+  it('warns once per id and place: a missing chosen id once, one id from two places twice', () => {
+    const pick: GrantOf<TalesEntity> = {
+      id: 'pick',
+      kind: 'entity',
+      choose: { count: 1, from: ['tales-core:talent/gone', 'tales-core:talent/deep-lungs'] },
+    };
+    const result = computed(
+      wishing([boonOf('tales-core:talent/gone'), pick], {
+        choices: { 'character:talent/wish#pick': ['tales-core:talent/gone'] },
+      }),
+    );
+    expect(codes(result)).toEqual([
+      brookMissing,
+      { code: 'missing', id: 'tales-core:talent/gone', from: 'character:talent/wish#wish' },
+      { code: 'missing', id: 'tales-core:talent/gone', from: 'character:talent/wish#pick' },
+    ]);
+    expect(
+      result.pendingChoices.map(({ part, chosen, options }) => [part, chosen, options]),
+    ).toEqual([
+      ['tales-core:calling/seeker#knacks', [], ['climb', 'sneak', 'steady']],
+      ['character:talent/wish#pick', [], ['tales-core:talent/deep-lungs']],
+    ]);
+
+    const twice = computed(
+      variant(brook, {
+        systemData: {
+          ...brook.systemData,
+          talents: [...brook.systemData.talents, 'tales-core:talent/gone-missing'],
+        },
+      }),
+    );
+    expect(codes(twice)).toEqual([brookMissing]);
+  });
+
+  it('is pure: frozen inputs give the result of unfrozen ones', () => {
+    const gone = () => wishing([boonOf('tales-core:talent/gone')]);
+    expect(computed(deepFreeze(gone()))).toEqual(computed(gone()));
+  });
+});

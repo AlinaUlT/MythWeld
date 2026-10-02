@@ -7,7 +7,8 @@ import {
 
 // Tales' module (ENG-27): the character's level, the entities its part names (the calling first,
 // then the talents), a stat's defaults, and its derived values (ENG-28), from Tales' rules in
-// `tales/system.ts`. ENG-43: each skill's stat is a key path, `skills.<key>.ability`.
+// `tales/system.ts`. ENG-43: each skill's stat is a key path, `skills.<key>.ability`. ENG-49: a
+// boon names its talent, which is looked up and not gathered.
 
 /** A path whose value is 0 until an effect changes it. */
 const zero: DerivedStep = () => ({ value: 0, steps: [] });
@@ -21,6 +22,7 @@ export const talesModule: SystemModule<TalesCharacter, TalesEntity> = {
     modFormula: TALES_RULES.modFormula,
     hasSave: TALES_RULES.hasSave,
   },
+  namedIds: (grant) => (grant.kind === 'boon' ? [grant.boon] : []),
   derive: ({ gathered }) => {
     const names = new Map(gathered.entities.map(({ entity }) => [entity.id, entity.name]));
     const grants = new Map(gathered.grants.map((grant) => [grant.part, grant]));

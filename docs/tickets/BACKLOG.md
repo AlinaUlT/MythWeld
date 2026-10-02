@@ -100,7 +100,7 @@ split off an old row got a new id.
 | ENG-48 | The character's size comes from its species | S | ✅ 2026-10-02 |
 | ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | ✅ 2026-10-02 |
 | ENG-16 | Weapon attacks are computed, weapon mastery included | M | ✅ 2026-10-02 |
-| ENG-49 | A spell or item a grant names that no pack has gives a warning | S | 🔲 |
+| ENG-49 | A spell or item a grant names that no pack has gives a warning | S | ✅ 2026-10-02 |
 | ENG-52 | A roll formula's average is computed, kept dice included | S | 🔲 |
 | ENG-50 | A spell's dice are computed for the character's level | S | 🔲 |
 | ENG-51 | A spell a grant gives with its own stat has its casting numbers | S | 🔲 |
@@ -154,12 +154,6 @@ split off an old row got a new id.
 - **ENG-52** — re-cut from ENG-16 (ENG-16 §11). Found by ENG-08: SPEC §5.6 shows a roll formula
   with its average, and no function gives it; a term that keeps some dice has no simple average
   (`2d20kh1`'s is 13.825). ENG-16's `diceOf` lists a parsed roll's dice terms.
-- **ENG-49** — found by ENG-15: gathering looks up an `entity` grant's `fixed` ids and every
-  grant's chosen ones, so a `spell` grant's `fixed` spell or an `item` grant's `fixed` item that
-  no pack has gives no warning (measured: `srd-2014:spell/nothing`, ENG-15 §11). The core does not
-  know which of a module's grant kinds name entities; the module says so, as ENG-13's `grantsOf`
-  does for grants. A chosen one that is missing warns `missing` twice (as chosen, then among the
-  options); this row gives one warning per id.
 - **ENG-20** — ADR 014 item 7: casting with "use a slot: no". Found by ENG-32: a `spell`
   grant's `uses` have no key of their own; the cast action keeps their spent count, by the
   grant's part id or a key it gives them. Found by ENG-33: the trackers it changes are
@@ -336,6 +330,10 @@ split off an old row got a new id.
 - **Phase 2** — found by ENG-25: a character's active pack that is not installed on the device
   never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
   on each of its entries.
+- **Phase 2** — found by ENG-49: a spell or item a grant names (a `spell` or `item` grant's
+  `fixed` ids, and its chosen ones) is looked up, not gathered, so one of the other edition gets
+  no `otherRuleset` warning, which a gathered entity gets. The Spells tab and the starting
+  inventory, which list them, show each one's edition (ADR 005 item 3.5) or warn there.
 - **Phase 2** — found by OPS-08: ADR 008 replaces the SETUP-04 bottom bar with a start page, a
   player page and My characters. The phase 2 rows build that navigation instead of the bar.
 - **Phases 2–5** — added by OPS-22: each screen is built from its mockup in
