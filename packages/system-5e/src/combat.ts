@@ -17,16 +17,32 @@ import { ARMOR_GROUPS, SPEED_KINDS } from './system';
 // initiative and speeds, one rule in both editions (ENG-14 §8). What an item, a feat or a
 // condition adds is its effect on a target given here (`hp.max.bonus`, `ac.bonus`, `ac.formulas`,
 // `init.bonus`, `speed.*`); a total adds its parts as `path` steps, as ENG-13's do. ENG-44: the
-// armor and the shield worn are `equipmentOf`'s.
+// armor and the shield worn are `equipmentOf`'s. ENG-45: armor whose Strength requirement is above
+// its wearer's Strength takes 10 feet from every speed, through `speed.armorReduction`, which an
+// effect may set to 0 (the SRD 5.1 dwarf, ENG-45 §8).
 
-/** The stats the rules name: initiative and AC read Dexterity, hit points Constitution (§8). */
-export const RULE_STATS = { initiative: 'dex', armorClass: 'dex', hitPoints: 'con' } as const;
+/**
+ * The stats the rules name: initiative and AC read Dexterity, hit points Constitution (ENG-14 §8);
+ * an armor's Strength requirement, Strength (ENG-45 §8).
+ */
+export const RULE_STATS = {
+  initiative: 'dex',
+  armorClass: 'dex',
+  hitPoints: 'con',
+  armorStrength: 'str',
+} as const;
 
 /** AC without armor, before the Dexterity modifier (SRD 5.2.1; dnd5e `unarmored`). */
 export const UNARMORED_AC = 10;
 
 /** The list effects add AC candidates to (SPEC §5.4 `ac.formulas`). */
 export const AC_FORMULAS = 'ac.formulas';
+
+/** The feet armor takes from every speed when its wearer lacks its Strength (ENG-45 §8). */
+export const ARMOR_SPEED_REDUCTION = 10;
+
+/** The path of that reduction: 0 or `ARMOR_SPEED_REDUCTION`, then its effects. */
+export const ARMOR_REDUCTION_PATH = 'speed.armorReduction';
 
 /** A level's hit points as stored: a number rolled, the die's average, or its maximum. */
 export type LevelHitPoints = FifthEditionCharacter['systemData']['classes'][number]['hp'][number];
@@ -186,6 +202,27 @@ function armorClassBase(
   };
 }
 
+/** The feet the armor worn takes from every speed: 10 when its Strength requirement is not met. */
+function armorReduction(armor: ItemDef | undefined): DerivedStep {
+  const needs = armor?.armor?.strRequirement;
+  return (read) => {
+    if (armor === undefined || needs === undefined) return { value: 0, steps: [] };
+    const path = `abilities.${RULE_STATS.armorStrength}.score`;
+    const score = read(path);
+    // "Equal to or higher than the listed score" is enough (ENG-45 §8).
+    if (score >= needs) return { value: 0, steps: [] };
+    const value = ARMOR_SPEED_REDUCTION;
+    return {
+      value,
+      steps: [
+        { kind: 'entity', source: armor.id, label: armor.name, value: needs, change: 0 },
+        { kind: 'path', path, value: score, change: 0 },
+        { kind: 'rule', rule: 'armorStrength', value, change: value },
+      ],
+    };
+  };
+}
+
 /** The species, and each lineage with speeds of its own, the character has. */
 function speedSources({
   character,
@@ -202,8 +239,9 @@ function speedSources({
 }
 
 /**
- * A kind of speed: its source's (a lineage's own before the species'), + its bonus + every
- * speed's, at least 0, × the multiplier rounded down. A speed the character lacks is 0.
+ * A kind of speed: its source's (a lineage's own before the species'), − the armor's reduction, +
+ * its bonus + every speed's, at least 0, × the multiplier rounded down. A speed the character
+ * lacks is 0.
  */
 function speedOf(
   kind: (typeof SPEED_KINDS)[number],
@@ -213,8 +251,11 @@ function speedOf(
   const base = giver?.speed?.[kind] ?? 0;
   return (read) => {
     if (giver === undefined || base <= 0) return { value: 0, steps: [] };
+    const reduction = read(ARMOR_REDUCTION_PATH);
     const steps: BreakdownStep[] = [
       { kind: 'entity', source: giver.id, label: giver.name, value: base, change: base },
+      // `0 - x`, not `-x`: no reduction is a change of 0, never −0.
+      { kind: 'path', path: ARMOR_REDUCTION_PATH, value: reduction, change: 0 - reduction },
     ];
     for (const path of [`speed.${kind}.bonus`, 'speed.all.bonus']) {
       const value = read(path);
@@ -234,8 +275,9 @@ function speedOf(
 
 /**
  * The combat steps of a character: `hp.max.bonus`, `hp.max`; `armor.worn`, `shield`, `ac.bonus`,
- * `ac.base`, `ac.total`; `init.bonus`, `init.total`; `speed.all.bonus`, `speed.all.mul`; each
- * armor group's `armor.<group>`; then each kind's speed bonus and speed.
+ * `ac.base`, `ac.total`; `init.bonus`, `init.total`; `speed.all.bonus`, `speed.all.mul`,
+ * `speed.armorReduction`; each armor group's `armor.<group>`; then each kind's speed bonus and
+ * speed.
  */
 export function combatSteps(
   input: DeriveInput<FifthEditionCharacter, FifthEditionEntity>,
@@ -257,6 +299,7 @@ export function combatSteps(
       value: 1,
       steps: [{ kind: 'rule', rule: 'speedMultiplier', value: 1, change: 1 }],
     }),
+    [ARMOR_REDUCTION_PATH]: armorReduction(armor),
   };
   for (const group of ARMOR_GROUPS) {
     steps[`armor.${group}`] = presence(armor?.armor?.group === group ? armor : undefined);

@@ -95,7 +95,7 @@ split off an old row got a new id.
 | ENG-43 | An effect sets the stat a skill uses | S | ✅ 2026-10-02 |
 | ENG-14 | Combat numbers are computed: hit points, armor class, initiative, speed | M | ✅ 2026-10-02 |
 | ENG-44 | Equipped items count only as the rules allow | S | ✅ 2026-10-02 |
-| ENG-45 | Heavy armor's Strength requirement slows its wearer | XS | 🔲 |
+| ENG-45 | Heavy armor's Strength requirement slows its wearer | S | ✅ 2026-10-02 |
 | ENG-47 | The person picks which base AC calculation counts | S | 🔲 |
 | ENG-48 | The character's size comes from its species | S | ✅ 2026-10-02 |
 | ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | ✅ 2026-10-02 |
@@ -133,12 +133,6 @@ split off an old row got a new id.
   `advantageMode × 5`). ENG-13's `skills.<key>.passive` is 10 + the skill's total. Found by
   ENG-14: worn armor with `stealthDisadvantage` gives disadvantage on Dexterity (Stealth) checks
   (SRD 5.1 Armor, "Stealth"; dnd5e `prepareArmorClass`); ENG-14's `armor.worn` names the armor.
-- **ENG-45** — found by ENG-14: armor whose `strRequirement` is above the wearer's Strength score
-  takes 10 feet from its speed (SRD 5.1, SRD 5.2.1, ENG-14 §8; dnd5e `armorSpeedReduction`). dnd5e
-  lets a species trait ignore it (`ignoreArmorSpeedReduction`); whether an SRD species does is
-  this ticket's §8 to check (5e-database's 2014 dwarf holds only `speed: 25`). ENG-14's
-  `speed.<kind>` adds `speed.<kind>.bonus` and `speed.all.bonus`, at least 0. Found by ENG-44:
-  the armor worn is `equipmentOf(...).armor` (`equipment.ts`), worn even when not attuned.
 - **ENG-47** — found by ENG-14: SPEC §6.1 step 5 takes the best AC candidate, or the one the
   person pins; SRD 5.2.1: "you choose which calculation to use". ENG-14's `ac.base` takes the
   highest. A pinned choice is a stored field: a `schemaVersion` bump and a migration.
@@ -340,6 +334,11 @@ split off an old row got a new id.
   (`fifthEditionModule.grantsOf`); one naming a grant the character does not reach is unused with
   no warning, since the module has no warning of its own but `stepFormula`. The level-up wizard
   writes `replaces` only for a grant it shows, or the module gains a warning.
+- **Phase 4** — found by ENG-45: SRD 5.1's variant encumbrance says "When you use this variant,
+  ignore the Strength column of the Armor table" (`5e-SRD-Rules.json`). That is the house rule
+  `encumbrance: 'variant'`, which no code reads; ENG-45's `speed.armorReduction` (`combat.ts`)
+  reads no house rule. The row that makes the encumbrance house rule work gives it 0 under the
+  variant.
 - **ADR 010, by phase** — added by OPS-10. Phase 2: custom dice and any count of dice, the
   Damage and Heal number pad, the Turn tab, the spell slot grid, casting without a slot. Phase
   3: the one-page library with topics and full entries, the All sources list. Phase 4: steps

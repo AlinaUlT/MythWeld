@@ -7887,3 +7887,207 @@ Found, not fixed:
   at `equipmentOf` and `needsAttunement`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-45 Heavy armor's Strength requirement slows its wearer
+
+**Hat:** Armor's Strength requirement slows its wearer
+**Depends on:** ENG-14 (`combatSteps`, `speed.<kind>`), ENG-44 (`equipmentOf`, the armor worn),
+ENG-17 (effects on a module's path)
+**Size:** S (re-cut from XS: §11)
+**Screen:** No
+**SPEC:** §5.3 (`ItemDef.armor.strRequirement`); §5.4 (`speed.*`); §6.1 step 5
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/combat.ts` — changes: the step `speed.armorReduction`, and
+each kind of speed takes it away.
+- `packages/system-5e/test/golden/srd-2014.ts` — changes: the SRD 5.1 dwarf gets its effect on
+  `speed.armorReduction`.
+- `packages/system-5e/test/combat.test.ts` — changes: an `ENG-45` block; ENG-14's speed breakdown
+  of golden D gains the new step.
+
+#### 2. What is missing now
+
+Measured on `main` at `d88b0b9`, with a scratch test (deleted):
+- Golden B (2024 human, chain mail with `strRequirement` 13) with base STR 10: STR score 12,
+  `speed.walk` 30. Its breakdown: the human 30, `speed.walk.bonus` 0, `speed.all.bonus` 0,
+  `speed.all.mul` 1. No step names the armor.
+- Golden A (2014 dwarf, chain mail) with base STR 12: STR 12, `speed.walk` 25;
+  `speed.armorReduction` has no value.
+- `grep -rn strRequirement packages/*/src`: only the schema (`entity-types.ts:304`). No code reads
+  it.
+- `pnpm test`: `Test Files 42 passed (42)`, `Tests 449 passed (449)`.
+
+#### 3. What it should look like when done
+
+1. **The reduction.** `speed.armorReduction` is 10 when the armor worn (`equipmentOf(...).armor`,
+   ENG-44) has a `strRequirement` above the wearer's Strength score (`abilities.str.score`, the
+   stat named by `RULE_STATS.armorStrength`); else 0. Its breakdown when 10: the armor (its
+   requirement, change 0), the score (change 0), the rule `armorStrength` (10). When 0: no steps.
+2. **Every kind of speed** the character has takes it away, as a `path` step right after the
+   speed's source. Golden B with STR 12: `speed.walk` 20; the breakdown is the human 30,
+   `speed.armorReduction` −10, the two bonuses 0, the multiplier. A lineage's swim 20 becomes 10.
+   A kind the character lacks stays 0 with no steps.
+3. **Equal is enough.** Golden B with STR 13: `speed.armorReduction` 0, `speed.walk` 30.
+4. **The finished score counts.** Golden B with STR 12 and a base-phase effect `max 13` on
+   `abilities.str.score`: 0.
+5. **Only the armor worn.** Armor with no requirement (a made-up leather), chain mail in the
+   inventory but not equipped, or chain mail equipped after a leather that is worn (it counts for
+   nothing, ENG-44): 0.
+6. **A trait ignores it with an effect.** The SRD 5.1 dwarf's effect `set 0` on
+   `speed.armorReduction`: golden A with STR 12 keeps `speed.walk` 25; the reduction's breakdown is
+   the three steps of item 1, then the dwarf's effect, change −10.
+7. **No golden value moves:** golden A 25 (STR 13, chain mail 13), B 30 (STR 17), B4 30 (STR 19),
+   D 20 (STR 17).
+8. `compute()` stays pure (ENG-14's frozen-input test).
+9. The quality gate is green.
+
+#### 4. How to do it
+
+1. **Re-size.** The row's note sends §8 to this ticket, so by `TEMPLATE.md` it is not XS: the full
+   form, and the row is S.
+2. `combat.ts`: `RULE_STATS.armorStrength` `'str'`; `ARMOR_SPEED_REDUCTION` 10 (feet, both
+   editions, §8); `ARMOR_REDUCTION_PATH` `'speed.armorReduction'`.
+3. A step `armorReduction(armor)` for `ARMOR_REDUCTION_PATH`: 0 with no steps without a worn armor
+   or a requirement; reads the score only then; 10 with item 1's steps when the requirement is
+   above it.
+4. `speedOf` reads the path and adds `{ kind: 'path', path, value, change: -value }` after the
+   source step, before the bonuses. The floor at 0 and the multiplier stay as ENG-14 made them.
+5. The dwarf in `srd-2014.ts` gets `effects: [{ id: 'heavy-armor', target: 'speed.armorReduction',
+   op: 'set', value: 0 }]`, with a comment naming its source (§8).
+6. Tests (§7). ENG-14's expected speed breakdown of golden D gains the new step (value 0).
+
+#### 5. Stored data
+
+Nothing stored changes. `strRequirement` is in the item schema since ENG-32. The dwarf's effect is
+test data in a fixture pack, in the existing effect shape.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/combat.test.ts` — `describe("ENG-45 heavy armor's Strength
+  requirement")`: §3 items 1–6, on goldens A and B with STR changed, and made-up items, a lineage
+  and a feat. Every breakdown adds up to its value (the file's `computed` helper).
+- `packages/system-5e/test/combat.test.ts` — ENG-14's golden D speed breakdown with the new step.
+- `packages/system-5e/test/golden/golden-values.test.ts` — unchanged: §3 item 7.
+- Control numbers from: SRD 5.1 and SRD 5.2.1 (10 feet; "equal to or higher", §8); chain mail's
+  Str 13 (both fixtures, from 5e-database); the goldens' scores (ENG-13: B's STR 17 = 15 + 2, the
+  Soldier's +2 chosen on STR; A's 13).
+
+#### 8. Checked against the source
+
+Sources: foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (ENG-13's), `module/` and
+`packs/_source/{rules,races,content24,equipment24}`, which quote SRD 5.1 and SRD 5.2.1
+(CC-BY-4.0); 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`,
+`packages/5e-database/src/{2014,2024}/en/`.
+
+**The rule, both editions.** SRD 5.1 (`rules/chapter-5-equipment.yml`, Armor, Heavy Armor): "If
+the Armor table shows “Str 13” or “Str 15” in the Strength column for an armor type, the armor
+reduces the wearer's speed by 10 feet unless the wearer has a Strength score equal to or higher than
+the listed score." SRD 5.2.1 (`content24/chapter-6/equipment.yml`, Armor, Strength): "If the table
+shows a Strength score in the Strength column for an armor type, that armor reduces the wearer’s
+speed by 10 feet unless the wearer has a Strength score equal to or higher than the listed score."
+The same rule and the same 10 feet: no ruleset difference, so nothing goes in `rulesets/`.
+
+**dnd5e** (`module/data/actor/templates/attributes.mjs`, `prepareMovement`): when the equipped
+armor's `system.strength` is above `abilities.str.value`, and the actor's flag
+`ignoreArmorSpeedReduction` is not set, `reduction += CONFIG.DND5E.armorSpeedReduction`
+(`config.mjs`: `10`, "in feet"); every movement type then is `Math.max(0, speeds[type] -
+reduction)` before its bonus and multiplier. The flag is a "Racial Traits" character flag
+(`config.mjs`); no file in dnd5e's `packs/_source` sets it (grep: none).
+
+**Which speeds.** The SRDs say "speed". dnd5e takes the reduction from every movement type, as
+ENG-14's `speed.all.bonus` does for exhaustion; this ticket does the same.
+
+**A species that ignores it.** SRD 5.1, the dwarf's traits (dnd5e `races/dwarf/hill-dwarf.yml`, its
+description): "Speed. Your base walking speed is 25 feet. Your speed is not reduced by wearing heavy
+armor." 5e-database's 2014 dwarf (`5e-SRD-Races.json`) holds `speed: 25` and five traits, none of
+them this one; a search of its 2014 files for "not reduced" or "isn't reduced" finds two: Damage
+Resistance (`5e-SRD-Rules.json`) and the Boots of Striding and Springing. So the 2014 dwarf's effect is written from SRD 5.1's text, as
+dnd5e quotes it. SRD 5.2.1 (`content24/chapter-4/character-species.yml`): the dwarf's "Speed: 30
+feet", and no species trait there speaks of armor and speed.
+
+**An item that ignores it.** Boots of Striding and Springing, SRD 5.1 (`5e-SRD-Magic-Items.json`):
+"your speed isn't reduced if you are encumbered or wearing heavy armor"; SRD 5.2.1 (dnd5e
+`equipment24/equipment/boots-of-striding-and-springing.yml`): "your Speed isn’t reduced by you
+carrying weight in excess of your carrying capacity or wearing Heavy Armor." The same `set 0`, as
+an item's effect; no golden has them, so no fixture does.
+
+**The variant.** SRD 5.1 (`5e-SRD-Rules.json`, Variant: Encumbrance): "When you use this variant,
+ignore the Strength column of the Armor table." That is the house rule `encumbrance: 'variant'`
+(`houseRulesSchema`), which no code reads yet (§9, §11).
+
+**The goldens agree** (worked out before the test was written): A's STR 13 meets chain mail's 13;
+B's 17 and B4's 19 are above it; D is B. No golden value changes; nothing stops.
+
+#### 9. Not in this ticket
+
+- Armor worn without training: ENG-46. Stealth disadvantage in armor: ENG-34.
+- Encumbrance, and its variant that ignores the Strength column: the house rule `encumbrance`, a
+  later phase (ENG-14 §9).
+- The Boots of Striding and Springing as a pack entity: SRD import, phase 3.
+- 2014 exhaustion's speed: ENG-19.
+
+#### 10. Rake check
+
+- **Everything is data.** The stat is the module's `RULE_STATS.armorStrength`, as ENG-14 names DEX
+  and CON; the dwarf ignores the reduction by an effect in its pack, not by a check of its id.
+- **The engine is pure; the core names no game.** Only `packages/system-5e` and its tests change.
+- **`compute()` is pure.** The step reads only its input and `read`; ENG-14's frozen-input test
+  runs.
+- **A number with no breakdown is a bug.** `speed.armorReduction` has its steps; each speed names
+  it.
+- **Manual overrides win.** The path is finished by the core like any other, override last.
+- **No scattered ruleset checks.** One rule in both editions (§8); no `if (ruleset …)`.
+- **Missing is not broken.** An armor no pack has is no armor worn (ENG-44): 0, and gathering warns.
+- **Stored units are feet.** 10 is feet.
+- **Golden values.** None changes (§3 item 7).
+- **No rules text without an open license.** The comment and §8 quote SRD 5.1 and 5.2.1 only.
+
+#### 11. What came out of it
+
+The gate, measured:
+- `pnpm lint`: `Checked 153 files in 200ms. No fixes applied.`
+- `pnpm typecheck`: 6 projects `Done`, the module's tests included.
+- `pnpm test`: `Test Files 42 passed (42)`, `Tests 455 passed (455)`, 6.10 s. Before: 449; the
+  6 new are the `ENG-45` block.
+
+The values, from the tests:
+- Golden B with STR 12 in chain mail (Str 13): `speed.armorReduction` 10, `speed.walk` 20
+  (30 before). With the made-up lineage's walk 35 and swim 20: 25 and 10; fly 0, no steps.
+- Golden B with STR 13: 0 and 30. With STR 12 and a `max 13` on the score: 0 and 30.
+- Leather (no requirement), chain mail not equipped, chain mail after the worn leather: 0 and 30.
+- Golden A with STR 12: `speed.walk` 25; the reduction's breakdown is chain mail 13, STR 12, the
+  rule 10, then the dwarf's `set 0`, change −10.
+- The goldens: `speed.armorReduction` 0 for A, B, B4 and D; their golden values did not move.
+
+The tests were checked to fail, each change undone after:
+- `score >= needs` made `score > needs`: 2 tests fail (equal STR, the raised STR).
+- `change: 0 - reduction` made `-reduction`: ENG-14's golden D breakdown fails (a change of −0).
+- The dwarf's effect taken out of the fixture: the dwarf's test fails.
+
+Differences from §3: none.
+
+Against the row and its note:
+- The row is XS. Its note sends §8 here, so by `TEMPLATE.md` the ticket is not XS: the full form,
+  and the row is now S.
+- The note said a species trait may ignore the slowing by dnd5e's flag. Here it is an effect on
+  the module's path `speed.armorReduction`, so a trait, an item or a homebrew entry does it as
+  data, and the breakdown names it. dnd5e's flag is set by no file in its packs; the SRD 5.1
+  dwarf's text is the source (§8).
+- The reduction comes before the bonuses, and ENG-14's one floor at 0 stays. dnd5e also floors
+  right after the reduction. The two differ only when the reduction is above a speed and a bonus
+  is added; no SRD species' speed is that low (5e-database: 25 to 35, both editions).
+
+Found, not fixed:
+- SRD 5.1's variant encumbrance ignores the Strength column of the Armor table; the house rule
+  `encumbrance: 'variant'` is read by no code. A phase 4 note in `BACKLOG.md`.
+
+Changelog: nothing. No screen shows a speed yet.

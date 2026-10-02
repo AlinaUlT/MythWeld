@@ -466,6 +466,8 @@ describe('ENG-14 combat numbers', () => {
         value: 30,
         change: 30,
       },
+      // ENG-45: STR 17 meets chain mail's 13.
+      { kind: 'path', path: 'speed.armorReduction', value: 0, change: 0 },
       { kind: 'path', path: 'speed.walk.bonus', value: 0, change: 0 },
       { kind: 'path', path: 'speed.all.bonus', value: -10, change: -10 },
       { kind: 'path', path: 'speed.all.mul', value: 1, change: 0 },
@@ -552,5 +554,140 @@ describe('ENG-14 combat numbers', () => {
     const { index } = index2014;
     deepFreeze(index);
     expect(compute(character, index, standingIn)).toEqual(compute(character, index, standingIn));
+  });
+});
+
+// ENG-45: chain mail's Str 13 (both fixtures) against the wearer's Strength. Golden B's STR is its
+// base + 2 (the Soldier's +2, chosen on STR): base 10 gives 12, base 11 gives 13. Golden A's dwarf
+// adds no STR: base 12 gives 12. The 10 feet and "equal to or higher" are ENG-45 §8's.
+
+/** A golden character with another base Strength. */
+function withStrength<T extends CharacterInput>(character: T, str: number): T {
+  return { ...character, abilities: { base: { ...character.abilities.base, str } } };
+}
+
+describe("ENG-45 heavy armor's Strength requirement", () => {
+  const weakB = withStrength(goldenB, 10);
+  const slowing = [
+    {
+      kind: 'entity',
+      source: 'srd-2024:item/chain-mail',
+      label: { en: 'Chain Mail' },
+      value: 13,
+      change: 0,
+    },
+    { kind: 'path', path: 'abilities.str.score', value: 12, change: 0 },
+    { kind: 'rule', rule: 'armorStrength', value: 10, change: 10 },
+  ];
+
+  it('takes 10 feet from the speed of a wearer whose Strength is below the requirement', () => {
+    const b = computed(weakB);
+    expect(valuesOf(b, ['abilities.str.score', 'speed.armorReduction', 'speed.walk'])).toEqual({
+      'abilities.str.score': 12,
+      'speed.armorReduction': 10,
+      'speed.walk': 20,
+    });
+    expect(b.breakdown['speed.armorReduction']).toEqual(slowing);
+    expect(b.breakdown['speed.walk']).toEqual([
+      {
+        kind: 'entity',
+        source: 'srd-2024:species/human',
+        label: { en: 'Human' },
+        value: 30,
+        change: 30,
+      },
+      { kind: 'path', path: 'speed.armorReduction', value: 10, change: -10 },
+      { kind: 'path', path: 'speed.walk.bonus', value: 0, change: 0 },
+      { kind: 'path', path: 'speed.all.bonus', value: 0, change: 0 },
+      { kind: 'path', path: 'speed.all.mul', value: 1, change: 0 },
+    ]);
+    expect(b.warnings).toEqual([]);
+  });
+
+  it('takes it from every kind of speed the character has, and from none it lacks', () => {
+    const kin = {
+      id: 'character:lineage/fleet-kin',
+      type: 'lineage',
+      ruleset: 'any',
+      name: { en: 'Fleet kin' },
+      source,
+      speed: { walk: 35, swim: 20 },
+    } satisfies EntityInput;
+    const fleet = feat(
+      'fleet',
+      [],
+      [{ id: 'kin', kind: 'entity', fixed: ['character:lineage/fleet-kin'] }],
+    );
+    const b = computed(goldenBWith([fleet, kin], {}, weakB));
+    // 35 − 10, 20 − 10; no fly speed.
+    expect(valuesOf(b, ['speed.walk', 'speed.swim', 'speed.fly'])).toEqual({
+      'speed.walk': 25,
+      'speed.swim': 10,
+      'speed.fly': 0,
+    });
+    expect(b.breakdown['speed.fly']).toEqual([]);
+  });
+
+  it('gives none when the Strength score equals the requirement or is above it', () => {
+    const met = computed(withStrength(goldenB, 11));
+    expect(valuesOf(met, ['abilities.str.score', 'speed.armorReduction', 'speed.walk'])).toEqual({
+      'abilities.str.score': 13,
+      'speed.armorReduction': 0,
+      'speed.walk': 30,
+    });
+    expect(met.breakdown['speed.armorReduction']).toEqual([]);
+    // The goldens: A's 13, B's 17, B4's 19; D is B.
+    for (const golden of [goldenA, goldenB, goldenB4, goldenD]) {
+      expect(computed(golden).values['speed.armorReduction'], golden.name).toBe(0);
+    }
+  });
+
+  it('reads the Strength score after its effects', () => {
+    const belt = feat('belt', [{ id: 'str', target: 'abilities.str.score', op: 'max', value: 13 }]);
+    const b = computed(goldenBWith([belt], {}, weakB));
+    expect(valuesOf(b, ['abilities.str.score', 'speed.armorReduction', 'speed.walk'])).toEqual({
+      'abilities.str.score': 13,
+      'speed.armorReduction': 0,
+      'speed.walk': 30,
+    });
+  });
+
+  it('reads only the armor worn, and only its requirement', () => {
+    const cases: Record<string, Row[]> = {
+      'leather, no requirement': [row(1, leather.id)],
+      'chain mail not equipped': [row(1, chainMail, false)],
+      'chain mail after the leather worn': [row(1, leather.id), row(2, chainMail)],
+    };
+    for (const [name, inventory] of Object.entries(cases)) {
+      const b = computed(goldenBWith([leather], { inventory }, weakB));
+      expect(valuesOf(b, ['speed.armorReduction', 'speed.walk']), name).toEqual({
+        'speed.armorReduction': 0,
+        'speed.walk': 30,
+      });
+    }
+  });
+
+  it("lets an effect change it: the SRD 5.1 dwarf's sets it to 0", () => {
+    const a = computed(withStrength(goldenA, 12));
+    expect(valuesOf(a, ['abilities.str.score', 'speed.armorReduction', 'speed.walk'])).toEqual({
+      'abilities.str.score': 12,
+      'speed.armorReduction': 0,
+      'speed.walk': 25,
+    });
+    expect(a.breakdown['speed.armorReduction']).toEqual([
+      { ...slowing[0], source: 'srd-2014:item/chain-mail' },
+      slowing[1],
+      slowing[2],
+      {
+        kind: 'effect',
+        part: 'srd-2014:species/dwarf#heavy-armor',
+        source: 'srd-2014:species/dwarf',
+        label: { en: 'Dwarf' },
+        op: 'set',
+        value: 0,
+        change: -10,
+      },
+    ]);
+    expect(a.warnings).toEqual([]);
   });
 });

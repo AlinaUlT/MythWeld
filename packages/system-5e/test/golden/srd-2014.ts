@@ -122,6 +122,9 @@ const dwarf: Of<'species'> = {
   source,
   size: ['medium'],
   speed: { walk: 25 },
+  // SRD 5.1's dwarf traits: heavy armor does not slow a dwarf. 5e-database's dwarf has only its
+  // `speed`; the trait is read from SRD 5.1 as dnd5e quotes it (ENG-45 §8).
+  effects: [{ id: 'heavy-armor', target: 'speed.armorReduction', op: 'set', value: 0 }],
   grants: [
     { id: 'ability-scores', kind: 'abilityScore', mode: 'fixed', values: { con: 2 } },
     {
