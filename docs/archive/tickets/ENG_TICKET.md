@@ -8359,8 +8359,6 @@ Changelog: "The published fifth-edition pack JSON Schema asks for `systemSchemaV
 
 ---
 
----
-
 ### ENG-16 Weapon attacks
 
 **Hat:** Weapon attacks are computed, weapon mastery included
