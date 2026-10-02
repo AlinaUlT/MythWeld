@@ -1,9 +1,11 @@
 import type { ContentIndex } from './content-index';
 import {
+  type ComputedKey,
   computeDerived,
   type DerivedStep,
   type DerivedWarning,
   type DeriveInput,
+  type KeyPath,
   LEVEL_PATH,
   type StatDefaults,
   statsOf,
@@ -58,6 +60,13 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    * condition's `conditions.<key>.level`. Effects and overrides apply to a step's result (ENG-17).
    */
   derive(input: DeriveInput<C, E>): Readonly<Record<string, DerivedStep>>;
+  /**
+   * The system's key paths (ENG-43): computed path → its own key, its steps, and the keys it may
+   * take (a fifth-edition skill's stat, SPEC §5.4 `skills.<key>.ability`). A step reads one with
+   * `readKey`. An effect's `set` naming one of its keys changes it, in the order a number's
+   * effects apply; an override naming one wins.
+   */
+  keys?(input: DeriveInput<C, E>): Readonly<Record<string, KeyPath>>;
 }
 
 /** Something computing met: gathering, the base phase, the derived values, then the phases. */
@@ -69,6 +78,8 @@ export interface Computed<E extends GatherableEntity> extends Omit<Gathered<E>, 
   values: Readonly<Record<string, FormulaValue>>;
   /** Computed path → the steps that made its value (SPEC §6.2). */
   breakdown: Readonly<Record<string, readonly BreakdownStep[]>>;
+  /** Key path → its key and the steps that chose it. */
+  keys: Readonly<Record<string, ComputedKey>>;
   warnings: readonly ComputeWarning[];
 }
 
@@ -99,13 +110,25 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
   const base = computeStats(character, gathered, basePhase);
   const stats = statsOf(gathered, defaults);
   const steps = system.derive({ character, gathered, stats });
+  const keys = system.keys?.({ character, gathered, stats }) ?? {};
   const phases = phasesOf(character, gathered, basePhase);
-  const finish = phases.finish;
-  const derived = computeDerived({ level, gathered, stats, defaults, base, steps, finish });
+  const { finish, finishKey } = phases;
+  const derived = computeDerived({
+    level,
+    gathered,
+    stats,
+    defaults,
+    base,
+    steps,
+    finish,
+    keys,
+    finishKey,
+  });
   return {
     ...gathered,
     values: derived.values,
     breakdown: derived.breakdown,
+    keys: derived.keys,
     warnings: [...gathered.warnings, ...base.warnings, ...derived.warnings, ...phases.end()],
   };
 }

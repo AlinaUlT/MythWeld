@@ -47,6 +47,8 @@ export interface EffectNumber {
 /** Something working out an effect's number met. `code` and its data are for the screen. */
 export type EffectWarning = { message: string } & (
   | { code: 'notANumber'; part: EntityPartId; op: EffectOp; target: string }
+  | { code: 'notAKey'; part: EntityPartId; op: EffectOp; target: string }
+  | { code: 'unknownKey'; part: EntityPartId; target: string; key: string; keys: readonly string[] }
   | { code: 'notInBasePhase'; part: EntityPartId; paths: readonly string[] }
   | { code: 'formula'; part: EntityPartId; field: 'value' | 'when'; warning: FormulaWarning }
 );
@@ -118,28 +120,9 @@ export function applied(op: NumberOp, n: number, value: number): number {
   return next === 0 ? 0 : next;
 }
 
-/**
- * Works out the number an active effect applies, reading its formulas through `reader`.
- * `undefined` when it does not apply: it gives no number, a formula does not parse, the base-phase
- * rule refuses a path its text names (each warned), or its `when` is false.
- */
-export function effectNumber(
-  { effect, part, source, label }: ActiveEffect,
-  reader: EffectReader,
-  warn: (warning: EffectWarning) => void,
-): EffectNumber | undefined {
-  const change = numberChangeOf(effect);
-  if (change === undefined) {
-    warn({
-      code: 'notANumber',
-      part,
-      op: effect.op,
-      target: effect.target,
-      message: `"${part}" (${effect.op}) gives no number, so it does not change ${effect.target}.`,
-    });
-    return undefined;
-  }
-  const formulaWarning = (field: 'value' | 'when', warning: FormulaWarning, skipped = false) =>
+/** A warning of one of an effect's formulas; `skipped` when the effect is not applied for it. */
+function formulaWarner(part: EntityPartId, warn: (warning: EffectWarning) => void) {
+  return (field: 'value' | 'when', warning: FormulaWarning, skipped = false) =>
     warn({
       code: 'formula',
       part,
@@ -147,9 +130,24 @@ export function effectNumber(
       warning,
       message: `${warning.message} (the ${field} of "${part}")${skipped ? '; it is not applied' : ''}.`,
     });
+}
+
+/**
+ * Parses an effect's `when` and its `value` formula, when it has one, checks the base-phase rule
+ * against every path they name, then evaluates `when`. Gives the parsed `value` formula when the
+ * effect applies; `undefined` when a formula does not parse, the rule refuses a path (each
+ * warned), or its `when` is false. A number and a key apply by the same checks.
+ */
+function applies(
+  { effect, part }: ActiveEffect,
+  value: string | undefined,
+  reader: EffectReader,
+  warn: (warning: EffectWarning) => void,
+): { value?: ParsedFormula } | undefined {
+  const formulaWarning = formulaWarner(part, warn);
   const texts: ['value' | 'when', string][] = [];
   if (effect.when !== undefined) texts.push(['when', effect.when]);
-  if (typeof change.value === 'string') texts.push(['value', change.value]);
+  if (value !== undefined) texts.push(['value', value]);
   const parsed = new Map<'value' | 'when', ParsedFormula>();
   for (const [field, text] of texts) {
     const result = parseFormula(text);
@@ -177,15 +175,92 @@ export function effectNumber(
     for (const warning of result.warnings) formulaWarning('when', warning);
     if (!result.value) return undefined;
   }
-  let value: number;
   const formula = parsed.get('value');
-  if (formula === undefined) {
+  return formula === undefined ? {} : { value: formula };
+}
+
+/**
+ * Works out the number an active effect applies, reading its formulas through `reader`.
+ * `undefined` when it does not apply: it gives no number, a formula does not parse, the base-phase
+ * rule refuses a path its text names (each warned), or its `when` is false.
+ */
+export function effectNumber(
+  active: ActiveEffect,
+  reader: EffectReader,
+  warn: (warning: EffectWarning) => void,
+): EffectNumber | undefined {
+  const { effect, part, source, label } = active;
+  const change = numberChangeOf(effect);
+  if (change === undefined) {
+    warn({
+      code: 'notANumber',
+      part,
+      op: effect.op,
+      target: effect.target,
+      message: `"${part}" (${effect.op}) gives no number, so it does not change ${effect.target}.`,
+    });
+    return undefined;
+  }
+  const text = typeof change.value === 'string' ? change.value : undefined;
+  const parsed = applies(active, text, reader, warn);
+  if (parsed === undefined) return undefined;
+  let value: number;
+  if (parsed.value === undefined) {
     value = change.value as number;
   } else {
-    const result = evaluateNumber(formula, reader.read);
-    for (const warning of result.warnings) formulaWarning('value', warning);
+    const result = evaluateNumber(parsed.value, reader.read);
+    for (const warning of result.warnings) formulaWarner(part, warn)('value', warning);
     value = result.value;
   }
   const priority = effect.priority ?? NUMBER_OPS[change.op];
   return { op: change.op, value, priority, part, source, label };
+}
+
+/** The key a `set` with a text gives a key path, and where it came from. */
+export interface EffectKey {
+  key: string;
+  priority: number;
+  part: EntityPartId;
+  source: EntityId;
+  label: L10n;
+}
+
+/**
+ * Works out the key an active effect sets on a key path whose keys are `keys`, reading its `when`
+ * through `reader`. `undefined` when it does not apply: its op is not a `set` with a text, its
+ * text is none of `keys` (each warned), or `applies` says no.
+ */
+export function effectKey(
+  active: ActiveEffect,
+  keys: readonly string[],
+  reader: EffectReader,
+  warn: (warning: EffectWarning) => void,
+): EffectKey | undefined {
+  const { effect, part, source, label } = active;
+  const { target } = effect;
+  if (effect.op !== 'set' || typeof effect.value !== 'string') {
+    warn({
+      code: 'notAKey',
+      part,
+      op: effect.op,
+      target,
+      message: `"${part}" (${effect.op} ${JSON.stringify(effect.value)}) sets no key, so it does not change ${target}.`,
+    });
+    return undefined;
+  }
+  const key = effect.value;
+  if (!keys.includes(key)) {
+    warn({
+      code: 'unknownKey',
+      part,
+      target,
+      key,
+      keys,
+      message: `"${part}" sets ${target} to "${key}", which is none of its keys (${keys.join(', ')}); it is not applied.`,
+    });
+    return undefined;
+  }
+  if (applies(active, undefined, reader, warn) === undefined) return undefined;
+  const priority = effect.priority ?? NUMBER_OPS.set;
+  return { key, priority, part, source, label };
 }

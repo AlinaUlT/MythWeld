@@ -9,7 +9,7 @@ import {
   type SystemModule,
 } from '@grimoire/engine';
 import type { FifthEditionCharacter } from './character';
-import { checkSteps } from './checks';
+import { checkSteps, skillKeys } from './checks';
 import type { ClassDef, FifthEditionEntity } from './entity-types';
 
 // ENG-13: fifth edition's module (ADR 004 item 1), what the core asks of it: the character's
@@ -104,4 +104,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
   },
 
   derive: (input) => ({ ...classSteps(input), ...checkSteps(input) }),
+
+  // Each skill's stat, which an effect may set.
+  keys: skillKeys,
 };

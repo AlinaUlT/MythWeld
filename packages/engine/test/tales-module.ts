@@ -1,4 +1,4 @@
-import type { BreakdownStep, DerivedStep, SystemModule } from '@grimoire/engine';
+import type { BreakdownStep, DerivedStep, KeyPath, SystemModule } from '@grimoire/engine';
 import {
   TALES_RULES,
   type TalesCharacter,
@@ -7,7 +7,7 @@ import {
 
 // Tales' module (ENG-27): the character's level, the entities its part names (the calling first,
 // then the talents), a stat's defaults, and its derived values (ENG-28), from Tales' rules in
-// `tales/system.ts`.
+// `tales/system.ts`. ENG-43: each skill's stat is a key path, `skills.<key>.ability`.
 
 /** A path whose value is 0 until an effect changes it. */
 const zero: DerivedStep = () => ({ value: 0, steps: [] });
@@ -67,12 +67,15 @@ export const talesModule: SystemModule<TalesCharacter, TalesEntity> = {
       const path = `skills.${key}`;
       steps[`${path}.prof`] = knackOf(key);
       steps[`${path}.bonus`] = zero;
-      steps[`${path}.total`] = sumOf([
-        [`abilities.${skill.ability}.mod`, 1],
-        [`${path}.prof`, TALES_RULES.knackStep],
-        [`${path}.bonus`, 1],
-        ['skills.all.bonus', 1],
-      ]);
+      steps[`${path}.total`] = (read, readBy, readKey) => {
+        const stat = readKey(`${path}.ability`) ?? skill.ability;
+        return sumOf([
+          [`abilities.${stat}.mod`, 1],
+          [`${path}.prof`, TALES_RULES.knackStep],
+          [`${path}.bonus`, 1],
+          ['skills.all.bonus', 1],
+        ])(read, readBy, readKey);
+      };
       if (skill.passive === true) {
         steps[`${path}.passive`] = (read) => {
           const base = TALES_RULES.passiveBase;
@@ -88,5 +91,19 @@ export const talesModule: SystemModule<TalesCharacter, TalesEntity> = {
       }
     }
     return steps;
+  },
+  keys: ({ gathered, stats }) => {
+    const keys: Record<string, KeyPath> = {};
+    const statKeys = stats.map(({ key }) => key);
+    for (const [key, skill] of Object.entries(gathered.byKey.skill ?? {})) {
+      if (skill.type !== 'skill') continue;
+      const { id: source, name: label, ability } = skill;
+      keys[`skills.${key}.ability`] = {
+        key: ability,
+        steps: [{ kind: 'entity', source, label, key: ability }],
+        keys: statKeys,
+      };
+    }
+    return keys;
   },
 };

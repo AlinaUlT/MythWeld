@@ -278,9 +278,9 @@ describe('ENG-28 derived values a system module supplies', () => {
     const calls: string[] = [];
     const counted =
       (path: string, step: DerivedStep): DerivedStep =>
-      (read, readBy) => {
+      (read, readBy, readKey) => {
         calls.push(path);
-        return step(read, readBy);
+        return step(read, readBy, readKey);
       };
     const module = withSteps(() => ({
       'tally.c': counted('c', (read) => {
@@ -452,6 +452,43 @@ describe("ENG-13 a step's formula warnings", () => {
         path: 'omens',
         warning: expect.objectContaining({ code: 'notFinite' }),
       },
+    ]);
+  });
+});
+
+describe('ENG-43 a step reads a key path', () => {
+  it('reads its key; a path no module gives as a key is undefined; a number stays a number', () => {
+    const read: (string | undefined)[] = [];
+    const system: Module = {
+      ...withSteps(() => ({
+        'tally.sneak': (value, _, readKey) => {
+          const stat = readKey('skills.sneak.ability');
+          read.push(stat, readKey('tally.nothing'));
+          const mod = value(`abilities.${stat}.mod`);
+          return {
+            value: mod,
+            steps: [{ kind: 'path', path: `abilities.${stat}.mod`, value: mod, change: mod }],
+          };
+        },
+      })),
+      keys: (input) => ({
+        ...talesModule.keys?.(input),
+        level: { key: 'grit', steps: [], keys: ['grit'] },
+        'skills.all.bonus': { key: 'grit', steps: [], keys: ['grit'] },
+      }),
+    };
+    const result = computed(ash, system);
+    expect(read).toEqual(['wits', undefined]);
+    // Ash's wits 5, its modifier 2; weary's -1 on every skill.
+    expect(result.values).toMatchObject({ 'tally.sneak': 2, level: 2, 'skills.all.bonus': -1 });
+    expect(Object.keys(result.keys)).toEqual([
+      'skills.climb.ability',
+      'skills.sneak.ability',
+      'skills.steady.ability',
+    ]);
+    expect(codes(result)).toEqual([
+      { code: 'pathTaken', path: 'level' },
+      { code: 'pathTaken', path: 'skills.all.bonus' },
     ]);
   });
 });

@@ -24,7 +24,8 @@ import { z } from 'zod';
 // - A skill's knack level is the highest `level` its `knack` grants give: a grant without `level`
 //   gives 1, and no grant gives 0.
 // - A skill's total is its stat's modifier + 2 × its knack level + `skills.<key>.bonus` +
-//   `skills.all.bonus`.
+//   `skills.all.bonus`. Its stat is its `ability`, unless an effect or an override sets
+//   `skills.<key>.ability` to another stat's key.
 // - A skill with `passive: true` has a passive value of 5 + its total.
 // - A character's level is 1 to 5, in its module part; formulas read it as `@level`.
 // - A boon gives nothing until it is called on, which is an action of a later phase.

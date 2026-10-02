@@ -92,7 +92,7 @@ split off an old row got a new id.
 | ENG-09 | 2014 fixtures: every SRD entity golden A or C needs | M | ✅ 2026-10-02 |
 | ENG-10 | 2024 fixtures: every SRD entity golden B, B4, C or D needs | M | ✅ 2026-10-02 |
 | ENG-13 | Check bonuses are computed: modifiers, proficiency, saves, skills, passives | M | ✅ 2026-10-02 |
-| ENG-43 | An effect sets the stat a skill uses | S | 🔲 |
+| ENG-43 | An effect sets the stat a skill uses | S | ✅ 2026-10-02 |
 | ENG-14 | Combat numbers are computed: hit points, armor class, initiative, speed | M | 🔲 |
 | ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | 🔲 |
 | ENG-16 | Attacks are computed, weapon mastery included | S | 🔲 |
@@ -115,15 +115,13 @@ split off an old row got a new id.
   `test/golden/golden-values.test.ts` (ENG-13). The full goldens A–D are green by ENG-19. Each
   removes its stand-ins from `STAND_INS` (`test/golden/checks.ts`); a stand-in for a path the
   module gives fails the tests.
-- **ENG-43, ENG-14, ENG-34** — found by ENG-17: an effect whose op gives no number (`append`,
-  `advantage`, `disadvantage`, `note`, a `set` with a text) on a path that is not a number value
-  (`ac.formulas`, `defenses.*`, `roll.*`, `skills.<key>.ability`) is left alone by the phases,
-  with no warning. The ticket that computes such a list, roll or text reads its effects through
-  `activeEffects` (`effects.ts`) and warns for its own targets.
-- **ENG-43** — split off ENG-13 (its §4): SPEC §5.4's `skills.<key>.ability`, a `set` whose value
-  is a stat's key, changes the stat a skill's total reads (`skills.<key>.total`, ENG-13's
-  `checkSteps`). ENG-13 §4 gives a module step no warning of its own but `stepFormula`; this row
-  adds the warnings for a `set` naming no stat the character has and for any other op there.
+- **ENG-14, ENG-34** — found by ENG-17: an effect whose op gives no number (`append`,
+  `advantage`, `disadvantage`, `note`) on a path that is not a number value (`ac.formulas`,
+  `defenses.*`, `roll.*`) is left alone by the phases, with no warning. The ticket that computes
+  such a list or roll reads its effects through `activeEffects` (`effects.ts`) and warns for its
+  own targets. Found by ENG-43: a path of text is a key path, given by the module
+  (`SystemModule.keys`) and finished by the core (`finishKey`) with its own warnings; a list or a
+  roll can take the same road.
 - **ENG-34** — found by ENG-13: a passive value is 5 higher with advantage on its check and 5
   lower with disadvantage (SRD 5.1 Passive Checks; SRD 5.2.1 Passive Perception; dnd5e
   `advantageMode × 5`). ENG-13's `skills.<key>.passive` is 10 + the skill's total.
@@ -290,6 +288,10 @@ split off an old row got a new id.
   override applies only when its value is a number on a number path (`overrideNotANumber`
   otherwise), so the override editor stores a number there. The breakdown's kind `override` is
   shown as "Manual edit" (SPEC §6.1 step 7).
+- **Phase 2** — found by ENG-43: a skill's stat is `Computed.keys['skills.<key>.ability']`, with
+  steps naming the skill, each effect and a manual edit; the sheet shows that key, never the
+  skill's own `ability`. An override of it applies only when its value is one of its keys (a
+  stat's key, `overrideNotAKey` otherwise), so the override editor stores a stat's key there.
 - **Phase 2** — found by ENG-25: a character's active pack that is not installed on the device
   never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
   on each of its entries.

@@ -3,6 +3,7 @@ import {
   type DerivedStep,
   type DeriveInput,
   evaluateNumber,
+  type KeyPath,
   LEVEL_PATH,
 } from '@grimoire/engine';
 import type { FifthEditionCharacter } from './character';
@@ -11,6 +12,8 @@ import type { FifthEditionEntity } from './entity-types';
 // ENG-13: fifth edition's check bonuses (SPEC §6.1 step 5): the proficiency bonus, ability checks,
 // saves, skills and passive values, one rule in both editions (ENG-13 §8). A total adds its parts
 // as `path` steps, so an effect on any part shows in the total's breakdown.
+// ENG-43: a skill's stat is the key path `skills.<key>.ability`, its own `ability` until an effect
+// or an override sets another; its total reads that stat's modifier and check bonus.
 
 /** The proficiency bonus's path (SPEC §5.6 `@prof`). */
 export const PROF_PATH = 'prof';
@@ -157,14 +160,17 @@ export function checkSteps({
     const own = skill.totalFormula;
     steps[`${path}.total`] =
       own === undefined
-        ? sumOf([
-            { path: `abilities.${skill.ability}.mod` },
-            { profLevel: `${path}.prof` },
-            { path: `${path}.bonus` },
-            { path: 'skills.all.bonus' },
-            { path: `checks.${skill.ability}.bonus` },
-            { path: D20_BONUS_PATH },
-          ])
+        ? (read, readBy, readKey) => {
+            const stat = readKey(`${path}.ability`) ?? skill.ability;
+            return sumOf([
+              { path: `abilities.${stat}.mod` },
+              { profLevel: `${path}.prof` },
+              { path: `${path}.bonus` },
+              { path: 'skills.all.bonus' },
+              { path: `checks.${stat}.bonus` },
+              { path: D20_BONUS_PATH },
+            ])(read, readBy, readKey);
+          }
         : (read) => {
             const { value, warnings } = evaluateNumber(own, read);
             const step: BreakdownStep = {
@@ -189,4 +195,26 @@ export function checkSteps({
     };
   }
   return steps;
+}
+
+/**
+ * Each skill's stat, `skills.<key>.ability`: its own `ability`, a step naming the skill, and the
+ * stats the character has as the keys an effect or an override may set it to.
+ */
+export function skillKeys({
+  gathered,
+  stats,
+}: DeriveInput<FifthEditionCharacter, FifthEditionEntity>): Record<string, KeyPath> {
+  const keys: Record<string, KeyPath> = {};
+  const statKeys = stats.map(({ key }) => key);
+  for (const [key, skill] of Object.entries(gathered.byKey.skill ?? {})) {
+    if (skill.type !== 'skill') continue;
+    const { id: source, name: label, ability } = skill;
+    keys[`skills.${key}.ability`] = {
+      key: ability,
+      steps: [{ kind: 'entity', source, label, key: ability }],
+      keys: statKeys,
+    };
+  }
+  return keys;
 }

@@ -258,3 +258,94 @@ describe('ENG-18 a formula loop names its paths', () => {
     }
   });
 });
+
+describe('ENG-43 a loop through a key path', () => {
+  it('names the key path: a set whose `when` reads the total that reads its key is not applied', () => {
+    const circle: TalesEntity = {
+      id: 'character:talent/circle',
+      type: 'talent',
+      ruleset: 'any',
+      name: { en: 'Circle' },
+      tier: 1,
+      effects: [
+        {
+          id: 'turn',
+          target: 'skills.climb.ability',
+          op: 'set',
+          value: 'wits',
+          when: '@skills.climb.total > 0',
+        },
+      ],
+      source,
+    };
+    const result = computed(ashWith([], [circle]));
+    // Its `when` reads the climb total as 0, inside the loop: climb stays on grit, 3 + 2 + 2 - 1.
+    expect(result.values['skills.climb.total']).toBe(6);
+    expect(result.keys['skills.climb.ability']?.key).toBe('grit');
+    expect(codes(result)).toEqual([
+      {
+        code: 'cycle',
+        path: 'skills.climb.total',
+        for: 'skills.climb.ability',
+        loop: [
+          { path: 'skills.climb.total' },
+          { path: 'skills.climb.ability' },
+          { path: 'skills.climb.total', by: 'character:talent/circle#turn' },
+        ],
+      },
+    ]);
+  });
+
+  it('a key path read again while it is finished gives its own key there', () => {
+    /** A step whose value is the modifier of the stat `tally.k` names. */
+    const modOfKey: DerivedStep = (read, _, readKey) => {
+      const at = `abilities.${readKey('tally.k')}.mod`;
+      const value = read(at);
+      return { value, steps: [{ kind: 'path', path: at, value, change: value }] };
+    };
+    const system: Module = {
+      ...withSteps({ 'tally.m': modOfKey, 'tally.n': modOfKey }),
+      keys: (input) => ({
+        ...talesModule.keys?.(input),
+        'tally.k': { key: 'grit', steps: [], keys: ['grit', 'wits', 'nerve'] },
+      }),
+    };
+    const turn: TalesEntity = {
+      id: 'character:talent/turn',
+      type: 'talent',
+      ruleset: 'any',
+      name: { en: 'Turn' },
+      tier: 1,
+      effects: [{ id: 'turn', target: 'tally.k', op: 'set', value: 'wits', when: '@tally.n >= 0' }],
+      source,
+    };
+    const result = computed(ashWith([], [turn]), system);
+    // `tally.m` reads the key, whose `when` reads `tally.n`, which reads the key in its loop: grit's
+    // 3. The `when` is true, so the key is wits, and `tally.m` wits' 2.
+    expect(result.values).toMatchObject({ 'tally.m': 2, 'tally.n': 3 });
+    expect(result.keys['tally.k']).toEqual({
+      key: 'wits',
+      steps: [
+        {
+          kind: 'effect',
+          part: 'character:talent/turn#turn',
+          source: 'character:talent/turn',
+          label: { en: 'Turn' },
+          key: 'wits',
+        },
+      ],
+    });
+    expect(codes(result)).toEqual([
+      {
+        code: 'cycle',
+        path: 'tally.k',
+        for: 'tally.n',
+        loop: [
+          { path: 'tally.k' },
+          { path: 'tally.n', by: 'character:talent/turn#turn' },
+          { path: 'tally.k' },
+        ],
+      },
+    ]);
+  });
+});

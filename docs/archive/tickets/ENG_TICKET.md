@@ -6290,3 +6290,270 @@ Found, not fixed:
   `prepareInitiative`): golden D's initiative −1 needs `d20.all.bonus`. Noted on ENG-14.
 
 Nothing for the changelog.
+
+---
+
+### ENG-43 An effect sets the stat a skill uses
+
+**Hat:** An effect sets the stat a skill uses
+**Depends on:** ENG-13 (`checkSteps`, `fifthEditionModule`), ENG-17 (`phasesOf`, `activeEffects`,
+`effectNumber`), ENG-18 (a loop names its paths), ENG-28 (`computeDerived`)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.4 (the target `skills.<key>.ability`, `set`, phase `derived`); §5.8 (`overrides`, a
+value that may be a text); §6.1 steps 5–7; §8.2 (warnings, never a block); ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/phases.ts` — changes: `finishKey`, the effects and the
+override of a path whose value is a key.
+- `packages/engine/src/effects.ts` — changes: `effectKey`; the formula checks `effectNumber` runs
+  are shared with it; two warning codes.
+- `packages/engine/src/derived.ts` — changes: key paths, read by a step through `readKey`, finished
+  when first read, each in a loop as a number path is.
+- `packages/engine/src/stats.ts` — changes: `KeyStep`.
+- `packages/engine/src/compute.ts` — changes: `SystemModule.keys`; `Computed.keys`.
+- `packages/system-5e/src/checks.ts` — changes: `skillKeys`; a skill's total reads its stat from
+  `skills.<key>.ability`.
+- `packages/system-5e/src/module.ts` — changes: `keys`.
+- `packages/engine/test/tales-module.ts` — changes: Tales' skills read their stat the same way.
+- `packages/schema/test/tales/system.ts` — changes: one line of Tales' rules says so.
+- `packages/engine/test/phases.test.ts`, `cycle.test.ts`, `derived.test.ts` — change: an `ENG-43`
+  block each, on Tales.
+- `packages/system-5e/test/module.test.ts` — changes: an `ENG-43` block on golden B and made-up
+  feats.
+
+#### 2. What is missing now
+
+Measured on `main` at `36f1450`, golden B (2024) with a made-up feat whose effects are `set
+skills.athletics.ability 'dex'`, `add skills.athletics.ability 1` and `set skills.athletics.ability
+'luck'`, and an override of `skills.athletics.ability` to `'con'`:
+- `skills.athletics.total` is 5, with the step `abilities.str.mod` 3 and `checks.str.bonus`: the
+  `set 'dex'` is not read.
+- `values['skills.athletics.ability']` is `undefined`: no code gives a skill's stat.
+- The warnings are two: `"character:feat/nimble#add" changes skills.athletics.ability, which the
+  character has no value for; it is not applied.` and `The override of skills.athletics.ability
+  names no value the character has; it is not applied.` The `set 'luck'`, a stat the character does
+  not have, gives none.
+- `pnpm test`: `Test Files 38 passed (38)`, `Tests 373 passed (373)`.
+
+#### 3. What it should look like when done
+
+1. **A key path** is a computed path whose value is a key, not a number (SPEC §5.4
+   `skills.<key>.ability`). A module gives each one with `SystemModule.keys(input)`: its own key,
+   the steps that gave it, and the keys it may take. `Computed.keys[path]` is `{ key, steps }`; the
+   key is the last step's. `values` and `breakdown` stay numbers only.
+2. **A key step** is `{ kind: 'entity', source, label, key }` (a key an entity gives by its own
+   field), `{ kind: 'effect', part, source, label, key }` or `{ kind: 'override', key, note? }`.
+3. **The effects on a key path** are the ones ENG-17 leaves to a number path: active, by phase
+   (`base`, `derived`, `final`), then priority (`set`'s 50, or the effect's own), then gathering
+   order. A `when` is read as for a number (a `base` effect under the base-phase rule). Each `set`
+   whose value is one of the path's keys applies and is a step; the last one applied is the key.
+4. **Warnings, never a block** (SPEC §8.2):
+   - `notAKey`: an effect on a key path whose op is not a `set` with a text (`add`, a `set` with a
+     number, `advantage`, …); not applied.
+   - `unknownKey`: a `set` with a text that is not one of the path's keys; not applied, the path's
+     keys named.
+   - `overrideNotAKey`: an override of a key path whose value is not one of its keys; not applied.
+   - A key path is finished, so neither `noTarget` nor `overrideNoPath` names it.
+5. **An override** of a key path whose value is one of its keys wins over every effect: a step
+   `{ kind: 'override', key, note? }`.
+6. **A step reads a key path** with its third argument, `readKey(path)`: the finished key, or
+   `undefined` for a path no module gives as a key. A key path is finished when first read, and a
+   loop through it is caught and named as ENG-18's are; a key read in a loop is its own key.
+   A path a module gives both as a number and as a key is a number, with `pathTaken`.
+7. **Fifth edition:** every skill has `skills.<key>.ability`: its own `ability` (an `entity` step
+   naming the skill), its keys the stats the character has. A skill's total reads that stat's
+   modifier and that stat's `checks.<stat>.bonus` (§8). A skill with its own `totalFormula` has the
+   key path too; its total is its formula's.
+8. **Golden B (2024) with a made-up feat** (§7, worked out by hand; STR +3, DEX +1, CON +2,
+   INT −1, WIS +1, CHA +0, proficiency +2):
+
+   | Effect of the feat | Path | Expected |
+   |---|---|---|
+   | `set skills.athletics.ability 'dex'`; `checks.dex.bonus +1`, `checks.str.bonus +2` | `skills.athletics.total` | 4 = DEX 1 + 2 + `checks.dex.bonus` 1 |
+   | `checks.str.bonus +2` | `checks.str.total` | 5 |
+   | `set skills.perception.ability 'int'` when `@level >= 1` | `skills.perception.total`, `.passive` | 1, 11 |
+   | `set … 'cha'` and `set … 'str'` priority 60, on Stealth | `skills.stealth.total` | 5 = STR 3 + `checks.str.bonus` 2; keys `dex`, `cha`, `str` |
+   | `set skills.insight.ability 'cha'` when `@level >= 2` | `skills.insight.total` | 3 (WIS: not applied) |
+   | `set skills.survival.ability 'con'`, a toggle off by default | `skills.survival.total` | 3 (WIS); 4 (CON) with it switched on |
+
+   No warning. With an override of `skills.athletics.ability` to `'cha'` besides: Athletics 2,
+   its key steps `str`, `dex`, `cha`.
+9. **Golden B with wrong content:** `add 1`, `set 2` and `advantage` on `skills.insight.ability`
+   each warn `notAKey`; `set 'luck'` on `skills.survival.ability` warns `unknownKey`; an override
+   of `skills.intimidation.ability` to `'str'` gives Intimidation 5 (STR 3 + 2); overrides of
+   `skills.insight.ability` to `'luck'` and of `skills.survival.ability` to `3` warn
+   `overrideNotAKey`. Insight and Survival stay 3. A number op on `skills.flying.ability`, a skill
+   the character lacks, still warns `noTarget`.
+10. **Tales** (core tests): Ash's climb on wits is 5 (wits 2 + 2 + 2 − 1); steady on grit is 2,
+    passive 7; sneak with a `derived` `set 'grit'` of priority 90 and a `final` `set 'nerve'` is 3
+    (nerve 1 + 2 + 1 − 1); an override of climb to nerve gives 4 over the wits effect. A `set` on
+    climb whose `when` reads `@skills.climb.total` is a loop: `@skills.climb.total →
+    @skills.climb.ability → @skills.climb.total`, not applied, climb 6. ENG-27's expected values
+    are unchanged.
+11. Every golden (A, B, B4, C in both editions, D) computes as before, with no warning; each has
+    one key per skill, its own stat.
+12. `compute()` stays pure: frozen inputs give equal results.
+13. The quality gate is green.
+
+#### 4. How to do it
+
+1. `stats.ts`: `KeyStep`.
+2. `effects.ts`: the parsing, the base-phase rule and `when` move out of `effectNumber` into one
+   function both use; `effectKey(active, reader, keys, warn)`; `notAKey`, `unknownKey`.
+3. `phases.ts`: `finishKey(path, own, keys, readBy)`; `overrideNotAKey`.
+4. `derived.ts`: `KeyPath`, `ComputedKey`, `KeyReader`; `DerivedStep` gets `readKey`;
+   `computeDerived` takes `keys` and `finishKey`, gives `keys`; the loop check is shared by both
+   readers.
+5. `compute.ts`: `SystemModule.keys`; `Computed.keys`.
+6. Tales' module and its rules line; the fifth-edition module's `skillKeys` and skill totals.
+7. The tests of §7.
+
+Technical choices (ADR 002):
+- **A key is a computed value of its own kind, kept apart from numbers.** `values` is what formulas
+  read, and every one is a number (ENG-28); a breakdown's changes add up to its value (SPEC §6.2).
+  A stat's key has neither, so it gets `Computed.keys`, with steps that name who chose it. The
+  screen reads the key there (phase 2), and the stat's step in the total names the modifier used.
+- **The core finishes a key path, not the module.** ENG-17's order (phase, priority, gathering),
+  `when`, toggles and the base-phase rule are written once, in `effects.ts` and `phases.ts`; a
+  module reading `activeEffects` itself would write them again, and the end-of-compute warnings
+  (`noTarget`, `overrideNoPath`) would still name the path. The backlog note asked for the
+  warnings; they are the core's, and game-free: "one of its keys", the keys given by the module.
+- **An override of a key path is read here.** "Manual overrides always win" holds for every
+  computed path; ENG-17 §4 left an override of a text to the ticket that computes one. Without it,
+  an override of a skill's stat would warn that the path does not exist.
+- **A `set` naming a key the path lacks is not applied, and warns.** Missing is not broken (SPEC
+  §8.2): the skill keeps the stat it had. The module's keys for a skill are the stats the
+  character has, so a pack's own stat (`san`) can be named as `str` can.
+- **The skill's own stat is not checked against the keys.** A skill on a stat the character lacks
+  reads its modifier with `missingPath` (ENG-13 §10); that stays.
+- **A key path is finished when first read**, as a number is (ENG-17): its `when` may read a
+  derived number, and a loop through it is caught by ENG-18's check, which both readers share.
+- **The stat's check bonus follows the stat** (§8): a skill check with DEX is a DEX check.
+- **Tales' skills read their stat the same way**, so the core's tests run on the made-up system
+  (ADR 004 item 4). No Tales value changes: its content sets no stat.
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, no `schemaVersion`, no Dexie table changes. An effect's `set`
+with a text and an override with a text were stored already (ENG-04, ENG-06); they are now read.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/phases.test.ts` — `describe('ENG-43 a key path …')`: §3 items 3–5 and 10
+  on Ash: the order, `when`, a toggle, `final`, the override, each warning, `noTarget` kept.
+- `packages/engine/test/cycle.test.ts` — `describe('ENG-43 …')`: a loop through a key path, named.
+- `packages/engine/test/derived.test.ts` — `describe('ENG-43 …')`: `readKey` without phases; a path
+  given both as a number and as a key; a key read for a path no module gives.
+- `packages/system-5e/test/module.test.ts` — `describe('ENG-43 …')`: §3 items 7–9, 11, 12.
+- Control numbers from: SPEC §6.7 golden B's modifiers (ENG-13 §3 item 9); ENG-27's
+  `tales/expected.ts`; the variants worked out by hand from their data, never copied from a run.
+
+#### 8. Checked against the source
+
+Sources: foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (ENG-13's), `module/` and
+`packs/_source/{rules,content24}`, which quote SRD 5.1 and SRD 5.2.1 (CC-BY-4.0).
+
+**A skill used with another stat.** SRD 5.1 (`rules/chapter-7-using-ability-scores.yml`, "Variant:
+Skills with Different Abilities"): "Normally, your proficiency in a skill applies only to a specific
+kind of ability check … In such cases, the GM might ask for a check using an unusual combination of
+ability and skill … a Constitution (Athletics) check. So if you're proficient in Athletics, you
+apply your proficiency bonus to the Constitution check just as you would normally do for a Strength
+(Athletics) check." SRD 5.2.1 (`content24/chapter-1/d20-tests.yml`): the Skills table "notes … the
+ability check the skill most often applies to"; "if a rule refers to a Strength (Acrobatics or
+Athletics) check, you can add your Proficiency Bonus to the check if you have proficiency in the
+Acrobatics or Athletics skill." So the proficiency stays the skill's; the modifier is the stat's.
+
+**How dnd5e computes it.** `module/data/shared/roll-config-field.mjs`: a skill's `ability` is a
+stored `StringField`, so an active effect overrides it as any field. `module/data/actor/templates/
+creature.mjs`, `prepareSkill`: `ability ??= skillData.ability; const abilityData =
+this.abilities[ability]`; the ability's check bonus is that ability's (`checkBonusAbl =
+simplifyBonus(abilityData?.check?.roll?.bonus, …)`); `skillData.mod = abilityData?.mod ?? 0`. So
+the stat's modifier and its check bonus follow the skill's stat; the proficiency does not change.
+
+Nothing in the goldens sets a skill's stat; no golden value changes.
+
+#### 9. Not in this ticket
+
+- A formula reading a key (`@skills.athletics.ability`): SPEC §5.6 names no such read; it reads 0
+  with `missingPath`, as any path not a number.
+- Choosing a stat for one roll (the GM's call in the variant above): the roll dialog, phase 2.
+- An effect of a text on a skill the character lacks (`set` on `skills.flying.ability`): no
+  warning, as ENG-17 left every op but a number's on a path that is not computed.
+- Other paths of text or lists (`ac.formulas`, `defenses.*`, `roll.*`): ENG-14, ENG-34.
+
+#### 10. Rake check
+
+- **`packages/engine` is pure; the core names no game.** A key path, its steps and its warnings
+  name no stat or skill; the module gives the paths and their keys. Tested on Tales.
+- **Everything is data.** No stat key in the code: a skill's keys are the stats the character has.
+- **`compute()` is pure.** Key paths are computed from the arguments only; the purity test covers
+  `keys`.
+- **A number with no breakdown entry is a bug.** A skill's total keeps its steps; its stat's step
+  names the modifier it read. A key has its own steps.
+- **Manual overrides always win.** An override of a key path is the last step.
+- **Each system's rules live in its own module.** Which paths are keys, and which keys they take,
+  is the module's; no `if (ruleset === …)`: both editions share the rule (§8).
+- **Formulas never run code.** A key's `when` goes through ENG-07's evaluator.
+- **Missing is not broken.** A key no stat has, an op that sets no key, an override of a wrong key:
+  a warning, never a throw; the skill keeps its stat.
+- **Licensing.** The feats are made up (`character:`); §8 quotes the SRDs (CC-BY-4.0) only.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `module.test.ts` alone: `Tests 18 passed (18)`, 1.21 s (14 before). `phases.test.ts` alone:
+  `Tests 17 passed (17)`, 740 ms. `packages/engine`: `Test Files 14 passed (14)`, `Tests 176
+  passed (176)` (170 before).
+- Lint: `Checked 140 files`, no fixes, no error. No new file.
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done`.
+- Test: `Test Files 38 passed (38)`, `Tests 383 passed (383)`, 6.26 s (before: 38 files, 373
+  tests).
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- Every line of §3 items 8 to 10 is met. Golden B with the made-up feat: Athletics 4 (was 5,
+  §2), `checks.str.total` 5, Perception 1 and passive 11, Stealth 5, Insight 3, Survival 3 (4
+  switched on); with the override, Athletics 2. Each golden (A, B, B4, C in both editions, D) has
+  18 keys, each its skill's own stat, and no warning.
+- The tests bite. 20 breaks, each on its own and restored, the `engine` and `system-5e` tests run
+  (255 tests). In the module: a total that ignores its key, 2 fail; the check bonus of the skill's
+  own stat, 1; no `keys`, 4; a skill's keys only its own stat, 3. In the core: the `set`s not
+  sorted, 2; priority ignored, 2; an effect's own priority ignored, 1; the override ignored, 3;
+  its note dropped, 2; a key path not marked finished, 3; a key no stat has applied, 2; `when`
+  ignored, 4; a `set` with a number taken for a key, 2; every key effect held to the base-phase
+  rule, 4; no loop check for a key, 1; a key path not marked in progress, 2; a key and a number
+  on one path not refused, 1; `Computed.keys` empty, 10; `readKey` giving nothing, 7. Tales'
+  total ignoring its key, 3.
+
+Differences from §3 and §4:
+- No value differs. The size held at S: one core change (`keys`, `finishKey`, `readKey`) served
+  both the module and its warnings.
+- The backlog note asked the row to add the module's warnings for a skill's stat. They are the
+  core's (`notAKey`, `unknownKey`, `overrideNotAKey`), game-free, with the module giving the keys
+  (§4): a module reading `activeEffects` itself would have written ENG-17's order and `when` a
+  second time, and `noTarget` and `overrideNoPath` would still have named the path.
+- This ticket also reads an override of a key path (§3 item 5), which the row did not name;
+  ENG-17 §4 left an override of a text to the ticket that computes a text.
+- `effectNumber` now shares its formula checks with `effectKey` (`applies`); its warnings and
+  their order are as before, and every ENG-12 and ENG-17 test passes unchanged.
+- `DerivedStep` takes a third argument, so ENG-28's test helper `counted` (`derived.test.ts`)
+  passes it on (`TS2554` before); no test changed in meaning.
+- `computeDerived` without phases keeps a key path's own key; no test reads that default, as none
+  reads ENG-28's default `finish`: `compute()` always passes the phases.
+
+Found, not fixed:
+- The sheet must read a skill's stat from `Computed.keys['skills.<key>.ability']`, not from the
+  skill's own `ability`, and an override of it is a stat's key, a text. Noted on phase 2 in
+  `BACKLOG.md`.
+- A list or a roll target (`ac.formulas`, `defenses.*`, `roll.*`) can take the same road as a key
+  path: given by the module, finished by the core with its own warnings. Noted on ENG-14 and
+  ENG-34 in `BACKLOG.md`.
+
+Nothing for the changelog.

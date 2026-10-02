@@ -59,6 +59,18 @@ export type BreakdownStep = {
   | { kind: 'override'; note?: string }
 );
 
+/**
+ * One step of how a key path got its key: the key an entity gives by one of its own
+ * fields (a skill's stat), an effect's `set`, or an override. The last step's `key` is the path's.
+ */
+export type KeyStep = { key: string } & (
+  | { kind: 'entity'; source: EntityId; label: L10n }
+  /** An effect's `set`. */
+  | { kind: 'effect'; part: EntityPartId; source: EntityId; label: L10n }
+  /** A key chosen by hand (SPEC §6.1 step 7); `note` is the person's. */
+  | { kind: 'override'; note?: string }
+);
+
 /** Something the base phase met. `code` and its data are for the screen; `message` is for logs. */
 export type StatWarning =
   | EffectWarning

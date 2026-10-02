@@ -1,23 +1,32 @@
 import type { EffectPhase, EntityPartId } from '@grimoire/schema';
-import { type Derived, LEVEL_PATH, type PartReader } from './derived';
+import {
+  type ComputedKey,
+  type Derived,
+  type KeyPath,
+  LEVEL_PATH,
+  type PartReader,
+} from './derived';
 import {
   type ActiveEffect,
   activeEffects,
+  type EffectKey,
   type EffectNumber,
   type EffectReader,
   type EffectWarning,
+  effectKey,
   effectNumber,
   numberChangeOf,
   phaseOf,
   statTargetOf,
 } from './effects';
 import type { CharacterCore, GatherableEntity, Gathered } from './gather';
-import { applyEffects, type BasePhase, type BreakdownStep } from './stats';
+import { applyEffects, type BasePhase, type BreakdownStep, type KeyStep } from './stats';
 
 // ENG-17: SPEC §6.1 steps 6 and 7. A computed path is finished when it is computed: after its own
 // steps come the effects left to it, by phase (`base`, `derived`, `final`), then by priority, then
 // its override, which always wins. A base-phase effect on a stat's score or maximum is the base
 // phase's (ENG-12). `level` is read by gathering and the base phase first, so nothing changes it.
+// ENG-43: a key path is finished in the same order, by each `set` naming one of its keys.
 
 /** What a `fixedPath` warning names as the cause when it is an override. */
 export const OVERRIDE = 'override';
@@ -34,12 +43,20 @@ export type PhaseWarning =
       | { code: 'toggleGone'; part: string }
       | { code: 'overrideNoPath'; path: string }
       | { code: 'overrideNotANumber'; path: string; value: boolean | string }
+      | {
+          code: 'overrideNotAKey';
+          path: string;
+          value: number | boolean | string;
+          keys: readonly string[];
+        }
     ));
 
 /** Steps 6 and 7, as `computeDerived` runs them on each path. */
 export interface Phases {
   /** A path's value after its own: its effects, then its override. An effect reads by its part. */
   finish(path: string, own: Derived, readBy: PartReader): Derived;
+  /** A key path's key after its own: its effects' `set`s, then its override. */
+  finishKey(path: string, own: KeyPath, readBy: PartReader): ComputedKey;
   /** Everything the phases met, ending with the targets and overrides no path finished. */
   end(): PhaseWarning[];
 }
@@ -48,6 +65,14 @@ export interface Phases {
 interface LeftEffect {
   active: ActiveEffect;
   phase: EffectPhase;
+}
+
+/** The order effects apply in: by phase, then by priority; a stable sort keeps gathering order. */
+function inOrder(
+  a: { phase: EffectPhase; priority: number },
+  b: { phase: EffectPhase; priority: number },
+): number {
+  return PHASE_ORDER[a.phase] - PHASE_ORDER[b.phase] || a.priority - b.priority;
 }
 
 /**
@@ -122,9 +147,7 @@ export function phasesOf<E extends GatherableEntity>(
         const number = effectNumber(active, reader, warn);
         if (number !== undefined) numbers.push({ ...number, phase });
       }
-      numbers.sort(
-        (a, b) => PHASE_ORDER[a.phase] - PHASE_ORDER[b.phase] || a.priority - b.priority,
-      );
+      numbers.sort(inOrder);
       let value = applyEffects(steps, own.value, numbers);
 
       const override = overrides.get(path);
@@ -148,6 +171,41 @@ export function phasesOf<E extends GatherableEntity>(
         }
       }
       return { value, steps };
+    },
+
+    finishKey(path, own, readBy) {
+      finished.add(path);
+      const steps: KeyStep[] = [...own.steps];
+      const keys: (EffectKey & { phase: EffectPhase })[] = [];
+      for (const { active, phase } of byTarget.get(path) ?? []) {
+        const reader = phase === 'base' ? baseReader : { read: readBy(active.part) };
+        const set = effectKey(active, own.keys, reader, warn);
+        if (set !== undefined) keys.push({ ...set, phase });
+      }
+      keys.sort(inOrder);
+      let key = own.key;
+      for (const { key: each, part, source, label } of keys) {
+        steps.push({ kind: 'effect', part, source, label, key: each });
+        key = each;
+      }
+
+      const override = overrides.get(path);
+      if (override !== undefined) {
+        const { value, note } = override;
+        if (typeof value === 'string' && own.keys.includes(value)) {
+          steps.push({ kind: 'override', key: value, ...(note !== undefined && { note }) });
+          key = value;
+        } else {
+          warn({
+            code: 'overrideNotAKey',
+            path,
+            value,
+            keys: own.keys,
+            message: `The override of ${path} is ${JSON.stringify(value)}, which is none of its keys (${own.keys.join(', ')}); it is not applied.`,
+          });
+        }
+      }
+      return { key, steps };
     },
 
     end() {

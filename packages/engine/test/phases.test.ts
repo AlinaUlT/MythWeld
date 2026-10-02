@@ -607,3 +607,160 @@ describe('ENG-17 derived-phase effects, toggles and overrides', () => {
     expect(codes(taken)).toEqual([{ code: 'pathTaken', path: 'conditions.weary.level' }]);
   });
 });
+
+describe('ENG-43 a key path: the stat a skill uses', () => {
+  /** The step of a talent's effect on a key path. */
+  const setBy = (slug: string, id: string, key: string) => ({
+    kind: 'effect',
+    part: `character:talent/${slug}#${id}`,
+    source: `character:talent/${slug}`,
+    label: { en: slug },
+    key,
+  });
+  /** The step of a skill's own stat. */
+  const ownStat = (slug: string, name: string, key: string) => ({
+    kind: 'entity',
+    source: `tales-core:skill/${slug}`,
+    label: { en: name },
+    key,
+  });
+  const stats = ['grit', 'wits', 'nerve'];
+
+  const shift = talent('shift', [
+    { id: 'climb', target: 'skills.climb.ability', op: 'set', value: 'wits' },
+    {
+      id: 'steady',
+      target: 'skills.steady.ability',
+      op: 'set',
+      value: 'grit',
+      when: '@abilities.grit.mod >= 3',
+    },
+    { id: 'sneak-last', target: 'skills.sneak.ability', op: 'set', value: 'nerve', phase: 'final' },
+    { id: 'sneak', target: 'skills.sneak.ability', op: 'set', value: 'grit', priority: 90 },
+    {
+      id: 'off',
+      target: 'skills.climb.ability',
+      op: 'set',
+      value: 'nerve',
+      toggle: { label: { en: 'Off' }, default: false },
+    },
+    {
+      id: 'never',
+      target: 'skills.steady.ability',
+      op: 'set',
+      value: 'nerve',
+      when: '@level >= 3',
+    },
+  ]);
+
+  it("gives each skill its own stat, and Ash's values as before", () => {
+    const result = computed(ash);
+    expect(result.keys).toEqual({
+      'skills.climb.ability': { key: 'grit', steps: [ownStat('climb', 'Climb', 'grit')] },
+      'skills.sneak.ability': { key: 'wits', steps: [ownStat('sneak', 'Sneak', 'wits')] },
+      'skills.steady.ability': { key: 'nerve', steps: [ownStat('steady', 'Steady', 'nerve')] },
+    });
+    for (const [at, value] of Object.entries(ashExpected.values)) {
+      expect(result.values[at], at).toBe(value);
+    }
+  });
+
+  it('a set naming a stat changes the stat a total reads, in phase and priority order', () => {
+    const result = computed(ashWith([shift]));
+    expect(result.values).toMatchObject({
+      'skills.climb.total': 5, // wits 2 + 2 × 1 + `nimble` 2 - 1
+      'skills.steady.total': 2, // grit 3 + 2 × 0 - 1: its `when` is true, `never`'s false
+      'skills.steady.passive': 7, // 5 + 2
+      'skills.sneak.total': 3, // nerve 1 + 2 × 1 + `shadow` 1 - 1: `final` comes after priority 90
+    });
+    expect(result.keys).toEqual({
+      'skills.climb.ability': {
+        key: 'wits',
+        steps: [ownStat('climb', 'Climb', 'grit'), setBy('shift', 'climb', 'wits')],
+      },
+      'skills.sneak.ability': {
+        key: 'nerve',
+        steps: [
+          ownStat('sneak', 'Sneak', 'wits'),
+          setBy('shift', 'sneak', 'grit'),
+          setBy('shift', 'sneak-last', 'nerve'),
+        ],
+      },
+      'skills.steady.ability': {
+        key: 'grit',
+        steps: [ownStat('steady', 'Steady', 'nerve'), setBy('shift', 'steady', 'grit')],
+      },
+    });
+    expect(result.breakdown['skills.climb.total']).toEqual([
+      path('abilities.wits.mod', 2),
+      path('skills.climb.prof', 1, 2),
+      path('skills.climb.bonus', 2),
+      path('skills.all.bonus', -1),
+    ]);
+    expect(codes(result)).toEqual([]);
+
+    // Switched on, `off` comes after `climb` at the same priority: nerve 1 + 2 + 2 - 1.
+    const on = computed(
+      ashWith([shift], { state: { ...ash.state, toggles: { [part('off')]: true } } }),
+    );
+    expect(on.values['skills.climb.total']).toBe(4);
+    expect(on.keys['skills.climb.ability']?.key).toBe('nerve');
+  });
+
+  /** The part of one of `shift`'s effects. */
+  function part(id: string): string {
+    return `character:talent/shift#${id}`;
+  }
+
+  it('an override naming a stat wins; a wrong op, key or override warns and is not applied', () => {
+    const muddle = talent('muddle', [
+      { id: 'climb', target: 'skills.climb.ability', op: 'set', value: 'wits' },
+      { id: 'add', target: 'skills.sneak.ability', op: 'add', value: 1 },
+      { id: 'number', target: 'skills.sneak.ability', op: 'set', value: 2 },
+      { id: 'note', target: 'skills.sneak.ability', op: 'note', value: { en: 'Quietly' } },
+      { id: 'luck', target: 'skills.steady.ability', op: 'set', value: 'luck' },
+      { id: 'swim', target: 'skills.swim.ability', op: 'add', value: 1 },
+      { id: 'swim-set', target: 'skills.swim.ability', op: 'set', value: 'grit' },
+    ]);
+    const result = computed(
+      ashWith([muddle], {
+        overrides: [
+          { path: 'skills.climb.ability', value: 'nerve', note: 'Held fast' },
+          { path: 'skills.sneak.ability', value: 3 },
+          { path: 'skills.steady.ability', value: 'luck' },
+        ],
+      }),
+    );
+    expect(result.values).toMatchObject({
+      'skills.climb.total': 4, // nerve 1 + 2 × 1 + 2 - 1, over `climb`'s wits
+      'skills.sneak.total': 4, // wits 2 + 2 × 1 + 1 - 1, unchanged
+      'skills.steady.total': 0, // nerve 1 + 0 - 1, unchanged
+    });
+    expect(result.keys['skills.climb.ability']).toEqual({
+      key: 'nerve',
+      steps: [
+        ownStat('climb', 'Climb', 'grit'),
+        setBy('muddle', 'climb', 'wits'),
+        { kind: 'override', key: 'nerve', note: 'Held fast' },
+      ],
+    });
+    const of = (id: string) => `character:talent/muddle#${id}`;
+    const sneak = 'skills.sneak.ability';
+    expect(codes(result)).toEqual([
+      { code: 'notAKey', part: of('add'), op: 'add', target: sneak },
+      { code: 'notAKey', part: of('number'), op: 'set', target: sneak },
+      { code: 'notAKey', part: of('note'), op: 'note', target: sneak },
+      { code: 'overrideNotAKey', path: sneak, value: 3, keys: stats },
+      {
+        code: 'unknownKey',
+        part: of('luck'),
+        target: 'skills.steady.ability',
+        key: 'luck',
+        keys: stats,
+      },
+      { code: 'overrideNotAKey', path: 'skills.steady.ability', value: 'luck', keys: stats },
+      // A skill Ash lacks: a number op warns as before; a set with a text, as any op, does not.
+      { code: 'noTarget', part: of('swim'), target: 'skills.swim.ability' },
+    ]);
+  });
+});

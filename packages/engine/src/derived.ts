@@ -2,12 +2,14 @@ import type { EntityId, EntityPartId } from '@grimoire/schema';
 import { STAT_FIELDS } from './effects';
 import { evaluateNumber, type FormulaWarning } from './formula';
 import { type GatherableEntity, type Gathered, isCoreKind } from './gather';
-import { type BreakdownStep, STAT_TYPE, type Stats } from './stats';
+import { type BreakdownStep, type KeyStep, STAT_TYPE, type Stats } from './stats';
 
 // ENG-28: SPEC §6.1 step 5, the derived values. The core gives the character's level and each
 // stat's modifier; the module gives the rest as steps, one per path. A path is computed when it is
 // first read, so a step may read any other path, in any order, and each is computed once. A path
 // read while it is being computed reads 0 with a warning, so a loop never exhausts the stack.
+// ENG-43: a module may also give key paths, whose value is a key (a skill's stat). A step reads
+// one through `readKey`; it is finished when first read, in the same loop check as a number.
 
 /** The path of the character's level (SPEC §5.6 `@level`). */
 export const LEVEL_PATH = 'level';
@@ -49,14 +51,37 @@ export type ValueReader = (path: string) => number;
 /** A reader for the formula of one part (`<entityId>#<id>`): a loop it closes names that part. */
 export type PartReader = (by: EntityPartId) => ValueReader;
 
+/** A key path's finished key; `undefined` for a path no module gives as a key. */
+export type KeyReader = (path: string) => string | undefined;
+
 /**
  * How one path is computed: from other paths, read through `read`. A step that evaluates a pack's
- * formula of an entity part reads through `readBy(part)` instead, so a loop names the part.
+ * formula of an entity part reads through `readBy(part)` instead, so a loop names the part. A key
+ * path is read through `readKey`.
  */
-export type DerivedStep = (read: ValueReader, readBy: PartReader) => Derived;
+export type DerivedStep = (read: ValueReader, readBy: PartReader, readKey: KeyReader) => Derived;
 
 /** What comes after a path's own step: ENG-17's effects and override, each read by its part. */
 export type Finish = (path: string, own: Derived, readBy: PartReader) => Derived;
+
+/**
+ * A path whose value is a key, not a number (SPEC §5.4 `skills.<key>.ability`), as a module gives
+ * it: its own key, the steps that gave it, and the keys an effect or an override may set it to.
+ */
+export interface KeyPath {
+  readonly key: string;
+  readonly steps: readonly KeyStep[];
+  readonly keys: readonly string[];
+}
+
+/** A key path's key after its effects and override, and the steps that chose it, the last one's. */
+export interface ComputedKey {
+  readonly key: string;
+  readonly steps: readonly KeyStep[];
+}
+
+/** What comes after a key path's own key: its effects and override, each read by its part. */
+export type FinishKey = (path: string, own: KeyPath, readBy: PartReader) => ComputedKey;
 
 /** A path on a formula loop. `by` is the part whose formula read it; without it, a step did. */
 export interface LoopLink {
@@ -83,10 +108,11 @@ export type DerivedWarning = { message: string } & (
   | { code: 'pathTaken'; path: string }
 );
 
-/** Each path's value and breakdown, in the order of `computeDerived`. */
+/** Each path's value and breakdown, in the order of `computeDerived`; each key path's key. */
 export interface DerivedValues {
   values: Record<string, number>;
   breakdown: Record<string, readonly BreakdownStep[]>;
+  keys: Record<string, ComputedKey>;
   warnings: DerivedWarning[];
 }
 
@@ -117,7 +143,8 @@ export function statsOf<E extends GatherableEntity>(
  * Computes the derived values: `level`, each stat's score and maximum (the base phase's, `base`),
  * its `abilities.<key>.mod`, each resource's `resources.<key>.max`, each condition's
  * `conditions.<key>.level`, then each path the module's `steps` give. `finish` runs on each path
- * but `level` after its own step (ENG-17); without it, a path is its step's. Pure.
+ * but `level` after its own step (ENG-17); without it, a path is its step's. Then each of the
+ * module's `keys`, `finishKey` after its own key. Pure.
  */
 export function computeDerived<E extends GatherableEntity>(input: {
   level: number;
@@ -127,9 +154,13 @@ export function computeDerived<E extends GatherableEntity>(input: {
   base: Stats;
   steps: Readonly<Record<string, DerivedStep>>;
   finish?: Finish;
+  keys?: Readonly<Record<string, KeyPath>>;
+  finishKey?: FinishKey;
 }): DerivedValues {
   const { level, gathered, stats, defaults, base } = input;
   const finish: Finish = input.finish ?? ((_, own) => own);
+  const finishKey: FinishKey =
+    input.finishKey ?? ((_, own) => ({ key: own.key, steps: own.steps }));
   const warnings: DerivedWarning[] = [];
   const values = new Map<string, number>([[LEVEL_PATH, level]]);
   const breakdown = new Map<string, readonly BreakdownStep[]>([
@@ -233,10 +264,44 @@ export function computeDerived<E extends GatherableEntity>(input: {
     order.push(path);
   }
 
+  // The module's key paths. A path it gives as a number too stays a number.
+  const keyPaths = new Map<string, KeyPath>();
+  for (const [path, keyPath] of Object.entries(input.keys ?? {})) {
+    if (values.has(path) || steps.has(path)) {
+      warnings.push({
+        code: 'pathTaken',
+        path,
+        message: `The module gives "${path}" as a key, and it is a number; the number is used.`,
+      });
+      continue;
+    }
+    keyPaths.set(path, keyPath);
+  }
+
   // A path's value, computed when first read. `readFor` is the path whose computing reads it, `by`
   // the part whose formula does. ENG-18: the paths in progress, in the order they began, each with
   // what read it; a path read again closes a loop, named from that path to the read that closed it.
   const computing = new Map<string, LoopLink>();
+
+  /** Whether reading `path` now closes a loop; if it does, the loop is warned, `used` in it. */
+  function closesLoop(path: string, readFor: string, link: LoopLink, used: string): boolean {
+    if (!computing.has(path)) return false;
+    const links = [...computing.values()];
+    const loop = [
+      { path },
+      ...links.slice(links.findIndex((each) => each.path === path) + 1),
+      link,
+    ];
+    warnings.push({
+      code: 'cycle',
+      path,
+      for: readFor,
+      loop,
+      message: `@${path} is read for ${readFor} while it is being computed; ${used} is used. The loop: ${loopText(loop)}.`,
+    });
+    return true;
+  }
+
   function valueAt(path: string, readFor: string, by?: EntityPartId): number {
     const known = values.get(path);
     if (known !== undefined) return known;
@@ -251,26 +316,12 @@ export function computeDerived<E extends GatherableEntity>(input: {
       return 0;
     }
     const link: LoopLink = by === undefined ? { path } : { path, by };
-    if (computing.has(path)) {
-      const links = [...computing.values()];
-      const loop = [
-        { path },
-        ...links.slice(links.findIndex((each) => each.path === path) + 1),
-        link,
-      ];
-      warnings.push({
-        code: 'cycle',
-        path,
-        for: readFor,
-        loop,
-        message: `@${path} is read for ${readFor} while it is being computed; 0 is used. The loop: ${loopText(loop)}.`,
-      });
-      return 0;
-    }
+    if (closesLoop(path, readFor, link, '0')) return 0;
     computing.set(path, link);
     const read: ValueReader = (each) => valueAt(each, path);
     const readBy: PartReader = (part) => (each) => valueAt(each, path, part);
-    const own = step(read, readBy);
+    const readKey: KeyReader = (each) => keyAt(each, path)?.key;
+    const own = step(read, readBy, readKey);
     for (const warning of own.warnings ?? []) {
       warnings.push({
         code: 'stepFormula',
@@ -286,10 +337,32 @@ export function computeDerived<E extends GatherableEntity>(input: {
     return result.value;
   }
 
-  const out: DerivedValues = { values: {}, breakdown: {}, warnings };
+  // A key path's key, finished when first read; in a loop, its own key, unfinished.
+  const keys = new Map<string, ComputedKey>();
+  function keyAt(path: string, readFor: string): ComputedKey | undefined {
+    const known = keys.get(path);
+    if (known !== undefined) return known;
+    const own = keyPaths.get(path);
+    if (own === undefined) return undefined;
+    if (closesLoop(path, readFor, { path }, `its own key "${own.key}"`)) {
+      return { key: own.key, steps: own.steps };
+    }
+    computing.set(path, { path });
+    const readBy: PartReader = (part) => (each) => valueAt(each, path, part);
+    const result = finishKey(path, own, readBy);
+    computing.delete(path);
+    keys.set(path, result);
+    return result;
+  }
+
+  const out: DerivedValues = { values: {}, breakdown: {}, keys: {}, warnings };
   for (const path of order) {
     out.values[path] = valueAt(path, path);
     out.breakdown[path] = breakdown.get(path) ?? [];
+  }
+  for (const path of keyPaths.keys()) {
+    const key = keyAt(path, path);
+    if (key !== undefined) out.keys[path] = key;
   }
   return out;
 }

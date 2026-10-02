@@ -553,3 +553,243 @@ describe("ENG-13 fifth edition's module", () => {
     expect(first).toEqual(compute(character, index2024.index, fifthEditionModule));
   });
 });
+
+describe('ENG-43 an effect sets the stat a skill uses', () => {
+  // Golden B (2024): STR +3, DEX +1, CON +2, INT −1, WIS +1, CHA +0, proficiency +2 (ENG-13 §3
+  // item 9); proficient in Athletics, Intimidation, Insight, Perception and Survival.
+  const stats = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+
+  /** The step of a skill's own stat. */
+  const ownStat = (slug: string, name: string, key: string) => ({
+    kind: 'entity',
+    source: `srd-2024:skill/${slug}`,
+    label: { en: name },
+    key,
+  });
+  /** The step of a made-up feat's effect on a skill's stat. */
+  const setBy = (feat: string, name: string, id: string, key: string) => ({
+    kind: 'effect',
+    part: `character:feat/${feat}#${id}`,
+    source: `character:feat/${feat}`,
+    label: { en: name },
+    key,
+  });
+
+  /** Golden B with made-up feats of its own. */
+  const withFeats = (feats: EntityInput[], change: Partial<CharacterInput> = {}) =>
+    computed({
+      ...goldenB,
+      localEntities: feats,
+      systemData: { ...goldenB.systemData, feats: feats.map(({ id }) => ({ id })) },
+      ...change,
+    });
+
+  const nimble: EntityInput = {
+    id: 'character:feat/nimble',
+    type: 'feat',
+    ruleset: 'any',
+    name: { en: 'Nimble' },
+    source,
+    effects: [
+      { id: 'athletics', target: 'skills.athletics.ability', op: 'set', value: 'dex' },
+      { id: 'str-checks', target: 'checks.str.bonus', op: 'add', value: 2 },
+      { id: 'dex-checks', target: 'checks.dex.bonus', op: 'add', value: 1 },
+      {
+        id: 'perception',
+        target: 'skills.perception.ability',
+        op: 'set',
+        value: 'int',
+        when: '@level >= 1',
+      },
+      {
+        id: 'stealth-late',
+        target: 'skills.stealth.ability',
+        op: 'set',
+        value: 'str',
+        priority: 60,
+      },
+      { id: 'stealth', target: 'skills.stealth.ability', op: 'set', value: 'cha' },
+      {
+        id: 'insight',
+        target: 'skills.insight.ability',
+        op: 'set',
+        value: 'cha',
+        when: '@level >= 2',
+      },
+      {
+        id: 'survival',
+        target: 'skills.survival.ability',
+        op: 'set',
+        value: 'con',
+        toggle: { label: { en: 'Endure' }, default: false },
+      },
+    ],
+  };
+
+  it("gives every golden's skills their own stat, the stats it has as their keys", () => {
+    for (const golden of [goldenA, goldenB, goldenB4, goldenC2014, goldenC2024, goldenD]) {
+      const result = computed(golden);
+      const skills = Object.entries(result.byKey.skill ?? {});
+      expect(skills).toHaveLength(18);
+      expect(Object.keys(result.keys)).toEqual(skills.map(([key]) => `skills.${key}.ability`));
+      for (const [key, skill] of skills) {
+        if (skill.type !== 'skill') throw new Error(`${key} is not a skill`);
+        expect(result.keys[`skills.${key}.ability`]?.key, key).toBe(skill.ability);
+      }
+      expect(result.warnings).toEqual([]);
+    }
+    expect(computed(goldenB).keys['skills.athletics.ability']).toEqual({
+      key: 'str',
+      steps: [ownStat('athletics', 'Athletics', 'str')],
+    });
+  });
+
+  it("reads the stat's modifier and check bonus; a set's order, when and toggle as a number's", () => {
+    const result = withFeats([nimble]);
+    expect(
+      valuesOf(result, [
+        'skills.athletics.total',
+        'checks.str.total',
+        'checks.dex.total',
+        'skills.perception.total',
+        'skills.perception.passive',
+        'skills.stealth.total',
+        'skills.insight.total',
+        'skills.survival.total',
+        'skills.intimidation.total',
+      ]),
+    ).toEqual({
+      // DEX 1 + 2 + DEX's check bonus 1; STR's 2 not.
+      'skills.athletics.total': 4,
+      'checks.str.total': 5,
+      'checks.dex.total': 2,
+      // INT −1 + 2; 10 + 1.
+      'skills.perception.total': 1,
+      'skills.perception.passive': 11,
+      // CHA at priority 50, then STR at 60: STR 3 + STR's check bonus 2, not proficient.
+      'skills.stealth.total': 5,
+      // Its `when` is false at level 1: WIS 1 + 2.
+      'skills.insight.total': 3,
+      // Its toggle is off: WIS 1 + 2.
+      'skills.survival.total': 3,
+      'skills.intimidation.total': 2,
+    });
+    expect(result.breakdown['skills.athletics.total']).toEqual([
+      { kind: 'path', path: 'abilities.dex.mod', value: 1, change: 1 },
+      { kind: 'path', path: 'prof', value: 2, change: 2 },
+      { kind: 'path', path: 'skills.athletics.bonus', value: 0, change: 0 },
+      { kind: 'path', path: 'skills.all.bonus', value: 0, change: 0 },
+      { kind: 'path', path: 'checks.dex.bonus', value: 1, change: 1 },
+      { kind: 'path', path: 'd20.all.bonus', value: 0, change: 0 },
+    ]);
+    expect(result.keys['skills.stealth.ability']).toEqual({
+      key: 'str',
+      steps: [
+        ownStat('stealth', 'Stealth', 'dex'),
+        setBy('nimble', 'Nimble', 'stealth', 'cha'),
+        setBy('nimble', 'Nimble', 'stealth-late', 'str'),
+      ],
+    });
+    expect(result.keys['skills.insight.ability']?.key).toBe('wis');
+    expect(result.warnings).toEqual([]);
+
+    // Switched on: CON 2 + 2.
+    const on = withFeats([nimble], {
+      state: { ...goldenB.state, toggles: { 'character:feat/nimble#survival': true } },
+    });
+    expect(on.values['skills.survival.total']).toBe(4);
+
+    // An override wins over the effect: CHA 0 + 2.
+    const chosen = withFeats([nimble], {
+      overrides: [{ path: 'skills.athletics.ability', value: 'cha' }],
+    });
+    expect(chosen.values['skills.athletics.total']).toBe(2);
+    expect(chosen.keys['skills.athletics.ability']).toEqual({
+      key: 'cha',
+      steps: [
+        ownStat('athletics', 'Athletics', 'str'),
+        setBy('nimble', 'Nimble', 'athletics', 'dex'),
+        { kind: 'override', key: 'cha' },
+      ],
+    });
+    expect(chosen.warnings).toEqual([]);
+  });
+
+  it('warns for an op that sets no stat, a stat the character lacks, a wrong override', () => {
+    const muddled: EntityInput = {
+      id: 'character:feat/muddled',
+      type: 'feat',
+      ruleset: 'any',
+      name: { en: 'Muddled' },
+      source,
+      effects: [
+        { id: 'add', target: 'skills.insight.ability', op: 'add', value: 1 },
+        { id: 'number', target: 'skills.insight.ability', op: 'set', value: 2 },
+        { id: 'advantage', target: 'skills.insight.ability', op: 'advantage', value: true },
+        { id: 'luck', target: 'skills.survival.ability', op: 'set', value: 'luck' },
+        { id: 'flying', target: 'skills.flying.ability', op: 'add', value: 1 },
+      ],
+    };
+    const result = withFeats([muddled], {
+      overrides: [
+        { path: 'skills.intimidation.ability', value: 'str', note: 'Raw strength' },
+        { path: 'skills.insight.ability', value: 'luck' },
+        { path: 'skills.survival.ability', value: 3 },
+      ],
+    });
+    // STR 3 + 2; Insight and Survival keep WIS: 1 + 2.
+    expect(
+      valuesOf(result, [
+        'skills.intimidation.total',
+        'skills.insight.total',
+        'skills.survival.total',
+      ]),
+    ).toEqual({
+      'skills.intimidation.total': 5,
+      'skills.insight.total': 3,
+      'skills.survival.total': 3,
+    });
+    expect(result.keys['skills.intimidation.ability']?.steps).toEqual([
+      ownStat('intimidation', 'Intimidation', 'cha'),
+      { kind: 'override', key: 'str', note: 'Raw strength' },
+    ]);
+    const of = (id: string) => `character:feat/muddled#${id}`;
+    const insight = 'skills.insight.ability';
+    const survival = 'skills.survival.ability';
+    expect(codes(result)).toEqual([
+      { code: 'notAKey', part: of('add'), op: 'add', target: insight },
+      { code: 'notAKey', part: of('number'), op: 'set', target: insight },
+      { code: 'notAKey', part: of('advantage'), op: 'advantage', target: insight },
+      { code: 'overrideNotAKey', path: insight, value: 'luck', keys: stats },
+      { code: 'unknownKey', part: of('luck'), target: survival, key: 'luck', keys: stats },
+      { code: 'overrideNotAKey', path: survival, value: 3, keys: stats },
+      { code: 'noTarget', part: of('flying'), target: 'skills.flying.ability' },
+    ]);
+  });
+
+  it("gives a skill with its own formula a stat too; its total stays its formula's", () => {
+    const omens: EntityInput = {
+      id: 'character:skill/omens',
+      type: 'skill',
+      key: 'omens',
+      ruleset: 'any',
+      name: { en: 'Omens' },
+      ability: 'wis',
+      totalFormula: '@abilities.wis.mod + 1',
+      source,
+    };
+    const reader: EntityInput = {
+      id: 'character:feat/reader',
+      type: 'feat',
+      ruleset: 'any',
+      name: { en: 'Reader' },
+      source,
+      effects: [{ id: 'omens', target: 'skills.omens.ability', op: 'set', value: 'int' }],
+    };
+    const result = withFeats([reader], { localEntities: [omens, reader] });
+    // WIS 1 + 1, whatever its stat.
+    expect(result.values['skills.omens.total']).toBe(2);
+    expect(result.keys['skills.omens.ability']?.key).toBe('int');
+    expect(result.warnings).toEqual([]);
+  });
+});
