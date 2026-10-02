@@ -9811,3 +9811,380 @@ Against the row: as the row says. The walker's arithmetic and functions became t
 Found, not fixed: nothing.
 
 Nothing for the changelog: no screen shows the average yet.
+
+---
+
+### ENG-19 The edition files
+
+**Hat:** The ruleset files hold every 2014/2024 rules difference
+**Depends on:** ENG-15 (`rulesets/`, `EditionRules`, `rulesOf`), ENG-16 (`fixedDamageModifier`,
+`ATTACK_STATS`), ENG-33 (`houseRulesSchema`, `bonusSource`, `inspiration`), ENG-14 (`hp.max`,
+`speed.all.mul`), ENG-30 (`setCondition`, `removeCondition`), ENG-10 (golden D, the 2024
+exhaustion)
+**Size:** M
+**Screen:** No
+**SPEC:** §6.3 (every row, each `[ПРОВЕРИТЬ]`, §8); §6.4 (rests); §6.7 golden D; §8.4 (the house
+rules' defaults, "by the SRD"); §5.4 (`hp.max.*`, `speed.all.mul`); ADR 004; ADR 009 item 5 and
+ADR 014 item 8 (inspiration)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/rulesets/edition-rules.ts` — changes: `EditionRules` gains
+the differences SPEC §6.3 and the closed tickets name; its comment lists the rows that are data.
+- `packages/system-5e/src/rulesets/2014.ts`, `rulesets/2024.ts` — change: each new field's value,
+  with the SRD sentence it comes from.
+- `packages/system-5e/src/character.ts` — changes: `DEFAULT_HOUSE_RULES`, the house rules a new
+  character is written with.
+- `packages/system-5e/src/combat.ts` — changes: `hp.max.mul`, the hit point maximum's multiplier,
+  a target for 2014 exhaustion's level 4.
+- `packages/system-5e/test/rulesets.test.ts` — new: each edition's values, the house rules'
+  defaults.
+- `packages/system-5e/test/exhaustion.test.ts` — new: both editions' exhaustion as data, level by
+  level.
+- `packages/system-5e/test/combat.test.ts` — changes: the multiplier's step in `hp.max`.
+- `packages/system-5e/test/golden/golden-values.test.ts` — changes: golden D's last lines.
+- `docs/tickets/BACKLOG.md` — the notes of ENG-21, ENG-34, ENG-35, ENG-46, phase 2; a new row for
+  the house rule `abilityMax` (§4).
+
+#### 2. What is missing now
+
+Measured on `main` at `7633984`:
+- `EditionRules` has two fields, `halfCasterRounding` and `fixedDamageModifier`. SPEC §6.3's other
+  rows have no place: the words for a species and for inspiration, whose ability increases count,
+  the hit dice a long rest gives back, what inspiration does and how much of it a character holds.
+- `grep -rn "houseRules" packages/system-5e/src` finds only the schema and its inspiration check:
+  no default house rules exist, so nothing can write a new character's.
+- `grep -rn "hp.max.mul" packages` finds nothing. Measured with golden A and a 2014 exhaustion at
+  level 4 (`mul 0.5` on `speed.all.mul` from level 2, on `hp.max.mul` from level 4): speed 12,
+  hit points 12, and the warning `noTarget`: `"srd-2014:condition/exhaustion#hp-halved" changes
+  hp.max.mul, which the character has no value for; it is not applied.` The SRD says 6 (§8).
+- No 2014 exhaustion is tested; the 2024 one only at level 2 (golden D).
+- Golden D's last line, "removing the condition gives golden B's values back", is checked by
+  computing golden B beside it, not by removing the condition. Its "every d20 test −4" is checked
+  on Athletics, the Strength save, the greatsword and initiative only.
+- The note under the backlog: `statDefaults` is one value for every character, so the house rule
+  `abilityMax` is read by no code (found by ENG-13).
+- `pnpm test`: `Test Files 43 passed (43)`, `Tests 481 passed (481)`.
+
+#### 3. What it should look like when done
+
+1. **`EditionRules` holds each difference** (§8 has every source), each edition's file giving
+   every field:
+
+   | Field | 2014 | 2024 | What it is |
+   |---|---|---|---|
+   | `terms.species` | `race` | `species` | The word for a species: an i18n key's last part |
+   | `terms.lineage` | `subrace` | `lineage` | The word for a lineage |
+   | `terms.inspiration` | `inspiration` | `heroicInspiration` | The word for inspiration |
+   | `abilityBonusSource` | `species` | `background` | Whose ability increases a new character takes |
+   | `inspiration.max` | 1 | 1 | The most inspiration the SRD lets a character hold |
+   | `inspiration.use` | `advantage` | `reroll` | What spending it does |
+   | `longRestHitDice` | 0.5 | 1 | The share of its hit dice a long rest gives back, rounded down, at least 1 |
+   | `hitDieMinimum` | 0 | 1 | The fewest hit points one hit die spent gives |
+   | `heavyWeapon` | `{ by: 'size', sizes: ['small'] }` | `{ by: 'score', min: 13 }` | Who has disadvantage with a Heavy weapon |
+   | `halfCasterRounding` | `down` | `up` | ENG-15, unchanged |
+   | `fixedDamageModifier` | `true` | `false` | ENG-16, unchanged |
+
+   `rulesOf` gives the 2014 values to a 2014 character and the 2024 values to a 2024 one.
+2. **The rows of SPEC §6.3 that are data** get no field: a class's subclass level (its own
+   `subclassLevel`), exhaustion (each SRD's own condition entity), the origin feat (a background's
+   grant), feat categories (a feat's `category`), weapon mastery (ENG-16), spell preparation
+   (ENG-15). `edition-rules.ts` lists them, so a reader looking for them finds where they are.
+3. **`DEFAULT_HOUSE_RULES`** is one value for both editions, measured equal in both SRDs (§8):
+   `hitPointMethods: ['roll', 'avg']`, `abilityMax: 20`, `feats: 'own'`, `multiclass: true`,
+   `encumbrance: 'simple'`, `skillAbilitySwap: false`, `inspirationMax: 3` (the owner's default,
+   ADR 009 item 5). `houseRulesSchema` accepts it. Golden B written with it opens with inspiration
+   3, and inspiration 4 is refused on `systemData.state.inspiration`.
+4. **`hp.max.mul`**: 1 for every character, one step `{ kind: 'rule', rule: 'hitPointsMultiplier',
+   value: 1, change: 1 }`; effects change it. `hp.max` is its parts' sum × the multiplier, rounded
+   down, and its breakdown ends with `{ kind: 'path', path: 'hp.max.mul', value: <mul>, change:
+   <value − sum> }`. Golden A, B4 and the made-up characters of ENG-14 keep their hit points; their
+   breakdowns gain that last step with a change of 0.
+5. **2014 exhaustion is data.** Test data written from SRD 5.1's table (§8), on golden A (speed
+   25, hit points 12): levels 0 to 6 give speed 25, 25, 12, 12, 12, 0, 0 and hit points 12, 12,
+   12, 12, 6, 6, 6; `d20.all.bonus` 0 at every level. Its `disadvantage` effects (levels 1 and 3)
+   change no number and give no warning. No level gives a warning. Removing it gives golden A's
+   values and breakdowns back.
+6. **2024 exhaustion is data.** The 2024 fixture's condition on golden B (speed 30, hit points
+   12): levels 1 to 6 give `d20.all.bonus` −2, −4, −6, −8, −10, −12 and speed 25, 20, 15, 10, 5,
+   0; hit points 12 at every level; no warning.
+7. **Golden D is whole** (SPEC §6.7):
+   - every d20 test of D is golden B's − 4: each stat's save, each stat's check, each skill, the
+     greatsword's attack, initiative;
+   - every speed of D is golden B's − 10 (walking 20; the others 0 in both);
+   - the greatsword's damage, the hit point maximum and AC are golden B's;
+   - golden B given exhaustion 2 with `setCondition` computes golden D's values and breakdowns;
+     then `removeCondition` gives golden B's values and breakdowns back.
+8. **No golden value changes.** Every golden computes with no warning, and each breakdown adds up.
+9. The quality gate is green.
+
+#### 4. How to do it
+
+1. `edition-rules.ts`: the fields of §3 item 1, each with its doc comment; the comment at the top
+   lists the data rows of §3 item 2.
+2. `2014.ts`, `2024.ts`: the values, each with the SRD's words (§8).
+3. `character.ts`: `DEFAULT_HOUSE_RULES`, beside `houseRulesSchema`.
+4. `combat.ts`: `hp.max.mul` among the combat steps; `hitPoints` reads it last.
+5. Tests (§7). Then the backlog notes (§11).
+
+Technical choices (ADR 002):
+- **A field holds a rule's value, not code.** Each is a number, a key or a small record that the
+  reading ticket turns into its computation, as ENG-15's `halfCasterRounding` is read through a
+  map in `spellcasting.ts`. No function is added here that only a later ticket calls: a rest is
+  ENG-21's, a roll mode ENG-34's, the bonus source ENG-35's, the screens phase 2's.
+- **Only differences go in the edition files.** The house rules' defaults were measured equal in
+  both SRDs (§8), so they are one constant in `character.ts`, as ENG-15 kept the multiclass table
+  one constant. A default that comes to differ moves into the edition files.
+- **`inspiration.max` is in the edition files though both are 1**: ADR 009 item 5 asks for "the
+  ruleset default" shown next to the house rule, so the screen reads it from the character's
+  edition. The house rule's default stays the owner's 3.
+- **`feats: 'own'` in both editions.** SRD 5.1 calls feats "the optional feats rule"; SRD 5.2.1
+  makes them part of every character. The default follows ADR 013 item 9's first option ("only its
+  own ruleset's") and dnd5e's `allowFeats: true` (§8); `none` is the house rule of a table that
+  turns the optional rule off. One value to reverse.
+- **`hp.max.mul` mirrors ENG-14's `speed.all.mul`**: a multiplier path, 1 by default, applied last
+  and rounded down. SPEC §5.4's catalog lists `hp.max.bonus` only; halving needs a multiplier,
+  since an effect on `hp.max` reading `hp.max` is a loop. Rounding down is SRD 5.2.1's general
+  rule and dnd5e's for both editions (§8). The step is always in the breakdown, as the speed's is.
+- **The 2014 exhaustion is test data**, not added to the golden pack: ENG-09's pack holds what
+  goldens A and C need, and no golden has a 2014 exhaustion. Its `disadvantage` effects target
+  `roll.check.all`, `roll.attack.all` and `roll.save.all`; roll modes are ENG-34's, and SPEC
+  §5.4's catalog has `roll.check.<ability>`, not `.all` (noted on ENG-34).
+- **The heavy-weapon rule is held, not applied**: ENG-34 owns roll modes; the backlog marks it an
+  edition difference for this row (found by ENG-16). In 2024 the stat is the weapon kind's,
+  `ATTACK_STATS` (melee `str`, ranged `dex`).
+- **The shield's 2024 training rule is not added**: ENG-46's note owns it, with the armor-training
+  penalties it builds and checks.
+- **The house rule `abilityMax` becomes a row of its own** (ENG-54): making a house rule cap the
+  stats changes the core's `statDefaults`, which is one value for every character. That is a hat
+  of its own ("the house rule's highest score caps every stat"), not an edition difference.
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, no `schemaVersion`, no Dexie table. `DEFAULT_HOUSE_RULES` is a
+value a new character will be written with; no character is written yet.
+
+#### 6. What a person will see
+
+Not a screen. The words (`terms`) and inspiration's rule are read by phase 2's screens (§9).
+
+#### 7. Tests
+
+- `packages/system-5e/test/rulesets.test.ts` — `describe('ENG-19 the edition files')`: §3 items 1
+  to 3.
+- `packages/system-5e/test/exhaustion.test.ts` — `describe('ENG-19 exhaustion is data in both
+  editions')`: §3 items 5 and 6.
+- `packages/system-5e/test/combat.test.ts` — `describe('ENG-19 the hit point multiplier')`: §3
+  item 4: the default step, an effect halving an odd maximum (rounded down), an override.
+- `packages/system-5e/test/golden/golden-values.test.ts` — `describe('ENG-19 goldens: golden
+  D')`: §3 item 7.
+- Control numbers from: SPEC §6.7 (golden D); the SRD texts of §8 (each edition's value, both
+  exhaustion tables); the levels worked out by hand from them before the tests ran.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-02: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`,
+`packages/5e-database/src/{2014,2024}/en/`, read with `jq`; foundryvtt/dnd5e at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`, `module/`, and `packs/_source/rules` (SRD 5.1) and
+`packs/_source/content24` (SRD 5.2.1), which quote the SRDs (CC-BY-4.0). The same commits as
+ENG-13 to ENG-16.
+
+**SPEC §6.3, "Термин" (`[ПРОВЕРИТЬ]`).** SRD 5.1: 5e-database 2014 has `5e-SRD-Races.json` and
+`5e-SRD-Subraces.json` (13 uses of "subrace" in the races file). SRD 5.2.1: `5e-SRD-Species.json`;
+its traits say "Choose a lineage from the Elven Lineages table" and the Gnome's "when you select
+the lineage". The SPEC row agrees: race and subrace; species and lineage. ENG-32 named both
+entity types `species` and `lineage`, so only the words differ.
+
+**SPEC §6.3, "Повышение характеристик" (`[ПРОВЕРИТЬ]`).** SRD 5.1: the dwarf's
+`ability_bonuses` `[{ con, 2 }]`; no 2014 background has ability fields (Acolyte's keys have none).
+SRD 5.2.1 (`chapter-2/character-creation.yml`, Step 3): "adjust them according to your background.
+Your background lists three abilities; increase one of those scores by 2 and a different one by 1,
+or increase all three by 1. None of these increases can raise a score above 20." Soldier's
+`ability_scores`: `str`, `dex`, `con`; no 2024 species has an ability field. The SPEC row agrees.
+
+**SPEC §6.3, "Уровень подкласса" (`[ПРОВЕРИТЬ]`).** 5e-database `5e-SRD-Levels.json`, the first
+level with a `subclass` per class: 2014, cleric, sorcerer, warlock 1; druid, wizard 2; barbarian,
+bard, fighter, monk, paladin, ranger, rogue 3. 2024: all twelve 3. The SPEC row agrees. The
+fixtures' `subclassLevel`s match: 2014 cleric 1, wizard 2, paladin 3; 2024 fighter, wizard,
+paladin 3. Data, no field.
+
+**SPEC §6.3, "Черта на старте", "Категории черт", "Оружейное мастерство", "Подготовка
+заклинаний".** Data: the 2024 Soldier's `feat` `savage-attacker` (a background's grant, ENG-10); a
+feat's `category` (ENG-32); weapon mastery ENG-16 §8; spell preparation ENG-15 §8.
+
+**SPEC §6.3, "Истощение" (`[ПРОВЕРИТЬ]`).** SRD 5.1 (`5e-SRD-Conditions.json`, `exhaustion`):
+"1 - Disadvantage on ability checks", "2 - Speed halved", "3 - Disadvantage on attack rolls and
+saving throws", "4 - Hit point maximum halved", "5 - Speed reduced to 0", "6 - Death"; "A creature
+suffers the effect of its current level of exhaustion as well as all lower levels." SRD 5.2.1
+(the same file, 2024; `rules-glossary.yml`, Exhaustion): "You die if your Exhaustion level is 6";
+"When you make a D20 Test, the roll is reduced by 2 times your Exhaustion level"; "Your Speed is
+reduced by a number of feet equal to 5 times your Exhaustion level." The SPEC row agrees. dnd5e
+(`settings.mjs`, `applyLegacyRules`): `noMovement` at `exhaustion-5`, `halfMovement` at
+`exhaustion-2`, `halfHealth` at `exhaustion-4`; `attributes.mjs` `prepareHitPoints`: `hp.max *=
+0.5`, then `Math.floor`. Rounding: SRD 5.2.1 (`chapter-1/playing-the-game.yml`, Round Down):
+"Whenever you divide or multiply a number in the game, round down if you end up with a fraction".
+SRD 5.1 has no such sentence (no "round down" in `5e-SRD-Rules.json` but the modifier table);
+dnd5e floors in both editions. ENG-14 already rounds a halved speed down.
+
+**SPEC §6.3, "Продолжительный отдых: кости хитов" (`[ПРОВЕРИТЬ]`).** SRD 5.1 (`rules`, Long Rest):
+"The character also regains spent Hit Dice, up to a number of dice equal to half of the
+character's total number of them (minimum of one die). For example, if a character has eight Hit
+Dice, he or she can regain four spent Hit Dice". SRD 5.2.1 (`rules-glossary.yml`, Long Rest):
+"Regain All HP. You regain all lost Hit Points and all spent Hit Point Dice." The SPEC row agrees.
+dnd5e (`actor.mjs`, `_getRestHitDiceRecovery`): `fraction ??= rulesVersion === "modern" ? 1 : 0.5`;
+`hit-dice.mjs`: `Math.max(Math.floor(this.max * fraction), 1)`. SRD 5.2.1's Long Rest also says
+"If your Hit Point maximum was reduced, it returns to normal" and "If any of your ability scores
+were reduced, they return to normal"; SRD 5.1's Long Rest says neither. No tracker stores a reduced
+maximum or score yet, so no field holds it (§11).
+
+**A rest difference SPEC §6.3 does not list: one hit die's minimum.** SRD 5.1 (Short Rest): "the
+player rolls the die and adds the character's Constitution modifier to it. The character regains
+hit points equal to the total." SRD 5.2.1 (Short Rest): "roll the die and add your Constitution
+modifier to it. You regain Hit Points equal to the total (minimum of 1 Hit Point)." dnd5e
+(`rollHitDie`): `const minimumValue = rulesVersion === "modern" ? 1 : 0`. Both editions: a long
+rest lowers exhaustion by 1 (2014 "provided that the creature has also ingested some food and
+drink"); the same rule, no field.
+
+**SPEC §6.3, "Вдохновение" (`[ПРОВЕРИТЬ]`; ADR 009 item 5, ADR 014 item 8).** SRD 5.1
+(`rules/appendix-e-rules.yml`, Inspiration, embedded in chapter 4): "You either have inspiration
+or you don't—you can't stockpile multiple “inspirations” for later use." "If you have inspiration,
+you can expend it when you make an attack roll, saving throw, or ability check. Spending your
+inspiration gives you advantage on that roll." SRD 5.2.1 (`rules-glossary.yml`, Heroic
+Inspiration): "If you (a player character) have Heroic Inspiration, you can expend it to reroll
+any die immediately after rolling it, and you must use the new roll. If you gain Heroic
+Inspiration but already have it, it’s lost unless you give it to a player character who lacks it."
+So both SRDs allow 1, fewer than the owner's 3. ADR 009 item 5 already says what happens then: "the
+default of 3 is a house setting and the ruleset default is shown next to it". No stop.
+
+**The heavy-weapon rule (found by ENG-16).** 5e-database `5e-SRD-Weapon-Properties.json`, `heavy`:
+2014 "Small creatures have disadvantage on attack rolls with heavy weapons." 2024 "You have
+Disadvantage on attack rolls with a Heavy weapon if it's a Melee weapon and your Strength score
+isn't at least 13 or if it's a Ranged weapon and your Dexterity score isn't at least 13."
+
+**The house rules' defaults (SPEC §8.4, "by the SRD").**
+- Hit points per level. SRD 5.1 (`chapter-1-beyond-1st-level.yml`): "Roll that Hit Die … or
+  Alternatively, you can use the fixed value shown in your class entry". SRD 5.2.1 (Gaining a
+  Level): "Roll that die … Instead of rolling, you can use the fixed value". Both `roll`, `avg`.
+- Highest score. SRD 5.1: "You can't increase an ability score above 20." SRD 5.2.1: "None of
+  these increases can raise a score above 20." Both 20.
+- Feats. SRD 5.1 (`chapter-6-customization-options.yml`): "Using the optional feats rule, you can
+  forgo taking that feature to take a feat of your choice instead." SRD 5.2.1: an origin feat from
+  every background. dnd5e `allowFeats` default `true`. Both `own` (§4).
+- Multiclassing. Both SRDs: "With this rule, you have the option of gaining a level in a new class
+  whenever you advance in level". Neither calls it optional. Both `true`.
+- Encumbrance. SRD 5.1 (Lifting and Carrying): "Your carrying capacity is your Strength score
+  multiplied by 15"; "The rules for lifting and carrying are intentionally simple. Here is a
+  variant". SRD 5.2.1 (Carrying Capacity): the size and Strength table, no variant. Both `simple`.
+- A skill with another ability. SRD 5.1: "Variant: Skills with Different Abilities". SRD 5.2.1
+  (`d20-tests.yml`, Skill Proficiencies): the table notes "the ability check the skill most often
+  applies to"; "The GM has the ultimate say on whether a skill is relevant". Neither gives the
+  player the swap. Both `false`.
+- Inspiration: the owner's 3 (above).
+
+No golden value looks wrong; nothing stops.
+
+#### 9. Not in this ticket
+
+- A rest that gives hit dice and hit points back: ENG-21, reading `longRestHitDice` and
+  `hitDieMinimum`.
+- Advantage, disadvantage and the Heavy property's disadvantage: ENG-34, reading `heavyWeapon`.
+  What spending inspiration does to a roll: phase 2's dice, reading `inspiration.use`.
+- The ability bonus source chosen and applied: ENG-35, its default `abilityBonusSource`.
+- A shield without training in 2024, armor without training: ENG-46, which adds its own field.
+- The house rule `abilityMax` read by the stats: ENG-54 (new row, §4).
+- The screens' words and the inspiration stars: phase 2, reading `terms` and `inspiration`.
+- Death at exhaustion 6: the same rule in both editions, no number; the sheet shows it (phase 2).
+- A subclass chosen below its class's `subclassLevel` gives no warning: noted for phase 4, whose
+  level-up wizard offers it (§11).
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** No golden value changes; golden D's lines are SPEC §6.7's,
+  and the exhaustion levels are worked out from the SRD tables of §8 before the run.
+- **Each system's rules live in its own module; no `if (ruleset === …)`.** Every difference is a
+  field of `rulesets/2014.ts` and `rulesets/2024.ts`, read through `rulesOf`; no code tests an
+  edition.
+- **Everything is data.** Exhaustion stays a condition entity in each edition; the 2014 one is
+  effects with `when`, as SPEC §6.3 says. The heavy rule names a size key and a score, no stat.
+- **`compute()` is pure; a number with no breakdown entry is a bug.** `hp.max.mul` has its step,
+  and `hp.max` names it; every breakdown adds up.
+- **Manual overrides always win.** `hp.max.mul` is finished by ENG-17's phases, tested with an
+  override.
+- **Missing is not broken.** A `roll.*` disadvantage is left alone with no warning (ENG-17).
+- **Licensing.** The 2014 exhaustion is numbers and names from SRD 5.1 (CC-BY-4.0), no rules
+  text; §8 quotes the SRDs only.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-02, on `main` at `7633984`:
+- `pnpm lint`: `Checked 157 files`, no errors (155 before; 2 new test files).
+- `pnpm typecheck`: 6 projects, all `Done`.
+- `pnpm test`: `Test Files 45 passed (45)`, `Tests 496 passed (496)`, 7.22 s (before: 43 files,
+  481 tests). This ticket's 15: 5 in `rulesets.test.ts`, 4 in `exhaustion.test.ts`, 3 in
+  `combat.test.ts`, 3 golden D lines. The two new files alone: 9 tests, 786 ms.
+- `pnpm build`: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- ENG-22, ENG-49, ENG-36, ENG-50 and ENG-52 reached `main` while this ticket was built; it was
+  rebased onto `44c1b5a`. There: `pnpm lint` `Checked 163 files`, no errors; `pnpm typecheck` 6
+  projects `Done`; `pnpm test` `Test Files 48 passed (48)`, `Tests 560 passed (560)`, 8.15 s
+  (`main` alone, measured: 46 files, 545 tests); `pnpm build` `Done`.
+- 2014 exhaustion on golden A, levels 0 to 6: speed 25, 25, 12, 12, 12, 0, 0; hit points 12, 12,
+  12, 12, 6, 6, 6; `d20.all.bonus` 0; no warning at any level. Level 5's `speed.all.mul` steps:
+  the rule's 1, `#speed-halved` −0.5, `#no-speed` −0.5. Removed with `removeCondition`, golden A's
+  values and breakdowns come back. In §2 the same level 4 gave hit points 12 and `noTarget`.
+- 2024 exhaustion on golden B, levels 1 to 6: `d20.all.bonus` −2 to −12, speed 25 to 0 by 5,
+  hit points 12; no warning.
+- Golden D: golden B has 32 d20 tests (6 saves, 6 checks, 18 skills, the greatsword, initiative),
+  each 4 lower in D. Walking speed 20 (B 30), the other four speeds 0 in both; greatsword damage
+  3, hit points 12, AC 17 in both. Golden B given exhaustion 2 with `setCondition` computes D's
+  values and breakdowns; `removeCondition` then gives B's.
+- The tests bite. 22 breaks, each on its own and restored, the `system-5e` tests run (174
+  tests): each edition value changed on its own (the bonus source, a word, inspiration's maximum
+  and use, the hit dice share, the hit die minimum, the heavy rule; 12 breaks over both files):
+  1 fails each; `rulesOf` always 2014: 7; the house rules' inspiration 1: 2; `feats: 'none'`: 1;
+  `encumbrance: 'none'`: 1; the maximum not rounded: 1; rounded up: 1; the multiplier ignored: 3;
+  its step dropped: 4; its default 2: 12; no multiplier path: 61.
+
+Differences from §3: none in values. The three ENG-14 tests of `hp.max`'s breakdown gained the
+multiplier's last step (`value: 1, change: 0`); no number changed. After the rebase, one test of
+ENG-36 (`level-up.test.ts`, "raises the current hit points in whole points") failed: its made-up
+feat adds half a hit point a level, and it expected a maximum of 12.5. With §3 item 4 the maximum
+is rounded down, so 12 at level 1 and 21 at level 2 (10 + 6 + 2 × 2 + 1), a rise of 9: current hit
+points 12 → 21, where it expected 20. The value was worked out again by hand and changed, with its
+comment; it is not a golden value. Rounding the maximum down always is SRD 5.2.1's Round Down and
+dnd5e's `Math.floor(hp.max)` (§8). The golden values file's
+header now says which golden lines are still open and where the fixture tests hold the scores and
+Second Wind's uses.
+
+Against the row and its note:
+- The ability increase source is `abilityBonusSource`. The subclass level is data
+  (`subclassLevel`), checked in §8. Exhaustion is data in both editions, tested level by level.
+  Rests: `longRestHitDice`, and `hitDieMinimum`, a difference SPEC §6.3 does not list.
+  Inspiration: `terms.inspiration`, `inspiration.max`, `inspiration.use`.
+- Inspiration's SRD text (ADR 014 item 8) is in §8 and was shown to the owner in the chat. Both
+  SRDs allow 1. ADR 009 item 5 already decides that case: the owner's 3 is the house rule's
+  default, and the edition's 1 is shown next to it. No stop.
+- The house rules' defaults are one constant, `DEFAULT_HOUSE_RULES`, not each ruleset's: §8
+  measured them equal. The one judgment is `feats: 'own'` for 2014, where SRD 5.1 calls feats
+  optional (§4); changing it is one value.
+- Golden D is whole. The row's note said goldens A to D would be whole by ENG-19; that assumed
+  ENG-34 first. ENG-19 was taken before ENG-51 and ENG-34, which come before it in the backlog,
+  so B4's two "with advantage" lines stay ENG-34's and Second Wind back on a rest stays ENG-21's;
+  their notes say so.
+- `fixedDamageModifier` stays as ENG-16 made it. The Heavy property's rule (found by ENG-16) is
+  in. The shield's 2024 training rule is left to ENG-46 (§4).
+- The house rule `abilityMax` is a new row, ENG-54, with the note that was ENG-19's.
+
+Found, not fixed:
+- SPEC §5.4's roll targets have `roll.check.<ability>` and no `roll.check.all`, which 2014
+  exhaustion's level 1 needs without naming a stat. Noted on ENG-34.
+- A subclass chosen below its class's `subclassLevel` gives no warning, and its spellcasting
+  counts. Noted for phase 4.
+- SRD 5.2.1's long rest also restores a reduced hit point maximum and reduced ability scores;
+  SRD 5.1's does not say so (§8). No tracker stores either reduction. Noted on ENG-21.
+- Exhaustion 6 is death in both editions and gives no number. Noted for phase 2, with the words
+  and inspiration's rule the sheet reads.
+
+Nothing for the changelog.

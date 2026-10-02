@@ -226,9 +226,10 @@ describe('ENG-36 level-up', () => {
         systemData: { ...goldenB.systemData, feats, state },
       });
     };
-    // Half a point per level: 12.5 → 21, a rise of 8.5; 12 + 8.5 = 20.5, so 20.
+    // Half a point per level: 12.5 → 21, each maximum rounded down (ENG-19): 12 → 21, a rise of
+    // 9; 12 + 9 = 21.
     const half = done(up(withFeat(12, '@level / 2'), { class: FIGHTER, hp: 'avg' }));
-    expect(half.entry.changes.at(-1)).toEqual({ path: HP, before: 12, after: 20 });
+    expect(half.entry.changes.at(-1)).toEqual({ path: HP, before: 12, after: 21 });
     // Ten points off per level: 12 - 10 = 2 → 20 - 20 = 0, a rise of -2; 1 - 2 is below 0, so 0.
     const frail = done(up(withFeat(1, '0 - 10 * @level'), { class: FIGHTER, hp: 'avg' }));
     expect(frail.entry.changes.at(-1)).toEqual({ path: HP, before: 1, after: 0 });

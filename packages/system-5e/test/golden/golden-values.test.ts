@@ -1,4 +1,11 @@
-import { type Computed, compute, loadContentIndex } from '@grimoire/engine';
+import {
+  type Computed,
+  compute,
+  type LogStamp,
+  loadContentIndex,
+  removeCondition,
+  setCondition,
+} from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
@@ -26,8 +33,9 @@ import {
 } from './index.ts';
 
 // The golden tests (SPEC §6.7): each value below is SPEC §6.7's, computed by hand there, never
-// copied from a run. Each ticket from ENG-13 to ENG-19 adds the lines it makes true; the goldens
-// are whole by ENG-19 (BACKLOG). A line no ticket has made true yet is not here.
+// copied from a run. Each ticket from ENG-13 on adds the lines it makes true; the fixture
+// tests hold the scores and Second Wind's uses (ENG-09, ENG-10). A line no ticket has made true
+// yet is not here: B4's two "with advantage" (ENG-34), and Second Wind back on a rest (ENG-21).
 
 /** The packs the goldens may name, each opened once, by id. */
 const PACKS = new Map(
@@ -451,5 +459,63 @@ describe('ENG-22 golden E: the homebrew pack from Appendix Д', () => {
 
   it('golden E, with SAN 16 and with no feat: no warning, each breakdown adds up', () => {
     for (const result of [e, computed(withSan(16)), computed(noFeat)]) expectWhole(result);
+  });
+});
+
+describe('ENG-19 goldens: golden D', () => {
+  const b = computed(goldenB);
+  const d = computed(goldenD);
+  const exhaustion = 'srd-2024:condition/exhaustion';
+  const stamp: LogStamp = {
+    id: '9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b',
+    at: '2026-10-02T12:00:00.000Z',
+    by: { role: 'player', name: 'Test' },
+  };
+
+  /** Each d20 test a character has: saves, checks, skills, weapon and spell attacks, initiative. */
+  const D20_TEST =
+    /^(abilities\.[^.]+\.save|checks\.[^.]+\.total|skills\.[^.]+\.total|attacks\.[^.]+\.hit|classes\.[^.]+\.spell\.attack|init\.total)$/;
+
+  it("golden D: every d20 test is golden B's − 4", () => {
+    const tests = Object.keys(b.values).filter((path) => D20_TEST.test(path));
+    // 6 saves, 6 checks, 18 skills, the greatsword, initiative.
+    expect(tests).toHaveLength(32);
+    const lower = tests.filter((path) => d.values[path] !== Number(b.values[path]) - 4);
+    expect(lower).toEqual([]);
+  });
+
+  it("golden D: speed 20, every other speed golden B's 0; damage, hit points, AC golden B's", () => {
+    const speeds = ['walk', 'fly', 'swim', 'climb', 'burrow'].map((kind) => `speed.${kind}`);
+    expect(valuesOf(d, speeds)).toEqual({
+      'speed.walk': 20,
+      'speed.fly': 0,
+      'speed.swim': 0,
+      'speed.climb': 0,
+      'speed.burrow': 0,
+    });
+    expect(valuesOf(b, speeds)).toEqual({ ...valuesOf(d, speeds), 'speed.walk': 30 });
+    const kept = ['attacks.greatsword.damage', 'hp.max', 'ac.total'];
+    expect(valuesOf(d, kept)).toEqual({
+      'attacks.greatsword.damage': 3,
+      'hp.max': 12,
+      'ac.total': 17,
+    });
+    expect(valuesOf(b, kept)).toEqual(valuesOf(d, kept));
+  });
+
+  it("golden D: exhaustion 2 given to golden B is golden D; removed, golden B's values again", () => {
+    const character = opened(openFifthEditionCharacter(goldenB));
+    const { index } = loadedFor(character);
+    const given = setCondition(character, index, { id: exhaustion, level: 2 }, stamp);
+    if (!given.ok) throw new Error(given.message);
+    const tired = compute(given.character, index, fifthEditionModule);
+    expect(tired.values).toEqual(d.values);
+    expect(tired.breakdown).toEqual(d.breakdown);
+
+    const removed = removeCondition(given.character, index, { id: exhaustion }, stamp);
+    if (!removed.ok) throw new Error(removed.message);
+    const rested = compute(removed.character, index, fifthEditionModule);
+    expect(rested.values).toEqual(b.values);
+    expect(rested.breakdown).toEqual(b.breakdown);
   });
 });

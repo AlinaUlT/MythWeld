@@ -40,7 +40,7 @@ export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
 /** The successes, or the failures, that end a run of death saves (ENG-33 §8). */
 export const DEATH_SAVES = 3;
 
-/** A table's house rules (SPEC §8.4). Their defaults are each edition's (ENG-19). */
+/** A table's house rules (SPEC §8.4). Their defaults are `DEFAULT_HOUSE_RULES`. */
 export const houseRulesSchema = z.strictObject({
   /** How a level's hit points may be taken: rolled, the die's average, or its maximum. */
   hitPointMethods: uniqueList(z.enum(['roll', 'avg', 'max'])),
@@ -56,6 +56,21 @@ export const houseRulesSchema = z.strictObject({
   inspirationMax: z.int().positive(),
 });
 export type HouseRules = z.infer<typeof houseRulesSchema>;
+
+/**
+ * ENG-19: the house rules a new character is written with, "by the SRD" (SPEC §8.4): one value for
+ * both editions, measured equal in SRD 5.1 and SRD 5.2.1 (ENG-19 §8). Inspiration's maximum is the
+ * owner's 3 (ADR 009 item 5); the edition's own is `rulesOf(...).inspiration.max`.
+ */
+export const DEFAULT_HOUSE_RULES: HouseRules = {
+  hitPointMethods: ['roll', 'avg'],
+  abilityMax: 20,
+  feats: 'own',
+  multiclass: true,
+  encumbrance: 'simple',
+  skillAbilitySwap: false,
+  inspirationMax: 3,
+};
 
 /** How the base scores were made: the method's key, and the rolls it made (ADR 014 item 8). */
 const abilitiesSchema = z.strictObject({

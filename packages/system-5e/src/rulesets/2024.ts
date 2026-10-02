@@ -10,4 +10,18 @@ export const RULES_2024: EditionRules = {
   // "you don't add your ability modifier to a fixed damage amount that doesn't use a roll, such as
   // the damage of a Blowgun" (Damage Rolls, ENG-16 §8).
   fixedDamageModifier: false,
+  // Species and lineages; Heroic Inspiration (ENG-19 §8).
+  terms: { species: 'species', lineage: 'lineage', inspiration: 'heroicInspiration' },
+  // "adjust them according to your background" (Step 3: Ability Scores, ENG-19 §8).
+  abilityBonusSource: 'background',
+  // "If you gain Heroic Inspiration but already have it, it's lost"; "you can expend it to reroll
+  // any die immediately after rolling it" (Heroic Inspiration, ENG-19 §8).
+  inspiration: { max: 1, use: 'reroll' },
+  // "You regain all lost Hit Points and all spent Hit Point Dice" (Long Rest, ENG-19 §8).
+  longRestHitDice: 1,
+  // "You regain Hit Points equal to the total (minimum of 1 Hit Point)" (Short Rest, ENG-19 §8).
+  hitDieMinimum: 1,
+  // "if it's a Melee weapon and your Strength score isn't at least 13 or if it's a Ranged weapon
+  // and your Dexterity score isn't at least 13" (Heavy, ENG-19 §8).
+  heavyWeapon: { by: 'score', min: 13 },
 };

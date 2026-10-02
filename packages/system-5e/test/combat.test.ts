@@ -333,6 +333,7 @@ describe('ENG-14 combat numbers', () => {
       },
       { kind: 'path', path: 'abilities.con.mod', value: 3, change: 3 },
       { kind: 'path', path: 'hp.max.bonus', value: 1, change: 1 },
+      { kind: 'path', path: 'hp.max.mul', value: 1, change: 0 },
     ]);
     expect(a.breakdown['hp.max.bonus']).toEqual([
       {
@@ -356,6 +357,7 @@ describe('ENG-14 combat numbers', () => {
       },
       { kind: 'path', path: 'abilities.con.mod', value: 2, change: 8 },
       { kind: 'path', path: 'hp.max.bonus', value: 0, change: 0 },
+      { kind: 'path', path: 'hp.max.mul', value: 1, change: 0 },
     ]);
     // Golden C (2014): the wizard's 6 + 4 + 4, the paladin's 6 × 3, CON 12 (+1) × 6.
     expect(computed(goldenC2014).values['hp.max']).toBe(38);
@@ -391,6 +393,7 @@ describe('ENG-14 combat numbers', () => {
       { kind: 'path', path: 'abilities.con.mod', value: -1, change: -6 },
       { kind: 'rule', rule: 'hitPointsMinimum', value: 1, change: 1 },
       { kind: 'path', path: 'hp.max.bonus', value: 0, change: 0 },
+      { kind: 'path', path: 'hp.max.mul', value: 1, change: 0 },
     ]);
     expect(frail.warnings).toEqual([]);
   });
@@ -865,5 +868,51 @@ describe('ENG-47 the base AC calculation the person picks', () => {
     const result = compute(character, index, fifthEditionModule);
     expect(result.values['ac.base']).toBe(13);
     expect(compute(character, index, fifthEditionModule)).toEqual(result);
+  });
+});
+
+describe('ENG-19 the hit point multiplier', () => {
+  it('is 1 for every character, a rule step; the maximum ends with it', () => {
+    const a = computed(goldenA);
+    expect(a.values['hp.max.mul']).toBe(1);
+    expect(a.breakdown['hp.max.mul']).toEqual([
+      { kind: 'rule', rule: 'hitPointsMultiplier', value: 1, change: 1 },
+    ]);
+    expect(a.breakdown['hp.max']?.at(-1)).toEqual({
+      kind: 'path',
+      path: 'hp.max.mul',
+      value: 1,
+      change: 0,
+    });
+  });
+
+  it('multiplies the maximum as an effect says, rounding down', () => {
+    // Golden B: 10 + CON +2 = 12, + 1 from the feat = 13; halved, 6.5, rounded down to 6.
+    const halved = computed(
+      goldenBWith([
+        feat('frail', [
+          { id: 'more', target: 'hp.max.bonus', op: 'add', value: 1 },
+          { id: 'half', target: 'hp.max.mul', op: 'mul', value: 0.5 },
+        ]),
+      ]),
+    );
+    expect(valuesOf(halved, ['hp.max.bonus', 'hp.max.mul', 'hp.max'])).toEqual({
+      'hp.max.bonus': 1,
+      'hp.max.mul': 0.5,
+      'hp.max': 6,
+    });
+    expect(halved.breakdown['hp.max']?.at(-1)).toEqual({
+      kind: 'path',
+      path: 'hp.max.mul',
+      value: 0.5,
+      change: -7,
+    });
+    expect(halved.warnings).toEqual([]);
+  });
+
+  it('gives way to an override', () => {
+    // Golden B's 12, × 2.
+    const doubled = computed({ ...goldenB, overrides: [{ path: 'hp.max.mul', value: 2 }] });
+    expect(valuesOf(doubled, ['hp.max.mul', 'hp.max'])).toEqual({ 'hp.max.mul': 2, 'hp.max': 24 });
   });
 });

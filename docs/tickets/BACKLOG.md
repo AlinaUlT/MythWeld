@@ -106,9 +106,10 @@ split off an old row got a new id.
 | ENG-51 | A spell a grant gives with its own stat has its casting numbers | S | 🔲 |
 | ENG-53 | A spell's healing is a roll formula of its own | S | 🔲 |
 | ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | S | 🔲 |
-| ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | 🔲 |
+| ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | ✅ 2026-10-02 |
 | ENG-46 | Armor worn without training has its edition's penalties | S | 🔲 |
 | ENG-35 | The ability-bonus source is a choice, the rules base by default | S | 🔲 |
+| ENG-54 | The house rule's highest score caps every stat | S | 🔲 |
 | ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | 🔲 |
 | ENG-21 | A rest changes the character by its edition's rules | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
@@ -118,10 +119,17 @@ split off an old row got a new id.
 
 - **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
   recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
-  `regainResource` gives uses back, never below none spent.
+  `regainResource` gives uses back, never below none spent. ENG-19: each edition's rest rules
+  are `rulesOf(character).longRestHitDice` (the share of the hit dice a long rest gives back,
+  rounded down, at least 1: 0.5 in 2014, 1 in 2024) and `.hitDieMinimum` (the fewest hit points
+  one hit die spent gives: 0 in 2014, 1 in 2024); ENG-19 §8 quotes both SRDs. SRD 5.2.1's long
+  rest also returns a reduced hit point maximum and reduced ability scores to normal, SRD 5.1's
+  says neither, and no tracker stores either reduction yet (ENG-19 §8). Golden B's last line,
+  Second Wind back on a rest, is this row's.
 - **ENG-34** — turns on the golden-test lines it makes true, in
-  `test/golden/golden-values.test.ts` (ENG-13). The full goldens A–D are green by ENG-19. ENG-16
-  removed the last stand-in; every test computes with `fifthEditionModule`.
+  `test/golden/golden-values.test.ts` (ENG-13). After ENG-19 the goldens A–D lack only B4's two
+  "with advantage" lines (this row) and Second Wind back on a rest (ENG-21). ENG-16 removed the
+  last stand-in; every test computes with `fifthEditionModule`.
 - **ENG-34** — found by ENG-17: an effect whose op gives no number (`append`, `advantage`,
   `disadvantage`, `note`) on a path that is not a number value (`defenses.*`, `roll.*`) is left
   alone by the phases, with no warning. The ticket that computes such a list or roll reads its
@@ -136,8 +144,13 @@ split off an old row got a new id.
   (SRD 5.1 Armor, "Stealth"; dnd5e `prepareArmorClass`); ENG-14's `armor.worn` names the armor.
   Found by ENG-16: the Heavy weapon property gives disadvantage on attack rolls: in 2024 with a
   heavy melee weapon below Strength 13 or a heavy ranged one below Dexterity 13, in 2014 to a Small
-  creature (5e-database `heavy`, both editions), an edition difference (ENG-19). ENG-16's
-  `equipmentOf(...).weapons` lists the weapons, each attack under `attacks.<key>`.
+  creature (5e-database `heavy`, both editions), an edition difference held as
+  `rulesOf(character).heavyWeapon`: in 2014 `{ by: 'size', sizes: ['small'] }`, in 2024
+  `{ by: 'score', min: 13 }`, the score the weapon kind's (`ATTACK_STATS`; ENG-19 §8). ENG-16's
+  `equipmentOf(...).weapons` lists the weapons, each attack under `attacks.<key>`. Found by
+  ENG-19: 2014 exhaustion's test data (`test/exhaustion.test.ts`) gives `disadvantage` on
+  `roll.check.all` (level 1), `roll.attack.all` and `roll.save.all` (level 3); SPEC §5.4's catalog
+  has `roll.check.<ability>`, not `.all`, so this row makes it a target or the data changes.
 - **ENG-51** — re-cut from ENG-16 (ENG-16 §11). Found by ENG-15: SPEC §5.4 has two targets for a
   spell attack, `spell.attack.bonus` (ENG-15 adds it to `classes.<key>.spell.attack`) and
   `attack.spell.bonus`, beside `damage.spell.bonus`; this row decides how a spell's attack reads
@@ -153,32 +166,24 @@ split off an old row got a new id.
   grant's part id or a key it gives them. Found by ENG-33: the trackers it changes are
   `systemData.state`; the schema refuses a death save count above 3 and inspiration above
   `houseRules.inspirationMax`, so the actions stop there.
-- **ENG-19** — ability increase source, subclass level, exhaustion, rests, inspiration (SPEC §6.3
-  table). ENG-15 made the edition files, `rulesets/2014.ts` and `rulesets/2024.ts`
-  (`EditionRules`, read through `rulesOf`), with the multiclass half-caster rounding, and closed
-  golden C; this row adds the other differences there. Found by ENG-16: a difference SPEC §6.3's
-  table does not list, already there as `fixedDamageModifier` (2024 adds no ability modifier to a
-  fixed damage amount, ENG-16 §8). Golden D closes here. ADR 014 item 8:
-  inspiration's SRD text is shown to the owner next to her default of 3. Found by ENG-33: the
-  house rules' defaults (`houseRulesSchema`, SPEC §8.4 "by the SRD") are each ruleset's; a new
-  character is written with them. The 2024 rules text: 5e-database at `e6edf9a` has no 2024 rules
-  file, and this environment's network refuses the SRD 5.2.1 PDF's host (ENG-33 §8). Found by
-  ENG-13: dnd5e at `7bfb3f1` quotes SRD 5.2.1's rules chapters and glossary in `packs/_source/content24/`,
-  read there by ENG-10 and ENG-13 §8. `statDefaults` is one value for every character
-  (`SystemModule.statDefaults`), so the house rule `abilityMax` is read by no code.
 - **ENG-46** — found by ENG-14: armor worn without its training gives disadvantage on Strength
   and Dexterity rolls and no spellcasting, in both editions (SRD 5.1 Armor Proficiency, SRD 5.2.1
   Armor Training, ENG-14 §8); in 2024 a shield gives its AC only with training, a ruleset
   difference. Armor proficiency keys are `light`, `medium`, `heavy` and `shield` (ENG-09 §4),
-  compared with `armor.group` and `category`. It needs ENG-34's roll modes and ENG-19's ruleset
-  files. Found by ENG-44: the armor and the shield worn are `equipmentOf`'s (`equipment.ts`); a
-  shield's +2 is its own effect, so a shield without training gives none only if that function
-  leaves it out or names it dormant.
+  compared with `armor.group` and `category`. It needs ENG-34's roll modes; the shield's 2024
+  rule is a field it adds to the edition files (`rulesets/`, ENG-19 §9). Found by ENG-44: the
+  armor and the shield worn are `equipmentOf`'s (`equipment.ts`); a shield's +2 is its own
+  effect, so a shield without training gives none only if that function leaves it out or names
+  it dormant.
 - **ENG-35** — ADR 014 item 1 (from ADR 013 item 10): a 2014 race with a 2024 background gives
   ability increases from the race, the background or both; `both` warns, never blocks; the
   default is the rules base's source. Its §8 reads both SRDs for other bonuses of one kind given
   in two places (ADR 005 item 3.4, still in force for those); each one found becomes a new row.
   The choice is ENG-33's `systemData.abilities.bonusSource`; its `species` is ADR 014's `race`.
+  The rules base's source is `rulesOf(character).abilityBonusSource` (ENG-19 §8).
+- **ENG-54** — found by ENG-13, made a row by ENG-19 (ENG-19 §4): `statDefaults` is one value
+  for every character (`SystemModule.statDefaults`), so the house rule `abilityMax` (ENG-33) is
+  read by no code. Its default is 20 in both editions (`DEFAULT_HOUSE_RULES`, ENG-19 §8).
 - **ENG-37** — ADR 005 item 3.6; the fixture states its ability bonus source (ADR 014 item 1).
   The ticket stops to show the character and its hand-computed values to the owner (golden
   values are hers); the test is written only after her yes. No golden F value is written before
@@ -329,6 +334,13 @@ split off an old row got a new id.
   steps naming the skill, each effect and a manual edit; the sheet shows that key, never the
   skill's own `ability`. An override of it applies only when its value is one of its keys (a
   stat's key, `overrideNotAKey` otherwise), so the override editor stores a stat's key there.
+- **Phase 2** — found by ENG-19: where the editions use different words, the sheet reads
+  `rulesOf(character).terms` (race or species, subrace or lineage, inspiration or heroic
+  inspiration), each an i18n key's last part. The inspiration stars hold the house rule's
+  `inspirationMax` and show the edition's `inspiration.max` (1 in both SRDs) next to it (ADR 009
+  item 5); spending one does `inspiration.use` (advantage in 2014, a reroll of one die in 2024).
+  A new character is written with `DEFAULT_HOUSE_RULES` and its edition's `abilityBonusSource`.
+  Exhaustion 6 is death in both editions and gives no number; the sheet says so.
 - **Phase 2** — found by ENG-25: a character's active pack that is not installed on the device
   never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
   on each of its entries.
@@ -354,6 +366,9 @@ split off an old row got a new id.
   (`fifthEditionModule.grantsOf`); one naming a grant the character does not reach is unused with
   no warning, since the module has no warning of its own but `stepFormula`. The level-up wizard
   writes `replaces` only for a grant it shows, or the module gains a warning.
+- **Phase 4** — found by ENG-19: a subclass chosen below its class's `subclassLevel` (2014: 1, 2
+  or 3 by class; 2024: 3) gives no warning, and its spellcasting counts. The level-up wizard
+  offers the subclass at that level, or the module gains a warning.
 - **Phase 4** — found by ENG-45: SRD 5.1's variant encumbrance says "When you use this variant,
   ignore the Strength column of the Armor table" (`5e-SRD-Rules.json`). That is the house rule
   `encumbrance: 'variant'`, which no code reads; ENG-45's `speed.armorReduction` (`combat.ts`)

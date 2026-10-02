@@ -10,4 +10,18 @@ export const RULES_2014: EditionRules = {
   // "When attacking with a weapon, you add your ability modifier … to the damage", with no
   // exception (Damage Rolls, ENG-16 §8).
   fixedDamageModifier: true,
+  // Races and subraces (ENG-19 §8).
+  terms: { species: 'race', lineage: 'subrace', inspiration: 'inspiration' },
+  // A race's "Ability Score Increase"; no background has one (ENG-19 §8).
+  abilityBonusSource: 'species',
+  // "You either have inspiration or you don't"; "Spending your inspiration gives you advantage on
+  // that roll" (Inspiration, ENG-19 §8).
+  inspiration: { max: 1, use: 'advantage' },
+  // "up to a number of dice equal to half of the character's total number of them (minimum of one
+  // die)" (Long Rest, ENG-19 §8).
+  longRestHitDice: 0.5,
+  // "The character regains hit points equal to the total", with no minimum (Short Rest).
+  hitDieMinimum: 0,
+  // "Small creatures have disadvantage on attack rolls with heavy weapons" (Heavy, ENG-19 §8).
+  heavyWeapon: { by: 'size', sizes: ['small'] },
 };

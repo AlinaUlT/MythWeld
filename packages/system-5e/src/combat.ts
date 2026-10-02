@@ -14,7 +14,7 @@ import { ARMOR_GROUPS, EQUIPMENT_AC_CALC, SPEED_KINDS } from './system';
 
 // ENG-14: fifth edition's combat numbers (SPEC §6.1 step 5): the hit point maximum, armor class,
 // initiative and speeds, one rule in both editions (ENG-14 §8). What an item, a feat or a
-// condition adds is its effect on a target given here (`hp.max.bonus`, `ac.bonus`, `ac.formulas`,
+// condition adds is its effect on a target given here (`hp.max.*`, `ac.bonus`, `ac.formulas`,
 // `init.bonus`, `speed.*`); a total adds its parts as `path` steps, as ENG-13's do. ENG-44: the
 // armor and the shield worn are `equipmentOf`'s. ENG-45: armor whose Strength requirement is above
 // its wearer's Strength takes 10 feet from every speed, through `speed.armorReduction`, which an
@@ -103,7 +103,16 @@ function magicBonus({ armor, shield }: Equipment): DerivedStep {
   return () => ({ value, steps });
 }
 
-/** The hit point maximum: each class's levels, Constitution per level (at least 1), the bonus. */
+/**
+ * ENG-19: the multiplier of the hit point maximum, 1 until an effect changes it (2014 exhaustion's
+ * level 4 halves it). The maximum is rounded down after it, as a halved speed is (ENG-19 §8).
+ */
+export const HIT_POINTS_MUL_PATH = 'hp.max.mul';
+
+/**
+ * The hit point maximum: each class's levels, Constitution per level (at least 1), the bonus, ×
+ * the multiplier rounded down.
+ */
 function hitPoints({
   character,
   gathered,
@@ -149,7 +158,11 @@ function hitPoints({
     }
     const bonus = read('hp.max.bonus');
     steps.push({ kind: 'path', path: 'hp.max.bonus', value: bonus, change: bonus });
-    return { value: steps.reduce((sum, step) => sum + step.change, 0), steps, ruleWarnings };
+    const sum = steps.reduce((total, step) => total + step.change, 0);
+    const mul = read(HIT_POINTS_MUL_PATH);
+    const value = Math.floor(sum * mul);
+    steps.push({ kind: 'path', path: HIT_POINTS_MUL_PATH, value: mul, change: value - sum });
+    return { value, steps, ruleWarnings };
   };
 }
 
@@ -306,7 +319,7 @@ function speedOf(
 }
 
 /**
- * The combat steps of a character: `hp.max.bonus`, `hp.max`; `armor.worn`, `shield`, `ac.bonus`,
+ * The combat steps of a character: `hp.max.bonus`, `hp.max.mul`, `hp.max`; `armor.worn`, `shield`, `ac.bonus`,
  * `ac.base`, `ac.total`; `init.bonus`, `init.total`; `speed.all.bonus`, `speed.all.mul`,
  * `speed.armorReduction`; each armor group's `armor.<group>`; then each kind's speed bonus and
  * speed.
@@ -318,6 +331,10 @@ export function combatSteps(
   const armor = equipment.armor?.item;
   const steps: Record<string, DerivedStep> = {
     'hp.max.bonus': zero,
+    [HIT_POINTS_MUL_PATH]: () => ({
+      value: 1,
+      steps: [{ kind: 'rule', rule: 'hitPointsMultiplier', value: 1, change: 1 }],
+    }),
     'hp.max': hitPoints(input),
     'armor.worn': wornOf(equipment.armor, equipment.extra.armor),
     shield: wornOf(equipment.shield, equipment.extra.shield),
