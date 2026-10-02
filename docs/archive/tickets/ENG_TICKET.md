@@ -5220,3 +5220,297 @@ Found, not fixed:
   `BACKLOG.md`.
 
 Changelog: one line. The public link serves the file.
+
+---
+
+### ENG-09 The 2014 fixtures
+
+**Hat:** 2014 fixtures: every SRD entity golden A or C needs
+**Depends on:** ENG-32 (the entity types), ENG-33 (the character, the pack), ENG-25
+(`loadContentIndex`), ENG-11 and ENG-12 (gathering, stat scores), ENG-07 (`parseFormula`,
+`parseRoll`)
+**Size:** M
+**Screen:** No
+**SPEC:** §6.7 goldens A and C (the 2014 column), §5.1, §5.3, §5.5; ADR 016
+
+---
+
+#### 1. Where the code lives
+
+**Main folder:** `packages/system-5e/test/golden/` — new. The golden tests' 2014 data (SPEC §6.7,
+`CLAUDE.md`'s doc map).
+- `golden/srd-2014.ts` — new: `srd2014`, the pack `srd-2014` as a file would hold it, with every
+  SRD 5.1 entity goldens A and C need.
+- `golden/characters-2014.ts` — new: `goldenA` and `goldenC2014`, the two characters.
+- `golden/index.ts` — new: exports both files.
+- `golden/fixtures-2014.test.ts` — new: the data is whole, agrees with itself, and gives what
+  golden A says it gives.
+- `docs/adr/016-golden-a-is-a-hill-dwarf.md` — new: the owner's answer on the dwarf (§8).
+
+#### 2. What is missing now
+
+- `ls packages/system-5e/test/golden` prints `No such file or directory`.
+- No entity of a real book exists in the repository. `grep -rln "srd-2014:" packages --include=*.ts`
+  finds one file, `packages/schema/test/entity-base.test.ts`, where `srd-2014:damageType/fire` is
+  an id in a parse test.
+- Golden A names a mountain dwarf; SRD 5.1 has none (§8). Its numbers are the hill dwarf's.
+- `pnpm test`: `Test Files 34 passed (34)`, `Tests 325 passed (325)`.
+
+#### 3. What it should look like when done
+
+1. **The pack** `srd-2014` (`ruleset` `2014`, `system` `5e`, `systemSchemaVersion` 1, license
+   CC-BY-4.0, `redistributable: true`) holds, every entity `ruleset: '2014'`, ids
+   `srd-2014:<type>/<5e-database slug>` (SPEC §5.1):
+   - the 6 stats and the 18 skills of SRD 5.1; Perception alone is `passive`;
+   - the 16 languages;
+   - the dwarf, the hill dwarf (a `lineage`) and their six traits;
+   - the Acolyte and its feature Shelter of the Faithful;
+   - the cleric, its three level-1 features, the Life domain and its two level-1 features;
+   - the wizard and the paladin;
+   - Bless and Cure Wounds; chain mail, the shield, the warhammer; the damage type bludgeoning and
+     the weapon property versatile.
+   65 entities. Every value in them is §8's.
+2. **What each source gives is in its grants** (ENG-32 §4), with the grant ids each choice is kept
+   under: the dwarf's `ability-scores` (+2 `con`), `traits`, `languages` (`common`, `dwarvish`)
+   and `subrace` (one of `hill-dwarf`); the hill dwarf's `ability-scores` (+1 `wis`) and `traits`;
+   Dwarven Combat Training's `weapons`; Tool Proficiency's `tools` (one of three); the Acolyte's
+   `skills` (`insight`, `religion`), `languages` (two, any language) and `feature`; the cleric's
+   `features-1` (at level 1), `armor`, `weapons`, `skills` (two of five); the Life domain's
+   `features-1` and `domain-spells-1` (Bless and Cure Wounds, always prepared, at level 1); Bonus
+   Proficiency's `armor` (`heavy`); the wizard's and the paladin's `armor`, `weapons`, `skills`;
+   each class's `multiclass` (its prerequisites; its proficiencies as `multiclass-…` grants).
+3. **Mechanics only where a golden value reads them:** Dwarven Toughness adds `@level` to
+   `hp.max.bonus` (SPEC §5.4's own example); the shield adds 2 to `ac.bonus` when `@equipped`
+   (SPEC §5.3's own example). Every other feature is its name only; its mechanics are phase 3's
+   (SPEC §6.8).
+4. **Golden A** is SPEC §6.7's character with ADR 016's hill dwarf: base scores 13, 10, 14, 8, 15,
+   12; the dwarf with the hill dwarf chosen; the Acolyte; cleric 1 with the Life domain, hit points
+   `max`; Medicine and Persuasion chosen; chain mail, a shield and a warhammer, equipped. Its tool
+   and two languages are test data (mason's tools; Celestial, Elvish).
+5. **Golden C (2014)** is wizard 3, then paladin 3, with no species and no background; scores
+   that meet both classes' prerequisites (test data); the wizard's two skills chosen.
+6. **The test, through the code a file goes through:**
+   - the pack opens through `openFifthEditionPack` to an equal object, `from` `{ schemaVersion: 1,
+     systemSchemaVersion: 1 }`; `loadContentIndex('5e', [srd2014])` loads it with no refusal and
+     no warning;
+   - every entity id a grant names, and every id a character names (species, background, class,
+     subclass, item, a chosen entity), is in the pack;
+   - every stat, skill and language key the pack names is a stat, skill or language of the pack;
+     every damage type and weapon property a weapon names is one of the pack's;
+   - every formula parses: `preparedCount` and effect values with `parseFormula`, weapon damage
+     with `parseRoll`;
+   - the counts §8 measured: 6 stats, 18 skills, 16 languages;
+   - both characters open through `openFifthEditionCharacter`, each to an equal object.
+7. **Through `compute()`**, with a module made in the test that only names what `systemData` names
+   (as ENG-33's test):
+   - golden A gathers 17 entities, the dwarf's and the hill dwarf's traits, the Acolyte's feature,
+     the cleric's and the Life domain's features, with no warning and no pending choice;
+   - golden A's proficiencies are the ones SPEC §6.7 names with their sources: skills Insight and
+     Religion from the Acolyte, Medicine and Persuasion from the cleric; heavy armor from the Life
+     domain; the warhammer from the dwarf;
+   - golden A's scores are SPEC §6.7's: STR 13, DEX 10, CON 16, INT 8, WIS 16, CHA 12, each with
+     its grant steps (the dwarf's +2, the hill dwarf's +1);
+   - golden C is level 6, gathers the two classes with no warning, and its one pending choice is
+     the paladin's `skills`: a first-class grant ENG-13 leaves out of a later class (its note).
+8. ADR 016 records the owner's answer. No golden value changes.
+9. The quality gate is green.
+
+#### 4. How to do it
+
+1. `srd-2014.ts`: the pack as one object, `satisfies z.input<typeof fifthEditionPackSchema>`,
+   entities grouped by source with a comment naming each group's §8 source.
+2. `characters-2014.ts`: both characters, `satisfies z.input<typeof fifthEditionCharacterSchema>`.
+3. `fixtures-2014.test.ts`: the checks of §3 items 6–7.
+
+Technical choices (ADR 002):
+- **Whole at golden A's level, numbers only for golden C.** Golden A is a full level-1 sheet
+  (hit points, armor class, speed, attacks, spells), so each of its sources gives everything SRD
+  5.1 gives at level 1, choices included. Golden C checks the caster level, the slots and the
+  proficiency bonus, so the wizard and the paladin carry what every character taking them gets
+  (hit die, saves, subclass level, first-level proficiencies, spellcasting, multiclass) and no
+  features: no golden C value reads one. Higher levels' features, starting equipment and the
+  subclasses golden C never chooses are the import's (§9).
+- **Proficiency keys are what an item says.** Armor: the armor groups `light`, `medium`, `heavy`,
+  and `shield`. Weapons: the groups `simple`, `martial`, or a weapon's own `key` (`warhammer`).
+  Tools: the tool's key (`masonsTools`). So ENG-14 and ENG-16 compare a proficiency with an item's
+  `armor.group`, `weapon.group`, `category` or `key`, with no table between. ENG-32's made-up
+  class already writes `fixed: ['light']`.
+- **A key is the 5e-database slug in camelCase** (`animal-handling` → `animalHandling`,
+  `crossbow-light` → `crossbowLight`); the id keeps the slug (SPEC §5.1).
+- **Saves are `ClassDef.saves` only**, not also `save` proficiency grants: ENG-13 reads the first
+  class's `saves` (its note), and a second place could disagree.
+- **A slot row lists levels 1 to the last with slots** (`[4, 3]`); a level with none at all is
+  `[]`. The schema allows any length to 9; a missing level has 0.
+- **The pack id is `srd-2014`**, the import's (SPEC §5.7), so the goldens can run on the imported
+  pack in phase 3 with the same ids. The data is test data: no package exports it and no build
+  holds it.
+- **`license.attribution` is left out.** SPEC Appendix В marks the attribution text
+  `[ПРОВЕРИТЬ]` against the SRD PDF's legal page, which this environment cannot reach (§8). The
+  import writes it.
+- **The characters' house rules are test data**, not the editions' defaults (ENG-19 writes those).
+- **Golden A's spell lists are empty.** No golden value names a chosen spell: the counts (prepared
+  4, cantrips 3, slots 2) come from the class's data.
+
+#### 5. Stored data
+
+Nothing stored changes. Test data only; no schema changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/golden/fixtures-2014.test.ts` — `describe('ENG-09 2014 fixtures')`:
+  §3 items 6–7.
+- Control values from: SPEC §6.7 golden A (scores, proficiencies and their sources, with ADR
+  016); the counts in §8. Test data: the tool, the languages, golden C's scores and skills.
+
+#### 8. Checked against the source
+
+Source: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214` (the commit ENG-02
+measured; still its `HEAD` on 2026-10-02), `packages/5e-database/src/2014/en/`, read with `jq`.
+The data set is SRD 5.1 (CC-BY-4.0).
+
+**The dwarf** (the backlog's check, shown to the owner before the fixture was written):
+- `5e-SRD-Subraces.json`: four subraces, `hill-dwarf`, `high-elf`, `lightfoot-halfling`,
+  `rock-gnome`. No mountain dwarf; `grep -i mountain` over both editions' files finds only
+  terrain.
+- `dwarf` (`5e-SRD-Races.json`): speed 25, size Medium, +2 `con`; languages `common`, `dwarvish`;
+  traits `darkvision`, `dwarven-resilience`, `stonecunning`, `dwarven-combat-training`,
+  `tool-proficiency`; subraces `hill-dwarf`.
+- `hill-dwarf`: +1 `wis`; trait `dwarven-toughness`: "Your hit point maximum increases by 1, and
+  it increases by 1 every time you gain a level."
+- 2024 (`src/2024/en/5e-SRD-Species.json`): `dwarf` has speed 30, traits `darkvision-120`,
+  `dwarven-resilience`, `dwarven-toughness`, `stonecunning`, and `subspecies: []`.
+- So golden A's +2 CON, +1 WIS, speed 25 and hit points 8 + 3 + 1 are the dwarf's and the hill
+  dwarf's. The mountain dwarf is not openly licensed and cannot enter the repository. **The owner
+  answered on 2026-10-02: golden A's character is the hill dwarf** (ADR 016). No value changes.
+
+**Golden A's other sources:**
+- Traits: Dwarven Combat Training gives `battleaxes`, `handaxes`, `light-hammers`, `warhammers`;
+  Tool Proficiency chooses 1 of `smiths-tools`, `brewers-supplies`, `masons-tools`.
+- `acolyte` (`5e-SRD-Backgrounds.json`): `skill-insight`, `skill-religion`; languages: choose 2
+  from the whole language list (`resource_list_url: /api/2014/languages`); feature "Shelter of
+  the Faithful" (no index of its own: its slug is its name's).
+- `cleric` (`5e-SRD-Classes.json`): hit die 8; saves `wis`, `cha`; `light-armor`, `medium-armor`,
+  `shields`, `simple-weapons`; choose 2 of History, Insight, Medicine, Persuasion, Religion;
+  multiclass: Wisdom 13, `light-armor`, `medium-armor`, `shields`; spellcasting `wis` from level
+  1; subclass `life`. Its spellcasting text: "a number of cleric spells equal to your Wisdom
+  modifier + your cleric level (minimum of one spell)"; ritual casting with the spell prepared.
+- `5e-SRD-Levels.json`, `cleric-1`: features `spellcasting-cleric`, `divine-domain`,
+  `domain-spells-1`; cantrips 3; slots `[2]`. `life-1`: `bonus-proficiency` ("proficiency with
+  heavy armor"), `disciple-of-life`. Divine Domain at level 1, so the cleric's subclass level is 1.
+- `life` (`5e-SRD-Subclasses.json`): at `cleric-1`, `bless` and `cure-wounds`; "Once you gain a
+  domain spell, you always have it prepared" (`domain-spells-1`).
+- `bless`: level 1, enchantment, 1 action, 30 feet, V S M ("A sprinkling of holy water."), up to
+  1 minute, concentration, not a ritual, classes cleric, paladin. `cure-wounds`: level 1,
+  evocation, 1 action, Touch, V S, Instantaneous, classes bard, cleric, druid, paladin, ranger;
+  its healing grows by 1d8 per slot level above 1st. Neither has damage, so neither has
+  `scaling` (ADR 014 item 6 asks it where damage grows; §11).
+- `5e-SRD-Equipment.json`: `chain-mail` Heavy, AC 16 with no Dexterity, Strength 13, stealth
+  disadvantage, 55 lb, 75 gp. `shield` AC +2, 6 lb, 10 gp. `warhammer` Martial Melee, 1d8
+  bludgeoning, versatile 1d10, 2 lb, 15 gp.
+- `5e-SRD-Ability-Scores.json`: `str`, `dex`, `con`, `int`, `wis`, `cha` in that order, with
+  their names. `5e-SRD-Skills.json`: 18 skills, each with its stat. `5e-SRD-Languages.json`: 16
+  languages, 8 Standard and 8 Exotic.
+- Passive Perception: SRD 5.1's rules (`5e-SRD-Rules.json`, Passive Checks; Hiding) compare a
+  check with "the passive Wisdom (Perception) score"; no other passive skill is named.
+
+**Golden C's classes:**
+- `wizard`: hit die 6; saves `int`, `wis`; `daggers`, `darts`, `slings`, `quarterstaffs`,
+  `crossbows-light`; choose 2 of Arcana, History, Insight, Investigation, Medicine, Religion;
+  multiclass: Intelligence 13, no proficiencies; spellcasting `int` from level 1; Arcane
+  Tradition at level 2. "Intelligence modifier + your wizard level (minimum of one spell)";
+  rituals from the spellbook.
+- `paladin`: hit die 10; saves `wis`, `cha`; `all-armor`, `shields`, `simple-weapons`,
+  `martial-weapons`; choose 2 of Athletics, Insight, Intimidation, Medicine, Persuasion,
+  Religion; multiclass: Strength 13 and Charisma 13, `light-armor`, `medium-armor`, `shields`,
+  `simple-weapons`, `martial-weapons`; spellcasting `cha` from level 2; Sacred Oath at level 3.
+  "Charisma modifier + half your paladin level, rounded down (minimum of one spell)"; no ritual
+  casting section.
+- Slots, levels 1 to 20: the cleric's and the wizard's rows are equal, measured row by row (from
+  `[2]` at level 1 to `[4, 3, 3, 3, 3, 2, 2, 1, 1]` at 20), and so are their cantrips (3 to level
+  3, 4 to level 9, 5 from level 10). The paladin's: none at level 1, `[2]` at 2, to `[4, 3, 3, 3,
+  2]` at 19 and 20.
+
+**Not reachable here:** the SRD 5.1 PDF (`media.wizards.com` is refused by this environment's
+network, measured), so SPEC Appendix В's attribution text stays `[ПРОВЕРИТЬ]` (§4).
+
+#### 9. Not in this ticket
+
+- The 2024 entities of goldens B, B4, C and D: ENG-10.
+- Fifth edition's module (its level, the entities it names, its stat defaults, `derive`) and the
+  golden values it computes: ENG-13 to ENG-16, ENG-19. This ticket's test module only gathers.
+- How a later class leaves out the first class's grants (golden C's paladin `skills`): ENG-13.
+- The multiclass spell slot table and the rounding: ENG-15, ENG-19.
+- Features above golden A's level, the wizard's and the paladin's features, the subclasses golden
+  C never chooses, starting equipment, and every feature's mechanics but the two of §3 item 3:
+  the import and its mechanics (phase 3, SPEC §6.8).
+- The editions' house rule defaults: ENG-19.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** No expected value changes; golden A's scores are checked as
+  SPEC §6.7 writes them. The dwarf was the owner's call (ADR 016).
+- **`[ПРОВЕРИТЬ]` and measure, never estimate.** Every rules value is §8's, read from 5e-database
+  with `jq`, not from memory.
+- **Licensing.** Only SRD 5.1 (CC-BY-4.0) data; no mountain dwarf. Text is limited to names and
+  one material component, from the SRD.
+- **Everything is data.** No stat or skill is named in code; the fixture is data under `test/`.
+- **Each system's rules live in its own module.** The fixture is in the fifth-edition module's
+  tests; no core file changes.
+- **Formulas never run code.** Every formula is parsed by ENG-07's parser in the test.
+- **Stored units are feet and pounds.** Speed 25, range 30, weights 55, 6, 2.
+- **No "D&D" in names.** The pack's title is "SRD 5.1".
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- `fixtures-2014.test.ts` alone: `Tests 10 passed (10)`, 1.31 s.
+- Lint: `Checked 131 files`, no errors (127 before; 4 new files).
+- Typecheck: `Scope: 6 of 7 workspace projects`, all 6 `Done`.
+- Test: `Test Files 35 passed (35)`, `Tests 335 passed (335)`, 7.35 s (before: 34 files, 325
+  tests).
+- Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The pack holds 66 entities: 6 stats, 18 skills, 16 languages, 1 species, 1 lineage, 12
+  features, 1 background, 3 classes, 1 subclass, 2 spells, 3 items, 1 damage type, 1 weapon
+  property. Its grants name 15 entity ids and its entities 60 stat, skill, language, class,
+  damage type and property keys; it holds 5 formulas and 2 roll formulas. Each count was worked
+  out by hand before the run, and the run agreed.
+- Through `compute()`: golden A gathers 17 entities with no warning and no pending choice; its
+  scores are 13, 10, 16, 8, 16, 12 (CON 14 + 2 from the dwarf, WIS 15 + 1 from the hill dwarf);
+  `hp.max.bonus` is 1 (Dwarven Toughness at level 1); its 18 proficiencies come from the sources
+  SPEC §6.7 names. Golden C (2014) is level 6, gathers its two classes with no warning, and has one
+  pending choice, `srd-2014:class/paladin#skills`.
+- The tests bite. Five breaks, each on its own and restored (`cmp` equal after): the hill dwarf's
+  +1 WIS made +2, 1 test fails (the scores); Stonecunning removed, 4 fail; `medicine` in the
+  cleric's list written `medecine`, 2 (the keys, and golden A's choice is no longer an option);
+  the cleric's prepared count made a formula that does not parse, 1; heavy armor given by the
+  cleric too, 1 (the sources).
+- The dwarf: the owner answered on 2026-10-02, hill dwarf. ADR 016 records it; no golden value
+  changed.
+
+Differences from §3:
+- 66 entities, not 65: §3 miscounted. The test counts each type.
+- The test module gives one value, `hp.max.bonus` from 0. Without it the core warns `noTarget` for
+  Dwarven Toughness (measured: the first run failed on that warning), because no step gives the
+  path. With it, the test also shows the trait's +1 of SPEC §6.7's 12 = 8 + 3 + 1. ENG-14 gives
+  the module's hit points.
+- The comments quote no SPEC text in Russian: the language rule.
+
+Found, not fixed:
+- A spell's healing has no field. Cure Wounds heals 1d8 + the modifier, 1d8 more per slot level
+  above 1st (5e-database `heal_at_slot_level`); `damage` and `scaling` hold damage only, so the
+  fixture writes neither. Noted on ENG-16 (ADR 014 item 6's spell dice).
+- A spellcasting class has no level it starts at. In 2014 the paladin and the ranger cast from
+  level 2; in 2024 from level 1 (5e-database `spellcasting.level`, measured). The paladin's slot
+  row at level 1 is empty, but its prepared count, `max(1, …)` as the SRD writes it, gives 1 at
+  paladin level 1. Noted on ENG-15.
+- No code gives `@equipped`: `grep -rn equipped packages/engine/src` finds nothing. The shield's
+  effect reads it (SPEC §5.3's example); an item's own effects need it per item (SPEC §5.6).
+  Noted on ENG-14, with the proficiency keys of §4 that ENG-14 and ENG-16 compare with items.
+- ENG-10 follows this ticket's conventions (§4). Noted on ENG-10.
+
+Nothing for the changelog.

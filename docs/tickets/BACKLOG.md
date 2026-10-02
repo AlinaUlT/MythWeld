@@ -89,7 +89,7 @@ split off an old row got a new id.
 | ENG-32 | The fifth-edition entity types have Zod schemas | M | ✅ 2026-10-01 |
 | ENG-33 | The fifth-edition part of the character document has a schema | S | ✅ 2026-10-01 |
 | ENG-38 | The fifth-edition pack's JSON Schema is published as a file | S | ✅ 2026-10-02 |
-| ENG-09 | 2014 fixtures: every SRD entity golden A or C needs | M | 🔲 |
+| ENG-09 | 2014 fixtures: every SRD entity golden A or C needs | M | ✅ 2026-10-02 |
 | ENG-10 | 2024 fixtures: every SRD entity golden B, B4, C or D needs | M | 🔲 |
 | ENG-13 | Check bonuses are computed: modifiers, proficiency, saves, skills, passives | M | 🔲 |
 | ENG-14 | Combat numbers are computed: hit points, armor class, initiative, speed | M | 🔲 |
@@ -110,14 +110,14 @@ split off an old row got a new id.
 - **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
   recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
   `regainResource` gives uses back, never below none spent.
-- **ENG-09, ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's
+- **ENG-10** — hand-written minimal entities only, not an import, written with ENG-32's
   schemas. Every rules fact in them goes through §8 of the ticket (`[ПРОВЕРИТЬ]`). SPEC §5.3's
   fields that list what an entity gives (a class's features, a species' traits, domain spells,
-  a background's feat) are grants: ENG-32 §4's table.
-- **ENG-09** — golden A says mountain dwarf, but its numbers (+2 CON, +1 WIS, Dwarven Toughness)
-  are the hill dwarf's, and SRD 5.1 has only the hill dwarf. §8 checks the 2014 and 2024 sources
-  and shows the owner the result before the fixture is written. The golden values are not changed
-  without her.
+  a background's feat) are grants: ENG-32 §4's table. Found by ENG-09: it follows ENG-09 §4's
+  conventions: the data in `packages/system-5e/test/golden/` (the pack `srd-2024`, the
+  characters beside it); ids with 5e-database's slugs, keys in camelCase; proficiency keys as an
+  item names them; a slot row to the last level with slots; golden C's 2024 column as its own
+  character on the same classes.
 - **ENG-13** — found by ENG-28: the module's `statDefaults` are SPEC §5.3's (the modifier
   formula, a save, a maximum of 20); its saves read `StatOf.hasSave`; its values are `derive`'s
   steps, as Tales' are (`packages/engine/test/tales-module.ts`). A skill's own `totalFormula`
@@ -125,10 +125,12 @@ split off an old row got a new id.
   skill step or the core reads it. Found by ENG-32: a class's own `grants` apply whether it is
   the first class or a later one, and its `multiclass.grants` are what a later class gives (the
   SRD data keeps them apart, ENG-32 §8). This ticket decides how a later class leaves out the
-  grants of a first class, and reads `ClassDef.saves` of the first class. Found by ENG-33: the
-  module reads `systemData` (`FifthEditionCharacter`): its level is the sum of `classes[].level`;
-  it names the species, the background, each class and subclass at that class's level, and
-  `feats` (ENG-33's test does this). A feat's `replaces` names the grant whose ability score
+  grants of a first class, and reads `ClassDef.saves` of the first class. Golden C (ENG-09)
+  shows it: its one pending choice is the paladin's `skills`, a first class's grant; its test
+  says so, and ENG-13 makes it none. Found by ENG-33: the module reads `systemData`
+  (`FifthEditionCharacter`): its level is the sum of `classes[].level`; it names the species,
+  the background, each class and subclass at that class's level, and `feats` (ENG-33's and
+  ENG-09's tests do this). A feat's `replaces` names the grant whose ability score
   improvement it is taken in place of; this ticket decides how that grant is left out.
 - **ENG-13 to ENG-16, ENG-34** — each ticket turns on the golden-test lines it makes true. The
   full goldens A–D are green by ENG-19.
@@ -137,13 +139,24 @@ split off an old row got a new id.
   (`ac.formulas`, `defenses.*`, `roll.*`, `skills.<key>.ability`) is left alone by the phases,
   with no warning. The ticket that computes such a list, roll or text reads its effects through
   `activeEffects` (`effects.ts`) and warns for its own targets.
-- **ENG-14** — found by ENG-33: a level's hit points are a `classes[].hp` entry: a number, `avg`
+- **ENG-14** — found by ENG-09: no code gives `@equipped`, which the shield's effect reads (SPEC
+  §5.3's example, `srd-2014:item/shield`); an item's own effects read it per item (SPEC §5.6).
+  Armor proficiency keys are `light`, `medium`, `heavy` and `shield`; weapon keys are `simple`,
+  `martial` or a weapon's `key` (ENG-09 §4), compared with `armor.group`, `category`,
+  `weapon.group` and `key`. ENG-09's test module gives `hp.max.bonus` from 0; this module gives it.
+  Found by ENG-33: a level's hit points are a `classes[].hp` entry: a number, `avg`
   or `max` (dnd5e: `hitDie / 2 + 1` and the die's value, ENG-33 §8). The schema bounds a number by
   12, the largest die; a number above the class's own die warns here. No row computes the size:
   `species.size`, or the species' one size; a species with several and none chosen is pending.
+- **ENG-15** — found by ENG-09: a spellcasting class has no level it starts at. In 2014 the
+  paladin and the ranger cast from level 2, in 2024 from level 1 (5e-database
+  `spellcasting.level`). `srd-2014:class/paladin`'s slot row at level 1 is empty, but its prepared
+  count, `max(1, …)` as the SRD writes it, gives 1 at paladin level 1.
 - **ENG-16** — ADR 014 item 6: a spell's current dice for the character's level, with a breakdown.
-  Found by ENG-08: SPEC §5.6 shows a roll formula with its average, and no function gives it; a
-  term that keeps some dice has no simple average (`2d20kh1`'s is 13.825). A count of dice that
+  Found by ENG-09: a spell's healing has no field (Cure Wounds: 1d8 + the modifier, 1d8 more per
+  slot level above 1st); `damage` and `scaling` hold damage only. Weapon proficiency keys: ENG-14's
+  note. Found by ENG-08: SPEC §5.6 shows a roll formula with its average, and no function gives
+  it; a term that keeps some dice has no simple average (`2d20kh1`'s is 13.825). A count of dice that
   grows with level is not notation: a term's count is digits, so the dice are written from the
   computed count.
 - **ENG-20** — ADR 014 item 7: casting with "use a slot: no". Found by ENG-32: a `spell`
