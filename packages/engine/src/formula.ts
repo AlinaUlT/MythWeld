@@ -1,5 +1,13 @@
 import { computedPathSchema } from '@grimoire/schema';
-import { DICE_LIMITS, type DiceTerm, type DieSource, rollDice } from './dice';
+import {
+  AVERAGE_LIMITS,
+  averageOfDice,
+  DICE_LIMITS,
+  type DiceTerm,
+  type DieSource,
+  distributionOfDice,
+  rollDice,
+} from './dice';
 
 // ENG-07: a formula is parsed into a frozen tree, and the tree is walked; no code ever runs (SPEC
 // §5.6). The parser stops at a length and a depth limit, so a pack's formula cannot exhaust the
@@ -15,6 +23,8 @@ export type FormulaValue = number | boolean | string;
 
 type UnaryOp = '-' | '+' | '!';
 type BinaryOp = '||' | '&&' | '==' | '!=' | '<' | '<=' | '>' | '>=' | '+' | '-' | '*' | '/';
+/** An operator on two numbers: arithmetic or a comparison. */
+type NumericOp = Exclude<BinaryOp, '||' | '&&' | '==' | '!='>;
 
 /** A dice term of a roll formula; `text` is the term as written, such as `2к6`. */
 export interface DiceNode extends DiceTerm {
@@ -102,6 +112,7 @@ export type FormulaWarning =
       | { code: 'wrongType'; at: number }
       | { code: 'notFinite'; at: number }
       | { code: 'badFace'; at: number; term: string; count: number }
+      | { code: 'notExact'; at: number; limit: number }
     ));
 
 /** A path's value, given the path without `@`; `undefined` when the path is missing. */
@@ -664,6 +675,16 @@ class Walk {
     return [...this.values.keys()];
   }
 
+  /** Where the reads and the warnings stand, so `restore` can take back what comes after. */
+  mark(): { reads: number; warnings: number } {
+    return { reads: this.values.size, warnings: this.warnings.length };
+  }
+
+  restore(mark: { reads: number; warnings: number }): void {
+    for (const path of [...this.values.keys()].slice(mark.reads)) this.values.delete(path);
+    this.warnings.splice(mark.warnings);
+  }
+
   /** A finite number, with `-0` as `0`; anything else warns and gives 0. */
   finite(number: number, at: number): number {
     if (Number.isFinite(number)) return number === 0 ? 0 : number;
@@ -718,10 +739,12 @@ class Walk {
         );
       case 'choice':
         return truthOf(this.value(node.test)) ? this.value(node.then) : this.value(node.otherwise);
-      case 'call': {
-        const args = node.args.map((arg) => this.numberAt(arg));
-        return this.finite((FUNCTIONS.get(node.name) as FunctionDef).apply(args), node.at);
-      }
+      case 'call':
+        return this.call(
+          node.name,
+          node.args.map((arg) => this.numberAt(arg)),
+          node.at,
+        );
       case 'binary':
         return this.binary(node.op, node.left, node.right, node.at);
       case 'dice':
@@ -740,8 +763,16 @@ class Walk {
       case '!=':
         return !sameValue(this.value(left), this.value(right));
     }
-    const a = this.numberAt(left);
-    const b = this.numberAt(right);
+    return this.numeric(op, this.numberAt(left), this.numberAt(right), at);
+  }
+
+  /** A function of the language, on numbers. */
+  call(name: string, args: readonly number[], at: number): number {
+    return this.finite((FUNCTIONS.get(name) as FunctionDef).apply(args), at);
+  }
+
+  /** An operator on two numbers. */
+  numeric(op: NumericOp, a: number, b: number, at: number): FormulaValue {
     switch (op) {
       case '<':
         return a < b;
@@ -838,4 +869,279 @@ export function rollFormula(
   });
   const value = walk.number(walk.value(parsed.formula.root), 0);
   return { value, reads: walk.reads, warnings: walk.warnings, dice };
+}
+
+// --- The average ---------------------------------------------------------------------------------
+
+/** The chance of each value a part of a roll formula can take. */
+type Chances = Map<FormulaValue, number>;
+
+/** Thrown inside the average only: a step would pair more than `AVERAGE_LIMITS.outcomes`. */
+class TooMany {}
+
+function addChance(chances: Chances, value: FormulaValue, chance: number): void {
+  chances.set(value, (chances.get(value) ?? 0) + chance);
+}
+
+function mapped(chances: Chances, change: (value: FormulaValue) => FormulaValue): Chances {
+  const result: Chances = new Map();
+  for (const [value, chance] of chances) addChance(result, change(value), chance);
+  return result;
+}
+
+/**
+ * The chance a part is true and the chance it is false. Each side is exactly 0 when no value
+ * gives it, so a branch no outcome takes is never walked.
+ */
+function truthOfChances(chances: Chances): { yes: number; no: number } {
+  let yes = 0;
+  let truths = 0;
+  for (const [value, chance] of chances) {
+    if (truthOf(value)) {
+      yes += chance;
+      truths++;
+    }
+  }
+  if (truths === 0) return { yes: 0, no: 1 };
+  if (truths === chances.size) return { yes: 1, no: 0 };
+  return { yes, no: 1 - yes };
+}
+
+/** The chances of a yes/no that is true with `yes`. */
+function chancesOfTruth({ yes, no }: { yes: number; no: number }): Chances {
+  const result: Chances = new Map();
+  if (yes > 0) result.set(true, yes);
+  if (no > 0) result.set(false, no);
+  return result;
+}
+
+/**
+ * The tree holds each dice term once, so the dice under two parts of a node are independent. A
+ * node that adds, subtracts, negates or multiplies its parts, divides by a part with no dice, or
+ * takes a choice whose test has no dice, averages from its parts' averages. Any other node with
+ * dice takes the chance of each value of its parts and pairs them; past the limit, it falls back to
+ * its value with each term at its average, warned `notExact`. A part with no dice is walked as
+ * `rollFormula` walks it.
+ */
+class AverageWalk {
+  private readonly dice = new WeakMap<RollNode, boolean>();
+
+  private readonly walk: Walk;
+
+  constructor(walk: Walk) {
+    this.walk = walk;
+  }
+
+  private hasDice(node: RollNode): boolean {
+    const known = this.dice.get(node);
+    if (known !== undefined) return known;
+    let found: boolean;
+    switch (node.kind) {
+      case 'dice':
+        found = true;
+        break;
+      case 'literal':
+      case 'path':
+        found = false;
+        break;
+      case 'unary':
+        found = this.hasDice(node.operand);
+        break;
+      case 'binary':
+        found = this.hasDice(node.left) || this.hasDice(node.right);
+        break;
+      case 'choice':
+        found = this.hasDice(node.test) || this.hasDice(node.then) || this.hasDice(node.otherwise);
+        break;
+      case 'call':
+        found = node.args.some((arg) => this.hasDice(arg));
+        break;
+    }
+    this.dice.set(node, found);
+    return found;
+  }
+
+  /** The average of `node` as a number; a text or a yes/no is turned into one at `at`. */
+  mean(node: RollNode, at: number): number {
+    if (!this.hasDice(node)) return this.walk.number(this.walk.value(node), at);
+    switch (node.kind) {
+      case 'dice':
+        return averageOfDice(node);
+      case 'unary':
+        if (node.op !== '!') {
+          const average = this.mean(node.operand, node.operand.at);
+          return this.walk.finite(node.op === '-' ? -average : average, node.at);
+        }
+        break;
+      case 'binary':
+        if (
+          node.op === '+' ||
+          node.op === '-' ||
+          node.op === '*' ||
+          (node.op === '/' && !this.hasDice(node.right))
+        ) {
+          const left = this.mean(node.left, node.left.at);
+          const right = this.mean(node.right, node.right.at);
+          return this.walk.numeric(node.op, left, right, node.at) as number;
+        }
+        break;
+      case 'choice': {
+        const { test, then, otherwise } = node;
+        if (!this.hasDice(test)) {
+          return this.mean(truthOf(this.walk.value(test)) ? then : otherwise, at);
+        }
+        return this.exactly(node, at, () => {
+          const { yes, no } = truthOfChances(this.chances(test));
+          return (
+            (yes > 0 ? yes * this.mean(then, at) : 0) + (no > 0 ? no * this.mean(otherwise, at) : 0)
+          );
+        });
+      }
+    }
+    return this.exactly(node, at, () => {
+      let sum = 0;
+      for (const [value, chance] of this.chances(node)) sum += chance * this.walk.number(value, at);
+      return sum;
+    });
+  }
+
+  /** `exact()`, or past the limit, `node`'s value with each term at its average. */
+  private exactly(node: RollNode, at: number, exact: () => number): number {
+    const mark = this.walk.mark();
+    try {
+      return exact();
+    } catch (thrown) {
+      if (!(thrown instanceof TooMany)) throw thrown;
+      this.walk.restore(mark);
+      const limit = AVERAGE_LIMITS.outcomes;
+      this.walk.warnings.push({
+        code: 'notExact',
+        at: node.at,
+        limit,
+        message: `The exact average of the part at ${node.at} needs more than ${limit} outcomes; its value with each dice term at its average is used.`,
+      });
+      return this.walk.number(this.walk.value(node), at);
+    }
+  }
+
+  private chances(node: RollNode): Chances {
+    if (!this.hasDice(node)) return new Map([[this.walk.value(node), 1]]);
+    switch (node.kind) {
+      case 'literal':
+      case 'path':
+        return new Map([[this.walk.value(node), 1]]);
+      case 'dice': {
+        const totals = distributionOfDice(node);
+        if (totals === undefined) throw new TooMany();
+        return new Map(totals);
+      }
+      case 'unary': {
+        const { op, operand } = node;
+        const chances = this.chances(operand);
+        if (op === '!') return mapped(chances, (value) => !truthOf(value));
+        return mapped(chances, (value) => {
+          const number = this.walk.number(value, operand.at);
+          return this.walk.finite(op === '-' ? -number : number, node.at);
+        });
+      }
+      case 'binary':
+        return this.binary(node.op, node.left, node.right, node.at);
+      case 'choice': {
+        const { yes, no } = truthOfChances(this.chances(node.test));
+        const result: Chances = new Map();
+        if (yes > 0)
+          for (const [value, chance] of this.chances(node.then))
+            addChance(result, value, yes * chance);
+        if (no > 0)
+          for (const [value, chance] of this.chances(node.otherwise))
+            addChance(result, value, no * chance);
+        return result;
+      }
+      case 'call': {
+        let tuples: [number[], number][] = [[[], 1]];
+        for (const arg of node.args) {
+          const numbers = this.numbers(arg);
+          this.pairs(tuples.length, numbers.size);
+          tuples = tuples.flatMap(([args, chance]) =>
+            [...numbers].map(([number, its]): [number[], number] => [
+              [...args, number as number],
+              chance * its,
+            ]),
+          );
+        }
+        const result: Chances = new Map();
+        for (const [args, chance] of tuples)
+          addChance(result, this.walk.call(node.name, args, node.at), chance);
+        return result;
+      }
+    }
+  }
+
+  /** The chances of a part's values as numbers, each turned into one at the part, as the walker does. */
+  private numbers(node: RollNode): Chances {
+    return mapped(this.chances(node), (value) => this.walk.number(value, node.at));
+  }
+
+  private pairs(left: number, right: number): void {
+    if (left * right > AVERAGE_LIMITS.outcomes) throw new TooMany();
+  }
+
+  private binary(op: BinaryOp, left: RollNode, right: RollNode, at: number): Chances {
+    if (op === '&&' || op === '||') {
+      const first = truthOfChances(this.chances(left));
+      // The right side is walked only when some outcome reaches it.
+      const reached = op === '&&' ? first.yes : first.no;
+      const second = reached > 0 ? truthOfChances(this.chances(right)) : { yes: 0, no: 1 };
+      const yes = op === '&&' ? first.yes * second.yes : first.yes + first.no * second.yes;
+      return chancesOfTruth({ yes, no: 1 - yes });
+    }
+    const paired = (
+      a: Chances,
+      b: Chances,
+      apply: (x: FormulaValue, y: FormulaValue) => FormulaValue,
+    ) => {
+      this.pairs(a.size, b.size);
+      const result: Chances = new Map();
+      for (const [x, chanceOfX] of a) {
+        for (const [y, chanceOfY] of b) addChance(result, apply(x, y), chanceOfX * chanceOfY);
+      }
+      return result;
+    };
+    if (op === '==' || op === '!=') {
+      const a = this.chances(left);
+      return paired(a, this.chances(right), (x, y) => sameValue(x, y) === (op === '=='));
+    }
+    const a = this.numbers(left);
+    return paired(a, this.numbers(right), (x, y) =>
+      this.walk.numeric(op, x as number, y as number, at),
+    );
+  }
+}
+
+/** Each warning once, in the order first met. */
+function onceEach(warnings: readonly FormulaWarning[]): FormulaWarning[] {
+  const seen = new Set<string>();
+  return warnings.filter((warning) => {
+    const key = JSON.stringify(warning);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/**
+ * ENG-52: a roll formula's average (SPEC §5.6): the mean of the numbers `rollFormula` gives over
+ * every face its dice can show, each outcome as likely as the dice make it. A path is read, and a
+ * warning given once, when some outcome reads or meets it. Never throws: a formula that does not
+ * parse gives 0 with its error as the one warning, and the reader is not called.
+ */
+export function averageOf(
+  formula: string | ParsedRoll,
+  read: FormulaReader,
+): FormulaResult<number> {
+  const parsed = typeof formula === 'string' ? parseRoll(formula) : { ok: true as const, formula };
+  if (!parsed.ok) return { value: 0, reads: [], warnings: [parsed.error] };
+  const walk = new Walk(read, averageOfDice);
+  const value = new AverageWalk(walk).mean(parsed.formula.root, 0);
+  return { value: value === 0 ? 0 : value, reads: walk.reads, warnings: onceEach(walk.warnings) };
 }

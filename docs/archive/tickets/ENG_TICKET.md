@@ -9557,3 +9557,257 @@ Found, not fixed:
 - A spell's healing: ENG-53.
 
 Nothing for the changelog: no screen and no published file changes.
+
+---
+
+### ENG-52 A roll formula's average
+
+**Hat:** A roll formula's average is computed, kept dice included
+**Depends on:** ENG-07 (the formula language and its walker), ENG-08 (dice terms, `rollDice`),
+ENG-16 (`diceOf`)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.6 (a roll formula is shown with its average); ADR 014 item 11 (the dice terms)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/formula.ts` — changes: `averageOf(formula, read)`, the
+average of a roll formula, walked on the same tree as `rollFormula`; the warning `notExact`.
+- `packages/engine/src/dice.ts` — changes: `AVERAGE_LIMITS`; `averageOfDice(term)`, one term's
+  average; `distributionOfDice(term, limit)`, how likely each total of one term is.
+- `packages/engine/test/average.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on `main` at `7633984`:
+- `grep -rn -i "averag\|mean" packages/engine/src` finds one line, ENG-16's comment on `diceOf`
+  ("fixed damage amount"). No function gives a roll formula's average.
+- A term that keeps some dice has no simple average: `2d20kh1`'s is 553/40 = 13.825, not
+  `count × (faces + 1) / 2` = 21 (python3, every outcome of the two dice).
+- A formula that puts dice under a function has no simple average either: `max(1, 1d6 - 3)`'s is
+  3/2, and `max(1, 3.5 - 3)` is 1 (python3).
+- `pnpm test`: `Test Files 43 passed (43)`, `Tests 481 passed (481)`.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/engine` exports `averageOf`, `averageOfDice`, `distributionOfDice` and
+   `AVERAGE_LIMITS` = `{ outcomes: 100000 }`.
+2. **One term.** `averageOfDice(term)` is the term's exact average, for every term the parser
+   allows (`DICE_LIMITS`), kept dice included. The control values, from python3 with fractions
+   (every outcome where there are at most 100,000; a closed form or the order statistics past that):
+
+   | Term | Average |
+   |---|---|
+   | `2d6` | 7 |
+   | `1d20` | 10.5 |
+   | `2d20kh1` | 553/40 = 13.825 |
+   | `2d20kl1` | 287/40 = 7.175 |
+   | `4d6kh3` | 15869/1296 ≈ 12.2445987654 |
+   | `4d6kl3` | 11347/1296 ≈ 8.7554012346 |
+   | `3d6kh3` | 10.5 (all three kept) |
+   | `5d10kh2` | 63833/4000 = 15.95825 |
+   | `5d10kl4` | 74833/4000 = 18.70825 |
+   | `20d20kh10` | ≈ 152.5357142857 |
+   | `9d20kh1` | ≈ 18.4625873439 |
+   | `999d1000` | 499999.5 |
+   | `999d1000kh1` | ≈ 999.4180987796 |
+   | `999d1000kl1` | ≈ 1.5819012204 |
+   | `999d6kh998` | ≈ 3495.5 |
+
+   Each within 10⁻⁹ of the control.
+3. **One term's chances.** `distributionOfDice(term, limit)` maps each total the term can give to
+   its chance, in rising order; the chances add up to 1 within 10⁻¹²: `2d20kh1` gives 20 with
+   39/400 and 1 with 1/400; `3d2` gives 3, 4, 5, 6 with 1/8, 3/8, 3/8, 1/8. Past `limit` it gives
+   `undefined`: a term with no keep when one die added would pair more than `limit` totals with
+   faces, a term that keeps when `faces ^ count` is above `limit` (`7d6kh3`: 279,936).
+4. **A formula.** `averageOf(formula, read)` takes the text or a `ParsedRoll` and the reader of
+   ENG-07. It returns `{ value, reads, warnings }` and never throws. `value` is the average of the
+   numbers `rollFormula` gives over every face the dice can show, each outcome as likely as the
+   dice make it. Control values, from python3 with fractions over every outcome (paths: `level` 5,
+   `stats.grit.mod` 2, `gear.worn` true, `gear.shield` false):
+
+   | Formula | Average |
+   |---|---|
+   | `1d10 + @level` | 10.5 |
+   | `2d20kh1 + @stats.grit.mod` | 15.825 |
+   | `2к6+3` | 10 |
+   | `-1d4` | −2.5 |
+   | `(2d6) * 2` | 14 |
+   | `1d6 * 1d6` | 12.25 |
+   | `1d6 / 2` | 1.75 |
+   | `12 / 1d6` | 4.9 |
+   | `(1d6 + 1d6) / (1d2)` | 5.25 |
+   | `max(1, 1d6 - 3)` | 1.5 |
+   | `max(1, 1d4 - 3)` | 1 |
+   | `floor(1d6 / 2)` | 1.5 |
+   | `round(1d4 / 2)` | 1.5 |
+   | `clamp(2d6, 4, 10)` | 7 |
+   | `abs(1d6 - 1d6)` | 35/18 ≈ 1.9444444444 |
+   | `max(2d20kh1, 1d20)` | 1239/80 = 15.4875 |
+   | `max(0, 4d6kh3 - 10)` | 3403/1296 ≈ 2.6257716049 |
+   | `min(1d8, 1d8) + 1d4 * 2` | 131/16 = 8.1875 |
+   | `1d20 >= 10` | 0.55 |
+   | `!(1d4 == 1)` | 0.75 |
+   | `1d4 == 1 \|\| 1d4 == 1` | 7/16 = 0.4375 |
+   | `1d6 > 3 && @gear.worn` | 0.5 |
+   | `1d20 >= 11 ? 2d6 : 0` | 3.5 |
+   | `if(1d4 > 2, 1d6, -1d6)` | 0 |
+   | `@gear.worn ? 1d6 : 1d8` | 3.5 |
+   | `@gear.shield ? 1d6 : 1d8 + @level` | 9.5 |
+   | `1d2 == 2 ? @level : @stats.grit.mod` | 3.5 |
+   | `1d20 > 20 ? @level : 1` | 1 |
+
+   Each within 10⁻⁹ of the control.
+5. **Reads.** A path is read when some outcome reads it: `@gear.worn ? 1d6 : 1d8` reads
+   `['gear.worn']`; `@gear.shield ? 1d6 : 1d8 + @level` reads `['gear.shield', 'level']`;
+   `1d2 == 2 ? @level : @stats.grit.mod` reads both branches; `1d20 > 20 ? @level : 1` reads
+   nothing (no face takes that branch); `0 && @level + 1d6` reads nothing.
+6. **Warnings** are those some outcome meets, each once: `1d6 + @nothing` is 3.5 with one
+   `missingPath`; `@gear.kind + 1d4` is 2.5 with one `wrongType` at 0; `max(0, 1d6 / 0)` is 0 with
+   one `notFinite`. A formula that does not parse (`@level + 1d1`) gives 0, `reads` `[]`, the parse
+   error as its one warning, and never calls the reader.
+7. **Past the limit.** A part whose exact average needs a step of more than
+   `AVERAGE_LIMITS.outcomes` outcomes gives the value it has with each term at its average, with
+   one `notExact` warning `{ at, limit }` at that part: `max(1, 999d1000)` is 499999.5;
+   `max(1, 9d20kh1)` is `averageOfDice` of `9d20kh1`. A path that only the abandoned walk read is
+   not in `reads`: `max(0, 1d2 == 1 ? @level : 999d1000)` reads nothing.
+8. **The rolls agree.** For each formula of item 4, and for every seeded formula of small dice
+   (item 9) whose outcomes number at most 500, the average equals the mean of `rollFormula`
+   over every outcome (each weighted by its chance) within 10⁻⁹, with the same set of paths read
+   and the same set of warnings.
+9. **Never throws.** 2,000 seeded roll formulas, half damaged as in ENG-08's run: `averageOf`
+   gives a finite number for each.
+10. A plain formula's average is its value: `@level * 2` gives 10, reads `['level']`, as
+    `evaluateNumber` does. The same formula and reader give equal results twice.
+11. The quality gate is green.
+
+#### 4. How to do it
+
+1. `dice.ts`: `AVERAGE_LIMITS`; `averageOfDice` (below); `distributionOfDice`, one die added at a
+   time for a term with no keep, every outcome counted for a term that keeps.
+2. `formula.ts`: the walker's arithmetic and its functions become methods the average can call
+   (`Walk.numeric`, `Walk.call`), so the two walks share one meaning of each operator; `averageOf`
+   walks the tree in two modes (below); `notExact` joins `FormulaWarning`.
+3. `average.test.ts`: §7.
+
+Technical choices (ADR 002):
+- **The exact average, not the formula at each term's average.** The two agree while dice are
+  only added, subtracted or multiplied; under a function, a comparison or a choice they do not
+  (§2: 1.5 against 1). A screen that shows the exact number shows nothing that is wrong.
+- **Two modes on one tree.** The tree holds each dice term once, so the dice of two branches of a
+  node are independent. Where a node only adds, subtracts, negates or multiplies its parts, or
+  divides by a part with no dice, or takes a choice whose test has no dice, its average comes from
+  its parts' averages (the average of a sum is the sum of the averages; of a product of independent
+  parts, the product). Anywhere else (a function, a comparison, `&&`, `||`, `!`, a choice whose
+  test has dice, a divisor with dice) the node takes the chance of each value of its parts, and
+  combines them pair by pair; a choice's branches each keep their own mode, weighted by the test's
+  chance. A part with no dice is walked by ENG-07's walker as it is.
+- **A kept term's average by counting, not by listing.** The sum of the `k` highest dice is the
+  sum, over each face `x`, of how many kept dice show `x` or more: `min(k, N)`, `N` the number of
+  dice at `x` or more, a binomial count. So the average is the sum over faces of `E[min(k, N)]`;
+  `kl` is its mirror, `k × (faces + 1)` minus the same sum. The work is `faces × k` steps, 10⁶ at
+  most, where listing the outcomes of `999d1000` cannot end. Past half the dice, the dropped ones
+  are counted instead.
+- **A limit on the exact walk.** A step that would pair more than 100,000 outcomes stops, and the
+  part falls back to its value at each term's average, warned `notExact` (SPEC §8.2: a value and a
+  warning, never a throw). The limit is one number in `AVERAGE_LIMITS`. What the abandoned walk
+  read and warned is taken back, so `reads` names what the fallback read.
+- **No rounding.** The average is a number with its fraction (7.5); how a screen writes it is the
+  screen's.
+- **A warning once.** An exact walk meets a value many times (a division by 0 for each face); the
+  result lists each warning once, as a roll does.
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, no `schemaVersion`, no Dexie table.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/average.test.ts` — `describe('ENG-52 a roll formula's average')`: §3
+  items 1–10; the rolls' oracle of item 8 enumerates every outcome through `rollFormula` with a
+  scripted die, so it shares no code with `averageOf`.
+- Control values from: python3 3 with `fractions` (every outcome enumerated; `9d20kh1`,
+  `999d1000kh1`, `999d1000kl1`, `999d6kh998` by the closed forms of the highest and lowest die;
+  `20d20kh10` by the order statistics, a sum the code does not use), never from the new code.
+  Paths and values are made up.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is used. SPEC §5.6 says a roll formula is shown with its average;
+what an average is, is arithmetic. A level's fixed hit points "by average" (SPEC §6.7 B4) are a
+rules value of the fifth-edition module (`hitPointsOf`, ENG-14), not this function.
+
+#### 9. Not in this ticket
+
+- How the screen writes the average (a fraction, rounded, `1к20` or `1d20`): phase 2's dice and
+  sheet.
+- Advantage, disadvantage and critical dice on a roll: ENG-34, whose `2d20kh1` this averages.
+- A count of dice that grows with level (`ceil(@level / 2)d6`): ENG-50.
+- Using the average anywhere in `compute()`: no golden reads one; a level's hit points by average
+  are ENG-14's `hitPointsOf`.
+- The chance of a roll reaching a number (to hit a given AC): no row asks for it;
+  `distributionOfDice` is the piece it would build on.
+
+#### 10. Rake check
+
+- **`packages/engine` is pure TypeScript.** The new code is arithmetic on the parsed tree; no
+  import beyond the engine's own files.
+- **Formulas never run code; limits.** The average walks the same frozen tree; the parse limits of
+  ENG-07 and ENG-08 hold, and the exact walk has its own limit.
+- **Missing is not broken.** A missing path is 0 with a warning, a part past the limit a value
+  with a warning, a formula that does not parse 0 with its error. Nothing throws.
+- **`compute()` is pure and deterministic.** `averageOf` changes nothing it is given and has no
+  randomness; equal inputs give equal results.
+- **The core names no game.** No stat, die or rule of a game is in the code; test paths are made
+  up.
+- **Measure, never estimate.** Every expected value is python3's, with fractions.
+- **Licensing.** No rules text.
+
+#### 11. What came out of it
+
+Measured on 2026-10-02, built on `7633984`, then rebased onto `7997fbb` (after ENG-22, ENG-49,
+ENG-36 and ENG-50) and measured again there:
+- `pnpm lint`: `Checked 161 files`, no errors. `pnpm typecheck`: 6 projects, all `Done`.
+- `pnpm test`: `Test Files 46 passed (46)`, `Tests 545 passed (545)`, 7.84 s. Without
+  `average.test.ts`: 45 files, 534 tests. This ticket's 11 are in `average.test.ts`: 11 passed,
+  2.40 s. (On `7633984`: 481 tests before, 492 after.)
+- No file in `apps/web` changed, so `pnpm e2e` was not run.
+- Every control value of §3 items 2 and 4 is met within 10⁻⁹. The largest gap measured on a term:
+  `999d1000kl1` gives 1.581901220366717 against python3's 1.581901220366367 (3.5 × 10⁻¹³).
+- The rolls' oracle (§3 item 8): the 28 formulas of item 4 agree, and 1,716 of the 2,000 seeded
+  formulas were compared, value, paths read and warnings each the same set (a formula that does
+  not parse is compared too: one outcome, 0 and its error). 67 fell back past the limit; the other
+  217 have more than 500 outcomes.
+- Time, one run each: `999d1000kh500` 16.49 ms, `999d1000kh499` 13.04 ms, `999d1000kl1` 0.07 ms,
+  `max(0, 4d6kh3 - 10)` 3.90 ms, `max(1, 12d10 * 12d10 * 12d10)` (a fallback) 8.92 ms. The 2,000
+  seeded averages together: 159 ms.
+- The tests bite. Each guard broken on its own, `average.test.ts` run (11 tests): `kl` without its
+  mirror, 3 fail; the dropped dice counted with `faces` for `faces + 1`, 3; no case for a face every
+  die reaches, 3; the keep order reversed in the chances, 4; a divisor with dice averaged as a
+  number, 3; every part sent to the fallback, 4; nothing taken back after a fallback, 1; warnings
+  not made unique, 1; a choice's chances swapped, 3; the right side of `&&` and `||` always walked,
+  2; no exact 0 and 1 for a test's chances, 1; no limit on pairing two parts, 1 (with the two
+  cases added below; before them, 0).
+
+Differences from §3:
+- Item 8 first said seeded formulas of at most 20,000 outcomes. The oracle then took 46 s, most of
+  it parsing the text again for every outcome; it now parses once and compares formulas of at most
+  500 outcomes (1.4 s). Item 8 says 500.
+- Item 7 gained two cases, so the limit on pairing is tested: `max(1, 12d10 * 12d10 * 12d10)` gives
+  66³ = 287496, and `max(12d10, 12d10, 12d10)` gives 66, each with `notExact` at 0 (python3: the
+  product of two pairs 11,881 and gives 3,788 values, which with a third pair 412,892; three
+  arguments pair 109³ = 1,295,029).
+
+Against the row: as the row says. The walker's arithmetic and functions became two methods
+(`Walk.numeric`, `Walk.call`) that the average calls, so one operator has one meaning; no result of
+`evaluateFormula` or `rollFormula` changed (their tests pass unchanged).
+
+Found, not fixed: nothing.
+
+Nothing for the changelog: no screen shows the average yet.

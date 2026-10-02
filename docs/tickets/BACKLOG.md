@@ -101,7 +101,7 @@ split off an old row got a new id.
 | ENG-15 | Spellcasting numbers are computed, multiclass slots included | M | ✅ 2026-10-02 |
 | ENG-16 | Weapon attacks are computed, weapon mastery included | M | ✅ 2026-10-02 |
 | ENG-49 | A spell or item a grant names that no pack has gives a warning | S | ✅ 2026-10-02 |
-| ENG-52 | A roll formula's average is computed, kept dice included | S | 🔲 |
+| ENG-52 | A roll formula's average is computed, kept dice included | S | ✅ 2026-10-02 |
 | ENG-50 | A spell's dice are computed for the character's level | S | ✅ 2026-10-02 |
 | ENG-51 | A spell a grant gives with its own stat has its casting numbers | S | 🔲 |
 | ENG-53 | A spell's healing is a roll formula of its own | S | 🔲 |
@@ -148,9 +148,6 @@ split off an old row got a new id.
   more per slot level above 1st; 10 SRD 5.1 spells have 5e-database's `heal_at_slot_level`.
   ENG-50's `spellDice` joins a `scaling` to the first damage with the core's `addDice`; healing
   grows the same way. The modifier is the stat a spell is cast with, which ENG-51 gives.
-- **ENG-52** — re-cut from ENG-16 (ENG-16 §11). Found by ENG-08: SPEC §5.6 shows a roll formula
-  with its average, and no function gives it; a term that keeps some dice has no simple average
-  (`2d20kh1`'s is 13.825). ENG-16's `diceOf` lists a parsed roll's dice terms.
 - **ENG-20** — ADR 014 item 7: casting with "use a slot: no". Found by ENG-32: a `spell`
   grant's `uses` have no key of their own; the cast action keeps their spent count, by the
   grant's part id or a key it gives them. Found by ENG-33: the trackers it changes are

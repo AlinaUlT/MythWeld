@@ -99,3 +99,98 @@ export function rollDice(term: DiceTerm, die: DieSource): RolledDice {
   const total = results.reduce((sum, face, index) => (kept[index] ? sum + face : sum), 0);
   return { results, kept, total, badFaces };
 }
+
+/** How many outcomes one step of an exact average may pair: past it, the average falls back. */
+export const AVERAGE_LIMITS = { outcomes: 100_000 } as const;
+
+/**
+ * One term's exact average. The sum of the `k` highest dice is the sum, over each face `x`, of
+ * how many kept dice show `x` or more: `min(k, N)`, where `N`, the dice at `x` or more, is a
+ * binomial count. The lowest `k` are the mirror: `k × (faces + 1)` less the highest `k`.
+ */
+export function averageOfDice({ count, faces, keep }: DiceTerm): number {
+  if (keep === undefined) return (count * (faces + 1)) / 2;
+  const highest = highestSum(count, faces, keep.count);
+  return keep.which === 'highest' ? highest : keep.count * (faces + 1) - highest;
+}
+
+/** The average sum of the `kept` highest of `count` dice of `faces` faces. */
+function highestSum(count: number, faces: number, kept: number): number {
+  // Past half the dice, the dropped ones are counted instead: the highest `kept` are all the dice
+  // less the lowest `count - kept`.
+  if (kept * 2 > count) {
+    const dropped = count - kept;
+    return (count * (faces + 1)) / 2 - dropped * (faces + 1) + highestSum(count, faces, dropped);
+  }
+  let sum = 0;
+  for (let face = 1; face <= faces; face++) {
+    sum += averageAtMost(kept, count, (faces - face + 1) / faces);
+  }
+  return sum;
+}
+
+/** `E[min(kept, N)]` for `N` a binomial count of `count` tries, each a success with `chance`. */
+function averageAtMost(kept: number, count: number, chance: number): number {
+  if (chance === 1) return kept;
+  // The chance of exactly `j` successes, from j = 0 up, in logs so 999 tries neither overflow nor
+  // underflow on the way.
+  const odds = Math.log(chance) - Math.log1p(-chance);
+  let logOf = count * Math.log1p(-chance);
+  let short = 0;
+  for (let j = 0; j < kept; j++) {
+    short += (kept - j) * Math.exp(logOf);
+    logOf += Math.log((count - j) / (j + 1)) + odds;
+  }
+  return kept - short;
+}
+
+/**
+ * How likely each total of one term is, in rising order of totals. A term with no keep adds one
+ * die at a time; a term that keeps counts every outcome. `undefined` when a step would pair more
+ * than `limit` totals with faces, or a term that keeps has more than `limit` outcomes.
+ */
+export function distributionOfDice(
+  term: DiceTerm,
+  limit: number = AVERAGE_LIMITS.outcomes,
+): ReadonlyMap<number, number> | undefined {
+  const { count, faces, keep } = term;
+  if (keep === undefined) {
+    // chances[i] is the chance of the total `i + dice so far`.
+    let chances = [1];
+    for (let die = 0; die < count; die++) {
+      if (chances.length * faces > limit) return undefined;
+      const next = new Array<number>(chances.length + faces - 1).fill(0);
+      chances.forEach((chance, at) => {
+        for (let face = 0; face < faces; face++) {
+          next[at + face] = (next[at + face] as number) + chance / faces;
+        }
+      });
+      chances = next;
+    }
+    return new Map(chances.map((chance, at) => [at + count, chance]));
+  }
+  const outcomes = faces ** count;
+  if (outcomes > limit) return undefined;
+  const counts = new Map<number, number>();
+  const results = new Array<number>(count).fill(1);
+  const order =
+    keep.which === 'highest' ? (a: number, b: number) => b - a : (a: number, b: number) => a - b;
+  for (let outcome = 0; outcome < outcomes; outcome++) {
+    const total = [...results]
+      .sort(order)
+      .slice(0, keep.count)
+      .reduce((sum, face) => sum + face, 0);
+    counts.set(total, (counts.get(total) ?? 0) + 1);
+    // The next outcome, as an odometer turns.
+    for (let die = 0; die < count; die++) {
+      if ((results[die] as number) < faces) {
+        results[die] = (results[die] as number) + 1;
+        break;
+      }
+      results[die] = 1;
+    }
+  }
+  return new Map(
+    [...counts].sort(([a], [b]) => a - b).map(([total, times]) => [total, times / outcomes]),
+  );
+}
