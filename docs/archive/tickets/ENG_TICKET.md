@@ -13549,3 +13549,299 @@ Found, not fixed:
   `languageSource`; ENG-37, golden F states it and may expect the new warning.
 
 Nothing for the changelog: no screen changes.
+
+---
+
+### ENG-60 A spell's healing adds its bonus
+
+**Hat:** A spell's healing adds what a feature gives it
+**Depends on:** ENG-53 (`SpellDef.healing`, `@mod` written in), ENG-55 (`addPath`,
+`damage.spell.bonus`, the same road), ENG-50 (`spellDice`, `SpellCast.slot`), ENG-17 (effects
+and overrides on any path), ENG-52 (`averageOf`), ENG-20 (`castSpell`: a slot, or none)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.4 (effect targets); §5.3 (`SpellDef`); §5.6 (roll formulas); §6.1 step 5; §6.8
+(mechanics as effects)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/spell-dice.ts` — changes: `HEALING_BONUS_PATHS`;
+`spellDiceSteps` gives its four paths; `spellDice` adds them to a spell's healing of hit points;
+the warning `healingBonusFormula`.
+- `packages/engine/src/formula.ts` — changes: `addPath(base, path, times)`, the path added
+  `times` times (`@path * times`).
+- `packages/engine/test/formula.test.ts` — changes: the ENG-60 block.
+- `packages/system-5e/test/spell-dice.test.ts` — changes: the ENG-60 block; `NO_BONUS` gains the
+  four paths (§7).
+- `packages/system-5e/test/spellcasting.test.ts` — changes: the paths of a character who casts
+  nothing, filtered by `spell.`, gain `healing.spell.bonus` and `healing.spell.bonusPerLevel`.
+- `docs/tickets/BACKLOG.md` — a phase 3 note (§9).
+
+#### 2. What is missing now
+
+Measured on `main` at `71b2746`:
+- `git grep -n "healing\.\(spell\|slot\)" -- packages apps` finds nothing.
+- Golden A with a made-up feat whose effect is `healing.spell.bonus` `add 2` (a throwaway test):
+  `values['healing.spell.bonus']` is `undefined`, and the one warning is `noTarget`
+  (`"character:feat/probe#more" changes healing.spell.bonus, which the character has no value
+  for; it is not applied.`).
+- `spellDice` of SRD 5.1 Cure Wounds on that character, slot 2, `wis`, gives
+  `{"times":1,"damage":[],"healing":{"formula":"2d8 + @abilities.wis.mod","kind":"hp"},"warnings":[]}`:
+  no bonus is read, and no formula reads the slot.
+- `addPath(base, path)` adds a path once; nothing adds a path times a number.
+- `pnpm test`: `Test Files 58 passed (58)`, `Tests 744 passed (744)`.
+
+#### 3. What it should look like when done
+
+1. **Every character** has four paths, each 0 with no steps until an effect changes it, a
+   target for effects and overrides (ENG-17), as `damage.spell.bonus` (ENG-55). An effect on one
+   warns nothing.
+
+   | Path | Added to the healing of hit points of | Times |
+   |---|---|---|
+   | `healing.spell.bonus` | a spell of 1st level or higher, however it is cast | once |
+   | `healing.spell.bonusPerLevel` | the same | once per level it is cast at |
+   | `healing.slot.bonus` | a spell cast with a spell slot | once |
+   | `healing.slot.bonusPerLevel` | the same | once per level of the slot |
+
+   The level a spell is cast at is the slot's, or its own when cast with none or with a lower
+   slot. A cantrip is never cast with a slot. SRD 5.1's Disciple of Life is `healing.spell.bonus`
+   2 and `healing.spell.bonusPerLevel` 1; SRD 5.2.1's is the same on `healing.slot.*` (§8).
+2. **`spellDice` adds them to the healing** when its `kind` is `hp`: each path that applies to the
+   cast, in the order of the table, is written at the healing's end, after the scaling joins and
+   before `@mod` is renamed: `+ @<path>` once, `+ @<path> * <level>` per level (`* 1` is not
+   written). The damage does not change; temporary hit points (`tempHp`) do not change.
+   - A path whose value is 0 writes nothing.
+   - A path that does not apply to the cast is not read: no term, no warning.
+   - A path that applies and has no number in the values (missing, or a text) writes nothing,
+     with the warning `missingPath` and the path.
+   - When the healing with its terms written does not parse, or is past the limits, the healing
+     has none of them, with the warning `healingBonusFormula` and the error. Never a throw.
+3. **`addPath(base, path, times)`** (the core, game-free; made-up paths, ADR 004 item 4): `times`
+   counts as a whole number, rounded down, and as 0 below 0 or when it is not finite, as
+   `addDice`'s does. 0 gives `base` as it is; 1 gives `base + @path`, as ENG-55's; more gives
+   `base + @path * <times>`: `1d8` with `stats.grit.mod` and 3 is `1d8 + @stats.grit.mod * 3`,
+   average 4.5 + 6 = 10.5 at a value of 2; `@gear.worn ? 1d6 : 1d8` with 2 is
+   `(@gear.worn ? 1d6 : 1d8) + @stats.grit.mod * 2`. A name that is not a path is `badPath`
+   whatever `times` is. `1d6` and 244 × ` + 1` (979 characters) with `stats.grit.mod` and 12 is
+   `tooLong` at 979 + 23 = 1002.
+4. **Control values, worked out by hand.** Golden A (2014): WIS +3 (ENG-53). Golden C 2024: CHA +2
+   (ENG-53). "With 2014's Disciple" is golden A whose `srd-2014:feature/disciple-of-life` carries
+   SRD 5.1's two effects; "with 2024's Disciple" is golden C 2024 with a made-up feat carrying SRD
+   5.2.1's two. Averages are ENG-52's.
+
+   | Spell | Character or values, cast | Healing | Average |
+   |---|---|---|---|
+   | SRD 5.1 Cure Wounds | golden A with 2014's Disciple, `wis`, slot 1 | `1d8 + @abilities.wis.mod + @healing.spell.bonus + @healing.spell.bonusPerLevel` | 4.5 + 3 + 2 + 1 = 10.5 |
+   | the same | the same, slot 2 | `2d8 + @abilities.wis.mod + @healing.spell.bonus + @healing.spell.bonusPerLevel * 2` | 9 + 3 + 2 + 2 = 16 |
+   | the same | the same, slot 9 | `9d8 + … + @healing.spell.bonusPerLevel * 9` | 40.5 + 3 + 2 + 9 = 54.5 |
+   | the same | the same, no slot | as slot 1 | 10.5 |
+   | the same | golden A, no effect, slot 2 | `2d8 + @abilities.wis.mod` | 12 |
+   | the same | golden A with 2014's Disciple, `bonusPerLevel` overridden to 0, slot 2 | `2d8 + @abilities.wis.mod + @healing.spell.bonus` | 9 + 3 + 2 = 14 |
+   | SRD 5.1 False Life (`tempHp`) | golden A with 2014's Disciple, slot 1 | `1d4 + 4` | 6.5 |
+   | SRD 5.1 Heal | `healing.spell.*` 2 and 1, slot 6 / 9 | `70 + @healing.spell.bonus + @healing.spell.bonusPerLevel * 6`; `70 + (10) + (10) + (10) + … * 9` | 70 + 2 + 6 = 78; 100 + 2 + 9 = 111 |
+   | SRD 5.2.1 Cure Wounds | golden C 2024 with 2024's Disciple, `cha`, slot 1 / 2 / 3 | `2d8` / `4d8` / `6d8` `+ @abilities.cha.mod + @healing.slot.bonus + @healing.slot.bonusPerLevel` (`* 2`, `* 3`) | 14 / 24 / 34 |
+   | the same | the same, no slot | `2d8 + @abilities.cha.mod` | 11 |
+   | SRD 5.1 Cure Wounds | all four 2 and 1, `wis` 3, slot 2 | `2d8 + @abilities.wis.mod + @healing.spell.bonus + @healing.spell.bonusPerLevel * 2 + @healing.slot.bonus + @healing.slot.bonusPerLevel * 2` | 9 + 3 + 2 + 2 + 2 + 2 = 20 |
+   | SRD 5.2.1 Conjure Celestial | `healing.slot.*` 2 and 1, `cha` 2, slot 9 | damage `8d12`; healing `6d12 + @abilities.cha.mod + @healing.slot.bonus + @healing.slot.bonusPerLevel * 9` | 39 + 2 + 2 + 9 = 52 |
+   | a made-up healing cantrip `1d4` | all four 2 and 1 | `1d4`, nothing read | 2.5 |
+
+   Golden A with 2014's Disciple has `healing.spell.bonus` 2 and `healing.spell.bonusPerLevel` 1,
+   each with one `effect` step naming the feature, and no warning. The goldens' own numbers do not
+   change, and they give no warning.
+5. **Pure**: frozen inputs, equal results.
+6. The quality gate is green. No file in `apps/web` changes, so no `pnpm e2e`.
+
+#### 4. How to do it
+
+1. `formula.ts`: `addPath` takes `times`.
+2. `spell-dice.ts`: `HEALING_BONUS_PATHS`; their steps in `spellDiceSteps`; the terms added to
+   the healing in `spellDice`; the warning; `SpellCast.slot`'s comment says "none: cast without
+   a slot", as `castSpell`'s `CastAsk` does (ENG-20).
+3. Tests (§7). Then the backlog note (§9).
+
+Technical choices (ADR 002):
+- **Two numbers, not one formula.** A computed path is one number for the character (SPEC §6.1),
+  and the bonus grows with the slot of each cast. So the flat part and the part per level are
+  two paths, each with its breakdown, and `spellDice`, which knows the cast, writes the level as a
+  number beside the second. The formula then names only computed paths and the cast's level, as
+  ENG-53 and ENG-55 write paths, not their numbers. dnd5e's 2024 Disciple of Life is a separate
+  heal activity, `@scaling + 2`, whose scale the person sets to the slot (§8); here the cast's
+  slot sets it.
+- **Two pairs, one per condition, so the edition difference is data.** SRD 5.1 adds to "a spell
+  of 1st level or higher", SRD 5.2.1 to "a spell you cast with a spell slot" (§8): they differ
+  only for a spell cast without a slot (a magic item, a feat's free cast, ENG-57's uses). That
+  is each SRD's Disciple of Life's own text, so each SRD's feature names its own pair, as each
+  SRD's exhaustion is its own condition entity (SPEC §6.3). Nothing goes to `rulesets/`, and a
+  character mixing editions gets each feature's own rule. A homebrew bonus picks the pair that
+  says what it means.
+- **Hit points only.** Both SRDs say the creature "regains additional hit points" when a spell
+  "restores hit points" (§8); temporary hit points are not restored hit points. Both agree, so
+  the rule is the module's, not a ruleset's.
+- **Once per cast's healing**, on the one `healing` a spell has (ENG-53). A spell that heals
+  several creatures (Mass Cure Wounds) rolls one healing for each; each gets the bonus, as both
+  SRDs say "a creature".
+- **Nothing written for 0, nothing read when it does not apply, all or nothing when it fails**: as
+  ENG-55's bonus, so the sheet shows the spell's own healing, and a failed formula is never half a
+  bonus.
+- **`addPath` takes `times`**: one term, `@path * 3`, binds tighter than `+`, so it needs no
+  brackets; `addDice` would write each copy in brackets.
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, pack or character field changes; the published
+`pack.schema.json` does not change (an effect's target is a path, not a list of names).
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/spell-dice.test.ts` — `describe("ENG-60 a spell's healing bonus")`:
+  §3 items 1, 2, 4, 5. ENG-53's and ENG-55's tests that check warnings on hand-written values pass
+  the four paths at 0 beside them (`NO_BONUS`, `NO_HEALING_BONUS`), so they keep checking what
+  they checked; none of their expected values changes.
+- `packages/engine/test/formula.test.ts` — `describe('ENG-60 a path added times a number')`: §3
+  item 3.
+- `packages/system-5e/test/spellcasting.test.ts` — golden B's paths filtered by `spell.` gain
+  `healing.spell.bonus` and `healing.spell.bonusPerLevel`. No value changes.
+- Control values from: 5e-database `e6edf9a` (SRD 5.1 Cure Wounds, False Life, Heal), dnd5e
+  `7bfb3f1` (SRD 5.2.1 Cure Wounds, Conjure Celestial; both Disciples of Life), the goldens'
+  scores (SPEC §6.7). Each worked out by hand in §3, never copied from a run.
+
+#### 8. Checked against the source
+
+Sources: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`
+(`packages/5e-database/src/{2014,2024}/en/`); foundryvtt/dnd5e at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (`packs/_source/classfeatures/`, SRD 5.1;
+`packs/_source/classes24/`, `content24/`, SRD 5.2.1; CC-BY-4.0). The same commits as ENG-50 to
+ENG-55. Read 2026-10-03.
+
+**Disciple of Life.**
+- SRD 5.1 (5e-database `5e-SRD-Features.json`, `disciple-of-life`, level 1): "Whenever you use a
+  spell of 1st level or higher to restore hit points to a creature, the creature regains
+  additional hit points equal to 2 + the spell's level." dnd5e's copy
+  (`classfeatures/cleric/life-domain-features/disciple-of-life.yml`) has the same text, no
+  activity and no effect.
+- SRD 5.2.1 (5e-database `life-disciple-of-life`, Cleric 3): "When a spell you cast with a spell
+  slot restores Hit Points to a creature, that creature regains additional Hit Points on the turn
+  you cast the spell. The additional Hit Points equal 2 plus the spell slot's level." dnd5e
+  (`classes24/cleric/subclass-features/life-domain/disciple-of-life.yml`): a heal activity of its
+  own, `custom.formula: '@scaling + 2'`, `consumption.scaling.allowed: true`, max `'9'`; its note:
+  "Set the scale to the spell slot level you cast and it will provide a healing roll for you."
+
+**The level a spell is cast at.**
+- SRD 5.1 (`5e-SRD-Rules.json`, Casting a Spell at a Higher Level): "When a spellcaster casts a
+  spell using a slot that is of a higher level than the spell, the spell assumes the higher level
+  for that casting." So 2014's "the spell's level" is the slot's when cast with a higher one.
+- SRD 5.2.1 (dnd5e `content24/chapter-7/spells.yml`, Using a Higher-Level Spell Slot): "the spell
+  takes on the higher level for that casting." Casting without Slots: "Cantrips. A cantrip is cast
+  without a spell slot." "Rituals. … it doesn't expend a spell slot." "Special Abilities. Some
+  characters and monsters have special abilities that allow them to cast specific spells without
+  a spell slot." "Magic Items. Spell Scrolls and some other magic items contain spells that can
+  be cast without a spell slot."
+- No SRD healing spell is a cantrip: ENG-53 §8's lists (10 SRD 5.1 spells with
+  `heal_at_slot_level`, all of level 1 or higher).
+
+**Who else adds to a spell's healing**, searched with a script over 5e-database's features,
+traits, feats, magic items, subclasses, classes and spells, both editions, for "additional hit
+points", "regains additional", "extra hit points", "2 + the spell", "2 plus the spell":
+- 2014: `disciple-of-life`; `blessed-healer` ("you regain hit points equal to 2 + the spell's
+  level", the caster, level 6); `song-of-rest-d6` to `-d12` (the bard's, on a short rest, no
+  spell).
+- 2024: `life-disciple-of-life`; `life-blessed-healer` ("you regain Hit Points equal to 2 plus the
+  spell slot's level", the caster, level 6).
+- So Disciple of Life is the one bonus to the healing a spell gives its target, in both SRDs.
+  Supreme Healing (both, level 17: "use the highest number possible for each die") changes the
+  dice, not a bonus (§9).
+
+#### 9. Not in this ticket
+
+- Disciple of Life's effects in the SRD packs: the import's mechanics (phase 3, SPEC §6.8). The
+  test writes them on golden A's fixture feature and on a made-up feat only. A phase 3 note.
+- Blessed Healer (both SRDs: the caster regains 2 + the level when a spell heals another) and
+  Supreme Healing (both: each healing die at its highest): neither is a bonus to the spell's own
+  healing. The same phase 3 note.
+- Healing a spell's `healing` cannot hold (Aid, Heroes' Feast, Arcane Vigor, healing each turn):
+  ENG-53's phase 3 note.
+- Applying a heal to a character: ENG-20's `applyHealing`. Casting through a grant's uses:
+  ENG-57, which passes no slot.
+- Showing the healing: phase 2.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** No SPEC §6.7 value changes; the goldens' spells are not
+  golden values, and the goldens give no warning.
+- **Measure, never estimate.** §2 is measured; the search in §8 is a script over 5e-database; the
+  averages in §3 are worked out by hand.
+- **`packages/engine` is pure; the core names no game.** `addPath` reads and writes formula text;
+  its tests use the made-up system's paths.
+- **Everything is data.** Each SRD's Disciple of Life is two effects on its own pair; the module
+  names no feature.
+- **`compute()` is pure.** The new steps read nothing; `spellDice` is tested frozen.
+- **A number with no breakdown entry is a bug.** The healing names the four computed paths, each
+  with its breakdown; the level written beside one is the cast's slot, which the person picks.
+- **Manual overrides always win.** Tested on `healing.spell.bonusPerLevel`, to 0.
+- **Each system's rules live in its own module.** The rule is in `packages/system-5e`; the
+  editions' difference is in each SRD's own data (§4), so nothing tests an edition.
+- **Formulas never run code.** `addPath` refuses a name that is not a path, then parses with
+  ENG-07's limits.
+- **Missing is not broken.** A missing value, a formula that fails: warnings, the spell's own
+  healing, never a throw.
+- **A stored-shape change needs a migration.** Nothing stored changes.
+- **Licensing.** §8 quotes SRD 5.1 and SRD 5.2.1 (CC-BY-4.0) only; the code holds no rules text;
+  the test feat is made up.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-03, on `main` at `71b2746`:
+- `pnpm lint`: `Checked 185 files`, no errors; no file is new.
+- `pnpm typecheck`: 6 projects, all `Done`.
+- `pnpm test`: `Test Files 58 passed (58)`, `Tests 756 passed (756)`, 9.02 s (before: 58 files,
+  744 tests). This ticket's 12: 8 in `spell-dice.test.ts`, 4 in `formula.test.ts`. 5 older tests
+  of ENG-15, ENG-53 and ENG-55 changed their data (below).
+- `pnpm e2e` not run: no file in `apps/web` changed.
+- Every value of §3 item 4 is true: golden A with 2014's Disciple, Cure Wounds at slots 1, 2, 9:
+  10.5, 16, 54.5, each reading `abilities.wis.mod`, `healing.spell.bonus` and
+  `healing.spell.bonusPerLevel` alone, no warning; with no slot 10.5, as slot 1; golden A with no
+  effect at slot 2 `2d8 + @abilities.wis.mod`, 12; `bonusPerLevel` overridden to 0, 14; False Life
+  `1d4 + 4`; Heal 78 and 111; golden C 2024 with the made-up feat, SRD 5.2.1 Cure Wounds at slots
+  1, 2, 3: 14, 24, 34, and with no slot `2d8 + @abilities.cha.mod`, 11, no warning; both pairs 20;
+  Conjure Celestial `8d12` and its healing 52; the made-up cantrip `1d4`, nothing read.
+- Golden A with 2014's Disciple: `healing.spell.bonus` 2 and `healing.spell.bonusPerLevel` 1, each
+  one `effect` step (`srd-2014:feature/disciple-of-life#healing`, `#healing-per-level`), no
+  warning. Goldens A, B, C 2014, C 2024 and E have the four paths at 0 with no steps.
+- `addPath`: `1d8 + @stats.grit.mod * 3`, average 10.5; `tooLong` at 1002, as §3 item 3.
+- The tests catch a wrong rule. Each break below, made alone and undone, the `engine` (250) and
+  `system-5e` (378) tests run: temporary hit points given the bonus, 1 fails; the slot pair read
+  with no slot, 2; the bonus per level written once whatever the level, 6; a cantrip given the
+  spell pair, 1; a bonus of 0 written, 12; a missing value not warned, 1; half the bonuses kept
+  when one fails, 1; the level not read from the slot, 6; no steps for the four paths, 9; `addPath`
+  ignoring `times`, 4 of the engine's.
+
+Against §3 and §4:
+- §3 item 4 says the goldens give no warning. Golden C 2024 computed on `spell-dice.test.ts`'s 2024
+  index, which also holds golden E's pack, has its own `noBaseScore` for `san` (the same before
+  this ticket); the test checks the feat adds none to that list.
+- As §7 says, 5 older tests failed until their hand-written values had the four paths; none of
+  their expected values changed. `NO_BONUS` holds them now, which mends ENG-53's Conjure
+  Celestial; ENG-53's formula past the limits passes `NO_BONUS` instead of `{}`; ENG-55's Conjure
+  Celestial and its spell with no damage pass `NO_HEALING_BONUS`; ENG-15's paths of golden B
+  filtered by `spell.` gain `healing.spell.bonus` and `healing.spell.bonusPerLevel`, last.
+- `spell-dice.test.ts`'s `computed` takes a loaded pack, for SRD 5.1 with Disciple of Life's
+  effects.
+
+Against the row and its note: as the row. The note's two points are done: the targets are the
+four paths; the formula reads the slot as the cast's level, written beside the per-level path
+(`addPath` with `times`). Size S held.
+
+Found, not fixed:
+- Disciple of Life's effects belong in the SRD packs' mechanics; the Life domain's Blessed Healer
+  (the caster regains 2 + the level) and Supreme Healing (each healing die at its highest) have no
+  target (§8, §9). A phase 3 note in `BACKLOG.md`.
+
+Nothing for the changelog: no screen and no published file changes.

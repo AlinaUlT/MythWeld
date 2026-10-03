@@ -638,6 +638,8 @@ describe('ENG-15 spellcasting', () => {
       'spell.attackMode',
       'spell.cannotCast',
       'damage.spell.bonus',
+      'healing.spell.bonus',
+      'healing.spell.bonusPerLevel',
     ]);
   });
 

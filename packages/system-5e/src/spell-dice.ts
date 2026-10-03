@@ -25,6 +25,12 @@ import type { HEALING_KINDS } from './system';
 // (SPEC §5.4, beside ENG-16's weapon kinds): its first damage, the one the scaling grows, once,
 // with `@damage.spell.bonus` written at its end (`addPath`) when the bonus is not 0. The rules are
 // ENG-55 §8's, one in both editions.
+// ENG-60: a spell's healing of hit points adds what a feature gives it, two pairs of targets every
+// character has: `healing.spell.*` for a spell of 1st level or higher however it is cast (SRD
+// 5.1's Disciple of Life), `healing.slot.*` for a spell cast with a slot (SRD 5.2.1's). Each pair
+// is a bonus added once and one added per level of the cast, `@<path> * <level>`: a computed path
+// is one number, so the cast writes its level beside it. Each SRD's feature names its own pair, so
+// the editions' difference is data. The rules are ENG-60 §8's.
 
 /** The character levels at which a cantrip's dice grow, one step each (§8: both SRDs). */
 export const CANTRIP_LEVELS: readonly number[] = [5, 11, 17];
@@ -41,10 +47,24 @@ export function cantripUpgrades(level: number): number {
 export const DAMAGE_SPELL_BONUS_PATH = 'damage.spell.bonus';
 
 /**
- * `cantrip.upgrades`: one step, the character's level and what it gives. `damage.spell.bonus`: 0
- * until an effect changes it.
+ * What a spell's healing of hit points adds, by the casts each pair is for: `spell`, a spell of
+ * 1st level or higher however it is cast; `slot`, a spell cast with a spell slot. `bonus` is added
+ * once, `perLevel` once per level the spell is cast at. In the order they are written.
+ */
+export const HEALING_BONUS_PATHS = {
+  spell: { bonus: 'healing.spell.bonus', perLevel: 'healing.spell.bonusPerLevel' },
+  slot: { bonus: 'healing.slot.bonus', perLevel: 'healing.slot.bonusPerLevel' },
+} as const;
+
+/**
+ * `cantrip.upgrades`: one step, the character's level and what it gives. `damage.spell.bonus` and
+ * the healing bonuses: 0 until an effect changes them.
  */
 export function spellDiceSteps(): Record<string, DerivedStep> {
+  const healing = Object.values(HEALING_BONUS_PATHS).flatMap(({ bonus, perLevel }) => [
+    [bonus, zeroStep] as const,
+    [perLevel, zeroStep] as const,
+  ]);
   return {
     [CANTRIP_UPGRADES_PATH]: (read) => {
       const level = read(LEVEL_PATH);
@@ -52,6 +72,7 @@ export function spellDiceSteps(): Record<string, DerivedStep> {
       return { value, steps: [{ kind: 'path', path: LEVEL_PATH, value: level, change: value }] };
     },
     [DAMAGE_SPELL_BONUS_PATH]: zeroStep,
+    ...Object.fromEntries(healing),
   };
 }
 
@@ -73,7 +94,10 @@ export interface SpellHealing {
  */
 export const CASTING_MOD_PATH = 'mod';
 
-/** How a spell is cast: the slot's level (its own level when not given), the stat it is cast with. */
+/**
+ * How a spell is cast: the slot's level, none when it is cast without a slot (a cantrip, an item,
+ * a grant's uses), at its own level; the stat it is cast with.
+ */
 export interface SpellCast {
   slot?: number;
   stat?: string;
@@ -85,15 +109,17 @@ export interface SpellCast {
  * damage adds no bonus. `scalingFormula`: a formula, the scaling's, or the two joined do not parse,
  * so that formula is used as it is. `scalingWithoutRoll`: the spell has no damage and no healing
  * for its scaling to join. `damageBonusFormula`: the first damage with `@damage.spell.bonus` added
- * does not parse, so it is used without it. `noCastingStat`: a formula reads `@mod` and the cast
- * names no stat, so `@mod` stays (a roll reads it as 0). `castingStatFormula`: a formula with the
- * stat's modifier written in does not parse, so it keeps `@mod`.
+ * does not parse, so it is used without it. `healingBonusFormula`: the healing with its bonuses
+ * added does not parse, so it is used without them. `noCastingStat`: a formula reads `@mod` and
+ * the cast names no stat, so `@mod` stays (a roll reads it as 0). `castingStatFormula`: a formula
+ * with the stat's modifier written in does not parse, so it keeps `@mod`.
  */
 export type SpellDiceWarning = { message: string } & (
   | { code: 'missingPath'; path: string }
   | { code: 'scalingFormula'; spell: string; error: FormulaError }
   | { code: 'scalingWithoutRoll'; spell: string }
   | { code: 'damageBonusFormula'; spell: string; error: FormulaError }
+  | { code: 'healingBonusFormula'; spell: string; error: FormulaError }
   | { code: 'noCastingStat'; spell: string }
   | { code: 'castingStatFormula'; spell: string; stat: string; error: FormulaError }
 );
@@ -108,7 +134,7 @@ export interface SpellDice {
   times: number;
   /** Each damage in order, the first with the scaling joined and `damage.spell.bonus` added. */
   damage: SpellDamage[];
-  /** Its healing, with the scaling joined; none when the spell heals nothing. */
+  /** Its healing, with the scaling joined and its bonuses added; none when it heals nothing. */
   healing?: SpellHealing;
   warnings: SpellDiceWarning[];
 }
@@ -181,6 +207,7 @@ export function spellDice(
   }
 
   addDamageBonus(spell, damage[0], values, warnings);
+  addHealingBonus(spell, healing, values, cast.slot, warnings);
 
   // `@mod`: the modifier of the stat the spell is cast with, in every formula.
   const { stat } = cast;
@@ -247,6 +274,57 @@ function addDamageBonus(
     error: added.error,
     message: `${added.error.message} ("${spell.id}": "${first.formula}" with @${DAMAGE_SPELL_BONUS_PATH}; "${first.formula}" is used).`,
   });
+}
+
+/**
+ * The healing bonuses that apply to a cast added to a spell's healing of hit points, in place, each
+ * whose value is a number that is not 0 (ENG-60 §4); none of them when one fails. A cantrip is
+ * never cast with a slot; a slot below the spell's level casts it at its own.
+ */
+function addHealingBonus(
+  spell: Pick<SpellDef, 'id' | 'level'>,
+  healing: SpellHealing | undefined,
+  values: Readonly<Record<string, FormulaValue>>,
+  slot: number | undefined,
+  warnings: SpellDiceWarning[],
+): void {
+  if (healing === undefined || healing.kind !== 'hp') return;
+  const slotted = spell.level >= 1 && slot !== undefined && Number.isFinite(slot);
+  const level = slotted ? Math.max(Math.floor(slot), spell.level) : spell.level;
+  const pairs = [
+    ...(level >= 1 ? [HEALING_BONUS_PATHS.spell] : []),
+    ...(slotted ? [HEALING_BONUS_PATHS.slot] : []),
+  ];
+  let formula = healing.formula;
+  for (const { bonus, perLevel } of pairs) {
+    for (const [path, times] of [
+      [bonus, 1],
+      [perLevel, level],
+    ] as const) {
+      const value = values[path];
+      if (typeof value !== 'number') {
+        warnings.push({
+          code: 'missingPath',
+          path,
+          message: `Missing: @${path}; "${spell.id}" adds nothing for it to its healing.`,
+        });
+        continue;
+      }
+      if (value === 0) continue;
+      const added = addPath(formula, path, times);
+      if (!added.ok) {
+        warnings.push({
+          code: 'healingBonusFormula',
+          spell: spell.id,
+          error: added.error,
+          message: `${added.error.message} ("${spell.id}": "${formula}" with @${path}; "${healing.formula}" is used).`,
+        });
+        return;
+      }
+      formula = added.formula.text;
+    }
+  }
+  healing.formula = formula;
 }
 
 /** Whether a roll formula names `@mod`; a formula that does not parse names nothing. */

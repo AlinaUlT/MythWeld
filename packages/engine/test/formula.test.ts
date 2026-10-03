@@ -790,3 +790,54 @@ describe('ENG-55 a path added to a roll formula', () => {
     });
   });
 });
+
+describe('ENG-60 a path added times a number', () => {
+  /** The formula `addPath` writes with `times`, or its error's code. */
+  function times(base: string, count: number, path = 'stats.grit.mod'): string {
+    const result = addPath(base, path, count);
+    return result.ok ? result.formula.text : `error ${result.error.code}`;
+  }
+
+  it('writes the path times the number, one term; once with no number, or 1', () => {
+    expect(times('1d8', 3)).toBe('1d8 + @stats.grit.mod * 3');
+    expect(times('1к6', 9)).toBe('1к6 + @stats.grit.mod * 9');
+    expect(times('1d8', 1)).toBe('1d8 + @stats.grit.mod');
+    expect(addPath('1d8', 'stats.grit.mod')).toEqual(addPath('1d8', 'stats.grit.mod', 1));
+    expect(times('@gear.worn ? 1d6 : 1d8', 2)).toBe(
+      '(@gear.worn ? 1d6 : 1d8) + @stats.grit.mod * 2',
+    );
+  });
+
+  it('counts a whole number, rounded down; 0, below 0 or not finite gives the formula as it is', () => {
+    expect(times('1d8', 2.9)).toBe('1d8 + @stats.grit.mod * 2');
+    expect(times('1d8', 1.5)).toBe('1d8 + @stats.grit.mod');
+    for (const none of [0, 0.5, -2, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(times('1d8', none)).toBe('1d8');
+    }
+  });
+
+  it('gives the parsed formula, whose average adds the value times the number', () => {
+    const result = addPath('1d8', 'stats.grit.mod', 3);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.formula.paths).toEqual(['stats.grit.mod']);
+    // 4.5 + 2 × 3; with the brackets, 3.5 + 2 × 2 with gear worn.
+    expect(averageOf(result.formula.text, read).value).toBe(10.5);
+    expect(averageOf(times('@gear.worn ? 1d6 : 1d8', 2), read).value).toBe(7.5);
+  });
+
+  it('gives errors, never a throw: no parse, a name that is no path whatever the number, too long', () => {
+    expect(addPath('1d', 'stats.grit.mod', 2)).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'unexpected', found: 'd', at: 1 }),
+    });
+    expect(times('1d8', 2, 'stats.Grit.mod')).toBe('error badPath');
+    expect(times('1d8', 0, 'stats) + (1d100')).toBe('error badPath');
+    // 3 + 244 × 4 = 979 characters, and " + @stats.grit.mod * 12" 23 more: 1002.
+    const long = `1d6${' + 1'.repeat(244)}`;
+    expect(long).toHaveLength(979);
+    expect(addPath(long, 'stats.grit.mod', 12)).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'tooLong', length: 1002, limit: 1000 }),
+    });
+  });
+});

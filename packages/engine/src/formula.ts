@@ -668,11 +668,12 @@ export function addDice(base: string, added: string, times: number): ParseResult
 /**
  * ENG-55: the roll formula `base` with the value of `path` added once at its end, `base + @path`;
  * `base` goes in brackets when its top binds less than `+` does. A path binds tighter than `+`, so
- * it needs none (`addDice` brackets every formula it adds). Never throws: when `base` does not
- * parse, when `path` is not a path (`badPath`, so a name never becomes more formula), or when the
- * formula made is past the limits, the result is that error.
+ * it needs none (`addDice` brackets every formula it adds). ENG-60: added `times` times, one term,
+ * `base + @path * 3`; `times` counts as `addDice`'s does, and 0 gives `base` as it is. Never
+ * throws: when `base` does not parse, when `path` is not a path (`badPath`, so a name never
+ * becomes more formula), or when the formula made is past the limits, the result is that error.
  */
-export function addPath(base: string, path: string): ParseResult<ParsedRoll> {
+export function addPath(base: string, path: string, times = 1): ParseResult<ParsedRoll> {
   const own = parseRoll(base);
   if (!own.ok) return own;
   const left = beforePlus(base, own.formula.root);
@@ -681,7 +682,9 @@ export function addPath(base: string, path: string): ParseResult<ParsedRoll> {
     const message = `"@${path}" added at ${at} is not a path: camelCase steps joined by dots.`;
     return { ok: false, error: { code: 'badPath', path, at, message } };
   }
-  return parseRoll(`${left} + @${path}`);
+  const count = Number.isFinite(times) ? Math.max(Math.floor(times), 0) : 0;
+  if (count === 0) return own;
+  return parseRoll(`${left} + @${path}${count === 1 ? '' : ` * ${count}`}`);
 }
 
 /**

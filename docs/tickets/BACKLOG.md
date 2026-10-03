@@ -106,7 +106,7 @@ split off an old row got a new id.
 | ENG-51 | A spell a grant gives with its own stat has its casting numbers | S | ✅ 2026-10-02 |
 | ENG-53 | A spell's healing is a roll formula of its own | S | ✅ 2026-10-03 |
 | ENG-55 | A spell's damage adds `damage.spell.bonus` | S | ✅ 2026-10-03 |
-| ENG-60 | A spell's healing adds what a feature gives it | S | 🔲 |
+| ENG-60 | A spell's healing adds what a feature gives it | S | ✅ 2026-10-03 |
 | ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | M | ✅ 2026-10-03 |
 | ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | ✅ 2026-10-02 |
 | ENG-46 | Armor worn without training has its edition's penalties | S | ✅ 2026-10-03 |
@@ -136,14 +136,6 @@ split off an old row got a new id.
   5.2.1 (Rules Glossary, Dead) "If the creature died with any Exhaustion levels, it returns with 1
   fewer level"; `revive` (`hit-points.ts`) lowers none. No sentence of SRD 5.1's rules, spells or
   conditions ties exhaustion to a return to life (ENG-58 §11).
-- **ENG-60** — found by ENG-53 (ENG-53 §8, §9): golden A's Disciple of Life adds to a spell's
-  healing. SRD 5.1: "additional hit points equal to 2 + the spell's level", for a spell of 1st level
-  or higher; SRD 5.2.1: "2 plus the spell slot's level", for a spell cast with a slot. SPEC §5.4
-  has no target for healing, and no formula reads the slot a spell is cast with (`spellDice`'s
-  `cast.slot`, `spell-dice.ts`). The row picks the target and how its formula reads the slot. No
-  SPEC §6.7 value states golden A's healing. ENG-55 writes `damage.spell.bonus` into a spell's
-  first damage with the core's `addPath` (`formula.ts`), only when it is not 0; a healing bonus
-  can be written in the same way.
 - **ENG-57** — re-cut from ENG-20 (ENG-20 §4). ADR 014 item 7: a granted spell has its own uses.
   Found by ENG-32: a `spell` grant's `uses` have no key of their own, and the core's
   `state.resources` takes only keys, so the spent count is kept by the grant's part id in a new
@@ -286,6 +278,12 @@ split off an old row got a new id.
   class's cantrips (2024 Potent Spellcasting); and "one damage roll of that spell" is one ray of a
   spell that rolls several (Scorching Ray). The mechanics of those features add a narrower target,
   or a condition an effect's `when` can test.
+- **Phase 3** — found by ENG-60: Disciple of Life's mechanics are two effects in each SRD (ENG-60
+  §3): SRD 5.1's `healing.spell.bonus` 2 and `healing.spell.bonusPerLevel` 1, SRD 5.2.1's the same
+  on `healing.slot.*`. The Life domain's other healing features have no target: Blessed Healer
+  (both SRDs, level 6) heals the caster 2 + the level when a spell heals another creature, and
+  Supreme Healing (both, level 17) uses each healing die's highest number. The mechanics that
+  reach those levels add what they need.
 - **Phase 3** — found by ENG-13: a half proficiency that rounds up (2014's Remarkable Athlete:
   "half your proficiency bonus (round up)") and half a proficiency on every ability check (2014's
   Jack of All Trades). `skills.<key>.prof` 0.5 rounds down (`checkSteps`), and an ability check

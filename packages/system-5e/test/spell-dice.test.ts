@@ -51,10 +51,16 @@ const index2024 = loadContentIndex(FIFTH_EDITION_SYSTEM, [
   opened(openFifthEditionPack(hbLocal)),
 ]);
 
-/** A character opened as a file would be, computed on its edition's pack; its breakdowns add up. */
-function computed(character: CharacterInput): Computed<FifthEditionEntity> {
+/**
+ * A character opened as a file would be, computed on `loaded`, else its edition's pack; its
+ * breakdowns add up.
+ */
+function computed(
+  character: CharacterInput,
+  loaded?: typeof index2014,
+): Computed<FifthEditionEntity> {
   const one = opened(openFifthEditionCharacter(character));
-  const { index } = one.ruleset === '2014' ? index2014 : index2024;
+  const { index } = loaded ?? (one.ruleset === '2014' ? index2014 : index2024);
   const result = compute(one, index, fifthEditionModule);
   for (const [path, steps] of Object.entries(result.breakdown)) {
     const sum = steps.reduce((total, step) => total + step.change, 0);
@@ -88,11 +94,20 @@ const fireball: SpellInput = {
   scaling: { kind: 'slot', formula: '1d6' },
 };
 
+/** The four healing bonuses at 0, as every computed character has them (ENG-60). */
+const NO_HEALING_BONUS = {
+  'healing.spell.bonus': 0,
+  'healing.spell.bonusPerLevel': 0,
+  'healing.slot.bonus': 0,
+  'healing.slot.bonusPerLevel': 0,
+} as const;
+
 /**
- * A spell damage bonus of 0, as every computed character has (ENG-55): the values written by hand
- * below hold it, so a test checks only the warnings it names.
+ * A spell damage bonus of 0, as every computed character has (ENG-55), and the healing bonuses
+ * (ENG-60): the values written by hand below hold them, so a test checks only the warnings it
+ * names.
  */
-const NO_BONUS = { 'damage.spell.bonus': 0 } as const;
+const NO_BONUS = { 'damage.spell.bonus': 0, ...NO_HEALING_BONUS } as const;
 
 /** The formula of each damage. */
 function formulas(dice: { damage: readonly { formula: string }[] }): string[] {
@@ -491,7 +506,7 @@ describe("ENG-53 a spell's healing", () => {
       level: 1,
       healing: { formula: `@mod${' + @mod'.repeat(100)}`, kind: 'hp' },
     };
-    const tooLong = spellDice(long, {}, { stat: 'wis' });
+    const tooLong = spellDice(long, NO_BONUS, { stat: 'wis' });
     expect(tooLong.healing?.formula).toBe(long.healing?.formula);
     expect(codes(tooLong)).toEqual([
       {
@@ -715,7 +730,7 @@ describe("ENG-55 a spell's damage bonus", () => {
       healing: { formula: '4d12 + @mod', kind: 'hp' },
       scaling: { kind: 'slot', formula: '1d12' },
     };
-    const one = { 'damage.spell.bonus': 1 };
+    const one = { ...NO_HEALING_BONUS, 'damage.spell.bonus': 1 };
     const conjured = spellDice(conjure, one, { slot: 9, stat: 'cha' });
     expect(conjured).toEqual({
       times: 2,
@@ -737,7 +752,7 @@ describe("ENG-55 a spell's damage bonus", () => {
     // A spell with no damage reads no bonus.
     const cure = entityIn(index2014, 'srd-2014:spell/cure-wounds');
     if (cure.type !== 'spell') throw new Error('Cure Wounds is not a spell');
-    expect(spellDice(cure, {}, { stat: 'wis' }).warnings).toEqual([]);
+    expect(spellDice(cure, NO_HEALING_BONUS, { stat: 'wis' }).warnings).toEqual([]);
 
     const one = { 'damage.spell.bonus': 1 };
     const broken: SpellInput = {
@@ -782,5 +797,336 @@ describe("ENG-55 a spell's damage bonus", () => {
     expect(spellDice(frozenSpell, values)).toEqual(first);
     expect(formulas(first)).toEqual(['2d10 + @damage.spell.bonus']);
     expect(frozenSpell.damage).toEqual([{ formula: '1d10', type: 'fire' }]);
+  });
+});
+
+// ENG-60: a spell's healing adds its bonuses. The rules are ENG-60 §8's. Golden A: WIS 16 → +3;
+// golden C 2024: CHA 14 → +2. SRD 5.1's Disciple of Life is written here as its two effects on the
+// fixture's feature (the import's mechanics are phase 3's); SRD 5.2.1's two are on a made-up feat.
+// The spells' numbers are 5e-database's (`e6edf9a`) and dnd5e's (`7bfb3f1`), with no text. Each
+// average below was worked out by hand, never copied from a run.
+
+const DISCIPLE_2014 = 'srd-2014:feature/disciple-of-life';
+
+/** SRD 5.1 with its Disciple of Life's effects: 2 + the level, for a spell of 1st level or higher. */
+const index2014Disciple = loadContentIndex(FIFTH_EDITION_SYSTEM, [
+  opened(
+    openFifthEditionPack({
+      ...srd2014,
+      entities: srd2014.entities.map((entity) =>
+        entity.id === DISCIPLE_2014
+          ? {
+              ...entity,
+              effects: [
+                { id: 'healing', target: 'healing.spell.bonus', op: 'add' as const, value: 2 },
+                {
+                  id: 'healing-per-level',
+                  target: 'healing.spell.bonusPerLevel',
+                  op: 'add' as const,
+                  value: 1,
+                },
+              ],
+            }
+          : entity,
+      ),
+    }),
+  ),
+]);
+
+/** A made-up feat with SRD 5.2.1's Disciple of Life's numbers: 2 + the slot's level, with a slot. */
+const slotHealer: EntityInput = {
+  id: 'character:feat/slot-healer',
+  type: 'feat',
+  ruleset: 'any',
+  name: { en: 'Slot Healer' },
+  source: { pack: 'character' },
+  effects: [
+    { id: 'healing', target: 'healing.slot.bonus', op: 'add', value: 2 },
+    { id: 'healing-per-level', target: 'healing.slot.bonusPerLevel', op: 'add', value: 1 },
+  ],
+};
+
+/** A golden with the made-up feat beside its own. */
+function withSlotHealer(golden: CharacterInput): CharacterInput {
+  return {
+    ...golden,
+    localEntities: [slotHealer],
+    systemData: {
+      ...golden.systemData,
+      feats: [...(golden.systemData?.feats ?? []), { id: slotHealer.id }],
+    },
+  };
+}
+
+/** The four healing bonus paths, in the order they are written. */
+const HEALING_PATHS = Object.keys(NO_HEALING_BONUS);
+
+/** Each pair of the healing bonuses at 2 and 1, the other at 0. */
+const SPELL_PAIR = {
+  ...NO_HEALING_BONUS,
+  'healing.spell.bonus': 2,
+  'healing.spell.bonusPerLevel': 1,
+};
+const SLOT_PAIR = { ...NO_HEALING_BONUS, 'healing.slot.bonus': 2, 'healing.slot.bonusPerLevel': 1 };
+const BOTH_PAIRS = { ...SPELL_PAIR, 'healing.slot.bonus': 2, 'healing.slot.bonusPerLevel': 1 };
+
+describe("ENG-60 a spell's healing bonus", () => {
+  const cure = entityIn(index2014, 'srd-2014:spell/cure-wounds');
+  if (cure.type !== 'spell') throw new Error('Cure Wounds is not a spell');
+  const a = computed(goldenA, index2014Disciple);
+  const c = computed(withSlotHealer(goldenC2024));
+
+  it('gives every character the four paths at 0, which effects change', () => {
+    for (const golden of [goldenA, goldenB, goldenC2014, goldenC2024, goldenE]) {
+      const result = computed(golden);
+      for (const path of HEALING_PATHS) {
+        expect(result.values[path], path).toBe(0);
+        expect(result.breakdown[path], path).toEqual([]);
+      }
+    }
+    expect(HEALING_PATHS.map((path) => a.values[path])).toEqual([2, 1, 0, 0]);
+    expect(a.breakdown['healing.spell.bonus']).toEqual([
+      expect.objectContaining({
+        kind: 'effect',
+        part: `${DISCIPLE_2014}#healing`,
+        op: 'add',
+        value: 2,
+        change: 2,
+      }),
+    ]);
+    expect(a.breakdown['healing.spell.bonusPerLevel']).toEqual([
+      expect.objectContaining({ kind: 'effect', part: `${DISCIPLE_2014}#healing-per-level` }),
+    ]);
+    expect(a.warnings).toEqual([]);
+    expect(HEALING_PATHS.map((path) => c.values[path])).toEqual([0, 0, 2, 1]);
+    // The feat adds no warning to golden C 2024's own (this index's `san` has no score on it).
+    expect(c.warnings).toEqual(computed(goldenC2024).warnings);
+  });
+
+  it("adds SRD 5.1's Disciple of Life to Cure Wounds on golden A: 2 + the level cast at", () => {
+    const bySlot = [1, 2, 9].map(
+      (slot) => spellDice(cure, a.values, { slot, stat: 'wis' }).healing?.formula,
+    );
+    expect(bySlot).toEqual([
+      '1d8 + @abilities.wis.mod + @healing.spell.bonus + @healing.spell.bonusPerLevel',
+      '2d8 + @abilities.wis.mod + @healing.spell.bonus + @healing.spell.bonusPerLevel * 2',
+      '9d8 + @abilities.wis.mod + @healing.spell.bonus + @healing.spell.bonusPerLevel * 9',
+    ]);
+    const reads = ['abilities.wis.mod', 'healing.spell.bonus', 'healing.spell.bonusPerLevel'];
+    // 4.5 + 3 + 2 + 1, 9 + 3 + 2 + 2, 40.5 + 3 + 2 + 9.
+    expect(bySlot.map((formula) => averageOn(a, formula))).toEqual([
+      { value: 10.5, reads, warnings: [] },
+      { value: 16, reads, warnings: [] },
+      { value: 54.5, reads, warnings: [] },
+    ]);
+    // Cast with no slot, at its own level: a spell of 1st level still.
+    const own = spellDice(cure, a.values, { stat: 'wis' });
+    expect(own).toEqual({
+      times: 0,
+      damage: [],
+      healing: { formula: bySlot[0], kind: 'hp' },
+      warnings: [],
+    });
+    // Without the feature's effects: 9 + 3.
+    const plain = spellDice(cure, computed(goldenA).values, { slot: 2, stat: 'wis' });
+    expect(plain.healing?.formula).toBe('2d8 + @abilities.wis.mod');
+    expect(averageOn(a, plain.healing?.formula).value).toBe(12);
+  });
+
+  it('lets an override win: the bonus per level at 0 writes nothing', () => {
+    const none = computed(
+      { ...goldenA, overrides: [{ path: 'healing.spell.bonusPerLevel', value: 0 }] },
+      index2014Disciple,
+    );
+    expect(none.values['healing.spell.bonusPerLevel']).toBe(0);
+    expect(none.breakdown['healing.spell.bonusPerLevel']?.at(-1)).toMatchObject({
+      kind: 'override',
+    });
+    const healing = spellDice(cure, none.values, { slot: 2, stat: 'wis' }).healing?.formula;
+    expect(healing).toBe('2d8 + @abilities.wis.mod + @healing.spell.bonus');
+    // 9 + 3 + 2.
+    expect(averageOn(none, healing).value).toBe(14);
+  });
+
+  it("adds SRD 5.2.1's only with a slot: Cure Wounds on golden C 2024, 2 + the slot's level", () => {
+    const bySlot = [1, 2, 3].map(
+      (slot) => spellDice(cureWounds2024, c.values, { slot, stat: 'cha' }).healing?.formula,
+    );
+    expect(bySlot).toEqual([
+      '2d8 + @abilities.cha.mod + @healing.slot.bonus + @healing.slot.bonusPerLevel',
+      '4d8 + @abilities.cha.mod + @healing.slot.bonus + @healing.slot.bonusPerLevel * 2',
+      '6d8 + @abilities.cha.mod + @healing.slot.bonus + @healing.slot.bonusPerLevel * 3',
+    ]);
+    // 9 + 2 + 2 + 1, 18 + 2 + 2 + 2, 27 + 2 + 2 + 3.
+    expect(bySlot.map((formula) => averageOn(c, formula).value)).toEqual([14, 24, 34]);
+    // Cast with no slot: 9 + 2, no bonus.
+    const free = spellDice(cureWounds2024, c.values, { stat: 'cha' });
+    expect(free).toEqual({
+      times: 0,
+      damage: [],
+      healing: { formula: '2d8 + @abilities.cha.mod', kind: 'hp' },
+      warnings: [],
+    });
+    expect(averageOn(c, free.healing?.formula).value).toBe(11);
+  });
+
+  it('adds both pairs to a cast with a slot, in the order of the paths', () => {
+    const values = { ...BOTH_PAIRS, 'abilities.wis.mod': 3 };
+    const healing = spellDice(cure, values, { slot: 2, stat: 'wis' }).healing?.formula;
+    expect(healing).toBe(
+      '2d8 + @abilities.wis.mod + @healing.spell.bonus + @healing.spell.bonusPerLevel * 2' +
+        ' + @healing.slot.bonus + @healing.slot.bonusPerLevel * 2',
+    );
+    // 9 + 3 + 2 + 2 + 2 + 2.
+    expect(averageWith(values, healing)).toBe(20);
+  });
+
+  it('adds nothing to temporary hit points, a cantrip, or a damage; Heal adds 2 + 6 and 2 + 9', () => {
+    const falseLife: SpellInput = {
+      id: 'srd-2014:spell/false-life',
+      level: 1,
+      healing: { formula: '1d4 + 4', kind: 'tempHp' },
+      scaling: { kind: 'slot', formula: '5' },
+    };
+    expect(spellDice(falseLife, a.values, { slot: 1 }).healing?.formula).toBe('1d4 + 4');
+    // Nothing is read: no value, and no warning.
+    expect(spellDice(falseLife, {}, { slot: 1 }).warnings).toEqual([]);
+
+    const mend: SpellInput = {
+      id: 'character:spell/mend',
+      level: 0,
+      healing: { formula: '1d4', kind: 'hp' },
+    };
+    expect(spellDice(mend, BOTH_PAIRS, { slot: 3 })).toEqual({
+      times: 0,
+      damage: [],
+      healing: { formula: '1d4', kind: 'hp' },
+      warnings: [],
+    });
+    expect(spellDice(mend, {}).warnings).toEqual([]);
+
+    const weapon: SpellInput = {
+      id: 'srd-2014:spell/spiritual-weapon',
+      level: 2,
+      damage: [{ formula: '1d8 + @mod', type: 'force' }],
+    };
+    expect(formulas(spellDice(weapon, a.values, { slot: 2, stat: 'wis' }))).toEqual([
+      '1d8 + @abilities.wis.mod',
+    ]);
+
+    const conjure: SpellInput = {
+      id: 'srd-2024:spell/conjure-celestial',
+      level: 7,
+      damage: [{ formula: '6d12', type: 'radiant' }],
+      healing: { formula: '4d12 + @mod', kind: 'hp' },
+      scaling: { kind: 'slot', formula: '1d12' },
+    };
+    const values = { ...NO_BONUS, ...SLOT_PAIR, 'abilities.cha.mod': 2 };
+    const conjured = spellDice(conjure, values, { slot: 9, stat: 'cha' });
+    expect(conjured).toEqual({
+      times: 2,
+      damage: [{ formula: '8d12', type: 'radiant' }],
+      healing: {
+        formula:
+          '6d12 + @abilities.cha.mod + @healing.slot.bonus + @healing.slot.bonusPerLevel * 9',
+        kind: 'hp',
+      },
+      warnings: [],
+    });
+    // 39 + 2 + 2 + 9.
+    expect(averageWith(values, conjured.healing?.formula)).toBe(52);
+
+    const heal: SpellInput = {
+      id: 'srd-2014:spell/heal',
+      level: 6,
+      healing: { formula: '70', kind: 'hp' },
+      scaling: { kind: 'slot', formula: '10' },
+    };
+    const heals = [6, 9].map((slot) => spellDice(heal, SPELL_PAIR, { slot }).healing?.formula);
+    expect(heals).toEqual([
+      '70 + @healing.spell.bonus + @healing.spell.bonusPerLevel * 6',
+      '70 + (10) + (10) + (10) + @healing.spell.bonus + @healing.spell.bonusPerLevel * 9',
+    ]);
+    // 70 + 2 + 6; 100 + 2 + 9.
+    expect(heals.map((formula) => averageWith(SPELL_PAIR, formula))).toEqual([78, 111]);
+  });
+
+  it('warns, never throws: no value, a formula that fails, one past the limits', () => {
+    const missing = spellDice(cure, {}, { slot: 1, stat: 'wis' });
+    expect(missing.healing?.formula).toBe('1d8 + @abilities.wis.mod');
+    expect(codes(missing)).toEqual(HEALING_PATHS.map((path) => ({ code: 'missingPath', path })));
+    // With no slot, only the pair for a spell of 1st level or higher is read.
+    expect(codes(spellDice(cure, {}, { stat: 'wis' }))).toEqual([
+      { code: 'missingPath', path: 'healing.spell.bonus' },
+      { code: 'missingPath', path: 'healing.spell.bonusPerLevel' },
+    ]);
+    const text = { ...NO_HEALING_BONUS, 'healing.spell.bonus': 'two' };
+    expect(codes(spellDice(cure, text, { stat: 'wis' }))).toEqual([
+      { code: 'missingPath', path: 'healing.spell.bonus' },
+    ]);
+
+    const broken: SpellInput = {
+      id: 'character:spell/broken',
+      level: 1,
+      healing: { formula: '1d', kind: 'hp' },
+    };
+    const result = spellDice(broken, SPELL_PAIR);
+    expect(result.healing).toEqual({ formula: '1d', kind: 'hp' });
+    expect(codes(result)).toEqual([
+      {
+        code: 'healingBonusFormula',
+        spell: 'character:spell/broken',
+        error: expect.objectContaining({ code: 'unexpected', found: 'd', at: 1 }),
+      },
+    ]);
+
+    // 3 + 244 × 4 = 979 characters, and " + @healing.spell.bonus" 23 more: 1002.
+    const long: SpellInput = {
+      id: 'character:spell/long',
+      level: 1,
+      healing: { formula: `1d6${' + 1'.repeat(244)}`, kind: 'hp' },
+    };
+    expect(long.healing?.formula).toHaveLength(979);
+    const two = { ...NO_HEALING_BONUS, 'healing.spell.bonus': 2 };
+    const tooLong = spellDice(long, two);
+    expect(tooLong.healing?.formula).toBe(long.healing?.formula);
+    expect(codes(tooLong)).toEqual([
+      {
+        code: 'healingBonusFormula',
+        spell: 'character:spell/long',
+        error: expect.objectContaining({ code: 'tooLong', length: 1002 }),
+      },
+    ]);
+    // 975 characters: the bonus fits (998), the bonus per level does not (998 + 35 = 1033), so
+    // the healing has neither.
+    const near: SpellInput = {
+      ...long,
+      healing: { formula: `1d6${' + 1'.repeat(243)}`, kind: 'hp' },
+    };
+    expect(near.healing?.formula).toHaveLength(975);
+    const half = spellDice(near, SPELL_PAIR, { slot: 2 });
+    expect(half.healing?.formula).toBe(near.healing?.formula);
+    expect(codes(half)).toEqual([
+      {
+        code: 'healingBonusFormula',
+        spell: 'character:spell/long',
+        error: expect.objectContaining({ code: 'tooLong', length: 1033 }),
+      },
+    ]);
+  });
+
+  it('is pure: frozen inputs, and two runs give equal results', () => {
+    const healing = { formula: '2d8 + @mod', kind: 'hp' as const };
+    const scaling = { kind: 'slot' as const, formula: '2d8' };
+    const frozenSpell: SpellInput = { ...cureWounds2024, healing, scaling };
+    for (const part of [frozenSpell, healing, scaling]) Object.freeze(part);
+    const values = Object.freeze({ ...SLOT_PAIR, 'abilities.cha.mod': 2 });
+    const cast = Object.freeze({ slot: 2, stat: 'cha' });
+    const first = spellDice(frozenSpell, values, cast);
+    expect(spellDice(frozenSpell, values, cast)).toEqual(first);
+    expect(first.healing?.formula).toBe(
+      '4d8 + @abilities.cha.mod + @healing.slot.bonus + @healing.slot.bonusPerLevel * 2',
+    );
+    expect(frozenSpell.healing).toEqual({ formula: '2d8 + @mod', kind: 'hp' });
   });
 });
