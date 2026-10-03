@@ -31,6 +31,9 @@ export const DEATH_FAILURE_PATH = [...STATE, 'deathSaves', 'failure'];
 /** The spell the character concentrates on. */
 export const CONCENTRATION_PATH = [...STATE, 'concentration'];
 
+/** The inspiration the character holds. */
+export const INSPIRATION_PATH = [...STATE, 'inspiration'];
+
 /** The pact magic slots spent. */
 export const PACT_SPENT_PATH = [...STATE, 'pactSlotsSpent'];
 

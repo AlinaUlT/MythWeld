@@ -12606,3 +12606,61 @@ Found, not fixed:
   ENG-16 and this ticket read. A phase 3 note in `BACKLOG.md`.
 
 Nothing for the changelog: no screen shows armor training yet.
+
+---
+
+### ENG-59 Inspiration is gained or spent up to its maximum · XS
+
+**Hat:** Inspiration is gained or spent up to its maximum
+**Where:** `packages/system-5e/src/inspiration.ts` — new: `gainInspiration`, `spendInspiration`.
+`actions.ts` gains `INSPIRATION_PATH`; `index.ts` exports the file.
+**Depends on:** ENG-20 (`settled`, the shared action paths), ENG-33 (`state.inspiration`,
+`houseRules.inspirationMax`), ENG-19 (`rulesOf(...).inspiration`)
+**Screen:** No
+
+**What it should look like when done:**
+1. `gainInspiration(character, stamp)` adds 1 to `systemData.state.inspiration`, as one log entry:
+   action `gainInspiration`, subject `inspiration`, one change on `systemData.state.inspiration`.
+2. The most it reaches is `houseRules.inspirationMax`, not the SRDs' 1: with the default house
+   rules (3, ADR 009 item 5) three gains from 0 give 1, 2, 3. At the maximum a gain is refused as
+   `unchanged`: the inspiration gained is lost. Both SRDs say so at their maximum of 1, quoted in
+   ENG-19 §8 (SRD 5.1 "you can't stockpile multiple inspirations"; SRD 5.2.1 "If you gain Heroic
+   Inspiration but already have it, it's lost"). The goldens hold at most 1: a gain from 0 gives
+   1, a second is refused.
+3. `spendInspiration(character, stamp)` takes 1 away, as one entry of action `spendInspiration`;
+   at 0 it is refused as `unchanged`. What spending does to a roll (2014 advantage, 2024 a reroll)
+   is `rulesOf(...).inspiration.use`, read by phase 2's dice; the action does not roll.
+4. Both actions change no input, and reversing the entry gives the character back.
+5. No rules fact is new: the two rules above are ENG-19 §8's, so there is no §8. Nothing stored
+   changes: `state.inspiration` and `inspirationMax` are ENG-33's. No screen. It stays XS.
+
+**Tests:** `packages/system-5e/test/inspiration.test.ts` — gain and spend on golden A (2014) and
+golden B (2024) with their maximum of 1; three gains to the default house rules' 3, then a refusal;
+a spend from 3 to 2; frozen inputs. `action-checks.ts` gains the `inspiration` tracker and the
+`INSPIRATION` path. Control numbers: the goldens' `inspirationMax` 1 (`character-parts.ts`),
+`DEFAULT_HOUSE_RULES.inspirationMax` 3 (ADR 009 item 5), counted by hand.
+
+**What came out of it:**
+
+Measured on 2026-10-03, on top of `b212371`:
+- `pnpm lint`: `Checked 182 files`, no errors (180 before, ENG-46 §11; 2 new files).
+- `pnpm typecheck`: 6 projects, all `Done`.
+- `pnpm test`: `Test Files 57 passed (57)`, `Tests 703 passed (703)`, 9.09 s (before: 56 files,
+  696 tests). This ticket's 7, all in `inspiration.test.ts`, passed on their first run.
+- `pnpm build`: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The tests bite. 4 breaks, each on its own and restored: no cap on a gain, 3 fail; the SRDs' 1
+  in place of the house rules' maximum, 1; no floor on a spend, 2; the spend logged as
+  `gainInspiration`, 2.
+
+Differences from the row and its note:
+- The note's SRD 5.2.1 rule, "lost unless given away": the loss is the `unchanged` refusal at the
+  maximum. Giving it to another character is a move between two characters, which the table link
+  owns (ADR 005 item 5); nothing in this ticket.
+- The note's Resourceful (SRD 5.2.1's human, "You gain Heroic Inspiration whenever you finish a
+  Long Rest", ENG-21 §8; golden B is that human) is not done here. It needs a data shape that says
+  a feature gives inspiration on a rest, and a change to `longRest` (`rests.ts`): a second
+  function and a rules fact, so not XS. Re-cut as a new row, **ENG-62** (S), in `BACKLOG.md`.
+
+Found, not fixed: nothing beyond ENG-62.
+
+Nothing for the changelog: no screen shows inspiration yet.

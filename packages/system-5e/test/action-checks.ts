@@ -15,7 +15,7 @@ import { srd2014, srd2024 } from './golden/index.ts';
 // ENG-20: what the tests of fifth edition's tracker actions share: the packs, a character with
 // its trackers set, the checks every entry passes, and the made-up spells and pact class. The
 // made-up entities (`character:`) carry no text of a book. ENG-21: the hit dice and the core's
-// resources a test sets.
+// resources a test sets. ENG-59: the inspiration a test sets.
 
 export type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 type EntityInput = FifthEditionCharacter['localEntities'][number];
@@ -51,6 +51,7 @@ interface Trackers {
   hitDiceSpent?: Record<string, number>;
   /** The uses spent of each resource: the core's `state.resources`. */
   resources?: Record<string, number>;
+  inspiration?: number;
 }
 
 /** A golden character with `trackers` set, and `more` of its fields replaced, opened. */
@@ -61,7 +62,7 @@ export function withTrackers(
 ): FifthEditionCharacter {
   const state = golden.systemData.state;
   const { current, temp, success, failure, concentration, slotsSpent, pactSlotsSpent } = trackers;
-  const { hitDiceSpent, resources } = trackers;
+  const { hitDiceSpent, resources, inspiration } = trackers;
   const core = more.state ?? golden.state;
   return open({
     ...golden,
@@ -81,6 +82,7 @@ export function withTrackers(
         ...(slotsSpent !== undefined && { slotsSpent }),
         ...(pactSlotsSpent !== undefined && { pactSlotsSpent }),
         ...(hitDiceSpent !== undefined && { hitDiceSpent }),
+        ...(inspiration !== undefined && { inspiration }),
       },
     },
   });
@@ -143,6 +145,7 @@ export const SUCCESS = [...STATE, 'deathSaves', 'success'];
 export const FAILURE = [...STATE, 'deathSaves', 'failure'];
 export const CONCENTRATION = [...STATE, 'concentration'];
 export const PACT = [...STATE, 'pactSlotsSpent'];
+export const INSPIRATION = [...STATE, 'inspiration'];
 export const slot = (level: number) => [...STATE, 'slotsSpent', `${level}`];
 export const hitDice = (die: number) => [...STATE, 'hitDiceSpent', `d${die}`];
 export const resource = (key: string) => ['state', 'resources', key];

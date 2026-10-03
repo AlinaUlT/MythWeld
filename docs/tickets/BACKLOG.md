@@ -116,7 +116,8 @@ split off an old row got a new id.
 | ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | ✅ 2026-10-03 |
 | ENG-57 | A spell a grant gives is cast through its own uses | S | 🔲 |
 | ENG-58 | A death save roll changes the character by fifth-edition rules | S | 🔲 |
-| ENG-59 | Inspiration is gained or spent up to its maximum | XS | 🔲 |
+| ENG-59 | Inspiration is gained or spent up to its maximum | XS | ✅ 2026-10-03 |
+| ENG-62 | A long rest gives the inspiration a feature grants | S | 🔲 |
 | ENG-21 | A rest changes the character by its edition's rules | S | ✅ 2026-10-03 |
 | ENG-61 | A long rest lowers a condition's level as its entry says | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
@@ -159,12 +160,12 @@ split off an old row got a new id.
   its own. Found by ENG-20: at 0 hit points both SRDs give the Unconscious condition, which
   `applyDamage` does not set (a pack's entry; the module names no id), so its effects do not
   apply. Bringing a dead character back (`isDead` refuses damage and healing) is this row's too.
-- **ENG-59** — re-cut from ENG-20 (ENG-20 §4). Found by ENG-33: the schema refuses inspiration
-  above `houseRules.inspirationMax`, so the action stops there. Found by ENG-19: both SRDs allow
-  1 (`rulesOf(character).inspiration.max`); SRD 5.2.1 says Heroic Inspiration gained while had is
-  lost unless given away (ENG-19 §8). Found by ENG-21: SRD 5.2.1's human, Resourceful, "You gain
-  Heroic Inspiration whenever you finish a Long Rest" (golden B is that human); no data shape
-  gives inspiration on a rest, and `longRest` (`rests.ts`) gives none.
+- **ENG-62** — re-cut from ENG-59 (ENG-59 §11). Found by ENG-21: SRD 5.2.1's human, Resourceful,
+  "You gain Heroic Inspiration whenever you finish a Long Rest" (ENG-21 §8; golden B is that
+  human). No data shape says a feature gives inspiration on a rest, and `longRest` (`rests.ts`)
+  gives none. The row picks the shape (a computed path an effect adds to keeps the stored shape;
+  a field on the feature is a stored-shape change) and adds the gain to `longRest`'s entry, up to
+  `houseRules.inspirationMax`, as ENG-59's `gainInspiration` (`inspiration.ts`) caps it.
 - **ENG-56** — found by ENG-35 (ENG-35 §8): ADR 005 item 3.4's "a bonus of one kind counts once"
   for languages. SRD 5.1 gives them from the race ("Your race indicates the languages your
   character can speak by default"; the background may add more); SRD 5.2.1 from character
