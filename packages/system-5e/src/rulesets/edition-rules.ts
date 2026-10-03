@@ -59,4 +59,11 @@ export interface EditionRules {
    * higher of 10 and half the damage); `null` when the edition sets none (ENG-20 §8).
    */
   readonly concentrationDcMax: number | null;
+  /** ENG-21: the fewest hit points a short rest starts with (ENG-21 §8). */
+  readonly shortRestMinHp: number;
+  /**
+   * ENG-21: whether a long rest ends concentration: the edition's sleep is the Unconscious
+   * condition (ENG-21 §8).
+   */
+  readonly longRestEndsConcentration: boolean;
 }

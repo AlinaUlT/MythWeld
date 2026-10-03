@@ -27,4 +27,9 @@ export const RULES_2024: EditionRules = {
   // "The DC equals 10 or half the damage taken (round down), whichever number is higher, up to a
   // maximum DC of 30" (Concentration, ENG-20 §8).
   concentrationDcMax: 30,
+  // "To start a Short Rest, you must have at least 1 Hit Point" (Short Rest, ENG-21 §8).
+  shortRestMinHp: 1,
+  // "During sleep, you have the Unconscious condition", which is Incapacitated, and "Your
+  // Concentration ends if you have the Incapacitated condition" (Long Rest, ENG-21 §8).
+  longRestEndsConcentration: true,
 };

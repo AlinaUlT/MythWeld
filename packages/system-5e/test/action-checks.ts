@@ -14,7 +14,8 @@ import { srd2014, srd2024 } from './golden/index.ts';
 
 // ENG-20: what the tests of fifth edition's tracker actions share: the packs, a character with
 // its trackers set, the checks every entry passes, and the made-up spells and pact class. The
-// made-up entities (`character:`) carry no text of a book.
+// made-up entities (`character:`) carry no text of a book. ENG-21: the hit dice and the core's
+// resources a test sets.
 
 export type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 type EntityInput = FifthEditionCharacter['localEntities'][number];
@@ -47,6 +48,9 @@ interface Trackers {
   concentration?: SpellId;
   slotsSpent?: Record<string, number>;
   pactSlotsSpent?: number;
+  hitDiceSpent?: Record<string, number>;
+  /** The uses spent of each resource: the core's `state.resources`. */
+  resources?: Record<string, number>;
 }
 
 /** A golden character with `trackers` set, and `more` of its fields replaced, opened. */
@@ -57,9 +61,12 @@ export function withTrackers(
 ): FifthEditionCharacter {
   const state = golden.systemData.state;
   const { current, temp, success, failure, concentration, slotsSpent, pactSlotsSpent } = trackers;
+  const { hitDiceSpent, resources } = trackers;
+  const core = more.state ?? golden.state;
   return open({
     ...golden,
     ...more,
+    state: { ...core, ...(resources !== undefined && { resources }) },
     systemData: {
       ...golden.systemData,
       ...more.systemData,
@@ -73,6 +80,7 @@ export function withTrackers(
         ...(concentration !== undefined && { concentration }),
         ...(slotsSpent !== undefined && { slotsSpent }),
         ...(pactSlotsSpent !== undefined && { pactSlotsSpent }),
+        ...(hitDiceSpent !== undefined && { hitDiceSpent }),
       },
     },
   });
@@ -136,6 +144,8 @@ export const FAILURE = [...STATE, 'deathSaves', 'failure'];
 export const CONCENTRATION = [...STATE, 'concentration'];
 export const PACT = [...STATE, 'pactSlotsSpent'];
 export const slot = (level: number) => [...STATE, 'slotsSpent', `${level}`];
+export const hitDice = (die: number) => [...STATE, 'hitDiceSpent', `d${die}`];
+export const resource = (key: string) => ['state', 'resources', key];
 
 const source = { pack: 'character' };
 

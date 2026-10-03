@@ -3,7 +3,6 @@ import {
   type ContentIndex,
   changeTo,
   compute,
-  type FormulaValue,
   finderOf,
   type LogStamp,
 } from '@grimoire/engine';
@@ -15,6 +14,7 @@ import {
   settled,
   slotSpentPath,
   type Unchanged,
+  whole,
 } from './actions';
 import type { FifthEditionCharacter } from './character';
 import type { FifthEditionEntity } from './entity-types';
@@ -57,11 +57,6 @@ interface Spent {
   ok: true;
   path: string[];
   spent: number;
-}
-
-/** A computed count of slots or a level: a whole number, 0 when it is not a number. */
-function whole(value: FormulaValue | undefined): number {
-  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
 }
 
 /** The text of a slot, for a log message and an entry's subject: its level, or `pact`. */

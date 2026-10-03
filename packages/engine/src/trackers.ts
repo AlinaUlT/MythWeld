@@ -1,6 +1,7 @@
-import type { L10n, LogChange, LogEntry, Roller } from '@grimoire/schema';
+import type { EntityPartId, L10n, LogChange, LogEntry, Roller } from '@grimoire/schema';
 import type { Computed } from './compute';
 import type { ContentIndex, Lookup } from './content-index';
+import { evaluateNumber, type FormulaWarning } from './formula';
 import { type CharacterCore, CONDITION_TYPE, type GatherableEntity, maxLevelOf } from './gather';
 import {
   type Applied,
@@ -19,6 +20,8 @@ import {
 // would change nothing is refused too, so the history never holds an empty entry.
 // ENG-36: `entryOf` and `changeTo` are exported, so a module's action (fifth edition's level-up)
 // builds its entry as these do.
+// ENG-21: `recoveredOn` gives the changes that give uses back on a system's recovery events, for
+// a module's rest to make part of its own entry.
 
 /**
  * Who makes a change, when, and the new entry's id. The caller gives them, as it gives a roll's
@@ -210,6 +213,63 @@ export function regainResource<C extends TrackedCharacter<E>, E extends Gatherab
     label: resourceLabel(computed, key),
     changes: [changeTo(character, path, after)],
   });
+}
+
+/** A recovery amount's formula met something: it gave back what its number says (ENG-21). */
+export interface RecoveryWarning {
+  readonly code: 'recoveryFormula';
+  readonly key: string;
+  readonly part: EntityPartId;
+  readonly warning: FormulaWarning;
+  readonly message: string;
+}
+
+/** The changes to the uses spent that `recoveredOn` gives, and what their formulas met. */
+export interface Recovered {
+  changes: LogChange[];
+  warnings: RecoveryWarning[];
+}
+
+/**
+ * The uses each resource gets back on `events`, a system's recovery events in the order they
+ * happen (a fifth-edition long rest: `long`, then `short`). Each grant of a key recovers by its
+ * first recovery whose event comes first in `events`; a key two grants give gets back the most
+ * either gives, `all` above any count. An amount's formula reads the computed values, rounded
+ * down and never below 0. A key no grant gives keeps its count. One change per key whose uses
+ * spent go down, in the order of `computed.resources`; nothing is applied.
+ */
+export function recoveredOn<E extends GatherableEntity>(
+  character: TrackedCharacter<E>,
+  computed: Pick<Computed<E>, 'values' | 'resources'>,
+  events: readonly string[],
+): Recovered {
+  const { values } = computed;
+  const read = (path: string) => (Object.hasOwn(values, path) ? values[path] : undefined);
+  const back = new Map<string, number>();
+  const warnings: RecoveryWarning[] = [];
+  for (const { key, uses, from: part } of computed.resources) {
+    const recovery = events
+      .map((event) => uses.recovery.find((each) => each.on === event))
+      .find((each) => each !== undefined);
+    if (recovery === undefined) continue;
+    let count = Number.POSITIVE_INFINITY;
+    if (recovery.amount !== 'all') {
+      const result = evaluateNumber(recovery.amount, read);
+      for (const warning of result.warnings) {
+        const message = `${warning.message} (the uses of "${key}" ${part} gives back on "${recovery.on}").`;
+        warnings.push({ code: 'recoveryFormula', key, part, warning, message });
+      }
+      count = Number.isFinite(result.value) ? Math.max(0, Math.floor(result.value)) : 0;
+    }
+    back.set(key, Math.max(back.get(key) ?? 0, count));
+  }
+  const changes: LogChange[] = [];
+  for (const [key, count] of back) {
+    const spent = spentOf(character, key);
+    const after = Math.max(0, spent - count);
+    if (after < spent) changes.push(changeTo(character, [...RESOURCES, key], after));
+  }
+  return { changes, warnings };
 }
 
 /** An entry by id: the character's own first, then its packs' (as gathering finds it). */

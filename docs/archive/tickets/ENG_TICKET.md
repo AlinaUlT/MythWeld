@@ -11918,3 +11918,355 @@ Found, not fixed:
   2024's healing table: a phase 3 note in `BACKLOG.md`.
 
 Changelog: one line, the published pack schema accepts a spell's `healing`.
+
+---
+
+### ENG-21 Rests by each edition's rules
+
+**Hat:** A rest changes the character by its edition's rules
+**Depends on:** ENG-30 (`changeTo`, `entryOf`, `ActionResult`, `LogStamp`, `state.resources`),
+ENG-29 (`Computed.resources`, `resources.<key>.max`), ENG-20 (`settled`, the state paths,
+`isDead`, `regainSlot`), ENG-19 (`rulesOf`, `longRestHitDice`, `hitDieMinimum`), ENG-14
+(`hp.max`, `RULE_STATS`), ENG-15 (the slots), ENG-33 (`hitDiceSpent`)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.4 (`shortRest`, `longRest`); §6.3 (the long rest's hit dice row, "правила отдыха");
+§6.7 golden B (Second Wind back on a rest); ADR 004 item 1 (a module's actions, rests among them)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/rests.ts` — new: `shortRest`, `longRest`, `REST_EVENTS`,
+`LONG_REST_MIN_HP`.
+- `packages/system-5e/src/hit-dice.ts` — new: `hitDicePath`, `hitDiceSteps` (`hitDice.d<N>.max`).
+- `packages/engine/src/trackers.ts` — new: `recoveredOn`, the uses each resource gets back on a
+  system's recovery events, a key given twice included.
+- `packages/system-5e/src/actions.ts` — new: `hitDiceSpentPath`; `whole` moved here from
+  `casting.ts`, which still uses it.
+- `packages/system-5e/src/module.ts` — `derive` gains `hitDiceSteps`.
+- `packages/system-5e/src/rulesets/edition-rules.ts`, `2014.ts`, `2024.ts` — new fields
+  `shortRestMinHp` and `longRestEndsConcentration`.
+- `packages/system-5e/src/index.ts` — exports `rests.ts`.
+- `packages/engine/test/recovery.test.ts`, `packages/system-5e/test/rests.test.ts` — new;
+  `test/rulesets.test.ts` — the new fields; `test/golden/golden-values.test.ts` — golden B's
+  Second Wind line; `test/action-checks.ts` — the hit dice and resources a test sets.
+- `docs/tickets/BACKLOG.md` — the new row and notes (§11).
+
+#### 2. What is missing now
+
+Measured on `main` at `613e0ed`:
+- `grep -rn "shortRest\|longRest\|hitDice\." packages --include=*.ts` finds nothing.
+  `hitDiceSpent` is only in the schema and its tests; `longRestHitDice` and `hitDieMinimum` are
+  read by no code.
+- No computed path gives a character's hit dice: `compute()` on golden B has no path starting
+  `hitDice`.
+- ENG-30's `regainResource` gives back one key at a time, by a count the caller passes; nothing
+  reads a grant's `uses.recovery`.
+- Golden B's Second Wind line (SPEC §6.7: "2 uses; a short rest gives back 1, a long rest all")
+  is left out of `golden-values.test.ts`, whose header names ENG-21 for it.
+- `pnpm test`: `Test Files 53 passed (53)`, `Tests 637 passed (637)`, 9.89 s.
+
+#### 3. What it should look like when done
+
+`stamp` is ENG-20's. Golden A (2014): cleric 1, d8, CON +3, hit point maximum 12, two level 1
+slots. Golden B (2024): fighter 1, d10, CON +2, maximum 12, Second Wind 2. Golden B4: fighter 4,
+4 d10, maximum 36, Second Wind 3 (the table's level 4). Golden C: wizard 3 (d6) and paladin 3
+(d10), CON +1, maximum 6 + 4 + 4 + 6 × 3 + 6 × 1 = 38, slots 4, 3 (2014) and 4, 3, 2 (2024). The
+hexer and the spells `character:` are ENG-20's made-up ones. Every value below is worked out by
+hand from §8.
+
+**The edition files**
+1. `rulesOf(character).shortRestMinHp` is 0 in 2014 and 1 in 2024;
+   `.longRestEndsConcentration` is `false` in 2014 and `true` in 2024 (§8).
+
+**Hit dice**
+2. Every character computes `hitDice.d6.max`, `hitDice.d8.max`, `hitDice.d10.max`,
+   `hitDice.d12.max`: the levels of its classes with that die, one `entity` step per class
+   (`value` and `change` its level). A: d8 1, the others 0 with no step. B: d10 1. B4: d10 4.
+   C: d6 3 (the wizard's step) and d10 3 (the paladin's). An override of `hitDice.d10.max` 2 on B
+   gives 2.
+
+**The core: what a resource gets back** — `recoveredOn(character, computed, events)`
+3. On Tales (ENG-27): Ash's luck (1 spent, `scene` all) on `['scene']`: one change, `luck` 1 → 0.
+   On `['session']`: none. Brook's focus (`session` 2) with 5 spent, on `['session']`: 5 → 3;
+   with 1 spent: 1 → 0.
+4. Each grant recovers by the first of `events` it names: a talent with `scene` 1 and `session`
+   all, 2 of 2 spent: `['scene', 'session']` gives 2 → 1; `['session', 'scene']` gives 2 → 0.
+5. A key two grants give gets back the most either gives: `scene` 1 beside `scene` all, 3 spent:
+   0; `scene` 1 beside `scene` 2: 3 → 1; `scene` 1 beside `session` all, on `['scene']`: 3 → 2.
+6. An amount is a formula on the computed values, rounded down, never below 0: `@abilities.nerve
+   .mod` (Ash's 1): 2 → 1; `1.5`: 2 → 1; `-1`: none; `@nope`: none, and a warning `{ code:
+   'recoveryFormula', key, part, warning: { code: 'missingPath', path: 'nope' } }`.
+7. A key no grant gives (`state.resources.old: 2`) and a key with none spent give no change.
+
+**Short rest** — `shortRest(character, index, { hitDice }, stamp)`, `hitDice` a list of
+`{ die, roll }`: the die's faces and the number it rolled
+8. B at 3 spends a d10 rolling 6: 6 + 2 = 8, hit points 3 → 11, `hitDiceSpent.d10` none → 1.
+   The entry's `action` is `shortRest`, `subject` `rest`; `outcome.hitDice` is `[{ die: 10,
+   roll: 6, hp: 8 }]`.
+9. The maximum caps it: B at 10, a d10 rolling 6: 10 → 12. At 12: only the die is spent. With an
+   override `hp.max` 6 at 12: hit points stay 12.
+10. Several dice: B4 at 10 spends three d10 rolling 4, 7, 10: 6 + 9 + 12 = 27, hit points 10 → 36,
+    `hitDiceSpent.d10` 3. C (2024) at 20 spends a d6 rolling 3 and a d10 rolling 5: 4 + 6 = 10,
+    hit points 30; `d6` 1, `d10` 1.
+11. One die's minimum is the edition's: A with a base CON of 4 (CON 6, −2; maximum 8 − 2 + 1 = 7)
+    at 3, a d8 rolling 1: 1 − 2 = −1, at least 0: hit points stay 3, the die is spent, `hp: 0`; a
+    d8 rolling 3: 4. B with a base CON of 4 (CON 5, −3; maximum 7) at 3, a d10 rolling 1:
+    −2, at least 1: 4; rolling 5: 5.
+12. Refusals: B's second d10 in one rest: `noHitDieLeft`, `{ die: 10, left: 1, count: 2 }`; a d8:
+    `{ die: 8, left: 0, count: 1 }`; B with `hitDiceSpent.d10` 1 and a d10: `left: 0`. A roll of
+    0, 11 or 1.5 on a d10: `badRoll`; a d4 or a d20: `badDie`.
+13. Resources on `short`: B with Second Wind 2 spent and no dice: 2 → 1; with 1 spent: 1 → 0.
+    Pact slots: B as hexer 3 with 2 spent: 2 → 0. Spell slots stay: A with `slotsSpent` `{ 1: 2 }`
+    and no dice: `unchanged`.
+14. At 0 hit points: B (2024): `tooFewHitPoints`, `{ hp: 0, min: 1 }`. A (2014) at 0 with 1
+    success and 1 failure, a d8 rolling 5: 5 + 3 = 8, hit points 8, death saves 0 and 0. A dead
+    character (0 hit points, 3 failures): `dead`, in both editions.
+15. Nothing to change (B rested, no dice): `unchanged`.
+
+**Long rest** — `longRest(character, index, stamp)`
+16. A (2014) at 3 with 4 temporary, `slotsSpent` `{ 1: 2 }`, `hitDiceSpent.d8` 1, concentrating on
+    Bless: hit points 3 → 12, temporary 4 → 0, `d8` 1 → 0 (half of 1 rounded down is 0, at least
+    1), slot level 1 2 → 0; concentration stays.
+17. B (2024) at 3 with 5 temporary, `d10` 1, Second Wind 2 spent, concentrating on a made-up
+    spell: hit points 3 → 12, temporary 5 → 0, `d10` 1 → 0, Second Wind 2 → 0, concentration
+    ended.
+18. Hit dice, the largest first: C (2014), 6 dice, gets back 3: all 6 spent gives `d10` 3 → 0,
+    `d6` stays 3; `d6` 3 and `d10` 1 spent give `d10` 1 → 0, `d6` 3 → 1. C (2024) gets back 6:
+    `d6` 3 → 0 and `d10` 3 → 0.
+19. Slots: C (2014) with `{ 1: 4, 2: 3 }`: both 0; B as hexer 3 with 2 pact slots spent: 0. B4 with
+    Second Wind 3 spent: 0.
+20. A resource with only a `short` recovery gets that one on a long rest (`REST_EVENTS`): a made-up
+    feature on B, 3 uses, `short` 1, 3 spent: 3 → 2. One with `dawn` only: nothing on either rest.
+21. Hit points above the maximum stay (an override `hp.max` 6, at 12); at the maximum with nothing
+    spent: `unchanged`.
+22. Refusals: A at 0 hit points and B at 0: `tooFewHitPoints`, `{ hp: 0, min: 1 }`; dead: `dead`.
+
+**Golden B** (SPEC §6.7)
+23. Second Wind: 2 uses; with both spent a short rest leaves 1 left (`resourceUses`), a long rest
+    2.
+
+**Every action**
+24. A refusal changes nothing and carries a `code`, its data and an English `message`.
+25. Each entry parses with `logEntrySchema`; each character opens with `openFifthEditionCharacter`
+    unchanged; `reverseEntry` gives back the character before. Deep-frozen inputs: nothing throws,
+    nothing changes.
+26. The quality gate is green.
+
+#### 4. How to do it
+
+1. `rulesets/`: the two fields, quoted in §8.
+2. `trackers.ts`: `RecoveryWarning`, `recoveredOn`: for each key in `computed.resources` order,
+   each grant's first recovery in `events` order; `all` above any count; the change to the uses
+   spent, by `changeTo`.
+3. `actions.ts`: `hitDiceSpentPath(die)`.
+4. `hit-dice.ts`: `hitDiceSteps`, in `derive`. `rests.ts`: `shortRest` and `longRest`, each one
+   entry through `settled`, with an `outcome` of the dice spent and the recovery warnings.
+5. Tests, then the gate.
+
+Technical choices (ADR 002):
+- **A rest is one entry.** The hit dice, hit points, slots and uses a rest changes are one undo,
+  as the P6 frames end with one "Undo" (BRIEF Part 3). The short rest takes every die spent in
+  it; the screen calls it with the dice rolled so far to show the summary (the action is pure),
+  and keeps its result on "Confirm".
+- **The roll is a number given.** The app's dice (ENG-08, with the phase 2 die) or the person's
+  own throw ("I roll myself", SPEC §6.5) give the face; the action checks it is one of the die's.
+- **Hit dice are computed paths**, `hitDice.d<N>.max`, so the sheet shows them with a breakdown
+  and an effect or an override can change them. SPEC §5.4's catalogue has no hit dice; the name
+  follows `resources.<key>.max`. Every size has its path, 0 when no class has it, so a path never
+  comes and goes with a class.
+- **The core gives back resources** (`recoveredOn`): `resource` and `uses.recovery` are the
+  core's, and a system's recovery events are its keys; the module names which events each rest
+  triggers. A long rest triggers `long`, then `short`: dnd5e's `restTypes` (`["lr", "sr"]`) and
+  its first-matching recovery (§8). SRD features that come back on a short rest say "a Short or
+  Long Rest", so a pack writes `short` once.
+- **A key two grants give gets back the most either gives,** `all` above any count. Its maximum
+  is already the highest of its grants' (ENG-29); neither depends on the order of the grants, and
+  a second source never takes away what the first gives back.
+- **An amount is rounded down, never below 0.** Uses spent are whole (ENG-30), and a formula's
+  number is the formula's to make whole (ENG-29); a warning is returned, never thrown.
+- **The largest hit dice come back first**: the rules let the player pick, and dnd5e's
+  `createHitDiceUpdates` gives the largest first by default (§8). One field to reverse.
+- **A rest that the rules give no benefit is refused,** not warned: at 0 hit points a long rest
+  in both editions, a short rest in 2024 (`tooFewHitPoints`), and a dead character's
+  (`dead`). It would change nothing the rules allow, as ENG-20 refuses healing the dead.
+- **A count is written 0, not removed,** as `regainSlot` and `regainResource` write it.
+- **The edition's long rest ends concentration** where its text puts the character to sleep
+  Unconscious (2024). A spell's duration running out is time, which no action tracks (§9).
+
+#### 5. Stored data
+
+Nothing stored changes. Every field written is ENG-33's or ENG-06's. `hitDice.d<N>.max` is a
+computed path, not stored.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/recovery.test.ts` — `describe('ENG-21 resources back on recovery
+  events')`: §3 items 3–7, on Tales.
+- `packages/system-5e/test/rests.test.ts` — `describe('ENG-21 rests')`: §3 items 2, 8–22, 24, 25.
+- `packages/system-5e/test/rulesets.test.ts` — the ENG-19 tests of each edition's object: item 1.
+- `packages/system-5e/test/golden/golden-values.test.ts` — `describe('ENG-21 goldens: golden
+  B')`: item 23.
+- Control numbers from: SPEC §6.7 (goldens A, B, B4 and C, Second Wind); the SRD rules of §8;
+  ENG-27's Ash and Brook; the rest worked out by hand in §3.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-03: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`
+(SRD 5.1 `2014/en/5e-SRD-Rules.json`; SRD 5.2.1 `2024/en/5e-SRD-Traits.json`); foundryvtt/dnd5e
+at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (SRD 5.2.1 `packs/_source/content24/appendices/
+rules-glossary.yml`; `module/config.mjs`, `module/documents/actor/actor.mjs`,
+`module/documents/actor/hit-dice.mjs`, `module/data/shared/uses-field.mjs`). The same commits as
+ENG-13 to ENG-20.
+
+**Short rest, SRD 5.1:** "A character can spend one or more Hit Dice at the end of a short rest,
+up to the character's maximum number of Hit Dice, which is equal to the character's level. For
+each Hit Die spent in this way, the player rolls the die and adds the character's Constitution
+modifier to it. The character regains hit points equal to the total. The player can decide to
+spend an additional Hit Die after each roll." No word on the hit points it starts with.
+**SRD 5.2.1:** "To start a Short Rest, you must have at least 1 Hit Point." "For each Hit Point
+Die you spend in this way, roll the die and add your Constitution modifier to it. You regain Hit
+Points equal to the total (minimum of 1 Hit Point). You can decide to spend an additional Hit
+Point Die after each roll." "Special Feature. Some features are recharged by a Short Rest."
+So `shortRestMinHp` 0 and 1; one die's minimum is ENG-19's `hitDieMinimum` (0 and 1; dnd5e
+`rollHitDie`). A die's total is regained hit points: never above the maximum, and from 0 they
+reset the death saves (ENG-20 §8, both SRDs).
+
+**Long rest, SRD 5.1:** "At the end of a long rest, a character regains all lost hit points. The
+character also regains spent Hit Dice, up to a number of dice equal to half of the character's
+total number of them (minimum of one die)." "a character must have at least 1 hit point at the
+start of the rest to gain its benefits." **SRD 5.2.1:** "To start a Long Rest, you must have at
+least 1 Hit Point." "Regain All HP. You regain all lost Hit Points and all spent Hit Point Dice.
+If your Hit Point maximum was reduced, it returns to normal." "Ability Scores Restored."
+"Exhaustion Reduced. If you have the Exhaustion condition, its level decreases by 1." "Special
+Feature. Some features are recharged by a Long Rest." "During sleep, you have the Unconscious
+condition." The share of the hit dice is ENG-19's `longRestHitDice` (0.5 and 1). Both: 1 hit
+point to start.
+Temporary hit points end on a long rest in both (ENG-20 §8: SRD 5.1 "they last until they're
+depleted or you finish a long rest"; SRD 5.2.1 "until they're depleted or you finish a Long
+Rest"). Spell slots come back on a long rest, and pact slots on a short or long rest, in both
+(ENG-20 §8).
+
+**Concentration.** SRD 5.2.1: asleep during a long rest, the character is Unconscious; "You have
+the Incapacitated and Prone conditions", and "Your Concentration ends if you have the
+Incapacitated condition" (ENG-20 §8). SRD 5.1's long rest "sleeps or performs light activity",
+and says nothing of a condition. So `longRestEndsConcentration` `false` and `true`.
+
+**dnd5e.** `config.mjs` `restTypes`: short `recoverPeriods: ["sr"]`, `recoverSpellSlotTypes:
+new Set(["pact"])`; long `recoverPeriods: ["lr", "sr"]`, `recoverSpellSlotTypes: new
+Set(["spell", "pact"])`, `recoverHitPoints`, `recoverHitDice`, `recoverTemp`, `exhaustionDelta:
+-1`. `uses-field.mjs` `recoverUses`: "Search the recovery profiles in order to find the first
+matching period", the periods in their order outside, the item's profiles inside. `hit-dice.mjs`
+`createHitDiceUpdates({ maxHitDice, fraction=0.5, largest=true })`: `Math.max(Math.floor(this.max
+* fraction), 1)`, the classes sorted by die, the largest first.
+
+**Found while reading, other hats** (§11): SRD 5.2.1's human, Resourceful: "You gain Heroic
+Inspiration whenever you finish a Long Rest." Exhaustion's level goes down 1 on a long rest in
+both (ENG-19 §8).
+
+No golden value is touched; no rules source disagrees with the SPEC. Nothing stops.
+
+#### 9. Not in this ticket
+
+- Exhaustion down by 1 on a long rest: a condition is a pack's entry, its schema says nothing of
+  rests, and the module names no condition (ENG-20 §4). New row (§11).
+- Heroic Inspiration on a long rest (the 2024 human's Resourceful): ENG-59's note (§11).
+- A spell grant's own uses back on a rest: ENG-57 stores them, and adds them to these rests.
+- A reduced hit point maximum or ability score back to normal (SRD 5.2.1): no tracker stores one
+  (ENG-19 §8).
+- A spell's duration running out, and one long rest in 24 hours: the app tracks no time; the
+  person ends concentration with `endConcentration`.
+- The recovery events `dawn`, `turn` and `manual`: no action triggers them yet (§11).
+- The rest screens, the hit dice on the sheet, the uses' recovery label: phase 2.
+
+#### 10. Rake check
+
+- **Each system's rules live in its module; no `if (ruleset === …)`.** The rests are
+  `system-5e`'s; their two edition differences are fields read through `rulesOf`. The core's
+  `recoveredOn` names no event: the module passes them.
+- **Everything is data.** A resource's recovery is its grant's; the Constitution modifier is
+  `RULE_STATS.hitPoints`'s; the hit die sizes are `HIT_DIE_SIZES`.
+- **A number shown has a breakdown.** `hitDice.d<N>.max` has a step per class.
+- **Formulas never run code; a missing path is 0 and a warning.** A recovery amount goes through
+  `evaluateNumber`; its warning is returned.
+- **Missing is not broken.** A class no pack has gives no hit dice; a key no grant gives keeps its
+  count.
+- **Measure, never estimate.** Every expected value is worked out in §3 from §8.
+- **The engine is pure.** The caller gives the stamp and the rolls; the frozen-input tests.
+- **A stored-shape change needs a migration.** None changes (§5).
+- **Licensing.** The SRDs are quoted in this ticket only; the test entities are made up.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-03, on `main` at `613e0ed`:
+- Before: `pnpm test` `Test Files 53 passed (53)`, `Tests 637 passed (637)`, 9.89 s.
+- After: `pnpm lint` `Checked 178 files`, no error; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`
+  `Test Files 55 passed (55)`, `Tests 660 passed (660)`, 10.03 s; `pnpm build` `apps/web build:
+  Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- ENG-54 and ENG-53 reached `main` while this ticket was built; it was rebased onto `fb32b73`.
+  `main` alone, measured there: `Test Files 53 passed (53)`, `Tests 660 passed (660)`, 9.93 s;
+  lint `Checked 174 files`. Rebased: `pnpm lint` `Checked 178 files`, no error; `pnpm typecheck`
+  6 of 6 `Done`; `pnpm test` `Test Files 55 passed (55)`, `Tests 683 passed (683)`, 10.30 s.
+  ENG-53 took the id ENG-60 for its own row, so the row found here is ENG-61.
+- This ticket's 23 tests: `recovery.test.ts` 6 (653 ms alone), `rests.test.ts` 16 (1.07 s alone),
+  golden B's line 1. `rulesets.test.ts` keeps its 5 tests, each edition's object with the two new
+  fields.
+- Golden B, through the actions: Second Wind 2 left; `useResource` 2: 0 left; `shortRest`: 1 left;
+  `longRest` from 0: 2 left. That was the last open line of goldens A to E; the golden values
+  file's header says so.
+- The tests catch mistakes. 27 breaks, each made alone in the code, then `recovery.test.ts`,
+  `rests.test.ts`, `rulesets.test.ts` and `golden-values.test.ts` run (59 tests); each break failed
+  at least one test, and each was undone: the events' order ignored, 4 fail; a key given twice
+  following its last grant, 1; following the least, 1; an amount not rounded down, 1; `all` as one
+  use, 5; the formula warnings dropped, 2; no Constitution on a hit die, 4; no hit die minimum, 1;
+  a short rest past the maximum, 2; a short rest keeping the pact slots, 1; a short rest giving
+  `long` uses, 2; a short rest at any hit points, 1; one hit die more than left, 2; no death save
+  reset, 1; hit dice smallest first, 1; no minimum of one die, 1; every hit die back in 2014, 1;
+  temporary hit points kept, 2; concentration always ended, 1; a long rest giving only `long`
+  uses, 1; a long rest lowering hit points to the maximum, 1; the dead resting, 1; a long rest at
+  0 hit points, 1; a long rest keeping the slots, 3; one hit die per class, not per level, 3; 2024's
+  short rest at 0, 2; 2024 keeping concentration, 2.
+
+Differences from §3:
+- `hitDiceSteps` is in a file of its own, `hit-dice.ts`, not in `rests.ts`: `rests.ts` imports
+  `module.ts` to compute, and `module.ts` imports the steps, so one file each keeps the two from
+  importing each other. §1 says so.
+- `whole` (a computed count, whole and never below 0) moved from `casting.ts` to `actions.ts`, so
+  the rests read the hit dice as `castSpell` reads the slots. No behaviour changed; ENG-20's
+  tests pass unchanged.
+- The first run of `rests.test.ts` failed 1 of 16: the test's hexer 3 kept golden B's 12 hit
+  points, below its own maximum of 16 (8 + 1 + 1, CON +2 at 3 levels), so the long rest rightly
+  raised them. The test data now starts at 16; no expected value changed.
+- §3 gained: a key's grants in either order give the same (item 5); a resource whose amount reads
+  a missing path, through `longRest`'s `outcome.warnings` (item 20).
+
+Against the row and its note:
+- "Which recovery a key given twice follows": the most either grant gives back, `all` above any
+  count (§4), as its maximum is the highest of its grants'.
+- `longRestHitDice` and `hitDieMinimum` are read (`rests.ts`). Two more differences, read in both
+  SRDs (§8): `shortRestMinHp` and `longRestEndsConcentration`.
+- SRD 5.2.1's reduced maximum and scores back to normal: no tracker stores them (§9), as ENG-19
+  found.
+- Temporary hit points end, spell slots come back on a long rest, pact slots on both (ENG-20's
+  note). Golden B's Second Wind line is in.
+
+Found, not fixed:
+- A long rest lowers exhaustion by 1 in both SRDs (ENG-19 §8; SRD 5.2.1 "its level decreases by
+  1"). A condition's schema has only `maxLevel`, and the module names no condition. New row
+  ENG-61 in `BACKLOG.md`.
+- SRD 5.2.1's human, Resourceful: "You gain Heroic Inspiration whenever you finish a Long Rest."
+  Golden B is that human; no data shape gives inspiration on a rest. Noted on ENG-59.
+- The recovery events `dawn`, `turn` and `manual` (`fifthEditionLists`) are triggered by no
+  action; a magic item's charges back at dawn need one. The uses' label ("1 back on a short
+  rest, all on a long rest", BRIEF Part 5) reads `Computed.resources[].uses.recovery`; an amount
+  that is a formula has no computed value with a breakdown to show. Noted for phase 2.
+- A spell grant's own uses (ENG-57) come back by their `recovery` once ENG-57 stores them; its
+  note now names `recoveredOn` and `REST_EVENTS`.
+
+Nothing for the changelog.

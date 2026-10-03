@@ -2,6 +2,7 @@ import {
   type ActionResult,
   applyEntry,
   entryOf,
+  type FormulaValue,
   type LogStamp,
   type MadeChanges,
   sameJson,
@@ -32,6 +33,11 @@ export const CONCENTRATION_PATH = [...STATE, 'concentration'];
 
 /** The pact magic slots spent. */
 export const PACT_SPENT_PATH = [...STATE, 'pactSlotsSpent'];
+
+/** ENG-21: the hit dice of one size spent: `hitDiceSpent`'s key is the die, `"d6"` to `"d12"`. */
+export function hitDiceSpentPath(die: number): string[] {
+  return [...STATE, 'hitDiceSpent', `d${die}`];
+}
 
 /** The slots of one spell level spent: `slotsSpent`'s key is the level, `"1"` to `"9"`. */
 export function slotSpentPath(level: number): string[] {
@@ -64,4 +70,9 @@ export function settled<R extends { code: string; message: string }>(
 /** A whole number from `min`. */
 export function isWhole(value: number, min: number): boolean {
   return Number.isInteger(value) && value >= min;
+}
+
+/** A computed count (slots, hit dice) or a level: a whole number, 0 when it is not a number. */
+export function whole(value: FormulaValue | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
 }

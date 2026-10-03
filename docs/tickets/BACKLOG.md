@@ -117,23 +117,20 @@ split off an old row got a new id.
 | ENG-57 | A spell a grant gives is cast through its own uses | S | 🔲 |
 | ENG-58 | A death save roll changes the character by fifth-edition rules | S | 🔲 |
 | ENG-59 | Inspiration is gained or spent up to its maximum | XS | 🔲 |
-| ENG-21 | A rest changes the character by its edition's rules | S | 🔲 |
+| ENG-21 | A rest changes the character by its edition's rules | S | ✅ 2026-10-03 |
+| ENG-61 | A long rest lowers a condition's level as its entry says | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-21** — found by ENG-29: `Computed.resources` keeps one row per grant, each with its own
-  recovery; ENG-21 decides which ones a key given twice follows on a rest. ENG-30's
-  `regainResource` gives uses back, never below none spent. ENG-19: each edition's rest rules
-  are `rulesOf(character).longRestHitDice` (the share of the hit dice a long rest gives back,
-  rounded down, at least 1: 0.5 in 2014, 1 in 2024) and `.hitDieMinimum` (the fewest hit points
-  one hit die spent gives: 0 in 2014, 1 in 2024); ENG-19 §8 quotes both SRDs. SRD 5.2.1's long
-  rest also returns a reduced hit point maximum and reduced ability scores to normal, SRD 5.1's
-  says neither, and no tracker stores either reduction yet (ENG-19 §8). Golden B's last line,
-  Second Wind back on a rest, is this row's. Found by ENG-20: a long rest ends temporary hit
-  points and gives spell slots back, and a short rest gives pact slots back, in both SRDs (ENG-20
-  §8); `regainSlot` (`casting.ts`) gives slots back as one entry.
+- **ENG-61** — found by ENG-21 (ENG-21 §8): a long rest lowers exhaustion by 1 in both SRDs
+  (SRD 5.1 "provided that the creature has also ingested some food and drink", ENG-19 §8; SRD
+  5.2.1 "its level decreases by 1"; dnd5e `exhaustionDelta: -1`). A condition is a pack's entry:
+  its schema (`conditionDefSchema`) has only `maxLevel`, and the module names no condition
+  (ENG-20 §4). A field on the condition saying what a recovery event takes from its level is a
+  stored-shape change (a version and its migrations); at level 0 the condition is removed.
+  `longRest` (`rests.ts`) builds one entry; this row adds the change to it.
 - **ENG-55** — found by ENG-51: SPEC §5.4's `damage.spell.bonus` is no path, so an effect on it
   warns `noTarget`. A spell's damage is dice text (ENG-50's `spellDice`), which reads no bonus;
   a weapon's damage reads `damage.weapon.<kind>.bonus` (ENG-16). The row decides which of a
@@ -150,7 +147,9 @@ split off an old row got a new id.
   `systemData.state` field (a stored-shape change: version 3, a step in each list of migrations)
   or by a key the grant gives them. The uses' maximum is shown, so it is a computed path with a
   breakdown. ENG-20's `castSpell` (`casting.ts`) takes `slot` or none; this row adds casting
-  through the uses. ENG-21's rests give them back by their `recovery`.
+  through the uses. ENG-21's `shortRest` and `longRest` (`rests.ts`) give back the core's
+  resources through `recoveredOn` (`trackers.ts`); this row adds the grant's uses to both, by
+  their `recovery`, in `REST_EVENTS`' order (a long rest: `long`, else `short`).
 - **ENG-58** — re-cut from ENG-20 (ENG-20 §4). Found by ENG-33: the schema refuses a death save
   count above 3 (`DEATH_SAVES`), so the action stops there. ENG-20 writes failures from damage
   and resets both counts on healing (`hit-points.ts`); death is 0 hit points with 3 failures
@@ -163,7 +162,9 @@ split off an old row got a new id.
 - **ENG-59** — re-cut from ENG-20 (ENG-20 §4). Found by ENG-33: the schema refuses inspiration
   above `houseRules.inspirationMax`, so the action stops there. Found by ENG-19: both SRDs allow
   1 (`rulesOf(character).inspiration.max`); SRD 5.2.1 says Heroic Inspiration gained while had is
-  lost unless given away (ENG-19 §8).
+  lost unless given away (ENG-19 §8). Found by ENG-21: SRD 5.2.1's human, Resourceful, "You gain
+  Heroic Inspiration whenever you finish a Long Rest" (golden B is that human); no data shape
+  gives inspiration on a rest, and `longRest` (`rests.ts`) gives none.
 - **ENG-46** — found by ENG-14: armor worn without its training gives disadvantage on Strength and
   Dexterity rolls and no spellcasting, in both editions (SRD 5.1 Armor Proficiency, SRD 5.2.1 Armor
   Training, ENG-14 §8); in 2024 a shield gives its AC only with training, a ruleset difference.
@@ -365,6 +366,15 @@ split off an old row got a new id.
   engine. SRD 5.2.1's Bloodied (half the hit points or fewer, "no game effect on its own but which
   might trigger other game effects") has no path. Damage returns the concentration save's DC
   (`outcome.concentrationDc`); the screen rolls it and calls `endConcentration` on a failure.
+- **Phase 2** — found by ENG-21: a rest is one action and one entry, `shortRest` or `longRest`
+  (`rests.ts`), pure, so the Rest frames (BRIEF P6) call it to show what comes back and keep its
+  result on "Confirm"; the short rest takes every die spent, `{ die, roll }`, the face from the
+  dice panel or the person's own throw, and its `outcome.hitDice` gives each die's hit points.
+  The hit dice are `hitDice.d<N>.max` (with a breakdown) less `systemData.state.hitDiceSpent`.
+  The uses' label ("1 back on a short rest, all on a long rest") reads
+  `Computed.resources[].uses.recovery`; an amount that is a formula has no computed value with a
+  breakdown, so the row that shows one computes it. The recovery events `dawn`, `turn` and
+  `manual` are triggered by no action (a magic item's charges at dawn).
 - **Phase 2** — found by ENG-34: each d20 test's roll mode is a number path, 1 advantage, −1
   disadvantage, 0 neither, with a step per source: `checks.<stat>.mode`,
   `abilities.<stat>.saveMode`, `skills.<key>.mode`, `init.mode`, `attacks.<key>.mode`,

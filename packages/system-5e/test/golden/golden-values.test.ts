@@ -4,7 +4,9 @@ import {
   type LogStamp,
   loadContentIndex,
   removeCondition,
+  resourceUses,
   setCondition,
+  useResource,
 } from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
@@ -15,8 +17,10 @@ import {
   type FifthEditionEntity,
   type fifthEditionCharacterSchema,
   fifthEditionModule,
+  longRest,
   openFifthEditionCharacter,
   openFifthEditionPack,
+  shortRest,
 } from '../../src/index.ts';
 import { opened } from './checks.ts';
 import {
@@ -34,8 +38,8 @@ import {
 
 // The golden tests (SPEC §6.7): each value below is SPEC §6.7's, computed by hand there, never
 // copied from a run. Each ticket from ENG-13 on adds the lines it makes true; the fixture
-// tests hold the scores and Second Wind's uses (ENG-09, ENG-10). A line no ticket has made true
-// yet is not here: Second Wind back on a rest (ENG-21).
+// tests hold the scores and Second Wind's uses (ENG-09, ENG-10). ENG-21 adds the last open line
+// of goldens A to E: Second Wind back on a rest.
 
 /** The packs the goldens may name, each opened once, by id. */
 const PACKS = new Map(
@@ -546,5 +550,31 @@ describe('ENG-19 goldens: golden D', () => {
     const rested = compute(removed.character, index, fifthEditionModule);
     expect(rested.values).toEqual(b.values);
     expect(rested.breakdown).toEqual(b.breakdown);
+  });
+});
+
+describe('ENG-21 goldens: golden B', () => {
+  const stamp: LogStamp = {
+    id: '4c3b2a19-0f8e-4d7c-9b6a-5f4e3d2c1b0a',
+    at: '2026-10-03T08:00:00.000Z',
+    by: { role: 'player', name: 'Test' },
+  };
+
+  it('golden B: Second Wind has 2 uses; a short rest gives back 1, a long rest all', () => {
+    const character = opened(openFifthEditionCharacter(goldenB));
+    const { index } = loadedFor(character);
+    const left = (each: FifthEditionCharacter) =>
+      resourceUses(each, compute(each, index, fifthEditionModule), 'secondWind')?.left;
+    expect(left(character)).toBe(2);
+    const ask = { key: 'secondWind', count: 2 };
+    const used = useResource(character, compute(character, index, fifthEditionModule), ask, stamp);
+    if (!used.ok) throw new Error(used.message);
+    expect(left(used.character)).toBe(0);
+    const short = shortRest(used.character, index, {}, stamp);
+    if (!short.ok) throw new Error(short.message);
+    expect(left(short.character)).toBe(1);
+    const long = longRest(used.character, index, stamp);
+    if (!long.ok) throw new Error(long.message);
+    expect(left(long.character)).toBe(2);
   });
 });

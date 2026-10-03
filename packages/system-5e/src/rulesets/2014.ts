@@ -27,4 +27,9 @@ export const RULES_2014: EditionRules = {
   // "The DC equals 10 or half the damage you take, whichever number is higher", with no maximum
   // (Concentration, ENG-20 §8).
   concentrationDcMax: null,
+  // A short rest's text names no hit points to start with (Short Rest, ENG-21 §8).
+  shortRestMinHp: 0,
+  // A long rest is time the character "sleeps or performs light activity", with no condition
+  // (Long Rest, ENG-21 §8).
+  longRestEndsConcentration: false,
 };

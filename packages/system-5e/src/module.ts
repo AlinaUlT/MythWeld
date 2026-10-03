@@ -15,6 +15,7 @@ import { characterLevel, classesOf } from './classes';
 import { combatSteps } from './combat';
 import type { FifthEditionEntity } from './entity-types';
 import { equipmentOf } from './equipment';
+import { hitDiceSteps } from './hit-dice';
 import { rollModeSteps } from './rolls';
 import { sizeKeys } from './size';
 import { spellDiceSteps } from './spell-dice';
@@ -30,6 +31,7 @@ import { spellcastingSteps } from './spellcasting';
 // ENG-35: the side of the ability score increases not taken gives none; `both` warns.
 // ENG-34 adds each d20 test's roll mode to `derive` (`rolls.ts`; a weapon's in `attacks.ts`).
 // ENG-54: a stat's highest score is the character's house rule `abilityMax`, 20 by default.
+// ENG-21 adds the hit dice by size (`hit-dice.ts`).
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -144,6 +146,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     ...classSteps(input),
     ...checkSteps(input),
     ...combatSteps(input),
+    ...hitDiceSteps(input),
     ...spellcastingSteps(input),
     ...attackSteps(input),
     ...rollModeSteps(input),
