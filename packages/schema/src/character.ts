@@ -21,10 +21,14 @@ import { visibleTextSchema } from './text';
 // have, so they never collide with a pack's entries.
 
 /** The stored shape of the character's core part. A change to it needs a migration (SPEC §5.8). */
-export const CHARACTER_SCHEMA_VERSION = 1;
+export const CHARACTER_SCHEMA_VERSION = 2;
 
-/** The steps to `CHARACTER_SCHEMA_VERSION`: step N takes version N + 1 to N + 2. None yet. */
-export const CHARACTER_MIGRATIONS: readonly Migration[] = [];
+/** The steps to `CHARACTER_SCHEMA_VERSION`: step N takes version N + 1 to N + 2. */
+export const CHARACTER_MIGRATIONS: readonly Migration[] = [
+  // 1 → 2 (ENG-61): a condition's `recovery` is new and optional; a character's own conditions of
+  // version 1 have none.
+  (file) => ({ ...file }),
+];
 
 /** The pack id in the ids of a character's own entities: `character:talent/lucky-charm`. */
 export const CHARACTER_PACK_ID = 'character';

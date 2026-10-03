@@ -570,6 +570,8 @@ const exhaustion: Of<'condition'> = {
       value: '-5 * @conditions.exhaustion.level',
     },
   ],
+  // "Finishing a Long Rest removes 1 of your Exhaustion levels" (ENG-61 §8).
+  recovery: [{ on: 'long', amount: '1' }],
 };
 
 // --- Equipment (`5e-SRD-Equipment.json`, `-Damage-Types.json`, `-Weapon-Properties.json`,
@@ -707,7 +709,7 @@ const masteries: Of<'weaponMastery'>[] = [
 export const srd2024 = {
   id: 'srd-2024',
   version: '0.1.0',
-  schemaVersion: 1,
+  schemaVersion: 2,
   system: '5e',
   systemSchemaVersion: 5,
   title: { en: 'SRD 5.2.1' },

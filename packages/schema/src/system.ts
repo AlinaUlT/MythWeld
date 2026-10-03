@@ -133,8 +133,10 @@ export function systemSchemasOf<
     grant: grantSchema,
     prerequisite: prerequisiteSchema,
   });
-  const [abilityDefSchema, skillDefSchema, conditionDefSchema] =
-    coreEntitySchemasOf(entityBaseSchema);
+  const [abilityDefSchema, skillDefSchema, conditionDefSchema] = coreEntitySchemasOf(
+    entityBaseSchema,
+    lists.recoveryEventSchema,
+  );
   return {
     rulesetSchema: lists.rulesetSchema,
     proficiencyCategorySchema: lists.proficiencyCategorySchema,

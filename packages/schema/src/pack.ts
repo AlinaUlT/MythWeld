@@ -23,10 +23,13 @@ import { l10nSchema, localeSchema, visibleTextSchema } from './text';
 // opener gets the module's own steps for its kind of file.
 
 /** The stored shape of a pack. A change to it needs a migration (SPEC §5.8). */
-export const PACK_SCHEMA_VERSION = 1;
+export const PACK_SCHEMA_VERSION = 2;
 
-/** The steps to `PACK_SCHEMA_VERSION`: step N takes version N + 1 to N + 2. None yet. */
-export const PACK_MIGRATIONS: readonly Migration[] = [];
+/** The steps to `PACK_SCHEMA_VERSION`: step N takes version N + 1 to N + 2. */
+export const PACK_MIGRATIONS: readonly Migration[] = [
+  // 1 → 2 (ENG-61): a condition's `recovery` is new and optional; a version 1 pack has none.
+  (file) => ({ ...file }),
+];
 
 /** The stored shape of a locale overlay. A change to it needs a migration (SPEC §5.8). */
 export const LOCALE_OVERLAY_SCHEMA_VERSION = 1;

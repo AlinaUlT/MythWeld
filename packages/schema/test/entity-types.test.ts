@@ -172,3 +172,32 @@ describe('ENG-03 core entity types', () => {
     ]);
   });
 });
+
+describe('ENG-61 a condition says what a recovery event takes from its level', () => {
+  it('takes a list of recoveries, each an event and an amount or `all`', () => {
+    for (const recovery of [
+      [{ on: 'long', amount: '1' }],
+      [
+        { on: 'scene', amount: 'all' },
+        { on: 'session', amount: '@abilities.grit.mod' },
+      ],
+    ]) {
+      const eased = { ...dazed, recovery };
+      expect(conditionDefSchema.parse(eased)).toEqual(eased);
+      expect(coreEntitySchema.parse(eased)).toEqual(eased);
+    }
+  });
+
+  it('refuses a recovery of the wrong shape, on its path', () => {
+    for (const [recovery, path] of [
+      [[], 'recovery'],
+      [[{ on: 'Long', amount: '1' }], 'recovery.0.on'],
+      [[{ on: 'long' }], 'recovery.0.amount'],
+      [[{ on: 'long', amount: 1 }], 'recovery.0.amount'],
+      [[{ on: 'long', amount: ' ' }], 'recovery.0.amount'],
+      [[{ on: 'long', amount: '1', at: 'dusk' }], 'recovery.0'],
+    ] as const) {
+      expect(issuePaths(conditionDefSchema, { ...dazed, recovery }), path).toEqual([path]);
+    }
+  });
+});

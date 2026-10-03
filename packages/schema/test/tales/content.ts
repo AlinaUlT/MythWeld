@@ -10,7 +10,7 @@ const source = { pack: 'tales-core' };
 export const talesCore = {
   id: 'tales-core',
   version: '1.0.0',
-  schemaVersion: 1,
+  schemaVersion: 2,
   system: 'tales',
   systemSchemaVersion: 1,
   title: { en: 'Tales core' },
@@ -89,7 +89,8 @@ export const talesCore = {
       passive: true,
       source,
     },
-    // Conditions: one with levels and an effect whose value reads its level, one with neither.
+    // Conditions: one with levels, an effect whose value reads its level and a level lost each
+    // session (ENG-61); one with none of these.
     {
       id: 'tales-core:condition/weary',
       type: 'condition',
@@ -97,6 +98,7 @@ export const talesCore = {
       ruleset: 'any',
       name: { en: 'Weary' },
       maxLevel: 3,
+      recovery: [{ on: 'session', amount: '1' }],
       effects: [
         {
           id: 'tired',

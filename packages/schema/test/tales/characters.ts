@@ -8,7 +8,7 @@ import type { talesCharacterSchema } from './system';
 /** First age, level 2, a warden. Weary at level 1, one luck used. */
 export const ash = {
   id: '6f1c2a3e-8b4d-4c5e-9a7f-1d2e3f4a5b6c',
-  schemaVersion: 1,
+  schemaVersion: 2,
   rev: 0,
   createdAt: '2026-10-01T09:00:00.000Z',
   updatedAt: '2026-10-01T09:00:00.000Z',
@@ -43,7 +43,7 @@ export const ash = {
  */
 export const brook = {
   id: '3a9d6c2e-1b84-4f07-8c5a-7e2d0b9f4a61',
-  schemaVersion: 1,
+  schemaVersion: 2,
   rev: 4,
   createdAt: '2026-10-01T10:00:00.000Z',
   updatedAt: '2026-10-01T10:20:00.000Z',

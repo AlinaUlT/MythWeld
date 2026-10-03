@@ -44,7 +44,7 @@ const ownTalent = {
 /** Every field a character can have. */
 const character = {
   id: '0f8fad5b-d9cb-469f-a165-70867728950e',
-  schemaVersion: 1,
+  schemaVersion: 2,
   rev: 3,
   createdAt: '2026-10-01T09:00:00.000Z',
   updatedAt: '2026-10-01T09:30:00.000Z',
@@ -102,8 +102,8 @@ function refused(change: Record<string, unknown>): string[] {
 describe('ENG-06 character document', () => {
   it('parses a full character to an equal object', () => {
     expect(talesCharacterSchema.parse(character)).toEqual(character);
-    expect(CHARACTER_SCHEMA_VERSION).toBe(1);
-    expect(CHARACTER_MIGRATIONS).toEqual([]);
+    expect(CHARACTER_SCHEMA_VERSION).toBe(2);
+    expect(CHARACTER_MIGRATIONS).toHaveLength(1);
     expect(CHARACTER_PACK_ID).toBe('character');
     expect(DEFAULT_ACTOR_KIND).toBe('pc');
   });
@@ -142,7 +142,7 @@ describe('ENG-06 character document', () => {
       expect(refused({ ruleset }), ruleset).toEqual(['ruleset']);
     }
     expect(refused({ system: 'deep' })).toEqual(['system']);
-    for (const schemaVersion of [0, 2, '1']) {
+    for (const schemaVersion of [0, 1, 3, '2']) {
       expect(refused({ schemaVersion }), String(schemaVersion)).toEqual(['schemaVersion']);
     }
     expect(refused({ systemSchemaVersion: 2 })).toEqual(['systemSchemaVersion']);
@@ -295,7 +295,7 @@ describe('ENG-06 character document', () => {
   it("types the character by the system's lists", () => {
     type Character = z.infer<typeof talesCharacterSchema>;
     expectTypeOf<Character['system']>().toEqualTypeOf<'tales'>();
-    expectTypeOf<Character['schemaVersion']>().toEqualTypeOf<1>();
+    expectTypeOf<Character['schemaVersion']>().toEqualTypeOf<2>();
     expectTypeOf<Character['systemSchemaVersion']>().toEqualTypeOf<1>();
     expectTypeOf<Character['ruleset']>().toEqualTypeOf<'first-age' | 'second-age'>();
     expectTypeOf<Character['mode']>().toEqualTypeOf<'guided' | 'manual'>();
@@ -317,19 +317,19 @@ describe("ENG-06 a character opens through the core's chain and the module's", (
     expect(openTalesCharacter(character)).toEqual({
       ok: true,
       value: character,
-      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+      from: { schemaVersion: 2, systemSchemaVersion: 1 },
     });
   });
 
   it("refuses a character from a newer app, in the core's part or the module's", () => {
-    expect(openTalesCharacter(characterWith({ schemaVersion: 2 }))).toEqual({
+    expect(openTalesCharacter(characterWith({ schemaVersion: 3 }))).toEqual({
       ok: false,
       code: 'newer',
       field: 'schemaVersion',
-      found: 2,
-      current: 1,
+      found: 3,
+      current: 2,
       message:
-        'The file was saved by a newer version of the app: its "schemaVersion" is 2, and this app reads up to 1.',
+        'The file was saved by a newer version of the app: its "schemaVersion" is 3, and this app reads up to 2.',
     });
     expect(openTalesCharacter(characterWith({ systemSchemaVersion: 4 }))).toMatchObject({
       ok: false,
@@ -357,7 +357,7 @@ describe("ENG-06 a character opens through the core's chain and the module's", (
     expect(characterOpenerOf(rankSchema, [renameLevel])(character)).toEqual({
       ok: true,
       value: { ...character, systemSchemaVersion: 2, systemData: { ...rest, rank: level } },
-      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+      from: { schemaVersion: 2, systemSchemaVersion: 1 },
     });
     expect(level).toBe(2);
     expect(() => characterOpenerOf(rankSchema, [])).toThrow(

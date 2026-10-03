@@ -1,4 +1,6 @@
 import {
+  CHARACTER_MIGRATIONS,
+  CHARACTER_SCHEMA_VERSION,
   LOCALE_OVERLAY_MIGRATIONS,
   LOCALE_OVERLAY_SCHEMA_VERSION,
   type Migration,
@@ -10,7 +12,7 @@ import {
 } from '@grimoire/schema';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { z } from 'zod';
-import { openTalesPack } from './tales/index.ts';
+import { ash, openTalesCharacter, openTalesPack } from './tales/index.ts';
 
 // A made-up stored file, now at version 3. Version 1 had `title`; version 2 renamed it `name`;
 // version 3 added `tags`. The steps do not touch `schemaVersion`: the frame writes it.
@@ -42,7 +44,7 @@ function refusedPaths(opened: Opened<unknown>): string[] {
 const pack = {
   id: 'tales-core',
   version: '1.0.0',
-  schemaVersion: 1,
+  schemaVersion: 2,
   system: 'tales',
   systemSchemaVersion: 1,
   title: { en: 'Tales core' },
@@ -191,13 +193,12 @@ describe('ENG-06 migration frame', () => {
 });
 
 describe('ENG-06 the openers of packs and overlays', () => {
-  it('open the current version, with no migration yet', () => {
-    expect(PACK_MIGRATIONS).toEqual([]);
+  it('open the current version as it is', () => {
     expect(LOCALE_OVERLAY_MIGRATIONS).toEqual([]);
     expect(openTalesPack(pack)).toEqual({
       ok: true,
       value: pack,
-      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+      from: { schemaVersion: 2, systemSchemaVersion: 1 },
     });
     expect(openLocaleOverlay(overlay)).toEqual({
       ok: true,
@@ -211,8 +212,8 @@ describe('ENG-06 the openers of packs and overlays', () => {
       ok: false,
       code: 'newer',
       field: 'schemaVersion',
-      found: 2,
-      current: 1,
+      found: 3,
+      current: 2,
     });
     expect(
       openLocaleOverlay({ ...overlay, schemaVersion: LOCALE_OVERLAY_SCHEMA_VERSION + 1 }),
@@ -222,5 +223,51 @@ describe('ENG-06 the openers of packs and overlays', () => {
   it('refuse a file the schema does not take, on its path', () => {
     expect(refusedPaths(openTalesPack({ ...pack, system: 'deep' }))).toEqual(['system']);
     expect(refusedPaths(openLocaleOverlay({ ...overlay, locale: 'de' }))).toEqual(['locale']);
+  });
+});
+
+// ENG-61: a condition's `recovery` is new in the core's shape, so a pack and a character are at
+// version 2. A version 1 file has no `recovery`, so each step returns it as it is.
+describe('ENG-61 version 2 of a pack and a character', () => {
+  it('opens a pack of version 1 as version 2, every other field as it was', () => {
+    expect(PACK_SCHEMA_VERSION).toBe(2);
+    expect(PACK_MIGRATIONS).toHaveLength(1);
+    const old = { ...pack, schemaVersion: 1 };
+    expect(openTalesPack(old)).toEqual({
+      ok: true,
+      value: pack,
+      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+    });
+    const [step] = PACK_MIGRATIONS;
+    const frozen = deepFreeze(JSON.parse(JSON.stringify(old)));
+    expect(step?.(frozen)).toEqual(old);
+    expect(step?.(frozen)).not.toBe(frozen);
+    expect(frozen).toEqual(old);
+  });
+
+  it('opens a character of version 1 as version 2, every other field as it was', () => {
+    expect(CHARACTER_SCHEMA_VERSION).toBe(2);
+    expect(CHARACTER_MIGRATIONS).toHaveLength(1);
+    const old = { ...ash, schemaVersion: 1 };
+    expect(openTalesCharacter(old)).toEqual({
+      ok: true,
+      value: ash,
+      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+    });
+    const [step] = CHARACTER_MIGRATIONS;
+    const frozen = deepFreeze(JSON.parse(JSON.stringify(old)));
+    expect(step?.(frozen)).toEqual(old);
+    expect(step?.(frozen)).not.toBe(frozen);
+    expect(frozen).toEqual(old);
+  });
+
+  it('refuses a character of version 3 as newer', () => {
+    expect(openTalesCharacter({ ...ash, schemaVersion: 3 })).toMatchObject({
+      ok: false,
+      code: 'newer',
+      field: 'schemaVersion',
+      found: 3,
+      current: 2,
+    });
   });
 });

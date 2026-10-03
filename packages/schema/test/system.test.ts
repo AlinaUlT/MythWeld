@@ -146,6 +146,18 @@ describe('ENG-24 system schemas', () => {
     expect(issuePaths(talesEntitySchema, withGrant(2, { uses: dawn }))).toEqual([
       'grants.2.uses.recovery.0.on',
     ]);
+    // ENG-61: in a condition's `recovery` too.
+    const weary = {
+      id: 'tales:condition/weary',
+      type: 'condition',
+      ruleset: 'any',
+      name: { en: 'Weary' },
+      maxLevel: 3,
+      source: { pack: 'tales' },
+    };
+    const easedOn = (on: string) => ({ ...weary, recovery: [{ on, amount: '1' }] });
+    expect(talesEntitySchema.parse(easedOn('scene'))).toEqual(easedOn('scene'));
+    expect(issuePaths(talesEntitySchema, easedOn('long'))).toEqual(['recovery.0.on']);
   });
 
   it("adds the module's grant kinds, and refuses a kind no one defined", () => {

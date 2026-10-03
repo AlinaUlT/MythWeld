@@ -14,7 +14,7 @@ import { goldenA, goldenC2014, srd2014 } from './index.ts';
 // ENG-09: the 2014 golden data is whole, agrees with itself, and gives what SPEC §6.7 says golden
 // A has. Expected counts are ENG-09 §8's; golden A's scores and sources are SPEC §6.7's.
 
-const FROM_CURRENT = { schemaVersion: 1, systemSchemaVersion: 5 };
+const FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 5 };
 
 const pack: FifthEditionPack = opened(openFifthEditionPack(srd2014));
 const entities: readonly FifthEditionEntity[] = pack.entities;

@@ -12,7 +12,7 @@ const source = { pack: 'hb-local' };
 export const hbLocal = {
   id: 'hb-local',
   version: '1.0.0',
-  schemaVersion: 1,
+  schemaVersion: 2,
   system: '5e',
   systemSchemaVersion: 5,
   title: { ru: 'Мой хоумбрю', en: 'My homebrew' },

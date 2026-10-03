@@ -10,7 +10,7 @@ type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 
 /** The core part both characters share. */
 const core: Omit<CharacterInput, 'id' | 'name' | 'abilities' | 'choices' | 'systemData'> = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   rev: 0,
   createdAt: '2026-10-02T09:00:00.000Z',
   updatedAt: '2026-10-02T09:00:00.000Z',

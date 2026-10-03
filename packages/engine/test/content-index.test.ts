@@ -17,7 +17,7 @@ function pack(id: string, entities: readonly object[], change: object = {}): Tal
   return talesPackSchema.parse({
     id,
     version: '1.0.0',
-    schemaVersion: 1,
+    schemaVersion: 2,
     system: 'tales',
     systemSchemaVersion: 1,
     title: { en: 'Made up' },

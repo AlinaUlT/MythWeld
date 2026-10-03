@@ -1,4 +1,4 @@
-import { compute, loadContentIndex, recoveredOn } from '@grimoire/engine';
+import { compute, conditionsRecoveredOn, loadContentIndex, recoveredOn } from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 import {
   ash as ashFile,
@@ -165,6 +165,149 @@ describe('ENG-21 resources back on recovery events', () => {
     const events = frozen(['scene']);
     expect(recoveredOn(character, computed, events).changes).toEqual([
       { path: LUCK, before: 1, after: 0 },
+    ]);
+    expect(character).toEqual(ash);
+  });
+});
+
+// ENG-61: the levels a stored condition loses on a system's recovery events, on Tales. Weary has
+// levels 1 to 3 and loses 1 each `session`; lost has no levels and no recovery. Ash is weary at 1,
+// its nerve modifier 1; Brook is lost. Every value is worked out by hand in ENG-61 §3.
+
+const CONDITIONS = ['state', 'conditions'];
+const WEARY = 'tales-core:condition/weary';
+const LOST = 'tales-core:condition/lost';
+const DIZZY = 'character:condition/dizzy';
+
+type StoredCondition = TalesCharacter['state']['conditions'][number];
+type ConditionEntity = Extract<TalesEntity, { type: 'condition' }>;
+
+/** `character` with these stored conditions, and conditions of its own. */
+function withConditions(
+  character: TalesCharacter,
+  conditions: StoredCondition[],
+  own: ConditionEntity[] = [],
+): TalesCharacter {
+  return opened(
+    openTalesCharacter({
+      ...character,
+      localEntities: [...character.localEntities, ...own],
+      state: { ...character.state, conditions },
+    }),
+  );
+}
+
+/** A made-up condition of the character's own, levels 1 to 3 unless `maxLevel` says otherwise. */
+function ownCondition(
+  recovery: ConditionEntity['recovery'],
+  slug = 'dizzy',
+  maxLevel: number | undefined = 3,
+): ConditionEntity {
+  return {
+    id: `character:condition/${slug}`,
+    type: 'condition',
+    ruleset: 'any',
+    name: { en: slug },
+    ...(maxLevel !== undefined && { maxLevel }),
+    ...(recovery !== undefined && { recovery }),
+    source: { pack: 'character' },
+  };
+}
+
+/** What `character`'s conditions lose on `events`. */
+function eased(character: TalesCharacter, events: readonly string[]) {
+  return conditionsRecoveredOn(character, compute(character, index, talesModule), events);
+}
+
+/** Ash with its own dizzy condition at 3, which recovers by `recovery`, on `events`. */
+function dizzyAt3(recovery: ConditionEntity['recovery'], events: readonly string[]) {
+  return eased(withConditions(ash, [{ id: DIZZY, level: 3 }], [ownCondition(recovery)]), events);
+}
+
+describe('ENG-61 conditions lowered on recovery events', () => {
+  it("lowers a stored condition's level on the events its entry names", () => {
+    expect(eased(ash, ['session'])).toEqual({
+      changes: [{ path: CONDITIONS, before: [{ id: WEARY, level: 1 }], after: [] }],
+      warnings: [],
+    });
+    expect(eased(ash, ['scene'])).toEqual({ changes: [], warnings: [] });
+    expect(eased(withConditions(ash, [{ id: WEARY, level: 3 }]), ['session']).changes).toEqual([
+      { path: CONDITIONS, before: [{ id: WEARY, level: 3 }], after: [{ id: WEARY, level: 2 }] },
+    ]);
+    // Stored above its maximum of 3: lowered from 3.
+    expect(eased(withConditions(ash, [{ id: WEARY, level: 5 }]), ['session']).changes).toEqual([
+      { path: CONDITIONS, before: [{ id: WEARY, level: 5 }], after: [{ id: WEARY, level: 2 }] },
+    ]);
+  });
+
+  it('leaves a condition whose entry has no recovery', () => {
+    expect(eased(brook, ['session'])).toEqual({ changes: [], warnings: [] });
+    expect(eased(brook, ['scene'])).toEqual({ changes: [], warnings: [] });
+  });
+
+  it('lowers each condition by the first of the events it names', () => {
+    const both: ConditionEntity['recovery'] = [
+      { on: 'scene', amount: '1' },
+      { on: 'session', amount: 'all' },
+    ];
+    expect(dizzyAt3(both, ['scene', 'session']).changes).toEqual([
+      { path: CONDITIONS, before: [{ id: DIZZY, level: 3 }], after: [{ id: DIZZY, level: 2 }] },
+    ]);
+    expect(dizzyAt3(both, ['session', 'scene']).changes).toEqual([
+      { path: CONDITIONS, before: [{ id: DIZZY, level: 3 }], after: [] },
+    ]);
+  });
+
+  it('evaluates an amount on the computed values, rounded down and never below 0', () => {
+    const amount = (formula: string) => dizzyAt3([{ on: 'scene', amount: formula }], ['scene']);
+    const to = (after: StoredCondition[]) => [
+      { path: CONDITIONS, before: [{ id: DIZZY, level: 3 }], after },
+    ];
+    expect(amount('@abilities.nerve.mod').changes).toEqual(to([{ id: DIZZY, level: 2 }]));
+    expect(amount('1.5').changes).toEqual(to([{ id: DIZZY, level: 2 }]));
+    expect(amount('5').changes).toEqual(to([]));
+    expect(amount('-1')).toEqual({ changes: [], warnings: [] });
+    const missing = amount('@nope');
+    expect(missing.changes).toEqual([]);
+    expect(missing.warnings).toMatchObject([
+      {
+        code: 'conditionRecoveryFormula',
+        condition: DIZZY,
+        warning: { code: 'missingPath', path: 'nope' },
+      },
+    ]);
+    expect(missing.warnings[0]?.message).toMatch(/\S/);
+  });
+
+  it('removes a condition with no levels', () => {
+    const dazed = ownCondition([{ on: 'session', amount: '1' }], 'dazed', undefined);
+    const character = withConditions(ash, [{ id: dazed.id }], [dazed]);
+    expect(eased(character, ['session']).changes).toEqual([
+      { path: CONDITIONS, before: [{ id: dazed.id }], after: [] },
+    ]);
+  });
+
+  it('keeps the order, and a condition no entry matches', () => {
+    const gone = 'tales-core:condition/gone';
+    const character = withConditions(ash, [{ id: WEARY, level: 2 }, { id: gone }, { id: LOST }]);
+    expect(eased(character, ['session'])).toEqual({
+      changes: [
+        {
+          path: CONDITIONS,
+          before: [{ id: WEARY, level: 2 }, { id: gone }, { id: LOST }],
+          after: [{ id: WEARY, level: 1 }, { id: gone }, { id: LOST }],
+        },
+      ],
+      warnings: [],
+    });
+  });
+
+  it('changes nothing it is given', () => {
+    const character = frozen(ash);
+    const computed = frozen(compute(ash, index, talesModule));
+    const events = frozen(['session']);
+    expect(conditionsRecoveredOn(character, computed, events).changes).toEqual([
+      { path: CONDITIONS, before: [{ id: WEARY, level: 1 }], after: [] },
     ]);
     expect(character).toEqual(ash);
   });

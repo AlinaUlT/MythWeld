@@ -1,7 +1,15 @@
-import type { EntityPartId, L10n, LogChange, LogEntry, Roller } from '@grimoire/schema';
+import type {
+  EntityId,
+  EntityPartId,
+  L10n,
+  LogChange,
+  LogEntry,
+  Roller,
+  UsesDef,
+} from '@grimoire/schema';
 import type { Computed } from './compute';
 import type { ContentIndex, Lookup } from './content-index';
-import { evaluateNumber, type FormulaWarning } from './formula';
+import { evaluateNumber, type FormulaReader, type FormulaWarning } from './formula';
 import { type CharacterCore, CONDITION_TYPE, type GatherableEntity, maxLevelOf } from './gather';
 import {
   type Applied,
@@ -22,6 +30,7 @@ import {
 // builds its entry as these do.
 // ENG-21: `recoveredOn` gives the changes that give uses back on a system's recovery events, for
 // a module's rest to make part of its own entry.
+// ENG-61: `conditionsRecoveredOn` does the same for the levels a condition's `recovery` takes away.
 
 /**
  * Who makes a change, when, and the new entry's id. The caller gives them, as it gives a roll's
@@ -235,6 +244,52 @@ export interface Recovered {
   warnings: RecoveryWarning[];
 }
 
+/** A condition's recovery amount met something: it took away what its number says (ENG-61). */
+export interface ConditionRecoveryWarning {
+  readonly code: 'conditionRecoveryFormula';
+  readonly condition: EntityId;
+  readonly warning: FormulaWarning;
+  readonly message: string;
+}
+
+/** The change to the stored conditions that `conditionsRecoveredOn` gives, and what it met. */
+export interface ConditionsRecovered {
+  changes: LogChange[];
+  warnings: ConditionRecoveryWarning[];
+}
+
+/** One recovery of a resource's uses or of a condition's levels. */
+type Recovery = UsesDef['recovery'][number];
+
+/** The first of `recovery` whose event comes first in `events`, a system's events in order. */
+function firstRecovery(
+  recovery: readonly Recovery[],
+  events: readonly string[],
+): Recovery | undefined {
+  return events
+    .map((event) => recovery.find((each) => each.on === event))
+    .find((each) => each !== undefined);
+}
+
+/**
+ * The count a recovery's amount gives: its formula on the computed values, rounded down and never
+ * below 0, or every one for `all`; and what the formula met.
+ */
+function recoveryCount(
+  recovery: Recovery,
+  read: FormulaReader,
+): { count: number; warnings: readonly FormulaWarning[] } {
+  if (recovery.amount === 'all') return { count: Number.POSITIVE_INFINITY, warnings: [] };
+  const result = evaluateNumber(recovery.amount, read);
+  const count = Number.isFinite(result.value) ? Math.max(0, Math.floor(result.value)) : 0;
+  return { count, warnings: result.warnings };
+}
+
+/** A reader of the computed values: a path no step gave is missing. */
+function readerOf(values: Computed<GatherableEntity>['values']): FormulaReader {
+  return (path) => (Object.hasOwn(values, path) ? values[path] : undefined);
+}
+
 /**
  * The uses each resource gets back on `events`, a system's recovery events in the order they
  * happen (a fifth-edition long rest: `long`, then `short`). Each grant of a key recovers by its
@@ -248,23 +303,16 @@ export function recoveredOn<E extends GatherableEntity>(
   computed: Pick<Computed<E>, 'values' | 'resources'>,
   events: readonly string[],
 ): Recovered {
-  const { values } = computed;
-  const read = (path: string) => (Object.hasOwn(values, path) ? values[path] : undefined);
+  const read = readerOf(computed.values);
   const back = new Map<string, number>();
   const warnings: RecoveryWarning[] = [];
   for (const { key, uses, from: part } of computed.resources) {
-    const recovery = events
-      .map((event) => uses.recovery.find((each) => each.on === event))
-      .find((each) => each !== undefined);
+    const recovery = firstRecovery(uses.recovery, events);
     if (recovery === undefined) continue;
-    let count = Number.POSITIVE_INFINITY;
-    if (recovery.amount !== 'all') {
-      const result = evaluateNumber(recovery.amount, read);
-      for (const warning of result.warnings) {
-        const message = `${warning.message} (the uses of "${key}" ${part} gives back on "${recovery.on}").`;
-        warnings.push({ code: 'recoveryFormula', key, part, warning, message });
-      }
-      count = Number.isFinite(result.value) ? Math.max(0, Math.floor(result.value)) : 0;
+    const { count, warnings: met } = recoveryCount(recovery, read);
+    for (const warning of met) {
+      const message = `${warning.message} (the uses of "${key}" ${part} gives back on "${recovery.on}").`;
+      warnings.push({ code: 'recoveryFormula', key, part, warning, message });
     }
     back.set(key, Math.max(back.get(key) ?? 0, count));
   }
@@ -275,6 +323,53 @@ export function recoveredOn<E extends GatherableEntity>(
     if (after < spent) changes.push(changeTo(character, resourceSpentPath(key), after));
   }
   return { changes, warnings };
+}
+
+/** A condition's recoveries (ENG-61): none when its entry has no `recovery`. */
+function conditionRecoveryOf(entity: GatherableEntity): readonly Recovery[] {
+  const recovery = (entity as { readonly recovery?: readonly Recovery[] }).recovery;
+  return recovery ?? [];
+}
+
+/**
+ * The levels each stored condition loses on `events`, a system's recovery events in the order they
+ * happen: by the first recovery of its entry whose event comes first in `events`, from the level
+ * it has (the stored one, else 1, up to its maximum). An amount reads the computed values, rounded
+ * down and never below 0; `all` takes every level. At level 0 the condition is removed; a level
+ * above 0 is stored with it, as `setCondition` stores it. A stored condition the character has no
+ * entry for, or whose entry has no recovery on `events`, is kept as it is. One change to the whole
+ * list, in its order, when a level goes down; nothing is applied.
+ */
+export function conditionsRecoveredOn<E extends GatherableEntity>(
+  character: CharacterCore<E>,
+  computed: Pick<Computed<E>, 'values' | 'entities'>,
+  events: readonly string[],
+): ConditionsRecovered {
+  const read = readerOf(computed.values);
+  const had = new Map<string, E>(computed.entities.map(({ entity }) => [entity.id, entity]));
+  const warnings: ConditionRecoveryWarning[] = [];
+  const conditions = character.state.conditions;
+  let lowered = false;
+  const after = conditions.flatMap((stored) => {
+    const entity = had.get(stored.id);
+    if (entity === undefined || entity.type !== CONDITION_TYPE) return [stored];
+    const recovery = firstRecovery(conditionRecoveryOf(entity), events);
+    if (recovery === undefined) return [stored];
+    const { count, warnings: met } = recoveryCount(recovery, read);
+    for (const warning of met) {
+      const message = `${warning.message} (the levels "${entity.id}" loses on "${recovery.on}").`;
+      warnings.push({ code: 'conditionRecoveryFormula', condition: entity.id, warning, message });
+    }
+    if (count === 0) return [stored];
+    lowered = true;
+    // A level left is below the maximum, so only a condition with levels keeps one.
+    const level = Math.min(stored.level ?? 1, maxLevelOf(entity)) - count;
+    return level < 1 ? [] : [{ id: stored.id, level }];
+  });
+  return {
+    changes: lowered ? [changeTo(character, CONDITIONS, copyJson(after))] : [],
+    warnings,
+  };
 }
 
 /** An entry by id: the character's own first, then its packs' (as gathering finds it). */

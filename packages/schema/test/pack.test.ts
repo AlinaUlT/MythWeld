@@ -38,7 +38,7 @@ const talent = {
 const fullPack = {
   id: 'tales-core',
   version: '2.1.0-beta.1',
-  schemaVersion: 1,
+  schemaVersion: 2,
   system: 'tales',
   systemSchemaVersion: 1,
   title: { en: 'Tales core', ru: 'Основа сказаний' },
@@ -76,7 +76,7 @@ const fullPack = {
 const appendixPack = {
   id: 'hb-local',
   version: '1.0.0',
-  schemaVersion: 1,
+  schemaVersion: 2,
   system: 'tales',
   systemSchemaVersion: 1,
   title: { ru: 'Мой хоумбрю', en: 'My homebrew' },
@@ -158,7 +158,7 @@ describe('ENG-05 content pack', () => {
   it('parses a full pack and the Appendix Д pack to equal objects', () => {
     expect(talesPackSchema.parse(fullPack)).toEqual(fullPack);
     expect(talesPackSchema.parse(appendixPack)).toEqual(appendixPack);
-    expect(PACK_SCHEMA_VERSION).toBe(1);
+    expect(PACK_SCHEMA_VERSION).toBe(2);
     expect(LOCALE_OVERLAY_SCHEMA_VERSION).toBe(1);
   });
 
@@ -199,7 +199,7 @@ describe('ENG-05 content pack', () => {
 
   it('refuses another system, another schema version and an edition the system lacks', () => {
     expect(issuePaths(talesPackSchema, packWith({ system: 'deep' }))).toEqual(['system']);
-    for (const schemaVersion of [0, 2, '1']) {
+    for (const schemaVersion of [0, 1, 3, '2']) {
       expect(
         issuePaths(talesPackSchema, packWith({ schemaVersion })),
         String(schemaVersion),
@@ -405,7 +405,7 @@ describe("ENG-39 a pack carries the version of its module's shape", () => {
         systemSchemaVersion: 2,
         entities: [fullPack.entities[0], rankedTalent],
       },
-      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+      from: { schemaVersion: 2, systemSchemaVersion: 1 },
     });
     expect(tier).toBe(2);
     expect(renameTier).toHaveBeenCalledOnce();

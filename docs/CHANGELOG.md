@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-03 · ENG-61 · The published fifth-edition pack JSON Schema asks for `schemaVersion` 2,
+  and a condition may say what a rest takes from its level (`recovery`); a pack of version 1 still
+  opens in the app.
 - 2026-10-03 · ENG-58 · The published fifth-edition pack JSON Schema asks for
   `systemSchemaVersion` 3; a pack of version 2 still opens in the app.
 - 2026-10-03 · ENG-53 · The fifth-edition pack schema accepts a spell's `healing`: a roll formula,

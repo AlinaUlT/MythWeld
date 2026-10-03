@@ -140,7 +140,7 @@ const systemData = {
 /** Every field a fifth-edition character can have. */
 const character = {
   id: '5b0c1d2e-3f4a-4b5c-8d6e-7f8091a2b3c4',
-  schemaVersion: 1,
+  schemaVersion: 2,
   rev: 2,
   createdAt: '2026-10-01T09:00:00.000Z',
   updatedAt: '2026-10-01T09:30:00.000Z',
@@ -541,7 +541,7 @@ describe('ENG-33 fifth-edition character', () => {
 const pack = {
   id: 'hb-test',
   version: '1.0.0',
-  schemaVersion: 1,
+  schemaVersion: 2,
   system: '5e',
   systemSchemaVersion: 5,
   title: { en: 'Test pack' },
@@ -555,7 +555,7 @@ describe('ENG-33 fifth-edition files open through both chains', () => {
     expect(openFifthEditionCharacter(character)).toEqual({
       ok: true,
       value: character,
-      from: { schemaVersion: 1, systemSchemaVersion: 5 },
+      from: { schemaVersion: 2, systemSchemaVersion: 5 },
     });
     expect(openFifthEditionCharacter({ ...character, systemSchemaVersion: 6 })).toMatchObject({
       ok: false,
@@ -571,7 +571,7 @@ describe('ENG-33 fifth-edition files open through both chains', () => {
     expect(openFifthEditionPack(pack)).toEqual({
       ok: true,
       value: pack,
-      from: { schemaVersion: 1, systemSchemaVersion: 5 },
+      from: { schemaVersion: 2, systemSchemaVersion: 5 },
     });
     expect(openFifthEditionPack({ ...pack, systemSchemaVersion: 6 })).toMatchObject({
       ok: false,
@@ -608,7 +608,7 @@ describe('ENG-47 the pinned AC calculation is stored', () => {
     expect(openFifthEditionCharacter(old)).toEqual({
       ok: true,
       value: { ...character, systemSchemaVersion: 5, systemData: unpinned },
-      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+      from: { schemaVersion: 2, systemSchemaVersion: 1 },
     });
     const [step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
     const frozen = Object.freeze({ ...old });
@@ -622,7 +622,7 @@ describe('ENG-47 the pinned AC calculation is stored', () => {
     expect(openFifthEditionPack(old)).toEqual({
       ok: true,
       value: pack,
-      from: { schemaVersion: 1, systemSchemaVersion: 1 },
+      from: { schemaVersion: 2, systemSchemaVersion: 1 },
     });
     const [step] = FIFTH_EDITION_PACK_MIGRATIONS;
     const frozen = Object.freeze({ ...old });
@@ -648,7 +648,7 @@ describe('ENG-58 stable is stored', () => {
     expect(openFifthEditionCharacter(old)).toEqual({
       ok: true,
       value: character,
-      from: { schemaVersion: 1, systemSchemaVersion: 2 },
+      from: { schemaVersion: 2, systemSchemaVersion: 2 },
     });
     expect(character.systemData.state.deathSaves).toEqual({
       success: 1,
@@ -689,7 +689,7 @@ describe('ENG-58 stable is stored', () => {
     expect(openFifthEditionPack(old)).toEqual({
       ok: true,
       value: pack,
-      from: { schemaVersion: 1, systemSchemaVersion: 2 },
+      from: { schemaVersion: 2, systemSchemaVersion: 2 },
     });
     const [, step] = FIFTH_EDITION_PACK_MIGRATIONS;
     const frozen = Object.freeze({ ...old });
@@ -721,7 +721,7 @@ describe("ENG-56 the starting languages' place is stored", () => {
           systemSchemaVersion: 5,
           systemData: { ...unplaced, languageSource: place },
         },
-        from: { schemaVersion: 1, systemSchemaVersion: 3 },
+        from: { schemaVersion: 2, systemSchemaVersion: 3 },
       });
     }
     const [, , step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
@@ -754,7 +754,7 @@ describe("ENG-56 the starting languages' place is stored", () => {
     expect(openFifthEditionPack(old)).toEqual({
       ok: true,
       value: pack,
-      from: { schemaVersion: 1, systemSchemaVersion: 3 },
+      from: { schemaVersion: 2, systemSchemaVersion: 3 },
     });
     const [, , step] = FIFTH_EDITION_PACK_MIGRATIONS;
     const frozen = Object.freeze({ ...old });
@@ -843,7 +843,7 @@ describe("ENG-57 a spell grant's uses are keyed", () => {
     expect(openFifthEditionPack(old)).toEqual({
       ok: true,
       value: { ...pack, entities: newer },
-      from: { schemaVersion: 1, systemSchemaVersion: 4 },
+      from: { schemaVersion: 2, systemSchemaVersion: 4 },
     });
     const [, , , step] = FIFTH_EDITION_PACK_MIGRATIONS;
     const ice = iced(old);
@@ -861,7 +861,7 @@ describe("ENG-57 a spell grant's uses are keyed", () => {
     expect(openFifthEditionCharacter(old)).toEqual({
       ok: true,
       value: { ...character, localEntities: [luckyFind, keyedOwn] },
-      from: { schemaVersion: 1, systemSchemaVersion: 4 },
+      from: { schemaVersion: 2, systemSchemaVersion: 4 },
     });
     const [, , , step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
     const ice = iced(old);

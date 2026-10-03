@@ -14612,3 +14612,341 @@ Found, not fixed:
   Neither the inventory schema nor `compute()` counts them. A phase 2 note in `BACKLOG.md`.
 
 Nothing for the changelog: no screen changes.
+
+---
+
+### ENG-61 A long rest lowers a condition's level
+
+**Hat:** A long rest lowers a condition's level as its entry says
+**Depends on:** ENG-03 (`conditionDefSchema`), ENG-04 (`usesDefSchemaOf`, a recovery's shape),
+ENG-06 (the migration frame, the core's versions), ENG-11 (gathering, `maxLevelOf`), ENG-21
+(`recoveredOn`, `REST_EVENTS`, `shortRest`, `longRest`), ENG-24 (`systemSchemasOf`), ENG-30
+(`changeTo`, the stored conditions), ENG-38 (the published pack schema)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.3 (`ConditionDef`); §6.3 ("Истощение", "Продолжительный отдых"); §6.4 (`longRest`);
+§5.8 (migrations); ADR 004 item 1
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/trackers.ts` — changes: new `conditionsRecoveredOn` and
+`ConditionRecoveryWarning`; `recoveredOn` shares its recovery picking and counting with it.
+- `packages/schema/src/grant.ts` — changes: new `recoverySchemaOf`, which `usesDefSchemaOf` uses.
+- `packages/schema/src/entity-types.ts` — changes: `coreEntitySchemasOf(base, recoveryEvent)`; the
+  condition gets `recovery`.
+- `packages/schema/src/system.ts` — changes: passes the system's `recoveryEventSchema`.
+- `packages/schema/src/pack.ts`, `character.ts` — changes: `PACK_SCHEMA_VERSION` and
+  `CHARACTER_SCHEMA_VERSION` 1 → 2, each with its step (§5).
+- `packages/system-5e/src/rests.ts` — changes: both rests add `conditionsRecoveredOn`'s changes;
+  `RestOutcome.warnings` takes its warnings too.
+- `packages/system-5e/test/golden/srd-2024.ts` — the 2024 exhaustion's `recovery` (§8).
+- `packages/system-5e/test/exhaustion.test.ts` — the 2014 exhaustion's `recovery` (§8); the
+  module's tests.
+- `packages/schema/test/tales/content.ts` — Tales' `weary` gets a recovery.
+- `packages/engine/test/recovery.test.ts`, `packages/schema/test/entity-types.test.ts`,
+  `system.test.ts`, `migration.test.ts`, `pack.test.ts`, `character.test.ts`,
+  `packages/system-5e/test/entities.ts` — the tests of §7.
+- Every test file that writes a pack's or a character's core `schemaVersion` as `1` — now `2`.
+- `apps/web/public/schema/5e/pack.schema.json` — rewritten by its test (`docs/RUNNING.md`).
+- `docs/tickets/BACKLOG.md` — the re-cut (§4) and the row found (§11).
+
+#### 2. What is missing now
+
+Measured on `main` at `2934fac`:
+- The 2024 golden fixture's exhaustion with `recovery: [{ on: 'long', amount: '1' }]` added:
+  `conditionDefSchema` refuses it, `unrecognized_keys` `["recovery"]`; `openFifthEditionPack`
+  refuses the pack, `Unrecognized key: "recovery"`. A condition has `maxLevel` and nothing else
+  of its own (`packages/schema/src/entity-types.ts`).
+- Golden B (2024) at 3 hit points with exhaustion at level 2 (golden D), long rest: hit points 3 →
+  12, `state.conditions` stays `[{ id: 'srd-2024:condition/exhaustion', level: 2 }]`; the entry's
+  only change is `systemData.state.hp.current`.
+- `rests.ts` reads `state.conditions` nowhere; `recoveredOn` reads `computed.resources` only.
+- `pnpm test`: `Test Files 61 passed (61)`, `Tests 786 passed (786)`, 9.33 s.
+
+#### 3. What it should look like when done
+
+`stamp` is `action-checks.ts`'s. Golden A (2014): 12 hit points, walks 25 feet. Golden B (2024):
+12 hit points, walks 30 feet, one d10, CON +2. The exhaustion of each edition (ENG-19 §3: 2014's
+speed halved from level 2, hit points halved from 4; 2024's −2 on every d20 test and −5 feet per
+level) gets `recovery: [{ on: 'long', amount: '1' }]` (§8). Tales (ENG-27): Ash is weary at level
+1, its nerve modifier 1; Brook is lost. Every value is worked out by hand from §8 and the data.
+
+**The schema**
+1. A core condition (`conditionDefSchema`) takes `recovery`: a list of `{ on, amount }`, as a
+   resource's `uses.recovery` (ENG-04). `[{ on: 'long', amount: '1' }]` and `[{ on: 'scene',
+   amount: 'all' }, { on: 'session', amount: '@abilities.grit.mod' }]` parse to equal objects.
+2. Refused, each on its path: `[]` (`recovery`); `on: 'Long'` (`recovery.0.on`); no `amount`, an
+   `amount` of `1` (a number) or `' '` (`recovery.0.amount`); an unknown field `at`
+   (`recovery.0`).
+3. A system's condition takes only that system's recovery events: Tales' `scene` parses, `long` is
+   refused on `recovery.0.on`; fifth edition's `long` parses, `scene` is refused on
+   `entities.<n>.recovery.0.on` of its pack.
+
+**The versions** (§5)
+4. `PACK_SCHEMA_VERSION` and `CHARACTER_SCHEMA_VERSION` are 2, each with one step. A Tales pack and
+   a Tales character of version 1 open as version 2, every other field as it was, `from: {
+   schemaVersion: 1, systemSchemaVersion: 1 }`. Each step returns a new object equal to a frozen
+   input, which it leaves as it was. A pack of version 3 is refused as `newer`, `found: 3`,
+   `current: 2`.
+5. The published pack JSON Schema asks for `schemaVersion` `2` and has a condition's `recovery`.
+
+**The core** — `conditionsRecoveredOn(character, computed, events)`, on Tales, with `weary`
+(levels 1 to 3) given `recovery: [{ on: 'session', amount: '1' }]`
+6. Ash (weary 1) on `['session']`: one change, `{ path: ['state', 'conditions'], before: [{ id:
+   'tales-core:condition/weary', level: 1 }], after: [] }`, no warning. On `['scene']`: none.
+7. Ash at weary 3, `['session']`: after `[{ id: 'tales-core:condition/weary', level: 2 }]`.
+   Stored at 5, above its maximum of 3: from 3, so 2.
+8. Brook (lost, no recovery), on either event: none.
+9. A made-up condition of Ash's own, levels 1 to 3, at 3:
+   - with `scene` 1 and `session` all: `['scene', 'session']` gives 2; `['session', 'scene']`
+     removes it (each by the first of `events` it names, as a resource, ENG-21);
+   - an amount on the computed values, rounded down, never below 0: `@abilities.nerve.mod` (1)
+     gives 2; `1.5` gives 2; `5` removes it; `-1` gives no change and no warning; `@nope` gives
+     no change and the warning `{ code: 'conditionRecoveryFormula', condition:
+     'character:condition/dizzy', warning: { code: 'missingPath', path: 'nope' } }`, with a
+     message.
+10. A made-up condition with no levels, stored `{ id }`, `session` 1: removed.
+11. The list keeps its order: Ash with `[weary 2, a condition no pack has, lost]` on `['session']`:
+    after `[{ id: weary, level: 1 }, { id: <the missing one> }, { id: lost }]`; the missing one
+    is kept, with no warning of its own.
+12. Frozen inputs: nothing throws, nothing changes.
+
+**The module** — fifth edition's rests, with each edition's exhaustion
+13. Golden B at exhaustion 1 to 5, at its maximum, long rest: levels 0 (removed), 1, 2, 3, 4; the
+    entry's only change is `state.conditions`; after it `speed.walk` and `d20.all.bonus` are 30
+    and 0, 25 and −2, 20 and −4, 15 and −6, 10 and −8. Reversing the entry gives the character
+    before.
+14. Golden B at 3 hit points with exhaustion 2: hit points 3 → 12 and exhaustion 2 → 1 in one
+    entry.
+15. Golden A (2014) at exhaustion 4 and 3 hit points: hit points 3 → 6 (the maximum before the
+    rest, halved, §4), exhaustion 4 → 3; after the rest the maximum is 12 and speed 12.
+    Golden A at exhaustion 1: removed, speed 25, maximum 12.
+16. A short rest leaves exhaustion: golden B at exhaustion 2 and 3 hit points, a d10 rolling 6:
+    hit points 3 → 11, no change to `state.conditions`.
+17. A condition of the character's own, `character:condition/winded`, levels 1 to 2, `short` 1,
+    at 2: a short rest gives 1; a long rest gives 1 too (`REST_EVENTS.long` is `long`, then
+    `short`). With `character:condition/odd`, no levels, `long` `@nope`, beside it: a long rest
+    lowers winded and keeps odd, and `outcome.warnings` holds `{ code:
+    'conditionRecoveryFormula', condition: 'character:condition/odd', warning: { code:
+    'missingPath', path: 'nope' } }`.
+18. Refusals stay: golden B at 0 hit points with exhaustion 2, long rest: `tooFewHitPoints`, the
+    condition as it was.
+19. The goldens' values and ENG-19's, ENG-21's and ENG-62's tests pass as they are.
+20. The quality gate is green, `pnpm e2e` included (the published schema changes).
+
+#### 4. How to do it
+
+**The re-cut first** (`BACKLOG.md`). The row's note also names SRD 5.2.1's "If the creature died
+with any Exhaustion levels, it returns with 1 fewer level" (ENG-58). That is `revive`, not a long
+rest: a second hat. It becomes **ENG-66** (S) "Coming back to life lowers a condition's level as
+its entry says", after ENG-61. Its event is not one of fifth edition's recovery events
+(`short`, `long`, `dawn`, `turn`, `manual`); adding one changes the module's shape (a version).
+
+Then:
+1. `grant.ts`: `recoverySchemaOf(recoveryEvent)`, the list `usesDefSchemaOf` had inline.
+2. `entity-types.ts`, `system.ts`: the condition's `recovery`, on the system's events.
+3. `pack.ts`, `character.ts`: version 2, each with its step.
+4. `trackers.ts`: `conditionsRecoveredOn`; the first recovery by `events` and the count of an
+   amount are one helper each, which `recoveredOn` uses too.
+5. `rests.ts`: both rests add its changes after the resources', and its warnings.
+6. The test data of §3 and the tests of §7; the fixtures' `schemaVersion`; the published file;
+   then the gate.
+
+Technical choices (ADR 002):
+- **The condition says it, as both SRDs do.** SRD 5.1's and SRD 5.2.1's Exhaustion entries each
+  end with the long rest's reduction (§8): it is the condition's data, as a resource's recovery
+  is its grant's. No key is named in code, so a homebrew condition that eases with rest works the
+  same, and a condition without `recovery` is never touched. The module names no condition for
+  it.
+- **The shape is a resource's recovery**, `{ on, amount }` on the system's recovery events,
+  `amount` a formula or `all`: one shape to learn and to check, one evaluation (rounded down,
+  never below 0, a warning for a missing path). `all` ends the condition.
+- **The core lowers it** (`conditionsRecoveredOn`): conditions, levels and recovery events are
+  the core's (ENG-03, ENG-21); the module names the events of each rest, as for resources. Both
+  rests call it: an entry that says `short` is lowered by a short rest, and by a long one through
+  `REST_EVENTS`. A separate function keeps `recoveredOn`'s contract and tests as they are.
+- **At level 0 the condition is removed** (SRD 5.1 "all exhaustion effects ending if a
+  creature's exhaustion level is reduced below 1"; SRD 5.2.1 "When your Exhaustion level reaches
+  0, the condition ends"). A level above 0 is stored as `setCondition` stores it: with `level`
+  only for a condition that has levels.
+- **From the level it has**, the stored one capped at its maximum, as gathering reads it (ENG-11).
+- **One change, the whole list**, as `setCondition` and `removeCondition` write it (ENG-30), so the
+  rest stays one entry and one undo.
+- **Only stored conditions.** A condition `compute()` gives by a rule (ENG-62's Unconscious at 0
+  hit points) is not in the list, and a rest at 0 is refused anyway. A stored id no entry the
+  character has matches is kept as it is (missing is not broken).
+- **The hit points first, then the level.** The rest is measured on one `compute()` made before
+  it: 2014's exhaustion 4 halves the maximum, so its long rest gives hit points up to the halved
+  maximum and then lowers the level. dnd5e does the same: `_getRestHitPointRecovery` sets the hit
+  points to the prepared (halved) maximum, and the exhaustion update comes after (§8).
+- **SRD 5.1's "food and drink" is the person's.** The app tracks no food. dnd5e lowers on every
+  long rest unless the person has set its malnourished or dehydrated status (§8). Here the
+  person who did not eat sets the level back with `setCondition`; the 2014 Rest screen can say so
+  (phase 2, §11).
+- **The core's versions, not the module's.** The condition's schema is the core's
+  (`coreEntitySchemasOf`), in every system's packs and in a character's own entities, so the
+  core's `PACK_SCHEMA_VERSION` and `CHARACTER_SCHEMA_VERSION` go to 2. The module's version stays
+  5: nothing of its own shape changed.
+
+#### 5. Stored data
+
+`ContentPack` and `CharacterDoc` change: a condition entity may have `recovery`. In a pack it is
+an entry of `entities`; in a character, of `localEntities`.
+- `PACK_SCHEMA_VERSION` 1 → 2. Step 1 → 2: the pack as it is, a new object (no version 1 pack has
+  `recovery`, and a condition without it is unchanged).
+- `CHARACTER_SCHEMA_VERSION` 1 → 2. Step 1 → 2: the same, for a character's own entities.
+- The module's `FIFTH_EDITION_SCHEMA_VERSION` stays 5; `LOCALE_OVERLAY_SCHEMA_VERSION` stays 1.
+- Tests: §3 item 4. No Dexie table changes.
+
+#### 6. What a person will see
+
+Not a screen. The published pack JSON Schema changes (§3 item 5): one changelog line.
+
+#### 7. Tests
+
+- `packages/schema/test/entity-types.test.ts` — `describe('ENG-61 a condition says what a recovery
+  event takes from its level')`: items 1, 2.
+- `packages/schema/test/system.test.ts` — the ENG-24 recovery events test: item 3 (Tales).
+- `packages/schema/test/migration.test.ts` — `describe('ENG-61 version 2 of a pack and a
+  character')`: item 4; the ENG-06 opener tests at version 2. `pack.test.ts`,
+  `character.test.ts`: the versions.
+- `packages/engine/test/recovery.test.ts` — `describe('ENG-61 conditions lowered on recovery
+  events')`: items 6–12.
+- `packages/system-5e/test/exhaustion.test.ts` — `describe('ENG-61 a rest lowers a condition by
+  its entry')`: items 3 (fifth edition), 13–18.
+- `packages/system-5e/test/pack-json-schema.test.ts` — the made-up condition in `entities.ts`
+  gets a `recovery`, so the validator reads one: item 5. `apps/web/test/pack-schema.test.ts`
+  compares the published file.
+- Control values from: SPEC §6.7 (goldens A, B, D); ENG-19's exhaustion tables (§3); ENG-21's
+  d10 of 6 giving 8; ENG-21's Ash (nerve modifier 1); the SRD texts and dnd5e code of §8; the
+  rest worked out by hand in §3.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-03: SRD 5.1 and SRD 5.2.1 as 5e-bits/5e-srd-api quotes them at
+`e6edf9a51fad4b59a7e9561fad6c15232caed214` (`packages/5e-database/src/2014/en/
+5e-SRD-Conditions.json`, `5e-SRD-Rules.json`; `2024/en/5e-SRD-Conditions.json`); foundryvtt/dnd5e
+at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (`module/config.mjs`,
+`module/documents/actor/actor.mjs`). The same commits as ENG-13 to ENG-62. All CC-BY-4.0.
+
+**SRD 5.1, Exhaustion** (`5e-SRD-Conditions.json`): "An effect that removes exhaustion reduces
+its level as specified in the effect's description, with all exhaustion effects ending if a
+creature's exhaustion level is reduced below 1." "Finishing a long rest reduces a creature's
+exhaustion level by 1, provided that the creature has also ingested some food and drink."
+`5e-SRD-Rules.json`: "Exhaustion caused by lack of food or water can't be removed until the
+character eats and drinks the full required amount."; a disease's "one level of exhaustion that
+can't be removed until the disease is cured."
+
+**SRD 5.2.1, Exhaustion** (`5e-SRD-Conditions.json`): "Removing Exhaustion Levels. Finishing a
+Long Rest removes 1 of your Exhaustion levels. When your Exhaustion level reaches 0, the condition
+ends." Its Long Rest (ENG-21 §8): "Exhaustion Reduced. If you have the Exhaustion condition, its
+level decreases by 1."
+
+So both entries get `recovery: [{ on: 'long', amount: '1' }]`, and level 0 ends the condition.
+
+**dnd5e.** `config.mjs` `restTypes.long`: `exhaustionDelta: -1` (the short rest has none), in
+both rules versions. `actor.mjs` `_rest`: `if ( config.exhaustionDelta &&
+!result.clone.hasConditionEffect("malnourished") && !result.clone.hasConditionEffect("dehydrated")
+)` sets `system.attributes.exhaustion` to `Math.max(0, value + config.exhaustionDelta)`, after
+`_getRestHitPointRecovery`, which sets `system.attributes.hp.value` to `hp.max` as prepared
+before the rest (2014's level 4 halves it, ENG-19 §8).
+
+**Found while reading, other hats** (§11): SRD 5.1's food and drink, and the two exhaustions that
+"can't be removed until" something; exhaustion 6 is death in both (ENG-19 §8), and `isDead` reads
+only the death saves, so a long rest is not refused and now lowers 6 to 5.
+
+No golden value is touched; no rules source disagrees with the SPEC. Nothing stops.
+
+#### 9. Not in this ticket
+
+- Coming back to life with 1 fewer exhaustion level (SRD 5.2.1): ENG-66 (re-cut, §4).
+- Gaining exhaustion (a failed save, a forced march, starvation): the person's `setCondition`;
+  SRD 5.1's "can't be removed until" cases are the person's too.
+- Death at exhaustion 6, and a rest refused for it: new row (§11).
+- The recovery events `dawn`, `turn` and `manual`: no action triggers them yet (ENG-21 §11).
+- The 2014 Rest screen's word on food and drink, and the condition list showing a level go down:
+  phase 2.
+- The SRD conditions as pack entries: phase 3, with this `recovery` where their text has one.
+
+#### 10. Rake check
+
+- **Everything is data; the core names no game.** The reduction is the condition's `recovery`;
+  `conditionsRecoveredOn` names no condition and no event; the module passes `REST_EVENTS`.
+- **Each system's rules live in its module; no `if (ruleset === …)`.** Both editions' exhaustion
+  say the same in their own entries; no code tests an edition.
+- **Formulas never run code; a missing path is 0 and a warning.** An amount goes through
+  `evaluateNumber`; its warning is returned, never thrown.
+- **Missing is not broken.** A stored condition no entry matches is kept; a condition without
+  `recovery` is never lowered.
+- **A stored-shape change needs a migration.** The core's pack and character versions go to 2,
+  each with a pure step and its test (§5).
+- **The golden tests are the truth.** No expected value changes; the fixtures gain data the SRDs
+  state (§8).
+- **The engine is pure.** The caller gives the stamp; the frozen-input tests.
+- **Licensing.** The SRDs are quoted in this ticket only; the test data holds numbers and names.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-03, on `main` at `2934fac`:
+- Before: `pnpm test` `Test Files 61 passed (61)`, `Tests 786 passed (786)`, 9.33 s.
+- After: `pnpm lint` `Checked 192 files`, no error; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`
+  `Test Files 61 passed (61)`, `Tests 805 passed (805)`, 9.44 s; `pnpm e2e` `12 passed (8.3s)`,
+  run with `PLAYWRIGHT_CHROMIUM_PATH` as `docs/RUNNING.md` says for the cloud container (without
+  it, 11 of 12 fail at launch: `Executable doesn't exist at /opt/pw-browsers/
+  chromium_headless_shell-1243/...`; the browser, not the app).
+- ENG-63 reached `main` while this ticket was built; it was rebased onto `329209f`. Rebased:
+  `pnpm lint` `Checked 193 files`, no error; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`
+  `Test Files 62 passed (62)`, `Tests 810 passed (810)`, 9.78 s; `pnpm e2e` `12 passed (7.7s)`.
+- 19 tests are new: `recovery.test.ts` 7, `exhaustion.test.ts` 7, `migration.test.ts` 3,
+  `entity-types.test.ts` 2; ENG-24's recovery events test in `system.test.ts` gained Tales'
+  condition (item 3).
+- Golden D (golden B at exhaustion 2) after a long rest: exhaustion 1, `speed.walk` 20 → 25,
+  `d20.all.bonus` −4 → −2. Golden A (2014) at exhaustion 4 and 3 hit points: hit points 6,
+  exhaustion 3, then a maximum of 12.
+- The published `pack.schema.json`: `git diff` shows 236 lines added and 202 removed, because zod
+  renumbers its `$defs` names (`__schema66` → `__schema67` and on). With every `$ref` inlined, the
+  old and new files differ in exactly 2 places: `properties.schemaVersion.const` 1 → 2, and the
+  condition's new `recovery` (`on` one of `short`, `long`, `dawn`, `turn`, `manual`).
+- The tests catch mistakes. 14 breaks, each made alone in the code, then 7 test files run
+  (`recovery`, `exhaustion`, `rests`, `unconscious`, `entity-types`, `system`, `migration`: 86
+  tests); each failed at least one test, and each file was restored and compared equal (86
+  passed again): the level not capped at its maximum, 1 failed; level 0 kept, 5; `all` as one
+  level, 5; an amount not rounded down, 2; the condition warnings dropped, 2; a stored condition
+  no entry matches dropped, 1; the events ignored, 4; a count of 0 counted as a change, 2; a
+  level kept without its number, 8; the long rest lowering nothing, 4; the short rest on the long
+  rest's events, 2; the long rest dropping the conditions' warnings, 1; a condition's events not
+  the system's, 2; the hit points filled after the level goes down, 1.
+
+Differences from §3 and §4:
+- The first run of the breaks had a 15th, "a level stored for a condition without levels", that
+  no test failed: such a condition always ends when it loses a level (its level is at most 1, an
+  amount at least 1), so the branch that stored it without a level never ran. It was removed; a
+  level left is below the maximum, so only a condition with levels keeps one, as `setCondition`
+  stores it (§4's line holds).
+- Item 4: the character of version 3 is refused in ENG-61's own test; the pack of version 3 in
+  ENG-06's, now at version 2.
+- 15 places that write a pack's or a character's core `schemaVersion`, and 18 expectations of
+  the opener's `from`, moved from version 1 to 2 (the Tales files, the golden packs and
+  characters, ENG-06's, ENG-27's, ENG-33's and ENG-39's tests); no expected value of a rule
+  changed. The locale overlay stays at version 1.
+- Size S held.
+
+Re-cut (§4): coming back to life with 1 fewer exhaustion level (SRD 5.2.1) is ENG-66 (S), after
+ENG-61, with the part of the row's note on it.
+
+Found, not fixed:
+- Exhaustion 6 is death in both SRDs (SRD 5.1 "6 - Death"; SRD 5.2.1 "You die if your Exhaustion
+  level is 6"; dnd5e `conditions: { 6: ["dead"] }`), but `isDead` reads only the death saves, so a
+  long rest at exhaustion 6 is not refused, and now lowers it to 5. New row ENG-67 (S).
+- SRD 5.1's long rest lowers exhaustion only "provided that the creature has also ingested some
+  food and drink"; the app tracks no food, and lowers it on every long rest, as dnd5e does without
+  its malnourished or dehydrated status (§4). Added to the phase 2 note of ENG-21's rests.
+- SRD 5.1's exhaustion from hunger and thirst, and from a disease, "can't be removed until" the
+  character eats and drinks, or the disease is cured; no tracker holds why a level was gained.
+  The person's, with `setCondition` (§9); no row.
+
+Changelog: the published pack JSON Schema asks for `schemaVersion` 2, with a condition's
+`recovery`.

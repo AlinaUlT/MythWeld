@@ -1,9 +1,11 @@
 import {
   type ActionResult,
   type Computed,
+  type ConditionRecoveryWarning,
   type ContentIndex,
   changeTo,
   compute,
+  conditionsRecoveredOn,
   type LogStamp,
   type RecoveryWarning,
   recoveredOn,
@@ -39,6 +41,10 @@ import { HIT_DIE_SIZES, MAX_SPELL_LEVEL } from './system';
 // on `short`), and ends the temporary hit points, and concentration where the edition says so. A
 // rest the rules give nothing is refused: at fewer hit points than the edition's minimum, and
 // dead. Which recovery a resource follows is the core's `recoveredOn`. The rules are ENG-21 §8's.
+// ENG-61: each rest lowers the stored conditions by their entries' `recovery` on the rest's events
+// (the core's `conditionsRecoveredOn`), as both SRDs' exhaustion says of a long rest. The hit
+// points come from the one `compute()` made before the rest, so 2014's halved maximum at
+// exhaustion 4 is the one a long rest fills (dnd5e's order, ENG-61 §8).
 
 /**
  * The recovery events each rest triggers, in order: a long rest gives back what comes back on a
@@ -69,8 +75,8 @@ export interface SpentHitDie {
 export interface RestOutcome {
   /** Each hit die the rest spent, in the order asked. */
   hitDice: SpentHitDie[];
-  /** What the formulas of the uses given back met. */
-  warnings: RecoveryWarning[];
+  /** What the formulas of the uses given back, and of the condition levels lowered, met. */
+  warnings: (RecoveryWarning | ConditionRecoveryWarning)[];
 }
 
 /** Why a rest did not happen. `code` and its data are for the screen; `message` is for logs. */
@@ -132,7 +138,8 @@ function rested(
  * up to the maximum, never down, and from 0 they reset the death saves and end stable. The pact
  * slots and the uses that come back on `short` come back. Refused for a die no class has, a roll
  * it cannot show, a die more than the character has left, a dead character, one below the
- * edition's `shortRestMinHp`, and as `unchanged` when nothing changes.
+ * edition's `shortRestMinHp`, and as `unchanged` when nothing changes. ENG-61: the stored
+ * conditions lose the levels their entries take on `short`.
  */
 export function shortRest(
   character: FifthEditionCharacter,
@@ -178,6 +185,7 @@ export function shortRest(
   const current = Math.max(hp.current, Math.min(max, hp.current + regained));
   const revived = hp.current === 0 && current > 0;
   const recovered = recoveredOn(character, computed, REST_EVENTS.short);
+  const eased = conditionsRecoveredOn(character, computed, REST_EVENTS.short);
   return rested(
     character,
     stamp,
@@ -190,8 +198,9 @@ export function shortRest(
       ),
       changeTo(character, PACT_SPENT_PATH, 0),
       ...recovered.changes,
+      ...eased.changes,
     ],
-    { hitDice: spent, warnings: recovered.warnings },
+    { hitDice: spent, warnings: [...recovered.warnings, ...eased.warnings] },
   );
 }
 
@@ -200,8 +209,9 @@ export function shortRest(
  * maximum stay), no temporary hit points, the edition's `longRestHitDice` share of all its hit
  * dice back (rounded down, at least 1, the largest first), every slot and pact slot back, the uses
  * that come back on `long`, else on `short`, and no concentration where the edition's
- * `longRestEndsConcentration` says so. Refused for a dead character, one at 0 hit points, and as
- * `unchanged` when nothing changes.
+ * `longRestEndsConcentration` says so. ENG-61: the stored conditions lose the levels their
+ * entries take on `long`, else on `short` (each SRD's exhaustion: 1). Refused for a dead
+ * character, one at 0 hit points, and as `unchanged` when nothing changes.
  */
 export function longRest(
   character: FifthEditionCharacter,
@@ -230,6 +240,7 @@ export function longRest(
   const slots: Readonly<Partial<Record<string, number>>> = slotsSpent;
   const levels = Array.from({ length: MAX_SPELL_LEVEL }, (_, at) => at + 1);
   const recovered = recoveredOn(character, computed, REST_EVENTS.long);
+  const eased = conditionsRecoveredOn(character, computed, REST_EVENTS.long);
   return rested(
     character,
     stamp,
@@ -243,10 +254,11 @@ export function longRest(
         .map((level) => changeTo(character, slotSpentPath(level), 0)),
       changeTo(character, PACT_SPENT_PATH, 0),
       ...recovered.changes,
+      ...eased.changes,
       ...(rules.longRestEndsConcentration && concentration !== undefined
         ? [changeTo(character, CONCENTRATION_PATH, undefined)]
         : []),
     ],
-    { hitDice: [], warnings: recovered.warnings },
+    { hitDice: [], warnings: [...recovered.warnings, ...eased.warnings] },
   );
 }

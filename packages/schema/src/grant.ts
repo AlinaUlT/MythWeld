@@ -17,18 +17,26 @@ export function uniqueList<T extends z.ZodType>(item: T) {
     .meta({ uniqueItems: true });
 }
 
+/**
+ * What comes back on a system's recovery events, checked by `recoveryEvent`: on each event, an
+ * amount or `all`. A resource's uses (`UsesDef`); ENG-61: a condition's levels, which go.
+ */
+export function recoverySchemaOf<E extends z.ZodType<string>>(recoveryEvent: E) {
+  return z
+    .array(
+      z.strictObject({
+        on: recoveryEvent,
+        amount: z.union([z.literal('all'), formulaSchema]),
+      }),
+    )
+    .min(1);
+}
+
 /** `UsesDef` whose recovery events are checked by `recoveryEvent`. */
 export function usesDefSchemaOf<E extends z.ZodType<string>>(recoveryEvent: E) {
   return z.strictObject({
     max: formulaSchema,
-    recovery: z
-      .array(
-        z.strictObject({
-          on: recoveryEvent,
-          amount: z.union([z.literal('all'), formulaSchema]),
-        }),
-      )
-      .min(1),
+    recovery: recoverySchemaOf(recoveryEvent),
   });
 }
 

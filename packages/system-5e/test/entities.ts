@@ -38,6 +38,7 @@ export const condition = {
   ruleset: '2024',
   name: { en: 'Dazzled' },
   maxLevel: 3,
+  recovery: [{ on: 'long', amount: 'all' }],
   source,
 };
 

@@ -575,7 +575,7 @@ const versatile: Of<'weaponProperty'> = {
 export const srd2014 = {
   id: 'srd-2014',
   version: '0.1.0',
-  schemaVersion: 1,
+  schemaVersion: 2,
   system: '5e',
   systemSchemaVersion: 5,
   title: { en: 'SRD 5.1' },
