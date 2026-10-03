@@ -55,7 +55,10 @@ export interface Derived {
   readonly warnings?: readonly FormulaWarning[];
   /** What a rule of its system met; each is warned as `stepRule` (ENG-14). */
   readonly ruleWarnings?: readonly RuleWarning[];
-  /** What working out an effect it read met (`appendedNumbers`); each is warned as it is. */
+  /**
+   * What working out an effect it read met (`appendedNumbers`, `rollModeEffects`); each is warned
+   * as it is, once however many paths meet it.
+   */
   readonly effectWarnings?: readonly EffectWarning[];
 }
 
@@ -321,6 +324,7 @@ export function computeDerived<E extends GatherableEntity>(input: {
   // the part whose formula does. ENG-18: the paths in progress, in the order they began, each with
   // what read it; a path read again closes a loop, named from that path to the read that closed it.
   const computing = new Map<string, LoopLink>();
+  const warnedEffects = new Set<string>();
 
   /** Whether reading `path` now closes a loop; if it does, the loop is warned, `used` in it. */
   function closesLoop(path: string, readFor: string, link: LoopLink, used: string): boolean {
@@ -372,7 +376,14 @@ export function computeDerived<E extends GatherableEntity>(input: {
     for (const { rule, data, message } of own.ruleWarnings ?? []) {
       warnings.push({ code: 'stepRule', path, rule, ...(data && { data }), message });
     }
-    warnings.push(...(own.effectWarnings ?? []));
+    // ENG-34: one effect may be read by several paths (a roll target by every test it reaches);
+    // each of its warnings is warned once.
+    for (const warning of own.effectWarnings ?? []) {
+      const key = JSON.stringify(warning);
+      if (warnedEffects.has(key)) continue;
+      warnedEffects.add(key);
+      warnings.push(warning);
+    }
     const result = finish(path, own, readBy);
     computing.delete(path);
     values.set(path, result.value);

@@ -7,6 +7,7 @@ import {
   effectNumber,
   type NumberOp,
   phaseOf,
+  type RollModeOp,
   STATS_PATH,
   type StatField,
   statTargetOf,
@@ -41,8 +42,17 @@ export type BreakdownStep = {
   | { kind: 'default'; of: 'stat' | 'system' }
   /** A grant's number; `formula` when the grant gives it as one (a resource's maximum). */
   | { kind: 'grant'; part: EntityPartId; source: EntityId; label: L10n; formula?: string }
-  /** An effect's value: what its op did, or the candidate an `append` gave that was chosen (ENG-14). */
-  | { kind: 'effect'; part: EntityPartId; source: EntityId; label: L10n; op: NumberOp | 'append' }
+  /**
+   * An effect's value: what its op did, the candidate an `append` gave that was chosen (ENG-14),
+   * or a roll mode an `advantage` or `disadvantage` gave (ENG-34).
+   */
+  | {
+      kind: 'effect';
+      part: EntityPartId;
+      source: EntityId;
+      label: L10n;
+      op: NumberOp | 'append' | RollModeOp;
+    }
   | { kind: 'cap' }
   /** The character's level, as its module counts it. */
   | { kind: 'level' }

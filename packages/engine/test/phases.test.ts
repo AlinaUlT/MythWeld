@@ -4,9 +4,11 @@ import {
   type BreakdownStep,
   type ComputeWarning,
   compute,
+  type DerivedStep,
   type EffectWarning,
   loadContentIndex,
   type OwnPaths,
+  rollModeEffects,
   type SystemModule,
 } from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
@@ -990,6 +992,104 @@ describe('ENG-14 appended numbers', () => {
       { code: 'noTarget', part: 'character:talent/lamp#i', target: 'guard.formulas' },
     ]);
     expect(result.values['skills.sneak.total']).toBe(4);
+  });
+});
+
+describe('ENG-34 roll mode effects', () => {
+  // Rolls of Tales' own, `roll.climb` and `roll.all`, which no step computes. Ash: level 2. The
+  // charm is named with `{ carried: 1 }`; its switch `k` is off by default.
+  const charm = talent('charm', [
+    { id: 'a', target: 'roll.climb', op: 'advantage', value: true },
+    { id: 'b', target: 'roll.all', op: 'disadvantage', value: true },
+    { id: 'c', target: 'roll.climb', op: 'advantage', value: true, when: '@level > 5' },
+    { id: 'd', target: 'roll.climb', op: 'disadvantage', value: true, when: '@carried' },
+    { id: 'e', target: 'roll.climb', op: 'advantage', value: true, when: '1 +' },
+    { id: 'f', target: 'roll.climb', op: 'note', value: { en: 'Lit' } },
+    { id: 'g', target: 'roll.all', op: 'append', value: '1' },
+    { id: 'h', target: 'roll.climb', op: 'set', value: 'high' },
+    { id: 'i', target: 'roll.climb', op: 'add', value: 1 },
+    { id: 'j', target: 'roll.sneak', op: 'advantage', value: true },
+    {
+      id: 'k',
+      target: 'roll.climb',
+      op: 'advantage',
+      value: true,
+      toggle: { label: { en: 'Brace' }, default: false },
+    },
+  ]);
+  const named = naming({ 'character:talent/charm': { carried: 1 } });
+  const by = (id: string) => ({
+    part: `character:talent/charm#${id}`,
+    source: 'character:talent/charm',
+    label: { en: 'charm' },
+  });
+  /** The charm's effects on the two targets, with its switches as given, and what they warned. */
+  function modes(toggles: Readonly<Record<string, boolean>>) {
+    const result = computed(ashWith([charm]), named);
+    const warnings: EffectWarning[] = [];
+    const given = rollModeEffects(
+      activeEffects(result.entities, toggles),
+      ['roll.climb', 'roll.all'],
+      () => ({ read: (path) => result.values[path] }),
+      (warning) => warnings.push(warning),
+    );
+    return { given, warnings: codes({ warnings }) };
+  }
+
+  it('gives each advantage and disadvantage that applies, in order; warns another op', () => {
+    const { given, warnings } = modes({});
+    // `c`'s `when` is false at level 2; `d` reads its own `@carried`; `e` does not parse; `i`
+    // gives a number; `j` names another target; `k` is switched off.
+    expect(given).toEqual([
+      { op: 'advantage', target: 'roll.climb', ...by('a') },
+      { op: 'disadvantage', target: 'roll.all', ...by('b') },
+      { op: 'disadvantage', target: 'roll.climb', ...by('d') },
+    ]);
+    expect(warnings).toEqual([
+      { code: 'formula', part: by('e').part, field: 'when', inner: 'unexpected' },
+      { code: 'notARollMode', part: by('f').part, op: 'note', target: 'roll.climb' },
+      { code: 'notARollMode', part: by('g').part, op: 'append', target: 'roll.all' },
+      { code: 'notARollMode', part: by('h').part, op: 'set', target: 'roll.climb' },
+    ]);
+  });
+
+  it('gives a switched effect only when it is on', () => {
+    const { given } = modes({ 'character:talent/charm#k': true });
+    expect(given.map(({ part }) => part)).toEqual(['a', 'b', 'd', 'k'].map((id) => by(id).part));
+  });
+
+  it("warns each effect once, however many paths read it; a number op is the phases' `noTarget`", () => {
+    /** Two paths of the module's own, each counting the effects on `roll.climb`. */
+    const twice: Module = {
+      ...named,
+      derive: (input) => {
+        const effects = activeEffects(input.gathered.entities, input.character.state.toggles);
+        const counting: DerivedStep = (_, readBy) => {
+          const effectWarnings: EffectWarning[] = [];
+          const count = rollModeEffects(
+            effects,
+            ['roll.climb'],
+            (active) => ({ read: readBy(active.part) }),
+            (warning) => effectWarnings.push(warning),
+          ).length;
+          return {
+            value: count,
+            steps: [{ kind: 'rule', rule: 'count', value: count, change: count }],
+            effectWarnings,
+          };
+        };
+        return { ...named.derive(input), 'rolls.one': counting, 'rolls.two': counting };
+      },
+    };
+    const result = computed(ashWith([charm]), twice);
+    // `a` and `d` on `roll.climb`; `b` and `g` name `roll.all`, which neither path reads.
+    expect([result.values['rolls.one'], result.values['rolls.two']]).toEqual([2, 2]);
+    expect(codes(result)).toEqual([
+      { code: 'formula', part: by('e').part, field: 'when', inner: 'unexpected' },
+      { code: 'notARollMode', part: by('f').part, op: 'note', target: 'roll.climb' },
+      { code: 'notARollMode', part: by('h').part, op: 'set', target: 'roll.climb' },
+      { code: 'noTarget', part: by('i').part, target: 'roll.climb' },
+    ]);
   });
 });
 

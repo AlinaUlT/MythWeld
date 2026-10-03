@@ -106,7 +106,7 @@ split off an old row got a new id.
 | ENG-51 | A spell a grant gives with its own stat has its casting numbers | S | ✅ 2026-10-02 |
 | ENG-53 | A spell's healing is a roll formula of its own | S | 🔲 |
 | ENG-55 | A spell's damage adds `damage.spell.bonus` | S | 🔲 |
-| ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | S | 🔲 |
+| ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | M | ✅ 2026-10-03 |
 | ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | ✅ 2026-10-02 |
 | ENG-46 | Armor worn without training has its edition's penalties | S | 🔲 |
 | ENG-35 | The ability-bonus source is a choice, the rules base by default | S | ✅ 2026-10-03 |
@@ -133,31 +133,6 @@ split off an old row got a new id.
   Second Wind back on a rest, is this row's. Found by ENG-20: a long rest ends temporary hit
   points and gives spell slots back, and a short rest gives pact slots back, in both SRDs (ENG-20
   §8); `regainSlot` (`casting.ts`) gives slots back as one entry.
-- **ENG-34** — turns on the golden-test lines it makes true, in
-  `test/golden/golden-values.test.ts` (ENG-13). After ENG-19 the goldens A–D lack only B4's two
-  "with advantage" lines (this row) and Second Wind back on a rest (ENG-21). ENG-16 removed the
-  last stand-in; every test computes with `fifthEditionModule`.
-- **ENG-34** — found by ENG-17: an effect whose op gives no number (`append`, `advantage`,
-  `disadvantage`, `note`) on a path that is not a number value (`defenses.*`, `roll.*`) is left
-  alone by the phases, with no warning. The ticket that computes such a list or roll reads its
-  effects through `activeEffects` (`effects.ts`) and warns for its own targets, as ENG-14's
-  `appendedNumbers` does for `ac.formulas`. Found by ENG-43: a path of text is a key path, given
-  by the module (`SystemModule.keys`) and finished by the core (`finishKey`) with its own
-  warnings; a list or a roll can take the same road.
-- **ENG-34** — found by ENG-13: a passive value is 5 higher with advantage on its check and 5
-  lower with disadvantage (SRD 5.1 Passive Checks; SRD 5.2.1 Passive Perception; dnd5e
-  `advantageMode × 5`). ENG-13's `skills.<key>.passive` is 10 + the skill's total. Found by
-  ENG-14: worn armor with `stealthDisadvantage` gives disadvantage on Dexterity (Stealth) checks
-  (SRD 5.1 Armor, "Stealth"; dnd5e `prepareArmorClass`); ENG-14's `armor.worn` names the armor.
-  Found by ENG-16: the Heavy weapon property gives disadvantage on attack rolls: in 2024 with a
-  heavy melee weapon below Strength 13 or a heavy ranged one below Dexterity 13, in 2014 to a Small
-  creature (5e-database `heavy`, both editions), an edition difference held as
-  `rulesOf(character).heavyWeapon`: in 2014 `{ by: 'size', sizes: ['small'] }`, in 2024
-  `{ by: 'score', min: 13 }`, the score the weapon kind's (`ATTACK_STATS`; ENG-19 §8). ENG-16's
-  `equipmentOf(...).weapons` lists the weapons, each attack under `attacks.<key>`. Found by
-  ENG-19: 2014 exhaustion's test data (`test/exhaustion.test.ts`) gives `disadvantage` on
-  `roll.check.all` (level 1), `roll.attack.all` and `roll.save.all` (level 3); SPEC §5.4's catalog
-  has `roll.check.<ability>`, not `.all`, so this row makes it a target or the data changes.
 - **ENG-53** — found by ENG-09, made a row by ENG-50 (ENG-50 §9): a spell's healing has no field;
   `damage` and `scaling` hold damage only. Cure Wounds heals 1d8 + the spellcasting modifier, 1d8
   more per slot level above 1st; 10 SRD 5.1 spells have 5e-database's `heal_at_slot_level`.
@@ -188,15 +163,16 @@ split off an old row got a new id.
   above `houseRules.inspirationMax`, so the action stops there. Found by ENG-19: both SRDs allow
   1 (`rulesOf(character).inspiration.max`); SRD 5.2.1 says Heroic Inspiration gained while had is
   lost unless given away (ENG-19 §8).
-- **ENG-46** — found by ENG-14: armor worn without its training gives disadvantage on Strength
-  and Dexterity rolls and no spellcasting, in both editions (SRD 5.1 Armor Proficiency, SRD 5.2.1
-  Armor Training, ENG-14 §8); in 2024 a shield gives its AC only with training, a ruleset
-  difference. Armor proficiency keys are `light`, `medium`, `heavy` and `shield` (ENG-09 §4),
-  compared with `armor.group` and `category`. It needs ENG-34's roll modes; the shield's 2024
-  rule is a field it adds to the edition files (`rulesets/`, ENG-19 §9). Found by ENG-44: the
-  armor and the shield worn are `equipmentOf`'s (`equipment.ts`); a shield's +2 is its own
-  effect, so a shield without training gives none only if that function leaves it out or names
-  it dormant.
+- **ENG-46** — found by ENG-14: armor worn without its training gives disadvantage on Strength and
+  Dexterity rolls and no spellcasting, in both editions (SRD 5.1 Armor Proficiency, SRD 5.2.1 Armor
+  Training, ENG-14 §8); in 2024 a shield gives its AC only with training, a ruleset difference.
+  Armor proficiency keys are `light`, `medium`, `heavy` and `shield` (ENG-09 §4), compared with
+  `armor.group` and `category`. ENG-34: the disadvantage is a rule source of each Strength and
+  Dexterity d20 test's mode (a step of value −1 among `modeOf`'s sources, `rolls.ts`), as the worn
+  armor's Stealth is; the shield's 2024 rule is a field it adds to the edition files (`rulesets/`,
+  ENG-19 §9). Found by ENG-44: the armor and the shield worn are `equipmentOf`'s (`equipment.ts`); a
+  shield's +2 is its own effect, so a shield without training gives none only if that function
+  leaves it out or names it dormant.
 - **ENG-56** — found by ENG-35 (ENG-35 §8): ADR 005 item 3.4's "a bonus of one kind counts once"
   for languages. SRD 5.1 gives them from the race ("Your race indicates the languages your
   character can speak by default"; the background may add more); SRD 5.2.1 from character
@@ -322,6 +298,11 @@ split off an old row got a new id.
   one, not the effect or grant whose formula did, so a typo in an effect's formula points at its
   target's own step. `valueAt` in `derived.ts` knows that part (`by`); the warning can carry it
   before the effect builder shows it.
+- **Phase 5** — found by ENG-34: an `advantage` or `disadvantage` on a `roll.*` target that no
+  d20 test reads (a typo such as `roll.skil.athletics`, or `roll.save.san` on a character without
+  `san`) warns nowhere, as an `append` on a list no step reads (ENG-14). The targets each test
+  reads are `ROLL_TARGETS` (`rolls.ts`); the effect builder and the import checks compare a target
+  with them.
 - **Phases 2, 3** — found by ENG-32: some fifth-edition keys have no entity type to give their
   name on screen: a spell's `school`, a species' `size` and `creatureType`, an item's `rarity`,
   a spell area's `shape`, a feat's `category`, a rule's `topic` and `icon`. The first screen
@@ -379,6 +360,16 @@ split off an old row got a new id.
   engine. SRD 5.2.1's Bloodied (half the hit points or fewer, "no game effect on its own but which
   might trigger other game effects") has no path. Damage returns the concentration save's DC
   (`outcome.concentrationDc`); the screen rolls it and calls `endConcentration` on a failure.
+- **Phase 2** — found by ENG-34: each d20 test's roll mode is a number path, 1 advantage, −1
+  disadvantage, 0 neither, with a step per source: `checks.<stat>.mode`,
+  `abilities.<stat>.saveMode`, `skills.<key>.mode`, `init.mode`, `attacks.<key>.mode`,
+  `spell.attackMode`, `deathSave.mode` (`rolls.ts`, `attacks.ts`). Every step's `value` is its
+  source's sign, so the roll dialog adds its own sources to those values with `rollModeOf` (2014
+  inspiration's advantage, a situational effect switched on, matched to the test by `ROLL_TARGETS`),
+  rolls `d20Formula(mode)`, reads the kept d20 face with `attackOutcome(face, range)` (a weapon's
+  `crit.range`, a spell's 20) and, on a critical hit, rolls `criticalDamage` of the damage dice. An
+  override of a mode is a manual edit of it. ENG-20's concentration save is the Constitution save:
+  its mode is `abilities.con.saveMode`.
 - **Phase 2** — found by ENG-25: a character's active pack that is not installed on the device
   never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
   on each of its entries.

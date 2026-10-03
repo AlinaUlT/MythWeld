@@ -632,6 +632,34 @@ export function addDice(base: string, added: string, times: number): ParseResult
   return parseRoll(`${base.slice(0, into.at)}${joined}${base.slice(into.at + into.text.length)}`);
 }
 
+/**
+ * ENG-34: the roll formula `base` with each of its dice terms rolled `times` times, in its place:
+ * a term that keeps every die has its count multiplied (`2d6` × 2 is `4d6`); a term that keeps some
+ * is written `times` times in brackets (`4d6kh3` × 2 is `(4d6kh3 + 4d6kh3)`), since a term of more
+ * dice keeping more is another roll. Numbers and paths stay as they are. `times` counts as a whole
+ * number, rounded down; below 1, `base` is given as it is. Never throws: when `base` does not
+ * parse, or the formula made is past the limits (999 dice in a term, 1000 characters), the result
+ * is that error.
+ */
+export function multiplyDice(base: string, times: number): ParseResult<ParsedRoll> {
+  const own = parseRoll(base);
+  if (!own.ok) return own;
+  const count = Number.isFinite(times) ? Math.floor(times) : 1;
+  if (count <= 1) return own;
+  let text = base;
+  // From the last term to the first, so each `at` still points into the text.
+  const terms = [...diceOf(own.formula)].sort((a, b) => b.at - a.at);
+  for (const term of terms) {
+    const copies = Math.min(count, FORMULA_LIMITS.length);
+    const written =
+      term.keep === undefined
+        ? withCount(term, term.count * count)
+        : `(${Array.from({ length: copies }, () => term.text).join(' + ')})`;
+    text = `${text.slice(0, term.at)}${written}${text.slice(term.at + term.text.length)}`;
+  }
+  return parseRoll(text);
+}
+
 // --- The walker ----------------------------------------------------------------------------------
 
 /** A condition's reading of a value: `0`, `false` and `''` are false; anything else is true. */

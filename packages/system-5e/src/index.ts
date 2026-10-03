@@ -19,6 +19,7 @@ export * from './hit-points';
 export * from './level-up';
 export * from './module';
 export * from './pack';
+export * from './rolls';
 export * from './rulesets';
 export * from './size';
 export * from './spell-dice';

@@ -454,8 +454,9 @@ describe("ENG-13 fifth edition's module", () => {
       'skills.composure.total': 2,
       'skills.composure.passive': 12,
     });
+    // Six stats' `.save`, `.saveProf`, `.saveBonus` and ENG-34's `.saveMode`.
     const saves = Object.keys(result.values).filter((path) => path.includes('.save'));
-    expect(saves).toHaveLength(18);
+    expect(saves).toHaveLength(24);
     expect(saves.some((path) => path.startsWith('abilities.san.'))).toBe(false);
     expect(result.warnings).toEqual([]);
   });

@@ -11069,3 +11069,415 @@ Found, not fixed:
   slots back (§8). Noted on ENG-21.
 
 Nothing for the changelog.
+
+---
+
+### ENG-34 Roll modes and critical hits
+
+**Hat:** Advantage, disadvantage, critical hits apply to fifth-edition rolls
+**Depends on:** ENG-13 (checks, saves, skills, passives), ENG-14 (`init.total`, `RULE_STATS`),
+ENG-16 (`attacks.<key>.*`, `crit.range`, `ATTACK_STATS`, `diceOf`), ENG-15 and ENG-51 (spell
+attacks), ENG-17 (`activeEffects`, the phases), ENG-19 (`heavyWeapon`,
+the 2014 exhaustion test data), ENG-43 (a skill's stat), ENG-44 (`equipmentOf`), ENG-48 (`size`),
+ENG-50 (`addDice`'s writing of dice)
+**Size:** M (the row said S; §11)
+**Screen:** No
+**SPEC:** §5.4 (the `roll.*` targets, `crit.range`); §5.6 (`2d20kh1`); §6.1 step 5 (passive
+values); §6.5 (advantage, disadvantage, critical 20 and 1, the critical range, doubled damage dice);
+§6.7 golden B4 ("with advantage" twice); ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/rolls.ts` — new: the roll mode of each d20 test
+(`<test>.mode` paths), `rollModeOf`, the roll targets each test reads, `d20Formula`,
+`attackOutcome`, `criticalDamage`, the Stealth rule of armor.
+- `packages/engine/src/effects.ts` — changes: `rollModeEffects`, the `advantage` and
+  `disadvantage` effects on given targets, worked out as `appendedNumbers` works out an `append`;
+  the warning `notARollMode`.
+- `packages/engine/src/stats.ts` — changes: an `effect` breakdown step's `op` may be `advantage`
+  or `disadvantage`.
+- `packages/engine/src/derived.ts` — changes: an effect warning that several paths meet is
+  warned once.
+- `packages/engine/src/formula.ts` — changes: `multiplyDice`, a roll formula with each dice term
+  rolled more times.
+- `packages/system-5e/src/checks.ts` — changes: a passive value adds 5 × its skill's mode.
+- `packages/system-5e/src/attacks.ts` — changes: `attacks.<key>.mode`, the Heavy property's
+  disadvantage by `rulesOf(character).heavyWeapon`.
+- `packages/system-5e/src/module.ts`, `index.ts` — change: `derive` joins the roll modes; export.
+- `packages/system-5e/test/rolls.test.ts` — new.
+- `packages/system-5e/test/golden/golden-values.test.ts` — changes: golden B4's two lines.
+- `packages/system-5e/test/exhaustion.test.ts` — changes: 2014 exhaustion's disadvantages.
+- `packages/system-5e/test/attacks.test.ts`, `spellcasting.test.ts`, `module.test.ts` — change:
+  the lists of every path under `attacks.`, `spell.` and `.save` gain the new mode paths.
+- `packages/engine/test/phases.test.ts`, `formula.test.ts` — changes: the core's parts.
+
+#### 2. What is missing now
+
+Measured on `main` at `4df11a3`, then again on `5fbd320` where noted:
+- `grep -rn "roll\.\|advantage" packages/system-5e/src packages/engine/src` finds only
+  `rulesets/` (the heavy rule and inspiration's `use`, held, not read) and the roll record. No code
+  reads an effect on a `roll.*` target.
+- Golden B4 computed with `fifthEditionModule`: 151 values, none matching `mode|roll|adv`; no
+  warning. Its Remarkable Athlete has `advantage` on `roll.init` and on `roll.skill.athletics`,
+  and nothing shows them: SPEC §6.7's "Athletics +6, with advantage" and "Initiative +3, with
+  advantage" are the two golden lines no test holds (`golden-values.test.ts`, its header).
+- Golden A's passive Perception 13 has two steps, `passiveBase` 10 and `skills.perception.total`
+  3; no step for advantage or disadvantage.
+- Golden A wears chain mail (`stealthDisadvantage: true`); its Stealth has a total (0) and nothing
+  saying it rolls with disadvantage.
+- 2014 exhaustion's test data gives `disadvantage` on `roll.check.all`, `roll.attack.all`,
+  `roll.save.all`; `exhaustion.test.ts` says they change nothing. SPEC §5.4 has
+  `roll.check.<ability>` and no `roll.check.all`.
+- No function writes the d20 of a roll with advantage (`2d20kh1`), says whether a d20 face is a
+  critical hit, or doubles a damage formula's dice.
+- `pnpm test`: `Test Files 48 passed (48)`, `Tests 560 passed (560)`; on `5fbd320` (after ENG-51
+  and ENG-35): `Test Files 50 passed (50)`, `Tests 577 passed (577)`.
+
+#### 3. What it should look like when done
+
+1. **Each d20 test has a roll mode**, a number path: 1 advantage, −1 disadvantage, 0 neither. Its
+   steps are its sources, each with `value` +1 (advantage) or −1 (disadvantage) and `change` what
+   it moved the mode; the changes add up to the mode. The tests, and the `roll.*` targets
+   (SPEC §5.4) each reads:
+
+   | Path | Targets read | Rule source |
+   |---|---|---|
+   | `checks.<stat>.mode` | `roll.check.<stat>`, `roll.check.all` | |
+   | `abilities.<stat>.saveMode` (a stat with a save) | `roll.save.<stat>`, `roll.save.all` | |
+   | `skills.<key>.mode` | `roll.skill.<key>`, `roll.check.<its stat>`, `roll.check.all` | the worn armor's `stealthDisadvantage`, on the skill `stealth` |
+   | `init.mode` | `roll.init`, `roll.check.dex`, `roll.check.all` | |
+   | `attacks.<key>.mode` | `roll.attack.weapon.<kind>`, `roll.attack.all` | the Heavy property, by the edition's `heavyWeapon` |
+   | `spell.attackMode` (every spell attack: `classes.<key>.spell.attack`, `abilities.<stat>.spell.attack`) | `roll.attack.spell`, `roll.attack.all` | |
+   | `deathSave.mode` | `roll.deathSave`, `roll.save.all` | |
+
+   A skill's stat is its key path's (ENG-43), initiative's `RULE_STATS.initiative`.
+2. **Both cancel.** Any advantage and any disadvantage give 0, however many of each (§8). Two
+   advantages give 1: the first step's change is 1, the second's 0. An advantage then a
+   disadvantage: 1, then −1.
+3. **The sources, in order:** the module's rule sources, then each effect in the order gathering
+   gives them. An effect is used when it is active (ENG-17: its toggle on, its entity not dormant
+   unless it has a `when`, not situational) and its `when` is true. Its step is
+   `{ kind: 'effect', part, source, label, op: 'advantage' | 'disadvantage', value: ±1, change }`.
+4. **Golden B4** (SPEC §6.7): `skills.athletics.mode` 1, one step, Remarkable Athlete's
+   `srd-2024:feature/champion-remarkable-athlete#athletics`; `init.mode` 1, one step, its
+   `#initiative`. Every golden still computes with no warning, and each breakdown adds up.
+5. **Armor's Stealth** (§8): the armor worn with `stealthDisadvantage` gives `skills.stealth.mode`
+   a step `{ kind: 'entity', source: <armor>, label: <its name>, value: -1, change }`. Goldens A,
+   B and B4 wear chain mail: their Stealth mode is −1. An armor carried but not worn, or a second
+   armor that counts for nothing (ENG-44), gives none.
+6. **The Heavy property** (§8; ENG-19's `heavyWeapon`): a weapon with the property `heavy` gives
+   its attack's mode a disadvantage, `{ kind: 'rule', rule: 'heavyWeapon', value: -1, change }`:
+   in 2014 when the character's `size` is one of `sizes` (`small`); in 2024 when the score of the
+   weapon kind's stat (`ATTACK_STATS`: melee `str`, ranged `dex`) is below `min` (13). A size not
+   chosen gives no disadvantage. Golden B's and B4's
+   greatsword (STR 17, 19) have mode 0.
+7. **Passive values** (§8): `skills.<key>.passive` = 10 + its total + 5 × the sign of its mode,
+   with a step `{ kind: 'path', path: 'skills.<key>.mode', value: <mode>, change: <5 × sign> }`.
+   The goldens' passive Perception stays 13 (mode 0, change 0).
+8. **2014 exhaustion** (ENG-19's test data, SRD 5.1's table): at level 1, every check, skill and
+   initiative mode −1; at level 3, every save, attack, spell attack and the death save −1 too; at
+   0, golden A's own modes. No warning.
+9. **Effects and overrides** apply to a mode path as to any number (ENG-17): an override
+   `skills.athletics.mode` −1 wins, its step last. The passive and `d20Formula` read the sign, so
+   a mode above 1 counts as 1.
+10. **Warnings.** An effect on a target a test reads whose op is neither `advantage` nor
+    `disadvantage` and gives no number (`append`, `note`, a `set` of a text or a yes/no) warns
+    `notARollMode` `{ part, op, target }`, once however many tests read the target. A number op on
+    a `roll.*` target warns `noTarget` (the phases: no value has that path). An `advantage` on a
+    number path warns `notANumber` (ENG-17).
+11. **`rollModeOf(signs)`**: the mode the rule gives for sources of these signs: `[]` 0, `[1]` 1,
+    `[-1]` −1, `[1, 1]` 1, `[1, -1]` 0, `[1, 1, -1]` 0, `[-1, -1, 1]` 0. The mode steps use it, so
+    the rule is written once; the roll dialog (phase 2) adds its own sources with it.
+12. **`d20Formula(mode)`**: `1d20` for 0, `2d20kh1` above 0, `2d20kl1` below 0.
+13. **`attackOutcome(natural, range = 20)`**: a natural 1 is `automaticMiss`; a natural 20, or a
+    face at or above `range` (a weapon attack's `crit.range`), is `criticalHit`; any other face
+    is `byTotal`. `(19, 19)` and `(20, 25)` give `criticalHit`, `(1, 1)` `automaticMiss`, `(19, 20)`
+    `byTotal`.
+14. **`criticalDamage(formula)`**: the formula with each dice term rolled twice (§8): `1d4` →
+    `2d4`, `2d6+4` → `4d6+4`, `1d8 + 2к6 + @prof` → `2d8 + 4к6 + @prof`, `4d6kh3` →
+    `(4d6kh3 + 4d6kh3)`, `5` → `5`. A formula that does not parse, or a term past 999 dice, gives
+    its error, never a throw.
+15. **`multiplyDice(formula, times)`** (the core, game-free): a term that keeps every die has its
+    count multiplied; one that keeps some is written `times` times in brackets, in its place;
+    numbers and paths stay. `times` counts as a whole number, rounded down; below 1 the formula is
+    given as it is. Never throws.
+16. `compute()` stays pure: frozen inputs give equal results. The quality gate is green.
+
+#### 4. How to do it
+
+1. `effects.ts`: `RollModeEffect` and `rollModeEffects(effects, targets, readerOf, warn)`, built
+   on `applies` and `withOwnPaths`; `notARollMode` joins `EffectWarning`.
+2. `stats.ts`: the `effect` step's `op` widens.
+3. `derived.ts`: `valueAt` keeps the effect warnings already pushed and pushes each once.
+4. `formula.ts`: `multiplyDice`, written from `diceOf` and ENG-50's `withCount`.
+5. `rolls.ts`: `rollModeOf`, `ROLL_TARGETS`, `modeOf` (a mode's steps from its rule sources and
+   its targets' effects), `rollModeSteps` (checks, saves, skills, initiative, the death save),
+   `d20Formula`, `attackOutcome`, `criticalDamage`.
+6. `attacks.ts`: each weapon's mode through `modeOf`; `checks.ts`: the passive.
+7. Tests (§7), then the backlog notes (§11).
+
+Technical choices (ADR 002):
+- **Every step of a mode is a source, its `value` its sign** (an override's, the mode it forces):
+  the roll dialog (phase 2) adds its own sources to those values with `rollModeOf`, so no step
+  only informs. The score that makes a Heavy weapon too heavy is its stat's own path.
+- **A mode is a number path**, as every value is (ENG-28), like ENG-16's `mastery` (1 or 0):
+  1, 0 or −1, dnd5e's `AdvantageModeField` values (§8). Effects and overrides apply to it with no
+  new kind of value, and its steps name each source, so the sheet's "with advantage" has its
+  breakdown (`CLAUDE.md`: a number with no breakdown entry is a bug).
+- **The targets stay SPEC §5.4's `roll.*` names; the computed modes are other paths.** One target
+  (`roll.save.all`) reaches several tests, and one test reads several targets, so neither can be
+  the other. A target is read, never computed: a number op on one warns `noTarget`.
+- **`roll.check.all` is added**, beside SPEC's `roll.save.all` and `roll.attack.all`: 2014
+  exhaustion's level 1 gives disadvantage on every ability check, and writing it per stat would
+  miss a custom stat (`CLAUDE.md`: `san` behaves as `str`). A widening of what a target may name;
+  no stored shape changes.
+- **A skill check and initiative are ability checks** (§8: "a Dexterity check"), so they read
+  `roll.check.<stat>` and `roll.check.all`, as dnd5e combines them.
+- **`roll.attack.<kind>`'s kinds are the bonus targets' kinds**, `weapon.melee`, `weapon.ranged`,
+  `spell` (SPEC §5.4's `attack.<weapon.melee | weapon.ranged | spell>.bonus`).
+- **One mode for every spell attack**, `spell.attackMode`: a class's spell attack and a grant's
+  (ENG-51) read the same two targets and no rule source, so their modes are always equal; one
+  path, beside `spell.attack.bonus`, which every character has too. A weapon's mode is its own,
+  since the Heavy property is the weapon's.
+- **A death save reads `roll.save.all`.** SRD 5.1 calls it "a special saving throw" "aided only
+  by spells and features that improve your chances of succeeding on a saving throw"; SRD 5.2.1
+  "Unlike other saving throws". dnd5e reads only its own death roll mode; this follows the SRDs.
+- **The roll mode's rule is the module's**: the core collects the `advantage` and `disadvantage`
+  effects (`rollModeEffects`), as it collects appended formulas for ENG-14; what they do (cancel,
+  ±5 on a passive, `2d20kh1`) is fifth edition's (`effect.ts`: "What a roll does with `advantage`
+  is a module's").
+- **An effect warning is warned once.** A mode test evaluates its targets' effects in its own step,
+  so a loop through an effect's `when` names the right path; one target is read by up to 25 tests,
+  so the same warning comes many times. `valueAt` keeps each one once. A `missingPath` read for
+  each test stays one per test: it names the path that read it.
+- **The Stealth skill is a named constant**, `STEALTH_SKILL = 'stealth'`, as ENG-14's `RULE_STATS`
+  names `dex`: the armor's field is the SRD's rule about that one skill. A character without that
+  skill gets nothing from it.
+- **The Heavy property is a named constant**, `HEAVY = 'heavy'`, as ENG-16's `FINESSE`.
+- **Critical dice are the core's tree work** (ENG-08 §9: "double a term's dice in the tree"); the
+  ×2 is fifth edition's (`CRITICAL_DICE = 2`). A term that keeps some dice is rolled twice whole,
+  not as one term of twice the dice: `8d6kh6` is another roll than two `4d6kh3` (dnd5e duplicates
+  such a term, §8).
+- **A spell attack's critical range is 20**: SRD 5.2.1's Improved Critical names "attack rolls
+  with weapons and Unarmed Strikes" (ENG-16 §8), so `crit.range` stays a weapon attack's, and
+  `attackOutcome`'s default is `CRITICAL_FACE`.
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, no `schemaVersion`, no Dexie table. An effect's `target` is
+any computed path already; `roll.check.all` needs no schema change.
+
+#### 6. What a person will see
+
+Not a screen. The sheet's "with advantage" marks, the roll dialog and its buttons are phase 2's
+(§9).
+
+#### 7. Tests
+
+- `packages/system-5e/test/rolls.test.ts` — `describe('ENG-34 roll modes')`: §3 items 1–3 and
+  5–10 on golden A (2014, chain mail, warhammer, a cleric's spell attack) and golden B (2024,
+  chain mail, greatsword, STR 17, DEX 13); made-up effects, items and a Small species
+  (`character:`); `describe('ENG-34 rolls and critical hits')`: items 11–14.
+- `packages/system-5e/test/golden/golden-values.test.ts` — `describe('ENG-34 goldens: golden
+  B4')`: item 4.
+- `packages/system-5e/test/exhaustion.test.ts` — item 8.
+- `packages/engine/test/phases.test.ts` — `describe('ENG-34 roll mode effects')`: on Tales,
+  `rollModeEffects`' order, `when`, toggles, its warning, once for two readers.
+- `packages/engine/test/formula.test.ts` — `describe('ENG-34 dice rolled more times')`: item 15.
+- Control values from: SPEC §6.7 (B4); the SRD texts of §8 (each rule); the goldens' data and the
+  made-up entities, each mode worked out by hand before the run.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-02: SRD 5.1 as 5e-bits/5e-srd-api quotes it at `e6edf9a` (`5e-SRD-Rules.json`,
+read with python3), and as foundryvtt/dnd5e quotes it at `7bfb3f1` (`packs/_source/rules`); SRD
+5.2.1 as dnd5e quotes it (`packs/_source/content24`) and 5e-database's 2024 files; dnd5e's code
+at `7bfb3f1` (`module/`). The same commits as ENG-13 to ENG-19. All CC-BY-4.0.
+
+**Advantage and disadvantage, and both on one roll.** SRD 5.1 (Advantage and Disadvantage): "you
+roll a second d20 when you make the roll. Use the higher of the two rolls if you have advantage,
+and use the lower roll if you have disadvantage"; "If two favorable situations grant advantage,
+for example, you still roll only one additional d20"; "If circumstances cause a roll to have both
+advantage and disadvantage, you are considered to have neither of them, and you roll one d20. This
+is true even if multiple circumstances impose disadvantage and only one grants advantage or vice
+versa." SRD 5.2.1 (`chapter-1/d20-tests.yml`, Advantage/Disadvantage): "roll a second d20 … Use the
+higher of the two rolls if you have Advantage, and use the lower roll if you have Disadvantage";
+"They Don't Stack"; "If circumstances cause a roll to have both Advantage and Disadvantage, the roll
+has neither of them, and you roll one d20. This is true even if multiple circumstances impose
+Disadvantage and only one grants Advantage or vice versa." One rule in both editions: no edition
+field. dnd5e (`data/fields/advantage-mode-field.mjs`): values `[-1, 0, 1]`; `resolveMode` gives
+`Math.sign(advantageCount) - Math.sign(disadvantageCount)`, an override forcing a mode.
+
+**Which modes a test combines.** dnd5e (`documents/actor/actor.mjs`): a skill check combines
+`abilities.<ability>.check.roll`, `rolls.ability.check`, `rolls.ability.skill` and
+`skills.<skill>.roll`; a save `abilities.<ability>.save.roll` and `rolls.ability.save`; initiative
+`abilities.<ability>.check.roll`, `attributes.init.roll` and `rolls.ability.check`; an attack
+`abilities.<ability>.attack.roll`, `rolls.attack` and `rolls.attack.<type>` (melee or ranged,
+weapon or spell); the death save `attributes.death.roll` alone. The SRDs: SRD 5.1 (Initiative)
+"you roll initiative by making a Dexterity check"; SRD 5.2.1 (Combat, Initiative) "they make a
+Dexterity check that determines their place in the Initiative order"; SRD 5.1 (Skills) "a
+Dexterity check might reflect … to stay hidden. Each of these aspects of Dexterity has an
+associated skill". SRD 5.1 (Death Saving Throws): "a special saving throw, called a death saving
+throw … You are in the hands of fate now, aided only by spells and features that improve your
+chances of succeeding on a saving throw." SRD 5.2.1 (`damage-and-healing.yml`): "Unlike other
+saving throws, this one isn't tied to an ability score." So a death save reads the saves' target
+(§4). dnd5e's per-ability attack mode and global skill mode are not SPEC §5.4 targets; none is
+added.
+
+**Passive values.** SRD 5.1 (Passive Checks): "10 + all modifiers that normally apply to the check.
+If the character has advantage on the check, add 5. For disadvantage, subtract 5." SRD 5.2.1
+(`rules-glossary.yml`, Passive Perception): "If the creature has Advantage on such checks, increase
+the score by 5. If the creature has Disadvantage on them, decrease the score by 5." dnd5e
+(`data/actor/templates/creature.mjs`): `+ (advantageMode * CONFIG.DND5E.skillPassive.modifier)`,
+`skillPassive = { base: 10, modifier: 5 }`.
+
+**Armor and Stealth.** SRD 5.1 (`chapter-5-equipment.yml`, Armor): "If the Armor table shows
+“Disadvantage” in the Stealth column, the wearer has disadvantage on Dexterity (Stealth) checks."
+SRD 5.2.1 (`chapter-6/equipment.yml`): "If the table shows “Disadvantage” in the Stealth column for
+an armor type, the wearer has Disadvantage on Dexterity (Stealth) checks." 5e-database 2014:
+`padded-armor`, `scale-mail`, `half-plate-armor`, `ring-mail`, `chain-mail`, `splint-armor`,
+`plate-armor` have `stealth_disadvantage`. dnd5e (`data/actor/templates/attributes.mjs`): the
+first equipped armor with `stealthDisadvantage` sets `skills.ste.roll.mode` to −1.
+
+**The Heavy property.** SRD 5.1 (`chapter-5-equipment.yml`): "Small creatures have disadvantage on
+attack rolls with heavy weapons." SRD 5.2.1 (5e-database 2024 `heavy`): "You have Disadvantage on
+attack rolls with a Heavy weapon if it's a Melee weapon and your Strength score isn't at least 13
+or if it's a Ranged weapon and your Dexterity score isn't at least 13." ENG-19 holds it as
+`heavyWeapon`; the fixtures' greatsword, greataxe, glaive and halberd have `heavy`.
+
+**A concentration save.** SRD 5.1 (Concentration): "you must make a Constitution saving throw to
+maintain your concentration." SRD 5.2.1 (`appendices/appendix-d-rule-references.yml`,
+Concentration): "you must succeed on a Constitution saving throw to maintain" it. So ENG-20's concentration roll is the Constitution
+save's, and reads its mode.
+
+**Remarkable Athlete (golden B4).** 5e-database 2024 `champion-remarkable-athlete`: "you have
+Advantage on Initiative rolls and Strength (Athletics) checks." The fixture's two effects (ENG-10).
+
+**Critical 20 and 1.** SRD 5.1 (Rolling 1 or 20): "If the d20 roll for an attack is a 20, the attack
+hits regardless of any modifiers or the target's AC. This is called a critical hit"; "If the d20
+roll for an attack is a 1, the attack misses regardless of any modifiers or the target's AC." SRD
+5.2.1 (`d20-tests.yml`, Rolling 20 or 1): "If you roll a 20 on the d20 (called a “natural 20”) for
+an attack roll, the attack hits regardless of any modifiers or the target's AC. This is called a
+Critical Hit"; "If you roll a 1 on the d20 (a “natural 1”) for an attack roll, the attack misses
+regardless". Only attack rolls: neither SRD gives an ability check or a save a natural 20 or 1
+rule. The death save's 1 and 20 (both SRDs) are its tracker's, ENG-20. Improved Critical: "can
+score a Critical Hit on a roll of 19 or 20 on the d20" (ENG-16 §8), so a natural 20 is a critical
+hit whatever the range.
+
+**Critical damage.** SRD 5.1 (Critical Hits): "Roll all of the attack's damage dice twice and add
+them together. Then add any relevant modifiers as normal"; "if you score a critical hit with a
+dagger, roll 2d4 for the damage, rather than 1d4". SRD 5.2.1 (`damage-and-healing.yml`, Critical
+Hits): "Roll the attack's damage dice twice, add them together, and add any relevant modifiers as
+normal. For example, if you score a Critical Hit with a Dagger, roll 2d4 for the damage rather than
+1d4". One rule in both editions. dnd5e (`dice/damage-roll.mjs`, `#applyCriticalTerm`): a die with
+no modifiers has its count multiplied (`term.alter(cm, cb)`); "Modified or complex terms are
+duplicated", wrapped in brackets when `*` or `/` binds them; numbers are not multiplied unless a
+setting says so.
+
+No golden value looks wrong; nothing stops.
+
+#### 9. Not in this ticket
+
+- The roll dialog: its advantage and disadvantage buttons, a situational effect shown as a switch
+  (SPEC §5.4 `situational`), the person's own modifiers, "I roll myself", the roll log: phase 2,
+  reading the modes, `ROLL_TARGETS`, `rollModeOf`, `d20Formula`, `attackOutcome` and
+  `criticalDamage`.
+- Spending inspiration: phase 2, by `inspiration.use` (2014: one more advantage, through
+  `rollModeOf`; 2024: one die rolled again).
+- The death save as a roll and its 1 and 20: ENG-58 (re-cut from ENG-20), which keeps its count.
+- Armor worn without training (disadvantage on Strength and Dexterity rolls): ENG-46, a rule
+  source through `modeOf`.
+- Features that change critical damage (a Brutal Critical's extra die): their mechanics, phase 3.
+- A tool check: no path computes one yet. A concentration save (ENG-20's DC) is a Constitution
+  save in both SRDs (§8), so its mode is `abilities.con.saveMode`.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** B4's two lines are SPEC §6.7's; no golden value changes;
+  every mode expected is worked out from §8 before the run.
+- **`packages/engine` is pure; the core names no game.** `rollModeEffects` collects ops by target;
+  `multiplyDice` rewrites dice terms; neither names a stat, a skill or a rule.
+- **Everything is data.** Each stat's check and save mode comes from the stats the character has,
+  each skill's from its skills (a `san` check reads `roll.check.san`); the targets are built from
+  keys; the two rule keys are named constants.
+- **`compute()` is pure; a number with no breakdown entry is a bug.** Each mode has a step per
+  source; the passive's step names the mode.
+- **Manual overrides always win.** Tested on `skills.athletics.mode`.
+- **Each system's rules live in its own module; no `if (ruleset === …)`.** The heavy rule is read
+  from `rulesOf(character).heavyWeapon`; the cancel rule, the passive's 5 and the critical ×2
+  are one rule in both editions (§8).
+- **Formulas never run code.** `multiplyDice` writes text and parses it with ENG-07's limits.
+- **Missing is not broken.** A wrong op warns; a size not chosen gives no disadvantage; a formula
+  that does not parse gives its error.
+- **Licensing.** The made-up entities have no rules text; §8 quotes the SRDs only.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-03, on `main` at `5fbd320` (ENG-51 and ENG-35 reached `main` while this
+ticket was written; it was rebased onto them before any code):
+- `pnpm lint`: `Checked 168 files`, no errors (166 before; 2 new files).
+- `pnpm typecheck`: 6 projects, all `Done`.
+- `pnpm test`: `Test Files 51 passed (51)`, `Tests 609 passed (609)`, 7.08 s (before: 50 files,
+  577 tests). This ticket's 32: 20 in `rolls.test.ts` (955 ms alone), 3 in `phases.test.ts`, 5 in
+  `formula.test.ts`, 3 golden B4 lines, 1 in `exhaustion.test.ts`.
+- `pnpm build`: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- ENG-20 reached `main` while this ticket was pushed; it was rebased onto `e3a1730` (conflicts in
+  `BACKLOG.md` and this file only). There: `pnpm lint` `Checked 174 files`, no errors;
+  `pnpm typecheck` 6 projects `Done`; `pnpm test` `Test Files 53 passed (53)`, `Tests 637 passed
+  (637)`, 7.57 s (`main` alone, measured: 52 files, 605 tests, 172 files linted). ENG-20's death
+  saves moved to ENG-58, and its concentration save is the Constitution save's (§8, §9).
+- Golden B4 (SPEC §6.7): `skills.athletics.mode` 1, its one step
+  `srd-2024:feature/champion-remarkable-athlete#athletics`; `init.mode` 1, its one step `#initiative`;
+  Athletics +6 and initiative +3 as before. Every golden computes with no warning, and each
+  breakdown adds up.
+- Goldens A, B and B4: `skills.stealth.mode` −1, one step, their chain mail (`srd-2014:item/chain-mail`,
+  `srd-2024:item/chain-mail`); every other mode 0 (B4: Athletics and initiative 1). Passive
+  Perception stays 13 in each, its new third step `skills.perception.mode` 0 with change 0.
+- 2014 exhaustion on golden A, levels 0 to 6: checks, skills and initiative −1 from level 1;
+  saves, the warhammer, spell attacks and the death save −1 from level 3; no warning at any level.
+  At level 1 Stealth has two steps, the chain mail −1 and `#checks` 0.
+- Golden B4 has 186 values (152 before: 6 checks, 6 saves, 18 skills, initiative, spell attacks,
+  the death save and the greatsword gain a mode). One compute of B4 in this container, 500 runs,
+  5 rounds: 0.433 to 0.549 ms before, 0.550 to 0.728 ms after (SPEC §6.6's limit is 10 ms; the
+  slowed benchmark is ENG-23's).
+- The tests bite. 19 breaks, each on its own and restored, every test run (609): the cancel rule
+  counted as a sum, 2 fail; no once-only effect warning, 2; the passive's ±5 dropped, 2; no Stealth
+  rule, 5; the 2014 heavy rule read by score, 1; the Heavy property ignored, 2; 13 not enough in
+  2024, 1; a source's value not its sign (−5), 2; no `roll.check.all`, 5; a skill without its
+  stat's check targets, 8; initiative without the Dexterity check's, 3; the death save without
+  `roll.save.all`, 3; a skill's stat not followed, 1; toggles ignored, 1; a kept term merged into
+  one, 3; a natural 20 needing the range, 1; no `notARollMode`, 3; `when` ignored, 4; each step's
+  change its value, 4.
+
+Differences from §3: none in values; every mode was worked out from §8 and the data before the run,
+and the 20 tests of `rolls.test.ts` passed on their first run. While building, three ENG tests that
+list every path under a prefix gained the new paths: 8 ENG-15 tests (`spell.attackMode` 0), 3
+ENG-16 tests (`attacks.<key>.mode` 0), 1 ENG-13 test (the paths containing `.save`: 18 → 24, the
+six `.saveMode`). No value of theirs changed. §3 item 6 first put the 2024 Heavy rule's score
+before its rule step, a `path` step of change 0 and value 12; then a step's value was not always a
+sign, and the roll dialog adding its sources to the step values would read 12 as an advantage. The
+step was dropped (§4), and a test reads every mode's step values back through `rollModeOf`. §2 first
+gave a test count for `5fbd320` before it
+was measured; it was measured (577) and corrected before any code.
+
+Against the row and its notes:
+- The row was size S; with the notes it holds (the passive, Stealth, the Heavy property, 2014
+  exhaustion's targets, the warnings) and SPEC §6.5's critical 20, 1 and dice, it is M. Not split:
+  each part reads or writes the roll mode, the hat's one thing.
+- ENG-51 gave spell attacks a second place (`abilities.<stat>.spell.attack`); one
+  `spell.attackMode` serves both (§4), so `spellcasting.ts` did not change.
+- The notes, each done: B4's two lines are on; the `roll.*` effects are read through
+  `activeEffects` with their own warning (`notARollMode`); the passive's ±5; armor's Stealth; the
+  Heavy property by `heavyWeapon`; `roll.check.all` is a target (§4), so the 2014 test data stays.
+
+Found, not fixed:
+- An `advantage` or `disadvantage` on a `roll.*` target no test reads (a typo, a stat the
+  character lacks) warns nowhere, as an `append` on a list no step reads (ENG-14). Noted for phase
+  5, whose effect builder and import checks know the target catalogue.
+- What the roll dialog needs from this ticket. Noted for phase 2.
+- ENG-46's armor-without-training disadvantage is a rule source through `modeOf`. Its note says so.
+
+Nothing for the changelog: no screen shows a roll mode yet.

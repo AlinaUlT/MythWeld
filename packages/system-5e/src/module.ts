@@ -15,6 +15,7 @@ import { characterLevel, classesOf } from './classes';
 import { combatSteps } from './combat';
 import type { FifthEditionEntity } from './entity-types';
 import { equipmentOf } from './equipment';
+import { rollModeSteps } from './rolls';
 import { sizeKeys } from './size';
 import { spellDiceSteps } from './spell-dice';
 import { spellcastingSteps } from './spellcasting';
@@ -27,6 +28,7 @@ import { spellcastingSteps } from './spellcasting';
 // ENG-14: each equipped item is named, with its own paths. ENG-44: as `equipmentOf` counts it.
 // ENG-48 adds the size to `keys`. ENG-49: a `spell` or `item` grant's own ids are looked up.
 // ENG-35: the side of the ability score increases not taken gives none; `both` warns.
+// ENG-34 adds each d20 test's roll mode to `derive` (`rolls.ts`; a weapon's in `attacks.ts`).
 
 /** A stat's defaults (SPEC §5.3): the modifier, a save, a highest score of 20 (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: StatDefaults = {
@@ -139,6 +141,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     ...combatSteps(input),
     ...spellcastingSteps(input),
     ...attackSteps(input),
+    ...rollModeSteps(input),
     ...spellDiceSteps(),
   }),
 

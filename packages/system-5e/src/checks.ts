@@ -9,12 +9,15 @@ import {
 } from '@grimoire/engine';
 import type { FifthEditionCharacter } from './character';
 import type { FifthEditionEntity } from './entity-types';
+import { ROLL_MODE_PATHS } from './rolls';
 
 // ENG-13: fifth edition's check bonuses (SPEC §6.1 step 5): the proficiency bonus, ability checks,
 // saves, skills and passive values, one rule in both editions (ENG-13 §8). A total adds its parts
 // as `path` steps, so an effect on any part shows in the total's breakdown.
 // ENG-43: a skill's stat is the key path `skills.<key>.ability`, its own `ability` until an effect
 // or an override sets another; its total reads that stat's modifier and check bonus.
+// ENG-34: a passive value is 5 higher when its skill's check has advantage, 5 lower with
+// disadvantage (`skills.<key>.mode`, `rolls.ts`).
 
 /** The proficiency bonus's path (SPEC §5.6 `@prof`). */
 export const PROF_PATH = 'prof';
@@ -24,6 +27,9 @@ export const D20_BONUS_PATH = 'd20.all.bonus';
 
 /** What a passive value adds to its check's total (SRD 5.1 Passive Checks; ENG-13 §8). */
 export const PASSIVE_BASE = 10;
+
+/** What a passive value gains with advantage on its check, and loses with disadvantage (ENG-34 §8). */
+export const PASSIVE_MODE = 5;
 
 /** The proficiency bonus at a character's level: +2 to level 4, then 1 more every 4 levels. */
 export function proficiencyBonus(level: number): number {
@@ -209,13 +215,17 @@ export function checkSteps({
             return { value, steps: [step], warnings };
           };
     if (skill.passive !== true) continue;
+    const modePath = ROLL_MODE_PATHS.skill(key);
     steps[`${path}.passive`] = (read) => {
       const total = read(`${path}.total`);
+      const mode = read(modePath);
+      const change = mode > 0 ? PASSIVE_MODE : mode < 0 ? -PASSIVE_MODE : 0;
       return {
-        value: PASSIVE_BASE + total,
+        value: PASSIVE_BASE + total + change,
         steps: [
           { kind: 'rule', rule: 'passiveBase', value: PASSIVE_BASE, change: PASSIVE_BASE },
           { kind: 'path', path: `${path}.total`, value: total, change: total },
+          { kind: 'path', path: modePath, value: mode, change },
         ],
       };
     };

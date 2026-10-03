@@ -51,6 +51,7 @@ export type EffectWarning = { message: string } & (
   | { code: 'notANumber'; part: EntityPartId; op: EffectOp; target: string }
   | { code: 'notAKey'; part: EntityPartId; op: EffectOp; target: string }
   | { code: 'notAppended'; part: EntityPartId; op: EffectOp; target: string }
+  | { code: 'notARollMode'; part: EntityPartId; op: EffectOp; target: string }
   | { code: 'unknownKey'; part: EntityPartId; target: string; key: string; keys: readonly string[] }
   | { code: 'notInBasePhase'; part: EntityPartId; paths: readonly string[] }
   | { code: 'formula'; part: EntityPartId; field: 'value' | 'when'; warning: FormulaWarning }
@@ -333,4 +334,58 @@ export function appendedNumbers(
     numbers.push({ value: result.value, formula, part, source, label });
   }
   return numbers;
+}
+
+/** The ops that give a roll a mode (SPEC §5.4). What a roll does with them is a module's. */
+export const ROLL_MODE_OPS = ['advantage', 'disadvantage'] as const;
+export type RollModeOp = (typeof ROLL_MODE_OPS)[number];
+
+/** An `advantage` or `disadvantage` effect that applies to a roll target, and where it came from. */
+export interface RollModeEffect {
+  op: RollModeOp;
+  target: string;
+  part: EntityPartId;
+  source: EntityId;
+  label: L10n;
+}
+
+/** Whether an op gives a roll a mode. */
+function isRollModeOp(op: EffectOp): op is RollModeOp {
+  return (ROLL_MODE_OPS as readonly EffectOp[]).includes(op);
+}
+
+/**
+ * ENG-34: the `advantage` and `disadvantage` effects on any of `targets` (roll targets, which no
+ * step computes) that apply, in the effects' order, each `when` read through `readerOf`. Another op
+ * that gives no number is warned `notARollMode`; a number op is left to the phases, which warn
+ * `noTarget` for it.
+ */
+export function rollModeEffects(
+  effects: readonly ActiveEffect[],
+  targets: readonly string[],
+  readerOf: (active: ActiveEffect) => EffectReader,
+  warn: (warning: EffectWarning) => void,
+): RollModeEffect[] {
+  const modes: RollModeEffect[] = [];
+  for (const active of effects) {
+    const { effect, part, source, label } = active;
+    const { op, target } = effect;
+    if (!targets.includes(target)) continue;
+    if (!isRollModeOp(op)) {
+      if (numberChangeOf(effect) !== undefined) continue;
+      warn({
+        code: 'notARollMode',
+        part,
+        op,
+        target,
+        message: `"${part}" (${op}) gives neither advantage nor disadvantage, so it does not change ${target}; it is not used.`,
+      });
+      continue;
+    }
+    if (applies(active, undefined, withOwnPaths(active, readerOf(active)), warn) === undefined) {
+      continue;
+    }
+    modes.push({ op, target, part, source, label });
+  }
+  return modes;
 }

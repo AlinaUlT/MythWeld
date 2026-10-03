@@ -18,7 +18,8 @@ import { goldenA, goldenB, goldenB4, goldenC2014, srd2014, srd2024 } from './gol
 // data, never copied from a run. Golden A (2014): STR 13 (+1), DEX 10 (+0), proficiency +2,
 // simple weapons and the dwarf's battleaxe, handaxe, light hammer, warhammer. Golden B (2024):
 // STR 17 (+3), DEX 13 (+1), proficiency +2, simple and martial weapons, the mastery of the
-// greatsword, greataxe and glaive.
+// greatsword, greataxe and glaive. ENG-34: each attack has a roll mode, `.mode`, 0 here: no effect
+// on its targets, and golden B's STR 17 meets the greatsword's Heavy 13 (`rolls.test.ts`).
 
 type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 type EntityInput = FifthEditionCharacter['localEntities'][number];
@@ -232,6 +233,7 @@ describe('ENG-16 weapon attacks', () => {
     expect(attacksOf(result)).toEqual({
       'attacks.greatsword.prof': 1,
       'attacks.greatsword.hit': 5,
+      'attacks.greatsword.mode': 0,
       'attacks.greatsword.damage': 3,
       'attacks.greatsword.mastery': 1,
     });
@@ -322,6 +324,7 @@ describe('ENG-16 weapon attacks', () => {
     expect(attacksOf(twice)).toEqual({
       'attacks.boundblade.prof': 1,
       'attacks.boundblade.hit': 5,
+      'attacks.boundblade.mode': 0,
       'attacks.boundblade.damage': 3,
     });
     expect(codes(twice)).toEqual([]);
@@ -431,6 +434,7 @@ describe('ENG-16 weapon attacks', () => {
     expect(attacksOf(mixed)).toEqual({
       'attacks.greatsword.prof': 1,
       'attacks.greatsword.hit': 5,
+      'attacks.greatsword.mode': 0,
       'attacks.greatsword.damage': 3,
       'attacks.greatsword.mastery': 1,
     });

@@ -35,7 +35,7 @@ import {
 // The golden tests (SPEC §6.7): each value below is SPEC §6.7's, computed by hand there, never
 // copied from a run. Each ticket from ENG-13 on adds the lines it makes true; the fixture
 // tests hold the scores and Second Wind's uses (ENG-09, ENG-10). A line no ticket has made true
-// yet is not here: B4's two "with advantage" (ENG-34), and Second Wind back on a rest (ENG-21).
+// yet is not here: Second Wind back on a rest (ENG-21).
 
 /** The packs the goldens may name, each opened once, by id. */
 const PACKS = new Map(
@@ -341,6 +341,35 @@ describe('ENG-16 goldens: weapon attacks', () => {
       'attacks.greatsword.hit': 5,
       'attacks.greatsword.damage': 3,
     });
+  });
+});
+
+describe('ENG-34 goldens: golden B4', () => {
+  const b4 = computed(goldenB4);
+  const athlete = 'srd-2024:feature/champion-remarkable-athlete';
+
+  /** The parts of the effects that gave a path's value. */
+  function effectsOf(path: string) {
+    return (b4.breakdown[path] ?? []).map((step) =>
+      step.kind === 'effect' ? step.part : step.kind,
+    );
+  }
+
+  it('golden B4: Athletics +6, with advantage (Remarkable Athlete)', () => {
+    expect(valuesOf(b4, ['skills.athletics.total', 'skills.athletics.mode'])).toEqual({
+      'skills.athletics.total': 6,
+      'skills.athletics.mode': 1,
+    });
+    expect(effectsOf('skills.athletics.mode')).toEqual([`${athlete}#athletics`]);
+  });
+
+  it('golden B4: initiative +3, with advantage', () => {
+    expect(valuesOf(b4, ['init.total', 'init.mode'])).toEqual({ 'init.total': 3, 'init.mode': 1 });
+    expect(effectsOf('init.mode')).toEqual([`${athlete}#initiative`]);
+  });
+
+  it('golden B4: no warning, and each breakdown adds up to its value', () => {
+    expectWhole(b4);
   });
 });
 

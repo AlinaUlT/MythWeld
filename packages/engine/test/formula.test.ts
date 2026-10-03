@@ -1,5 +1,6 @@
 import {
   addDice,
+  averageOf,
   diceOf,
   evaluateCondition,
   evaluateFormula,
@@ -8,6 +9,7 @@ import {
   type FormulaError,
   type FormulaNode,
   type FormulaReader,
+  multiplyDice,
   type ParsedFormula,
   parseFormula,
   parseRoll,
@@ -608,6 +610,77 @@ describe('ENG-50 dice added to a roll formula', () => {
     expect(addDice('1d6', '1d4 + 1', 1e9)).toEqual({
       ok: false,
       error: expect.objectContaining({ code: 'tooLong', length: 12003 }),
+    });
+  });
+});
+
+describe('ENG-34 dice rolled more times', () => {
+  /** The formula `multiplyDice` writes, or its error's code. */
+  function multiplied(base: string, times: number): string {
+    const result = multiplyDice(base, times);
+    return result.ok ? result.formula.text : `error ${result.error.code}`;
+  }
+
+  it('multiplies the count of a term that keeps every die, in its place, keeping its letter', () => {
+    expect(multiplied('1d4', 2)).toBe('2d4');
+    expect(multiplied('2d6+4', 2)).toBe('4d6+4');
+    expect(multiplied('d8', 2)).toBe('2d8');
+    expect(multiplied('1d8 + 2к6 + @stats.grit.mod', 2)).toBe('2d8 + 4к6 + @stats.grit.mod');
+    expect(multiplied('-1d4', 2)).toBe('-2d4');
+    expect(multiplied('max(1, 1d6 - 3)', 2)).toBe('max(1, 2d6 - 3)');
+    expect(multiplied('@gear.worn ? 1d6 : 1d8', 2)).toBe('@gear.worn ? 2d6 : 2d8');
+    expect(multiplied('2d6', 3)).toBe('6d6');
+  });
+
+  it('writes a term that keeps some dice once per time, in brackets, in its place', () => {
+    expect(multiplied('4d6kh3', 2)).toBe('(4d6kh3 + 4d6kh3)');
+    expect(multiplied('2 * 4d6kh3', 2)).toBe('2 * (4d6kh3 + 4d6kh3)');
+    expect(multiplied('2d20kl1 + 1d4', 2)).toBe('(2d20kl1 + 2d20kl1) + 2d4');
+    expect(multiplied('4d6kh3', 3)).toBe('(4d6kh3 + 4d6kh3 + 4d6kh3)');
+    // Two rolls of 4d6kh3, not one of 8d6kh6: 2 × 15869/1296 (python3, every outcome).
+    const result = multiplyDice('4d6kh3', 2);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(averageOf(result.formula, () => undefined).value).toBeCloseTo(15869 / 648, 9);
+  });
+
+  it('leaves numbers and paths; counts times as a whole number, below 1 the formula as it is', () => {
+    expect(multiplied('5', 2)).toBe('5');
+    expect(multiplied('@stats.grit.mod + 2', 2)).toBe('@stats.grit.mod + 2');
+    expect(multiplied('2d6', 1)).toBe('2d6');
+    expect(multiplied('2d6', 1.9)).toBe('2d6');
+    expect(multiplied('2d6', 2.7)).toBe('4d6');
+    expect(multiplied('2d6', 0)).toBe('2d6');
+    expect(multiplied('2d6', -2)).toBe('2d6');
+    expect(multiplied('2d6', Number.NaN)).toBe('2d6');
+    expect(multiplied('2d6', Number.POSITIVE_INFINITY)).toBe('2d6');
+  });
+
+  it('gives the parsed formula, with the paths it names', () => {
+    const result = multiplyDice('1d8 + @stats.grit.mod', 2);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.formula.text).toBe('2d8 + @stats.grit.mod');
+    expect(result.formula.paths).toEqual(['stats.grit.mod']);
+    expect(diceOf(result.formula).map(({ count, faces }) => [count, faces])).toEqual([[2, 8]]);
+  });
+
+  it('gives the error of a formula that does not parse, or of one made past the limits', () => {
+    expect(multiplyDice('1d', 2)).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'unexpected', found: 'd', at: 1 }),
+    });
+    expect(multiplyDice('500d6', 2)).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'diceCount', term: '1000d6', found: 1000 }),
+    });
+    // "(" + "4d6kh3" + 199 × " + 4d6kh3" + ")" = 1799 characters.
+    expect(multiplyDice('4d6kh3', 200)).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'tooLong', length: 1799, limit: 1000 }),
+    });
+    // At most 1000 copies are written: 1 + 6 + 999 × 9 + 1 = 8999.
+    expect(multiplyDice('4d6kh3', 1e9)).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'tooLong', length: 8999 }),
     });
   });
 });

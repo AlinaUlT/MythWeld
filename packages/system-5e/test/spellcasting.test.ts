@@ -31,7 +31,8 @@ import {
 // ENG-15: fifth edition's spellcasting numbers. The rules are ENG-15 §8's: both SRDs' save DC,
 // attack bonus, multiclass rule and table, read from 5e-database and dnd5e. The character's own
 // entities (`character:`) are made up, no text of a book; each value below was worked out by hand
-// from them and from the goldens' scores, never copied from a run.
+// from them and from the goldens' scores, never copied from a run. ENG-34: every character has
+// `spell.attackMode`, 0 for each one here: none has an effect on `roll.attack.spell` or `.all`.
 
 type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 type EntityInput = FifthEditionCharacter['localEntities'][number];
@@ -242,6 +243,7 @@ describe('ENG-15 spellcasting', () => {
     expect(valuesUnder(a, 'classes.cleric.spell.', 'spell.')).toEqual({
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
+      'spell.attackMode': 0,
       'classes.cleric.spell.dc': 13,
       'classes.cleric.spell.attack': 5,
       'classes.cleric.spell.prepared': 4,
@@ -292,6 +294,7 @@ describe('ENG-15 spellcasting', () => {
       'classes.paladin.level': 3,
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
+      'spell.attackMode': 0,
       'classes.wizard.spell.dc': 13,
       'classes.wizard.spell.attack': 5,
       'classes.wizard.spell.prepared': 5,
@@ -317,6 +320,7 @@ describe('ENG-15 spellcasting', () => {
       {
         'spell.dc.bonus': 0,
         'spell.attack.bonus': 0,
+        'spell.attackMode': 0,
         'classes.wizard.spell.dc': 13,
         'classes.wizard.spell.attack': 5,
         'classes.wizard.spell.prepared': 6,
@@ -355,6 +359,7 @@ describe('ENG-15 spellcasting', () => {
     expect(valuesUnder(c2014, 'classes.paladin.spell.', 'spell.')).toEqual({
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
+      'spell.attackMode': 0,
       'spell.casterLevel': 3,
       ...slotsOf(4, 2),
     });
@@ -377,6 +382,7 @@ describe('ENG-15 spellcasting', () => {
     expect(valuesUnder(c2024, 'classes.paladin.spell.', 'spell.')).toEqual({
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
+      'spell.attackMode': 0,
       'classes.paladin.spell.dc': 12,
       'classes.paladin.spell.attack': 4,
       'classes.paladin.spell.prepared': 2,
@@ -398,6 +404,7 @@ describe('ENG-15 spellcasting', () => {
     expect(valuesUnder(in2014, 'classes.warden.spell.', 'spell.')).toEqual({
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
+      'spell.attackMode': 0,
       'classes.warden.spell.dc': 10,
       'classes.warden.spell.attack': 2,
       'spell.casterLevel': 3,
@@ -406,6 +413,7 @@ describe('ENG-15 spellcasting', () => {
     expect(valuesUnder(in2024, 'classes.warden.spell.', 'spell.')).toEqual({
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
+      'spell.attackMode': 0,
       'classes.warden.spell.dc': 12,
       'classes.warden.spell.attack': 4,
       'spell.casterLevel': 3,
@@ -472,6 +480,7 @@ describe('ENG-15 spellcasting', () => {
     expect(valuesUnder(b4, 'classes.fighter.spell.', 'spell.')).toEqual({
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
+      'spell.attackMode': 0,
       'classes.fighter.spell.dc': 9,
       'classes.fighter.spell.attack': 1,
       'classes.fighter.spell.cantrips': 2,
@@ -496,6 +505,7 @@ describe('ENG-15 spellcasting', () => {
     expect(Object.keys(valuesUnder(b, 'classes.fighter.spell.', 'spell.'))).toEqual([
       'spell.dc.bonus',
       'spell.attack.bonus',
+      'spell.attackMode',
     ]);
   });
 
@@ -507,6 +517,7 @@ describe('ENG-15 spellcasting', () => {
     expect(valuesUnder(alone, 'classes.hexer.spell.', 'spell.')).toEqual({
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
+      'spell.attackMode': 0,
       'classes.hexer.spell.dc': 10,
       'classes.hexer.spell.attack': 2,
       'classes.hexer.spell.cantrips': 2,
@@ -529,6 +540,7 @@ describe('ENG-15 spellcasting', () => {
     expect(valuesUnder(beside, 'classes.hexer.spell.', 'spell.')).toEqual({
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
+      'spell.attackMode': 0,
       'classes.hexer.spell.dc': 13,
       'classes.hexer.spell.attack': 5,
       'classes.hexer.spell.cantrips': 2,
@@ -576,6 +588,7 @@ describe('ENG-15 spellcasting', () => {
     expect(valuesUnder(result, 'classes.mystic.spell.', 'spell.')).toEqual({
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
+      'spell.attackMode': 0,
       'classes.mystic.spell.dc': 10,
       'classes.mystic.spell.attack': 2,
       'classes.mystic.spell.prepared': 0,
@@ -599,6 +612,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.dc.bonus',
       'spell.attack.bonus',
       'attack.spell.bonus',
+      'spell.attackMode',
     ]);
   });
 

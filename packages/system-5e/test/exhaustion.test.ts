@@ -42,8 +42,8 @@ const exhaustion2014: Extract<EntityInput, { type: 'condition' }> = {
   source: { pack: 'srd-2014' },
   maxLevel: 6,
   effects: [
-    // 1: disadvantage on ability checks. 3: on attack rolls and saving throws. Roll modes are
-    // ENG-34's; these change no number.
+    // 1: disadvantage on ability checks. 3: on attack rolls and saving throws: roll modes
+    // (ENG-34), which change no number of the table.
     { id: 'checks', target: 'roll.check.all', op: 'disadvantage', value: true },
     { id: 'speed-halved', target: 'speed.all.mul', op: 'mul', value: 0.5, when: atLeast(2) },
     {
@@ -149,5 +149,53 @@ describe('ENG-19 exhaustion is data in both editions', () => {
       [5, 5, 12, -10],
       [6, 0, 12, -12],
     ]);
+  });
+
+  it('2014: disadvantage on every ability check from 1, on attacks and saves from 3 (ENG-34)', () => {
+    /** Each kind of d20 test's modes, each kind's distinct values in rising order. */
+    const kinds = {
+      checks: /^checks\.[^.]+\.mode$/,
+      skills: /^skills\.[^.]+\.mode$/,
+      init: /^init\.mode$/,
+      saves: /^abilities\.[^.]+\.saveMode$/,
+      attacks: /^attacks\.[^.]+\.mode$/,
+      spellAttacks: /^spell\.attackMode$/,
+      deathSave: /^deathSave\.mode$/,
+    };
+    const levels = [0, 1, 2, 3, 4, 5, 6].map((level) => {
+      const result = compute(
+        exhausted(goldenA, EXHAUSTION_2014, level),
+        index2014,
+        fifthEditionModule,
+      );
+      expect(result.warnings, `level ${level}`).toEqual([]);
+      const modes = Object.entries(kinds).map(([kind, pattern]) => {
+        const values = Object.entries(result.values).flatMap(([path, value]) =>
+          pattern.test(path) ? [Number(value)] : [],
+        );
+        return `${kind} ${[...new Set(values)].sort((x, y) => x - y).join(',')}`;
+      });
+      return [level, ...modes];
+    });
+    // Golden A's Stealth is −1 at every level: its chain mail.
+    const none = ['checks 0', 'skills -1,0', 'init 0', 'saves 0', 'attacks 0'];
+    const checks = ['checks -1', 'skills -1', 'init -1', 'saves 0', 'attacks 0'];
+    const every = ['checks -1', 'skills -1', 'init -1', 'saves -1', 'attacks -1'];
+    expect(levels).toEqual([
+      [0, ...none, 'spellAttacks 0', 'deathSave 0'],
+      [1, ...checks, 'spellAttacks 0', 'deathSave 0'],
+      [2, ...checks, 'spellAttacks 0', 'deathSave 0'],
+      [3, ...every, 'spellAttacks -1', 'deathSave -1'],
+      [4, ...every, 'spellAttacks -1', 'deathSave -1'],
+      [5, ...every, 'spellAttacks -1', 'deathSave -1'],
+      [6, ...every, 'spellAttacks -1', 'deathSave -1'],
+    ]);
+    // At 1, Stealth's two disadvantages: the armor's, then the condition's, which moves nothing.
+    const one = compute(exhausted(goldenA, EXHAUSTION_2014, 1), index2014, fifthEditionModule);
+    expect(
+      one.breakdown['skills.stealth.mode']?.map((step) =>
+        step.kind === 'effect' ? `${step.part} ${step.change}` : `${step.kind} ${step.change}`,
+      ),
+    ).toEqual(['entity -1', `${EXHAUSTION_2014}#checks 0`]);
   });
 });
