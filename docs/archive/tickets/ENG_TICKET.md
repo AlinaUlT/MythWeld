@@ -13845,3 +13845,287 @@ Found, not fixed:
   target (§8, §9). A phase 3 note in `BACKLOG.md`.
 
 Nothing for the changelog: no screen and no published file changes.
+
+---
+
+### ENG-57 A spell a grant gives, cast through its own uses
+
+**Hat:** A spell a grant gives is cast through its own uses
+**Depends on:** ENG-32 (`spellGrantSchema`, its `uses`), ENG-29 (`resources.<key>.max`, its
+breakdown), ENG-30 (`state.resources`, `resourceUses`), ENG-20 (`castSpell`, `settled`), ENG-21
+(`recoveredOn`, `REST_EVENTS`, `shortRest`, `longRest`), ENG-56 (version 4 and its steps)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.5 (`spell` grant `uses`); §5.4 (`resources.<key>.max`); §5.8 (`state.resources`,
+migrations); §6.4 (`castSpell`); ADR 014 item 7
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/spell-uses.ts` — new: `spellUsesGrants`, the `resource`
+grant a `spell` grant with uses gives beside itself.
+- `packages/system-5e/src/system.ts` — changes: the `spell` grant's `key`, needed with `uses`;
+  the version, 5.
+- `packages/system-5e/src/stored.ts` — new: `fieldsOf` (moved from `character.ts`) and
+  `keyedSpellUses`, the work of the 4 → 5 steps.
+- `packages/system-5e/src/character.ts`, `pack.ts` — changes: the step 4 → 5 in each list.
+- `packages/system-5e/src/module.ts` — changes: `grantsOf` ends with `spellUsesGrants`.
+- `packages/system-5e/src/casting.ts` — changes: `castSpell`'s third way, `grant`.
+- `packages/engine/src/trackers.ts` — new: `resourceSpentPath`, the place of a key's uses spent,
+  which the core's actions already build inline.
+- `packages/system-5e/src/index.ts` — exports `spell-uses.ts`.
+- `packages/system-5e/test/spell-uses.test.ts` — new. `test/character.test.ts`,
+  `test/entity-types.test.ts`, `test/pack-json-schema.test.ts`, `test/entities.ts`, the golden
+  fixtures — version 5, the `key`.
+- `apps/web/public/schema/5e/pack.schema.json` — the published schema: version 5, `key`.
+
+#### 2. What is missing now
+
+Measured on `main` at `71b2746`, golden A with a made-up feat whose `spell` grant gives a level 1
+spell with `uses: { max: '@prof', recovery: [{ on: 'long', amount: 'all' }] }`:
+- `compute()` gives `resources: []` and no path with `uses` or `resources` in it: the uses have no
+  maximum and no breakdown.
+- `castSpell(…, { spell }, …)` without a slot: `{ ok: false, code: 'unchanged', message: 'Casting
+  "character:spell/spark" without a slot changes nothing.' }`. No ask names the grant's uses, and
+  no tracker keeps them spent.
+- `spellGrantSchema` refuses a `key`: `unrecognized_keys`, `keys: ['key']`.
+- `pnpm test`: `Test Files 58 passed (58)`, `Tests 744 passed (744)`, 9.41 s.
+
+#### 3. What it should look like when done
+
+`stamp` is ENG-20's. Golden A (2014): cleric 1, proficiency bonus 2, two level 1 slots. Golden C
+(2014): wizard 3 and paladin 3, level 6, proficiency bonus 3. The feat `character:feat/gifted` and
+its spells are made up: grant `spark` gives the level 1 spell `spark` (no concentration), key
+`giftedSpark`, `uses: { max: '1', recovery: [{ on: 'long', amount: 'all' }] }` (SRD 5.1's
+Infernal Legacy and SRD 5.2.1's Magic Initiate: once, back on a long rest, §8); grant `glimmer`,
+`atLevel: 3`, gives the level 1 concentration spell `glimmer`, key `giftedGlimmer`, `uses: { max:
+'@prof', recovery: [{ on: 'long', amount: 'all' }] }` (SRD 5.2.1's Forest Gnome: a number of times
+equal to the proficiency bonus, all back on a long rest, §8). Every value is worked out by hand.
+
+**The stored shape**
+1. A `spell` grant takes `key` (a key) together with `uses`: `uses` without `key` is refused on
+   `key`, `key` without `uses` on `uses`. The published JSON Schema refuses both
+   (`dependentRequired`).
+2. `FIFTH_EDITION_SCHEMA_VERSION` is 5; each list of migrations has 4 steps. The 4 → 5 step gives
+   each `spell` grant with `uses` and no `key` the key `uses` + its grant id in PascalCase:
+   `spark` → `usesSpark`, `3rd-level` → `uses3rdLevel`. A key the file already has (any grant's
+   `key`, a resource's or a spell grant's) is not given twice: the next is `usesSpark2`, then
+   `usesSpark3`. A class's `multiclass.grants` are keyed as its `grants`. A grant with a key, or
+   with no uses, is left as it is. The pack's step keys `entities`; the character's,
+   `localEntities`. Both are pure; a file of version 1 opens through every step.
+
+**The uses are a resource** (ENG-29)
+3. Golden A with the feat: `computed.resources` holds `{ key: 'giftedSpark', label: { en: 'Gifted'
+   }, uses, from: 'character:feat/gifted#spark' }`; `resources.giftedSpark.max` is 1, its
+   breakdown one `grant` step: part `character:feat/gifted#spark`, source the feat, label `{ en:
+   'Gifted' }`, formula `1`, value 1, change 1. The `glimmer` grant (level 3) does not reach a
+   level 1 character: no `resources.giftedGlimmer.max`.
+4. Golden C with the feat: `resources.giftedGlimmer.max` is 3 (formula `@prof`). An override of
+   `resources.giftedSpark.max` 2 on golden A gives 2.
+
+**Casting through the uses** — `castSpell(character, index, { spell, grant }, stamp)`
+5. A casts `spark` through `character:feat/gifted#spark`: one change, `state.resources.giftedSpark`
+   none → 1; the entry's `action` is `castSpell`, `subject` the spell's id, `label` `{ en: 'spark'
+   }`. Again: `noUseLeft`, `{ grant: 'character:feat/gifted#spark', key: 'giftedSpark', max: 1,
+   spent: 1 }`. A slot still casts it: `{ level: 1 }` spends slot level 1 and no use.
+6. C casts `glimmer` through its grant: `giftedGlimmer` none → 1 and `concentration` `glimmer`.
+   With 3 spent: `noUseLeft`, `max: 3`, `spent: 3`.
+7. A spell a grant chooses: a grant `pick` choosing 1 of `spark` and `glimmer`, key `giftedPick`,
+   with `spark` chosen: `spark` casts through it; `glimmer`: `notGiven`, `{ grant, id }`. Nothing
+   chosen: `spark` is `notGiven`.
+8. Refusals: a slot and a grant in one ask: `slotAndGrant`; a part that is no `spell` grant with
+   uses (`character:feat/gifted#nope`, and `glimmer`'s grant on level 1 golden A): `noSpellUses`,
+   `{ grant }`; Bless through the `spark` grant: `notGiven`; a spell no pack has: `missing`.
+9. The core's actions read the same uses: `regainResource` `giftedSpark` `all` after the cast:
+   1 → 0.
+
+**Rests** (ENG-21)
+10. A with `giftedSpark` 1 spent: `shortRest` with no dice is `unchanged`; `longRest` gives 1 → 0.
+    A grant with `{ on: 'short', amount: '1' }`, 2 of 2 spent: `shortRest` 2 → 1; `longRest` 2 → 1
+    (a long rest gives what a short one gives, `REST_EVENTS`).
+
+**Every action**
+11. Each entry parses with `logEntrySchema`; each character opens unchanged; `reverseEntry` gives
+    back the character before; deep-frozen inputs: nothing throws, nothing changes.
+12. Goldens A–E compute exactly as before. The quality gate is green, `pnpm e2e` included
+    (`apps/web/public` changes).
+
+#### 4. How to do it
+
+1. `system.ts`: `key` on the `spell` grant, a refinement that `key` and `uses` come together, its
+   JSON Schema as `dependentRequired`. The version, 5.
+2. `stored.ts`: `fieldsOf` moved from `character.ts`; `keyedSpellUses(entities)`. The two steps.
+   The fixtures and goldens say version 5; `entities.ts`'s feat gets its key.
+3. `spell-uses.ts`: `spellUsesGrants(entity, grants)`: after each `spell` grant with `uses`, a
+   `resource` grant of the same id, its `key`, `uses` and `atLevel`, labelled with the entity's
+   name. `module.ts`'s `grantsOf` ends with it.
+4. `trackers.ts`: `resourceSpentPath(key)`, used by the core's actions and by `castSpell`.
+5. `casting.ts`: `grant` in `CastAsk`; the cast finds the spell grant at that part among the grants
+   that reach the character, checks it gives the spell (`fixed` and the chosen), and spends one use
+   when `resourceUses` leaves one.
+6. Tests, the published schema rewritten (`--update`), then the gate.
+
+Technical choices (ADR 002):
+- **A spell grant's uses are a resource of the core.** ENG-04's uses are the core's `resource`;
+  ADR 014 item 7 calls the granted spell's uses "ENG-04's uses". So the module gives, beside the
+  spell grant, the `resource` grant those uses are: the core then computes `resources.<key>.max`
+  with its breakdown, effects and overrides (ENG-29), keeps the uses spent in `state.resources`
+  (ENG-30), and gives them back on a rest by their `recovery` in `REST_EVENTS`' order (ENG-21's
+  `recoveredOn`). No rule is written twice, and the rests change in no line.
+- **The key is the pack's.** A computed path and a target are camelCase keys (`computedPathSchema`),
+  so a grant's part id cannot name one. The grant gives the key, as a `resource` grant does; the
+  row's note offered this or a new field by part id, which would still need a key for the path.
+  The character's stored shape does not change.
+- **`key` comes with `uses`, both ways.** A grant with uses and no key could not be tracked; a key
+  with no uses gives nothing. Loosening this later needs no migration.
+- **The 4 → 5 step makes the key a version 4 file lacks.** `uses` + the grant id, never reserved
+  (no reserved name starts with `uses`), a camelCase key even when the id starts with a digit, and
+  never one the file already has. Keys of other files can still meet it, as any pack's key can.
+- **One grant, one pool.** A grant's uses count every spell it gives; each SRD trait gives each
+  spell its own uses (§8), so a pack writes one grant per spell. A key two grants give is one
+  resource, as ENG-29 already says.
+- **The resource's label is the entity's name**, the grant having none; the cast's entry is
+  labelled with the spell, as a cast with a slot is.
+- **The resource grant has the spell grant's id**, so its part is the grant written in the pack, and
+  a grant a feat replaces (`feats[].replaces`) gives no uses either.
+- **The cast names the grant's part.** The screen's spell row comes from the grant; the part says
+  which uses, and the action checks the grant reaches the character and gives the spell.
+- **A slot and a grant together are refused**: the person picks one way.
+
+#### 5. Stored data
+
+`ContentPack` and a character's `localEntities` change: a `spell` grant with `uses` needs `key`.
+`FIFTH_EDITION_SCHEMA_VERSION` 4 → 5, with a step in each list (§3 item 2): the pack's keys its
+`entities`, the character's its `localEntities`. Tests: a pack and a character of version 4 open
+as version 5 with their keys; a key the file has is skipped; a class's multiclass grant is keyed;
+the steps leave their argument unchanged; files of versions 1 to 3 still open. A character's
+`systemData` does not change: the uses spent are the core's `state.resources`.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/spell-uses.test.ts` — `describe('ENG-57 a spell cast through its grant's
+  uses')`: §3 items 3–11.
+- `packages/system-5e/test/character.test.ts` — `describe('ENG-57 a spell grant's uses are keyed')`:
+  item 2; the earlier tests at version 5.
+- `packages/system-5e/test/entity-types.test.ts`, `test/pack-json-schema.test.ts` — item 1.
+- Control numbers from: SPEC §6.7 and ENG-14 (golden A's and C's levels and proficiency bonus);
+  the SRD traits of §8 for the shapes of the made-up uses; the rest worked out by hand in §3.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-03: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`,
+`packages/5e-database/src/2014/en/5e-SRD-Traits.json` (SRD 5.1) and `src/2024/en/5e-SRD-Traits.json`,
+`5e-SRD-Feats.json` (SRD 5.2.1). The same commit as ENG-13 to ENG-21.
+
+**Each spell has its own uses.** SRD 5.1, tiefling, Infernal Legacy: "When you reach 3rd level,
+you can cast the hellish rebuke spell as a 2nd-level spell once with this trait and regain the
+ability to do so when you finish a long rest. When you reach 5th level, you can cast the darkness
+spell once with this trait and regain the ability to do so when you finish a long rest." SRD
+5.2.1, Elven Lineage and Fiendish Legacy: "When you reach character levels 3 and 5, you learn a
+higher-level spell, as shown on the table. You always have that spell prepared. You can cast it
+once without a spell slot, and you regain the ability to cast it in that way when you finish a
+Long Rest." So each spell is one grant with its `atLevel`, `uses` max 1, recovery `long` `all`.
+
+**A formula maximum.** SRD 5.2.1, Gnomish Lineage, Forest Gnome: "You can cast it without a spell
+slot a number of times equal to your Proficiency Bonus, and you regain all expended uses when you
+finish a Long Rest." So `max: '@prof'`, recovery `long` `all`.
+
+**A slot still casts it.** SRD 5.2.1, Elven Lineage and Fiendish Legacy: "You can also cast the
+spell using any spell slots you have of the appropriate level"; Magic Initiate: "You can cast it
+once without a spell slot, and you regain the ability to cast it in that way when you finish a Long
+Rest. You can also cast the spell using any spell slots you have." So casting through the uses is
+a third way beside a slot, and a cast with a slot spends no use. SRD 5.1's Infernal Legacy says
+nothing of slots ("once with this trait"); the slot way is ENG-20's, open to any spell.
+
+**Back on a rest.** Every trait above gives its uses back on a long rest only; a long rest gives
+what a short rest gives too (ENG-21 §8, dnd5e's `restTypes`).
+
+No golden value is touched; no rules source disagrees with the SPEC. Nothing stops.
+
+#### 9. Not in this ticket
+
+- The level a spell is cast at through a trait ("as a 2nd-level spell", SRD 5.1) and its dice:
+  ENG-50's `spellDice` takes the level; the screen passes it.
+- Whether a spell is prepared, and the stat a grant names: ENG-51 and the screen.
+- A use given back by hand, or spent with no cast: the core's `regainResource` and `useResource`
+  already take the key (§3 item 9).
+- The sheet's "1/LR, no spell slot" label on the spell row: phase 2 reads `resources.<key>.max`.
+- The SRD import's keys for the traits above: phase 3.
+
+#### 10. Rake check
+
+- **Each system's rules live in its module; the core names no game.** The spell grant, its key
+  and the cast are `system-5e`'s; the core gains `resourceSpentPath`, a path it already used.
+- **A number shown has a breakdown.** The uses' maximum is `resources.<key>.max`, with its grant
+  step; effects and overrides reach it.
+- **Manual overrides win.** An override of `resources.<key>.max` is read by the cast (§3 item 4).
+- **Formulas never run code.** The maximum and the recovery are the core's formulas.
+- **Missing is not broken.** A part that reaches nothing is a refusal with a code; a spell no pack
+  has is `missing`.
+- **Ids are stable.** The cast names the grant by its part; the key is the pack's.
+- **A stored-shape change needs a migration.** Version 5, a step in each list, each with its test.
+- **The engine is pure.** No clock, no random value: the stamp is the caller's; frozen inputs.
+- **Licensing.** The SRDs are quoted in this ticket only; the test entities are made up.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-03:
+- Before, on `main` at `71b2746`: §2's outputs; `pnpm test` `Test Files 58 passed (58)`, `Tests
+  744 passed (744)`, 9.41 s.
+- After, on `71b2746`: `pnpm test` `Test Files 59 passed (59)`, `Tests 758 passed (758)`, 9.64 s;
+  `pnpm e2e` `12 passed (8.9s)`.
+- ENG-60 reached `main` while this ticket was built; it was rebased onto `1190d8a` (no file in
+  common but `BACKLOG.md`). Rebased: `pnpm lint` `Checked 188 files`, no error; `pnpm typecheck` 6
+  of 6 `Done`; `pnpm test` `Test Files 59 passed (59)`, `Tests 770 passed (770)`, 9.65 s; `pnpm
+  build` `apps/web build: Done`; `pnpm e2e`, with `PLAYWRIGHT_CHROMIUM_PATH` as `docs/RUNNING.md`
+  says, `12 passed (8.0s)`.
+- This ticket's 14 tests: `spell-uses.test.ts` 8 (905 ms alone), `character.test.ts` 5,
+  `pack-json-schema.test.ts` 1. `entity-types.test.ts`'s spell grant test gained 3 checks.
+- Goldens A–E: `golden-values.test.ts`, `fixtures-2014.test.ts` and `fixtures-2024.test.ts` pass
+  with no expected value changed. The fixture files and the goldens now say version 5; none has a
+  spell grant with uses. `entities.ts`'s made-up feat, the one that had, now has `key:
+  'steadySpark'`.
+- The published `pack.schema.json`: 196 lines in, 182 out: `"const": 4` became `"const": 5`; the
+  `spell` grant has `key` and `dependentRequired: { uses: ['key'], key: ['uses'] }` beside its
+  `anyOf`; every other changed line is a `$ref` number moved by one.
+- The tests catch mistakes. 16 breaks, each made alone in the code, then the four test files run
+  (59 tests): no resource beside the spell grant, 8 fail; the resource without `atLevel`, 2; no
+  uses-left check, 2; no given-spell check, 2; chosen spells ignored, 1; a slot and a grant
+  allowed, 1; two uses spent per cast, 3; keys made twice, 1; the file's own keys not read, 1;
+  multiclass grants not keyed, 1; a grant with a key keyed again, 1; uses without a key accepted, 3;
+  a key without uses accepted, 3; the character's step keying nothing, 1; the pack's, 1. The
+  sixteenth, the cast's lookup taking a spell grant with no key, failed none: the key check after it
+  refuses the same grant, so the lookup's own check was removed.
+
+Differences from §3:
+- §3 item 8's `noSpellUses` is also tested on a spell grant with no uses (`#plain`) and on a text
+  that is no part (`nothing`).
+- `spellUsesGrants` has a test of its own: the resource follows its spell grant with the same id
+  and `atLevel`, and a list with no uses comes back as the same list.
+- `module.ts`: the body of `grantsOf` moved, unchanged, into a function of its own,
+  `sidedGrants`, so `grantsOf` is `spellUsesGrants` of it. Every earlier test passes unchanged.
+
+Against the row and its note:
+- The note offered the spent count by part id in a new `systemData.state` field, or a key the grant
+  gives. The key: a computed path must be camelCase keys, so the part id could not name the
+  maximum's path either way. With the key, the uses are the core's resource, so the character's
+  `systemData` does not change; version 5 changes an entity instead (a pack's and a character's
+  own), with a step in each list.
+- "This row adds the grant's uses to both rests": they come back through `recoveredOn` with no line
+  of `rests.ts` changed; §3 item 10 shows it.
+- Size S held.
+
+Found, not fixed:
+- The resource's label is its entity's name, so two spell grants of one entity (a trait's spells at
+  levels 3 and 5) give two resources with one label. A phase 2 note in `BACKLOG.md`: the sheet
+  pairs each with its spell through the grant's `key`.
+- The SRD traits of §8 need one `spell` grant per spell, each with its `atLevel` and a `key`. A
+  phase 3 note in `BACKLOG.md`.
+
+Nothing for the changelog: no screen changes.

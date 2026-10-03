@@ -14,6 +14,7 @@ import {
   background,
   cantrip,
   everyEntity,
+  feat,
   feature,
   gear,
   klass,
@@ -167,6 +168,25 @@ describe("ENG-53 a spell's healing", () => {
       ['a kind not listed', { ...spell, healing: { ...spell.healing, kind: 'max' } }],
       ['no kind', { ...spell, healing: without(spell.healing, 'kind') }],
       ['a field of its own', { ...spell, healing: { ...spell.healing, type: 'life' } }],
+    ] as const;
+    for (const [check, entity] of refused) {
+      const json = packOf(entity);
+      expect(fifthEditionPackSchema.safeParse(json).success, check).toBe(false);
+      expect(jsonValid(json), check).toBe(false);
+    }
+  });
+});
+
+describe("ENG-57 a spell grant's key", () => {
+  it('passes both schemas with its uses; without either, neither', () => {
+    const grant = { ...feat.grants[0] };
+    expect(grant.key).toBe('steadySpark');
+    const listed = packOf(feat);
+    expect(fifthEditionPackSchema.safeParse(listed).success).toBe(true);
+    expect(jsonValid(listed), JSON.stringify(jsonValid.errors)).toBe(true);
+    const refused = [
+      ['uses without a key', { ...feat, grants: [without(grant, 'key')] }],
+      ['a key without uses', { ...feat, grants: [without(grant, 'uses')] }],
     ] as const;
     for (const [check, entity] of refused) {
       const json = packOf(entity);

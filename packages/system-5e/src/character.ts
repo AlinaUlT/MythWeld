@@ -8,7 +8,6 @@ import {
   listWithUniqueIds,
   type Migration,
   rollRecordSchema,
-  type StoredObject,
   uniqueList,
   uuidSchema,
   visibleTextSchema,
@@ -16,6 +15,7 @@ import {
 import { z } from 'zod';
 import { fifthEditionEntitySchema, levelSchema } from './entity-types';
 import { EDITION_RULES } from './rulesets';
+import { fieldsOf, keyedSpellUses } from './stored';
 import {
   COINS,
   EQUIPMENT_AC_CALC,
@@ -32,13 +32,6 @@ import {
 // field here: a lineage, and a feat a background, species or class gives (ENG-32 §11). Fields are
 // checked against each other only inside this file; an id naming nothing in a pack is valid here
 // (missing is not broken).
-
-/** `value` when it is an object of fields: not a list, not a plain value. */
-function fieldsOf(value: unknown): StoredObject | undefined {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as StoredObject)
-    : undefined;
-}
 
 /** The steps to `FIFTH_EDITION_SCHEMA_VERSION` for a character: step N takes N + 1 to N + 2. */
 export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
@@ -66,6 +59,11 @@ export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
     const { languageSource } = EDITION_RULES[ruleset as keyof typeof EDITION_RULES];
     return { ...file, systemData: { ...data, languageSource } };
   },
+  // 4 → 5 (ENG-57): a `spell` grant with `uses` needs `key`; the character's own entities get one.
+  (file) =>
+    file.localEntities === undefined
+      ? { ...file }
+      : { ...file, localEntities: keyedSpellUses(file.localEntities) },
 ];
 
 /** The successes, or the failures, that end a run of death saves (ENG-33 §8). */

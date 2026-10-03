@@ -21,7 +21,7 @@ export const FIFTH_EDITION_SYSTEM = '5e';
  * The stored shape of the module's part of a file: a pack's entities, a character's own entities
  * and its `systemData` (ENG-39). A change to it needs a step in each list of migrations.
  */
-export const FIFTH_EDITION_SCHEMA_VERSION = 4;
+export const FIFTH_EDITION_SCHEMA_VERSION = 5;
 
 /** The highest level a class or a character reaches, in both editions. */
 export const MAX_LEVEL = 20;
@@ -66,7 +66,8 @@ export const fifthEditionLists = systemListsOf({
 
 /**
  * Spells an entity gives (SPEC §5.5). `ability` is the stat they are cast with; `uses`, their own
- * uses, cast through which they need no slot (ADR 014 item 7).
+ * uses, cast through which they need no slot (ADR 014 item 7). ENG-57: `key` is the key of those
+ * uses, a resource of the core (`spellUsesGrants`); the two come together.
  */
 export const spellGrantSchema = withFixedOrChoose(
   grantBaseSchema.safeExtend({
@@ -75,9 +76,19 @@ export const spellGrantSchema = withFixedOrChoose(
     choose: chooseEntitiesSchema.optional(),
     ability: entityKeySchema.optional(),
     alwaysPrepared: z.boolean().optional(),
+    key: entityKeySchema.optional(),
     uses: fifthEditionLists.usesDefSchema.optional(),
   }),
-);
+)
+  .refine((grant) => grant.uses === undefined || grant.key !== undefined, {
+    message: 'Needs `key` with `uses`.',
+    path: ['key'],
+  })
+  .refine((grant) => grant.key === undefined || grant.uses !== undefined, {
+    message: 'Needs `uses` with `key`.',
+    path: ['uses'],
+  })
+  .meta({ dependentRequired: { uses: ['key'], key: ['uses'] } });
 
 /** Items an entity gives, each with how many (SPEC §5.5). */
 export const itemGrantSchema = withFixedOrChoose(

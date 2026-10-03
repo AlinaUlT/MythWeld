@@ -5,6 +5,8 @@ import {
   compute,
   finderOf,
   type LogStamp,
+  resourceSpentPath,
+  resourceUses,
 } from '@grimoire/engine';
 import type { LogChange } from '@grimoire/schema';
 import {
@@ -28,14 +30,20 @@ import { MAX_SPELL_LEVEL } from './system';
 // ("use a slot: no", ADR 014 item 7). A concentration spell takes the place of the one held. A
 // slot is spent only while the computed slots (ENG-15) are more than the spent ones. The rules
 // are ENG-20 §8's.
+// ENG-57: or one of the own uses of the spell grant that gives the spell, named by its part: a
+// resource of the core (`spell-uses.ts`), spent while its maximum is more than the uses spent.
 
 /** A slot: one of a spell level, 1 to 9, or a pact magic slot. */
 export type SlotAsk = { readonly level: number } | 'pact';
 
-/** What a cast asks for: the spell, and the slot it uses; without one, it uses none. */
+/**
+ * What a cast asks for: the spell, and the slot it uses, or the part of the spell grant whose own
+ * uses it spends (ENG-57); with neither, it uses none.
+ */
 export interface CastAsk {
   readonly spell: string;
   readonly slot?: SlotAsk;
+  readonly grant?: string;
 }
 
 /** Why a slot or a cast did not change. `code` and its data are for the screen. */
@@ -47,6 +55,10 @@ export type SlotRefusal = { message: string } & (
   | { code: 'missing'; id: string }
   | { code: 'notASpell'; id: string; type: string }
   | { code: 'badCount'; count: number }
+  | { code: 'slotAndGrant'; slot: SlotAsk; grant: string }
+  | { code: 'noSpellUses'; grant: string }
+  | { code: 'notGiven'; grant: string; id: string }
+  | { code: 'noUseLeft'; grant: string; key: string; max: number; spent: number }
 );
 
 /** What a slot or a cast gives: the changed character and its entry, or why nothing changed. */
@@ -103,11 +115,47 @@ function spending(
 }
 
 /**
- * The character after casting `ask.spell` with `ask.slot`, or with no slot, and the entry: the
- * slot is spent, and a concentration spell becomes the one held, ending the one before. Refused
- * for a spell no pack has or an entity that is not a spell, a cantrip with a slot, a slot it
- * cannot use (a bad level, none left, a level below the spell's), and as `unchanged` when the cast
- * changes nothing (no slot, no new concentration).
+ * The change that spends one of the own uses of the spell grant at `grant`, which must give
+ * `spell`: refused when no spell grant with uses at that part reaches the character, when it does
+ * not give the spell, and when none of its uses is left.
+ */
+function spendingUse(
+  character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
+  grant: string,
+  spell: string,
+): { ok: true; change: LogChange } | ({ ok: false } & SlotRefusal) {
+  const computed = compute(character, index, fifthEditionModule);
+  const reached = computed.grants.find(
+    (each) => each.part === grant && each.grant.kind === 'spell',
+  );
+  const key = reached?.grant.kind === 'spell' ? reached.grant.key : undefined;
+  const uses = key === undefined ? undefined : resourceUses(character, computed, key);
+  if (reached === undefined || key === undefined || uses === undefined) {
+    const message = `No spell grant with its own uses at "${grant}" reaches the character.`;
+    return { ok: false, code: 'noSpellUses', grant, message };
+  }
+  const given = reached.grant.kind === 'spell' ? (reached.grant.fixed ?? []) : [];
+  if (![...given, ...reached.chosen].includes(spell)) {
+    const message = `"${grant}" does not give "${spell}".`;
+    return { ok: false, code: 'notGiven', grant, id: spell, message };
+  }
+  const { max, spent, left } = uses;
+  if (left < 1) {
+    const message = `"${grant}" has ${max} uses of "${key}", ${spent} spent.`;
+    return { ok: false, code: 'noUseLeft', grant, key, max, spent, message };
+  }
+  return { ok: true, change: changeTo(character, resourceSpentPath(key), spent + 1) };
+}
+
+/**
+ * The character after casting `ask.spell` with `ask.slot`, through the own uses of the spell grant
+ * `ask.grant`, or with neither, and the entry: the slot or the use is spent, and a concentration
+ * spell becomes the one held, ending the one before. Refused for a spell no pack has or an entity
+ * that is not a spell, a slot and a grant together, a cantrip with a slot, a slot it cannot use (a
+ * bad level, none left, a level below the spell's), uses it cannot spend (no such grant, not its
+ * spell, none left), and as `unchanged` when the cast changes nothing (no slot, no use, no new
+ * concentration).
  */
 export function castSpell(
   character: FifthEditionCharacter,
@@ -115,7 +163,7 @@ export function castSpell(
   ask: CastAsk,
   stamp: LogStamp,
 ): SlotResult {
-  const { spell: id, slot } = ask;
+  const { spell: id, slot, grant } = ask;
   const spell = finderOf(character, index)(id);
   if (spell === undefined)
     return { ok: false, code: 'missing', id, message: `No pack has "${id}".` };
@@ -123,7 +171,16 @@ export function castSpell(
     const { type } = spell;
     return { ok: false, code: 'notASpell', id, type, message: `"${id}" is a ${type}.` };
   }
+  if (slot !== undefined && grant !== undefined) {
+    const message = `A cast uses a slot or the uses of "${grant}", not both.`;
+    return { ok: false, code: 'slotAndGrant', slot, grant, message };
+  }
   const changes: LogChange[] = [];
+  if (grant !== undefined) {
+    const used = spendingUse(character, index, grant, spell.id);
+    if (!used.ok) return used;
+    changes.push(used.change);
+  }
   if (slot !== undefined) {
     if (spell.level === 0) {
       const message = `"${id}" is a cantrip, cast without a slot.`;

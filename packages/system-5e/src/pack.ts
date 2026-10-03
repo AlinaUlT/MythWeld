@@ -1,11 +1,12 @@
 import { type Migration, packJsonSchemaOf, packOpenerOf, packSchemaOf } from '@grimoire/schema';
 import type { z } from 'zod';
 import { fifthEditionEntitySchema } from './entity-types';
+import { keyedSpellUses } from './stored';
 import { FIFTH_EDITION_SCHEMA_VERSION, FIFTH_EDITION_SYSTEM, fifthEdition } from './system';
 
 // A fifth-edition pack (ENG-05) carries the module's version, the number its characters carry
 // (ENG-39). Its steps are its own: a version that changes only a character's `systemData` has a
-// pack step that returns the pack as it is.
+// pack step that returns the pack as it is. ENG-57's version changes an entity, in both.
 // ENG-38: its JSON Schema is the file the app publishes (`apps/web/public/schema/5e/`). The module
 // returns it; the app's test writes it.
 
@@ -17,6 +18,11 @@ export const FIFTH_EDITION_PACK_MIGRATIONS: readonly Migration[] = [
   (file) => ({ ...file }),
   // 3 → 4: ENG-56 changed a character's `systemData` only.
   (file) => ({ ...file }),
+  // 4 → 5: ENG-57: a `spell` grant with `uses` needs `key`; the pack's entities get one.
+  (file) =>
+    file.entities === undefined
+      ? { ...file }
+      : { ...file, entities: keyedSpellUses(file.entities) },
 ];
 
 /** A fifth-edition content pack: its entities are fifth edition's union (ENG-32). */

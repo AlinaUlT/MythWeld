@@ -173,6 +173,12 @@ describe('ENG-32 fifth-edition entity types', () => {
       'alwaysPrepared',
     ]);
     expect(unknownFields(spellGrantSchema, { ...grant, slot: false })).toEqual(['slot']);
+    // ENG-57: the uses' key comes with the uses, both ways.
+    const { key: _, ...unkeyed } = { ...grant };
+    expect(issuePaths(spellGrantSchema, unkeyed)).toEqual(['key']);
+    const { uses: __, ...noUses } = { ...grant };
+    expect(issuePaths(spellGrantSchema, noUses)).toEqual(['uses']);
+    expect(issuePaths(spellGrantSchema, { ...grant, key: 'steady-spark' })).toEqual(['key']);
   });
 
   it('gives items by list, with how many, or by choice', () => {

@@ -114,7 +114,7 @@ split off an old row got a new id.
 | ENG-56 | A mixed character's starting languages come from one place | S | ✅ 2026-10-03 |
 | ENG-54 | The house rule's highest score caps every stat | S | ✅ 2026-10-03 |
 | ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | ✅ 2026-10-03 |
-| ENG-57 | A spell a grant gives is cast through its own uses | S | 🔲 |
+| ENG-57 | A spell a grant gives is cast through its own uses | S | ✅ 2026-10-03 |
 | ENG-58 | A death save roll changes the character by fifth-edition rules | S | ✅ 2026-10-03 |
 | ENG-62 | Dropping to 0 hit points gives the Unconscious condition | S | 🔲 |
 | ENG-63 | Death ends attunement to magic items | XS | 🔲 |
@@ -136,15 +136,6 @@ split off an old row got a new id.
   5.2.1 (Rules Glossary, Dead) "If the creature died with any Exhaustion levels, it returns with 1
   fewer level"; `revive` (`hit-points.ts`) lowers none. No sentence of SRD 5.1's rules, spells or
   conditions ties exhaustion to a return to life (ENG-58 §11).
-- **ENG-57** — re-cut from ENG-20 (ENG-20 §4). ADR 014 item 7: a granted spell has its own uses.
-  Found by ENG-32: a `spell` grant's `uses` have no key of their own, and the core's
-  `state.resources` takes only keys, so the spent count is kept by the grant's part id in a new
-  `systemData.state` field (a stored-shape change: version 5, a step in each list of migrations)
-  or by a key the grant gives them. The uses' maximum is shown, so it is a computed path with a
-  breakdown. ENG-20's `castSpell` (`casting.ts`) takes `slot` or none; this row adds casting
-  through the uses. ENG-21's `shortRest` and `longRest` (`rests.ts`) give back the core's
-  resources through `recoveredOn` (`trackers.ts`); this row adds the grant's uses to both, by
-  their `recovery`, in `REST_EVENTS`' order (a long rest: `long`, else `short`).
 - **ENG-62** — re-cut from ENG-58 (ENG-58 §4). Found by ENG-20: at 0 hit points both SRDs give
   the Unconscious condition (SRD 5.1: "you fall unconscious … This unconsciousness ends if you
   regain any hit points"; SRD 5.2.1: "you have the Unconscious condition until you regain any Hit
@@ -195,6 +186,15 @@ split off an old row got a new id.
 - **Phase 2** — found by ENG-46: `spell.cannotCast` is 1 while armor worn without training
   forbids spells (ENG-46 §4), with an `untrainedArmor` or `untrainedShield` warning; `castSpell`
   (ENG-20) does not read it. The sheet's cast button reads it, or the action refuses then.
+- **Phase 2** — found by ENG-57: a granted spell's own uses are the resource of its `spell` grant's
+  `key` (`resources.<key>.max`, spent in `state.resources`); `castSpell` takes the grant's part as
+  `grant`. The sheet shows them on the spell's row ("1/LR, no spell slot", ADR 010 item 10). The
+  resource's label is its entity's name, so two spell grants of one entity (a trait's spells at
+  levels 3 and 5) give two resources with one label: the sheet pairs each with its spell through
+  the grant's `key`.
+- **Phase 3** — found by ENG-57: the SRD traits that cast a spell with no slot (SRD 5.1 Infernal
+  Legacy; SRD 5.2.1 Elven Lineage, Fiendish Legacy, Gnomish Lineage, Magic Initiate; ENG-57 §8)
+  are one `spell` grant per spell, each with its `atLevel`, its `uses` and a `key`.
 - **Phase 3** — found by ENG-02: 11 of 4,428 5e-database slugs do not fit the entity id's slug
   pattern; the import maps them. ENG-02 §11 lists them.
 - **Phase 3** — found by ENG-31: a core file may climb into a sibling package other than a

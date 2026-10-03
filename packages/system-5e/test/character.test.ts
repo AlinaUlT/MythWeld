@@ -145,7 +145,7 @@ const character = {
   createdAt: '2026-10-01T09:00:00.000Z',
   updatedAt: '2026-10-01T09:30:00.000Z',
   system: '5e',
-  systemSchemaVersion: 4,
+  systemSchemaVersion: 5,
   ruleset: '2024',
   allowMixedRulesets: true,
   kind: 'pc',
@@ -198,9 +198,9 @@ function version2<D extends { state: Data['state']; languageSource?: unknown }>(
 describe('ENG-33 fifth-edition character', () => {
   it('parses a full character to an equal object', () => {
     expect(fifthEditionCharacterSchema.parse(character)).toEqual(character);
-    expect(FIFTH_EDITION_SCHEMA_VERSION).toBe(4);
-    expect(FIFTH_EDITION_CHARACTER_MIGRATIONS).toHaveLength(3);
-    expect(FIFTH_EDITION_PACK_MIGRATIONS).toHaveLength(3);
+    expect(FIFTH_EDITION_SCHEMA_VERSION).toBe(5);
+    expect(FIFTH_EDITION_CHARACTER_MIGRATIONS).toHaveLength(4);
+    expect(FIFTH_EDITION_PACK_MIGRATIONS).toHaveLength(4);
     expect(HIT_DIE_SIZES).toEqual([6, 8, 10, 12]);
     expect(COINS).toEqual(['cp', 'sp', 'ep', 'gp', 'pp']);
     expect(DEATH_SAVES).toBe(3);
@@ -517,7 +517,7 @@ describe('ENG-33 fifth-edition character', () => {
     type Character = z.infer<typeof fifthEditionCharacterSchema>;
     expectTypeOf<Character>().toEqualTypeOf<FifthEditionCharacter>();
     expectTypeOf<Character['ruleset']>().toEqualTypeOf<'2014' | '2024'>();
-    expectTypeOf<Character['systemSchemaVersion']>().toEqualTypeOf<4>();
+    expectTypeOf<Character['systemSchemaVersion']>().toEqualTypeOf<5>();
     type Part = Character['systemData'];
     expectTypeOf<Part['classes'][number]['hp'][number]>().toEqualTypeOf<number | 'avg' | 'max'>();
     expectTypeOf<Part['currency']>().toEqualTypeOf<
@@ -543,7 +543,7 @@ const pack = {
   version: '1.0.0',
   schemaVersion: 1,
   system: '5e',
-  systemSchemaVersion: 4,
+  systemSchemaVersion: 5,
   title: { en: 'Test pack' },
   ruleset: 'any',
   license: { name: 'Made up for the tests', redistributable: false },
@@ -555,14 +555,14 @@ describe('ENG-33 fifth-edition files open through both chains', () => {
     expect(openFifthEditionCharacter(character)).toEqual({
       ok: true,
       value: character,
-      from: { schemaVersion: 1, systemSchemaVersion: 4 },
+      from: { schemaVersion: 1, systemSchemaVersion: 5 },
     });
-    expect(openFifthEditionCharacter({ ...character, systemSchemaVersion: 5 })).toMatchObject({
+    expect(openFifthEditionCharacter({ ...character, systemSchemaVersion: 6 })).toMatchObject({
       ok: false,
       code: 'newer',
       field: 'systemSchemaVersion',
-      found: 5,
-      current: 4,
+      found: 6,
+      current: 5,
     });
   });
 
@@ -571,14 +571,14 @@ describe('ENG-33 fifth-edition files open through both chains', () => {
     expect(openFifthEditionPack(pack)).toEqual({
       ok: true,
       value: pack,
-      from: { schemaVersion: 1, systemSchemaVersion: 4 },
+      from: { schemaVersion: 1, systemSchemaVersion: 5 },
     });
-    expect(openFifthEditionPack({ ...pack, systemSchemaVersion: 5 })).toMatchObject({
+    expect(openFifthEditionPack({ ...pack, systemSchemaVersion: 6 })).toMatchObject({
       ok: false,
       code: 'newer',
       field: 'systemSchemaVersion',
-      found: 5,
-      current: 4,
+      found: 6,
+      current: 5,
     });
     const talent = { ...pack.entities[0], id: 'hb-test:talent/lucky-find', type: 'talent' };
     const opened = openFifthEditionPack({ ...pack, entities: [talent] });
@@ -607,7 +607,7 @@ describe('ENG-47 the pinned AC calculation is stored', () => {
     const old = { ...character, systemSchemaVersion: 1, systemData: version2(unpinned) };
     expect(openFifthEditionCharacter(old)).toEqual({
       ok: true,
-      value: { ...character, systemSchemaVersion: 4, systemData: unpinned },
+      value: { ...character, systemSchemaVersion: 5, systemData: unpinned },
       from: { schemaVersion: 1, systemSchemaVersion: 1 },
     });
     const [step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
@@ -718,7 +718,7 @@ describe("ENG-56 the starting languages' place is stored", () => {
         ok: true,
         value: {
           ...old,
-          systemSchemaVersion: 4,
+          systemSchemaVersion: 5,
           systemData: { ...unplaced, languageSource: place },
         },
         from: { schemaVersion: 1, systemSchemaVersion: 3 },
@@ -761,5 +761,145 @@ describe("ENG-56 the starting languages' place is stored", () => {
     expect(step?.(frozen)).toEqual(old);
     expect(step?.(frozen)).not.toBe(frozen);
     expect(frozen).toEqual(old);
+  });
+});
+
+describe("ENG-57 a spell grant's uses are keyed", () => {
+  const uses = { max: '1', recovery: [{ on: 'long', amount: 'all' }] };
+  const spell = 'hb-test:spell/spark';
+  /** A spell grant with uses, as version 4 stores it: no `key`. */
+  const unkeyed = (id: string) => ({ id, kind: 'spell', fixed: [spell], uses });
+  const feat = (id: string, grants: unknown[]) => ({
+    id,
+    type: 'feat',
+    ruleset: 'any',
+    name: { en: 'Made up' },
+    source,
+    grants,
+  });
+  const charges = {
+    id: 'charges',
+    kind: 'resource',
+    key: 'usesSpark2',
+    label: { en: 'Charges' },
+    uses,
+  };
+  const keyed = { id: 'keyed', kind: 'spell', fixed: [spell], key: 'ownKey', uses };
+  const plain = { id: 'plain', kind: 'spell', fixed: [spell] };
+  const klass = {
+    id: 'hb-test:class/warden',
+    type: 'class',
+    key: 'warden',
+    ruleset: 'any',
+    name: { en: 'Warden' },
+    source,
+    hitDie: 8,
+    saves: ['wis', 'san'],
+    subclassLevel: 3,
+    multiclass: { grants: [unkeyed('spark')] },
+  };
+  /** The entities of a version 4 file, in this order, and as version 5 keys them. */
+  const older = [
+    feat('hb-test:feat/one', [unkeyed('spark'), keyed, plain, unkeyed('3rd-level')]),
+    feat('hb-test:feat/two', [charges]),
+    klass,
+  ];
+  const newer = [
+    feat('hb-test:feat/one', [
+      { ...unkeyed('spark'), key: 'usesSpark' },
+      keyed,
+      plain,
+      { ...unkeyed('3rd-level'), key: 'uses3rdLevel' },
+    ]),
+    feat('hb-test:feat/two', [charges]),
+    { ...klass, multiclass: { grants: [{ ...unkeyed('spark'), key: 'usesSpark3' }] } },
+  ];
+
+  /** A deep-frozen JSON copy of `value`. */
+  function iced<T>(value: T): T {
+    const copy = JSON.parse(JSON.stringify(value)) as T;
+    const freeze = (each: unknown) => {
+      if (typeof each !== 'object' || each === null) return;
+      Object.freeze(each);
+      for (const inner of Object.values(each)) freeze(inner);
+    };
+    freeze(copy);
+    return copy;
+  }
+
+  it('needs `key` with `uses`, and `uses` with `key`', () => {
+    const grantPaths = (grant: object) =>
+      issuePaths({ ...character, localEntities: [{ ...luckyFind, grants: [grant] }] });
+    const own = { ...unkeyed('spark'), key: 'luckySpark' };
+    expect(grantPaths(own)).toEqual([]);
+    expect(grantPaths(unkeyed('spark'))).toEqual(['localEntities.0.grants.0.key']);
+    const { uses: _, ...noUses } = own;
+    expect(grantPaths(noUses)).toEqual(['localEntities.0.grants.0.uses']);
+    expect(grantPaths({ ...own, key: 'Spark' })).toEqual(['localEntities.0.grants.0.key']);
+  });
+
+  it('opens a pack of version 4 with a key on each spell grant that has uses', () => {
+    const old = { ...pack, systemSchemaVersion: 4, entities: older };
+    expect(openFifthEditionPack(old)).toEqual({
+      ok: true,
+      value: { ...pack, entities: newer },
+      from: { schemaVersion: 1, systemSchemaVersion: 4 },
+    });
+    const [, , , step] = FIFTH_EDITION_PACK_MIGRATIONS;
+    const ice = iced(old);
+    expect(step?.(ice)).toEqual({ ...old, entities: newer });
+    expect(ice).toEqual(old);
+  });
+
+  it("opens a character of version 4 with a key on its own entities' spell grants", () => {
+    const own = feat('character:feat/gifted', [unkeyed('spark'), unkeyed('spark-2')]);
+    const old = { ...character, systemSchemaVersion: 4, localEntities: [luckyFind, own] };
+    const keyedOwn = feat('character:feat/gifted', [
+      { ...unkeyed('spark'), key: 'usesSpark' },
+      { ...unkeyed('spark-2'), key: 'usesSpark2' },
+    ]);
+    expect(openFifthEditionCharacter(old)).toEqual({
+      ok: true,
+      value: { ...character, localEntities: [luckyFind, keyedOwn] },
+      from: { schemaVersion: 1, systemSchemaVersion: 4 },
+    });
+    const [, , , step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
+    const ice = iced(old);
+    expect(step?.(ice)).toEqual({ ...old, localEntities: [luckyFind, keyedOwn] });
+    expect(ice).toEqual(old);
+  });
+
+  it('opens a file of version 4 without such a grant as it is', () => {
+    const [, , , packStep] = FIFTH_EDITION_PACK_MIGRATIONS;
+    const [, , , characterStep] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
+    const oldPack = { ...pack, systemSchemaVersion: 4 };
+    expect(openFifthEditionPack(oldPack)).toMatchObject({ ok: true, value: pack });
+    expect(packStep?.(oldPack)).toEqual(oldPack);
+    const oldCharacter = { ...character, systemSchemaVersion: 4 };
+    expect(openFifthEditionCharacter(oldCharacter)).toMatchObject({ ok: true, value: character });
+    expect(characterStep?.(oldCharacter)).toEqual(oldCharacter);
+  });
+
+  it('returns parts that are not lists or objects as they are, for the schema to refuse', () => {
+    const [, , , packStep] = FIFTH_EDITION_PACK_MIGRATIONS;
+    const [, , , characterStep] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
+    const odd = [
+      'none',
+      null,
+      [null, 'feat', feat('hb-test:feat/one', [null, { ...unkeyed('spark'), id: 3 }])],
+      [{ ...feat('hb-test:feat/one', []), grants: 'none', multiclass: [] }],
+    ];
+    for (const entities of odd) {
+      const file = { ...pack, systemSchemaVersion: 4, entities };
+      expect(packStep?.(file)).toEqual(file);
+      expect(openFifthEditionPack(file)).toMatchObject({ ok: false, code: 'invalid' });
+      const own = { ...character, systemSchemaVersion: 4, localEntities: entities };
+      expect(characterStep?.(own)).toEqual(own);
+      expect(openFifthEditionCharacter(own)).toMatchObject({ ok: false, code: 'invalid' });
+    }
+    const { entities: _, ...noEntities } = { ...pack, systemSchemaVersion: 4 };
+    expect(packStep?.(noEntities)).toEqual(noEntities);
+    const { localEntities: __, ...noOwn } = { ...character, systemSchemaVersion: 4 };
+    expect(characterStep?.(noOwn)).toEqual(noOwn);
   });
 });

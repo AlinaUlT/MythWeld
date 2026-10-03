@@ -71,6 +71,11 @@ const RESOURCES = ['state', 'resources'] as const;
 const CONDITIONS = ['state', 'conditions'] as const;
 const TOGGLES = ['state', 'toggles'] as const;
 
+/** Where the uses spent of the resource `key` are kept (ENG-57: a module's action spends them). */
+export function resourceSpentPath(key: string): string[] {
+  return [...RESOURCES, key];
+}
+
 /** A count of uses or levels: a whole number from 1. */
 function isCount(count: number): boolean {
   return Number.isInteger(count) && count >= 1;
@@ -128,7 +133,7 @@ function done<C>(character: C, stamp: LogStamp, made: MadeChanges): ActionResult
 
 /** The uses spent of `key` the trackers hold: 0 when none are stored. */
 function spentOf(character: unknown, key: string): number {
-  const found = readAt(character, [...RESOURCES, key]);
+  const found = readAt(character, resourceSpentPath(key));
   return found.ok && typeof found.value === 'number' ? found.value : 0;
 }
 
@@ -177,7 +182,7 @@ export function useResource<C extends TrackedCharacter<E>, E extends GatherableE
     const message = `"${key}" has ${left} uses left, fewer than ${count}.`;
     return { ok: false, code: 'notEnough', key, left, count, message };
   }
-  const path = [...RESOURCES, key];
+  const path = resourceSpentPath(key);
   return done(character, stamp, {
     action: 'useResource',
     subject: key,
@@ -206,7 +211,7 @@ export function regainResource<C extends TrackedCharacter<E>, E extends Gatherab
   if (after === spent) {
     return { ok: false, code: 'unchanged', message: `No use of "${key}" is spent.` };
   }
-  const path = [...RESOURCES, key];
+  const path = resourceSpentPath(key);
   return done(character, stamp, {
     action: 'regainResource',
     subject: key,
@@ -267,7 +272,7 @@ export function recoveredOn<E extends GatherableEntity>(
   for (const [key, count] of back) {
     const spent = spentOf(character, key);
     const after = Math.max(0, spent - count);
-    if (after < spent) changes.push(changeTo(character, [...RESOURCES, key], after));
+    if (after < spent) changes.push(changeTo(character, resourceSpentPath(key), after));
   }
   return { changes, warnings };
 }

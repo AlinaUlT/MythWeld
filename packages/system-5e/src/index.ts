@@ -28,6 +28,7 @@ export * from './rolls';
 export * from './rulesets';
 export * from './size';
 export * from './spell-dice';
+export * from './spell-uses';
 export * from './spellcasting';
 export * from './system';
 export * from './training';

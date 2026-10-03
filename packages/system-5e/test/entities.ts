@@ -173,6 +173,7 @@ export const feat = {
       kind: 'spell',
       fixed: ['hb-test:spell/ember-spark'],
       ability: 'san',
+      key: 'steadySpark',
       uses: { max: '1', recovery: [{ on: 'long', amount: 'all' }] },
     },
   ],

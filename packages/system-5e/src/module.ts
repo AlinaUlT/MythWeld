@@ -2,6 +2,7 @@ import {
   type BreakdownStep,
   type DerivedStep,
   type DeriveInput,
+  type EntityFinder,
   type GrantOf,
   ownGrants,
   type StatDefaults,
@@ -26,6 +27,7 @@ import { originSideOf } from './origin';
 import { rollModeSteps } from './rolls';
 import { sizeKeys } from './size';
 import { spellDiceSteps } from './spell-dice';
+import { spellUsesGrants } from './spell-uses';
 import { spellcastingSteps } from './spellcasting';
 import { trainingSteps, untrainedEffects } from './training';
 
@@ -42,6 +44,7 @@ import { trainingSteps, untrainedEffects } from './training';
 // ENG-21 adds the hit dice by size (`hit-dice.ts`).
 // ENG-46 adds armor training's paths to `derive`, and suppresses a 2024 shield's AC without it.
 // ENG-56: the side of the starting languages not taken gives none; a mix that gives none warns.
+// ENG-57: a spell grant's own uses are a resource, given beside it (`spell-uses.ts`).
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -72,6 +75,34 @@ function ruledGrants(
   }
   const replaced = new Set(systemData.feats.flatMap(({ replaces }) => replaces ?? []));
   return grants.filter((grant) => !replaced.has(`${entity.id}#${grant.id}`));
+}
+
+/**
+ * The grants of `ruledGrants`, but a species, lineage or background on the side of the ability
+ * score increases not taken gives none of them (ENG-35), and one on the side of the starting
+ * languages not taken gives none of those (ENG-56).
+ */
+function sidedGrants(
+  character: FifthEditionCharacter,
+  entity: FifthEditionEntity,
+  find: EntityFinder<FifthEditionEntity>,
+): readonly GrantOf<FifthEditionEntity>[] {
+  const grants = ruledGrants(character, entity);
+  const side = originSideOf(entity);
+  if (side === undefined) return grants;
+  const ruled = (each: FifthEditionEntity) => ruledGrants(character, each);
+  const increases =
+    grants.some((grant) => grant.kind === 'abilityScore') &&
+    leftOutSide(character, find, ruled) === side;
+  const languages =
+    startingLanguageSideOf(character, entity) === side &&
+    grants.some(isLanguageGrant) &&
+    leftOutLanguageSide(character, find, ruled) === side;
+  if (!increases && !languages) return grants;
+  return grants.filter(
+    (grant) =>
+      !(increases && grant.kind === 'abilityScore') && !(languages && isLanguageGrant(grant)),
+  );
 }
 
 /** Each class's level, `classes.<key>.level`, and its table's numbers at that level. */
@@ -133,27 +164,10 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     classesOf(character, gathered).find(({ entity }) => path === `classes.${entity.key}.level`)
       ?.level,
 
-  // The two rules of `ruledGrants`; then a species, lineage or background on the side of the
-  // ability score increases not taken gives none of them (ENG-35), and one on the side of the
-  // starting languages not taken gives none of those (ENG-56).
-  grantsOf: (character, entity, find) => {
-    const grants = ruledGrants(character, entity);
-    const side = originSideOf(entity);
-    if (side === undefined) return grants;
-    const ruled = (each: FifthEditionEntity) => ruledGrants(character, each);
-    const increases =
-      grants.some((grant) => grant.kind === 'abilityScore') &&
-      leftOutSide(character, find, ruled) === side;
-    const languages =
-      startingLanguageSideOf(character, entity) === side &&
-      grants.some(isLanguageGrant) &&
-      leftOutLanguageSide(character, find, ruled) === side;
-    if (!increases && !languages) return grants;
-    return grants.filter(
-      (grant) =>
-        !(increases && grant.kind === 'abilityScore') && !(languages && isLanguageGrant(grant)),
-    );
-  },
+  // The two rules of `ruledGrants` and the sides of `sidedGrants`; then the uses a spell grant
+  // gives are a resource (ENG-57).
+  grantsOf: (character, entity, find) =>
+    spellUsesGrants(entity, sidedGrants(character, entity, find)),
 
   // A spell grant's spells and an item grant's items are known or carried, not had: gathering
   // looks them up, and warns for one no pack has.
