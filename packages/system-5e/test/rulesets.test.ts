@@ -7,13 +7,15 @@ import {
   RULES_2014,
   RULES_2024,
   rulesOf,
+  rulesOfEntity,
 } from '../src/index.ts';
 import { goldenA, goldenB } from './golden/index.ts';
 
 // ENG-19: the edition files hold every 2014/2024 difference. Each expected value is the SRD's,
 // quoted in ENG-19 §8, never copied from a run. ENG-20 adds the concentration DC's maximum (ENG-20
 // §8); ENG-21 the short rest's hit points and the long rest's concentration (ENG-21 §8);
-// ENG-46 the penalties of armor worn without training (ENG-46 §8).
+// ENG-46 the penalties of armor worn without training (ENG-46 §8); ENG-56 the place of the starting
+// languages (ENG-56 §8).
 
 describe('ENG-19 the edition files', () => {
   it('give the 2014 rules: SRD 5.1', () => {
@@ -22,6 +24,7 @@ describe('ENG-19 the edition files', () => {
       fixedDamageModifier: true,
       terms: { species: 'race', lineage: 'subrace', inspiration: 'inspiration' },
       abilityBonusSource: 'species',
+      languageSource: 'species',
       inspiration: { max: 1, use: 'advantage' },
       longRestHitDice: 0.5,
       hitDieMinimum: 0,
@@ -39,6 +42,7 @@ describe('ENG-19 the edition files', () => {
       fixedDamageModifier: false,
       terms: { species: 'species', lineage: 'lineage', inspiration: 'heroicInspiration' },
       abilityBonusSource: 'background',
+      languageSource: 'background',
       inspiration: { max: 1, use: 'reroll' },
       longRestHitDice: 1,
       hitDieMinimum: 1,
@@ -54,6 +58,15 @@ describe('ENG-19 the edition files', () => {
     expect(rulesOf(goldenA)).toBe(RULES_2014);
     expect(rulesOf(goldenB)).toBe(RULES_2024);
     expect(Object.keys(EDITION_RULES)).toEqual(['2014', '2024']);
+  });
+
+  it("are found for an entity by its edition, or by the character's for `any` (ENG-56)", () => {
+    for (const character of [goldenA, goldenB]) {
+      expect(rulesOfEntity({ ruleset: '2014' }, character)).toBe(RULES_2014);
+      expect(rulesOfEntity({ ruleset: '2024' }, character)).toBe(RULES_2024);
+    }
+    expect(rulesOfEntity({ ruleset: 'any' }, goldenA)).toBe(RULES_2014);
+    expect(rulesOfEntity({ ruleset: 'any' }, goldenB)).toBe(RULES_2024);
   });
 
   it('give the house rules a new character is written with, the same in both editions', () => {

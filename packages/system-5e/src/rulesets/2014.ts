@@ -14,6 +14,9 @@ export const RULES_2014: EditionRules = {
   terms: { species: 'race', lineage: 'subrace', inspiration: 'inspiration' },
   // A race's "Ability Score Increase"; no background has one (ENG-19 §8).
   abilityBonusSource: 'species',
+  // "Your race indicates the languages your character can speak by default, and your background
+  // might give you access to one or more additional languages" (Languages, ENG-56 §8).
+  languageSource: 'species',
   // "You either have inspiration or you don't"; "Spending your inspiration gives you advantage on
   // that roll" (Inspiration, ENG-19 §8).
   inspiration: { max: 1, use: 'advantage' },

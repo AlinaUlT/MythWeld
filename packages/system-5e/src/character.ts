@@ -15,6 +15,7 @@ import {
 } from '@grimoire/schema';
 import { z } from 'zod';
 import { fifthEditionEntitySchema, levelSchema } from './entity-types';
+import { EDITION_RULES } from './rulesets';
 import {
   COINS,
   EQUIPMENT_AC_CALC,
@@ -54,6 +55,16 @@ export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
       ...file,
       systemData: { ...data, state: { ...state, deathSaves: { ...deathSaves, stable: false } } },
     };
+  },
+  // 3 → 4 (ENG-56): `languageSource` is new and needed; a character takes its rules base's. A
+  // file with no edition or no `systemData` object is returned as it is, for the schema.
+  (file) => {
+    const { ruleset } = file;
+    const data = fieldsOf(file.systemData);
+    if (typeof ruleset !== 'string' || !Object.hasOwn(EDITION_RULES, ruleset)) return { ...file };
+    if (data === undefined) return { ...file };
+    const { languageSource } = EDITION_RULES[ruleset as keyof typeof EDITION_RULES];
+    return { ...file, systemData: { ...data, languageSource } };
   },
 ];
 
@@ -251,6 +262,11 @@ export const fifthEditionDataSchema = z
   .strictObject({
     houseRules: houseRulesSchema,
     abilities: abilitiesSchema,
+    /**
+     * ENG-56: the side whose starting languages count when both give some (ADR 005 item 3.4);
+     * no `both`, since a bonus of one kind counts once (ADR 014 item 1).
+     */
+    languageSource: z.enum(['species', 'background']),
     /** How levels are gained (ADR 010 item 7); the XP total is kept in both modes. */
     advancement: z.strictObject({ mode: z.enum(['xp', 'milestone']), xp: z.int().nonnegative() }),
     /** The species, with the size chosen from its list when it offers more than one. */

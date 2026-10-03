@@ -111,7 +111,7 @@ split off an old row got a new id.
 | ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | ✅ 2026-10-02 |
 | ENG-46 | Armor worn without training has its edition's penalties | S | ✅ 2026-10-03 |
 | ENG-35 | The ability-bonus source is a choice, the rules base by default | S | ✅ 2026-10-03 |
-| ENG-56 | A mixed character's starting languages come from one place | S | 🔲 |
+| ENG-56 | A mixed character's starting languages come from one place | S | ✅ 2026-10-03 |
 | ENG-54 | The house rule's highest score caps every stat | S | ✅ 2026-10-03 |
 | ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | ✅ 2026-10-03 |
 | ENG-57 | A spell a grant gives is cast through its own uses | S | 🔲 |
@@ -147,7 +147,7 @@ split off an old row got a new id.
 - **ENG-57** — re-cut from ENG-20 (ENG-20 §4). ADR 014 item 7: a granted spell has its own uses.
   Found by ENG-32: a `spell` grant's `uses` have no key of their own, and the core's
   `state.resources` takes only keys, so the spent count is kept by the grant's part id in a new
-  `systemData.state` field (a stored-shape change: version 3, a step in each list of migrations)
+  `systemData.state` field (a stored-shape change: version 5, a step in each list of migrations)
   or by a key the grant gives them. The uses' maximum is shown, so it is a computed path with a
   breakdown. ENG-20's `castSpell` (`casting.ts`) takes `slot` or none; this row adds casting
   through the uses. ENG-21's `shortRest` and `longRest` (`rests.ts`) give back the core's
@@ -175,18 +175,11 @@ split off an old row got a new id.
   lost unless given away (ENG-19 §8). Found by ENG-21: SRD 5.2.1's human, Resourceful, "You gain
   Heroic Inspiration whenever you finish a Long Rest" (golden B is that human); no data shape
   gives inspiration on a rest, and `longRest` (`rests.ts`) gives none.
-- **ENG-56** — found by ENG-35 (ENG-35 §8): ADR 005 item 3.4's "a bonus of one kind counts once"
-  for languages. SRD 5.1 gives them from the race ("Your race indicates the languages your
-  character can speak by default"; the background may add more); SRD 5.2.1 from character
-  creation itself ("Common plus two languages"), with no species or background language field.
-  A 2014 race in a 2024-based character counts both; a 2024 species in a 2014-based character
-  gets none from its species. No entity gives 2024's three yet: where they live is the Phase 3
-  note found by ENG-10 (dnd5e puts them on each background). ENG-35 is the model: the place
-  picked, the rules base's by default, a choice only when both places give
-  (`ability-bonus.ts`).
 - **ENG-37** — ADR 005 item 3.6; the fixture states its ability bonus source (ADR 014 item 1).
   Found by ENG-35: a source of `both`, with increases from both sides, warns `characterRule`
-  `abilityBonusesFromBoth`, so a golden storing it expects that warning.
+  `abilityBonusesFromBoth`, so a golden storing it expects that warning. Found by ENG-56: the
+  fixture states its languages' place too (`languageSource`); a mix whose species and background
+  give no starting languages warns `characterRule` `noStartingLanguages`.
   The ticket stops to show the character and its hand-computed values to the owner (golden
   values are hers); the test is written only after her yes. No golden F value is written before
   that.
@@ -236,9 +229,13 @@ split off an old row got a new id.
 - **Phase 3** — found by ENG-10: 5e-database at `e6edf9a` gives the 2024 human one size,
   `Medium`, where the SRD's text, as dnd5e quotes it, is Medium or Small, chosen (ENG-10 §8). Its
   `prerequisites.feature_named` (the four fighting style feats: "Fighting Style"; Boon of Spell
-  Recall: "Spellcasting") has no prerequisite kind: `entity` names one entity. No 2024 species or
-  background gives a language; dnd5e puts Common and two standard languages on each background.
-  The import decides each.
+  Recall: "Spellcasting") has no prerequisite kind: `entity` names one entity. The import decides
+  each. No 2024 species or background gives a language; dnd5e puts Common and two standard
+  languages on each background, and ENG-56 reads a 2024 background's `language` grants as 2024's
+  starting languages (`languageSource` in `rulesets/2024.ts`), so the import puts them there, or
+  changes that field. ENG-56 reads a side's own grants: 5e-database's high elf Extra Language is a
+  trait (`extra-language`'s `language_options`). The import puts its grant on the high elf
+  lineage; left on the trait, it is never left out, and adds to a 2024 background's three.
 - **Phase 3** — found by ENG-29: two `resource` grants of one key give one resource, with the
   highest of their maximums. Mechanics that give one key from two classes (a multiclass) check
   in their §8 what the SRD says for that case; uses that add up are an effect `add` on
@@ -372,7 +369,8 @@ split off an old row got a new id.
   inspiration), each an i18n key's last part. The inspiration stars hold the house rule's
   `inspirationMax` and show the edition's `inspiration.max` (1 in both SRDs) next to it (ADR 009
   item 5); spending one does `inspiration.use` (advantage in 2014, a reroll of one die in 2024).
-  A new character is written with `DEFAULT_HOUSE_RULES` and its edition's `abilityBonusSource`.
+  A new character is written with `DEFAULT_HOUSE_RULES` and its edition's `abilityBonusSource`
+  and `languageSource` (ENG-56).
   Exhaustion 6 is death in both editions and gives no number; the sheet says so.
 - **Phase 2** — found by ENG-20: `applyDamage` takes the damage the person types, resistance,
   immunity and vulnerability already applied; no code computes `defenses.*` (SPEC §5.4). The row
@@ -441,6 +439,11 @@ split off an old row got a new id.
   gives 9 hit points and death saves `{ success: 1, failure: 2 }` (measured, ENG-58 §11). Hit
   points regained from 0 reset them in both SRDs. The level-up wizard offers no level-up at 0 hit
   points, or `levelUp` writes `deathSavesReset` (`actions.ts`) as healing does.
+- **Phase 4** — found by ENG-56: where the starting languages come from is the person's pick
+  when the species' side and the background both give some (ADR 005 item 3.4; no `both`, ADR
+  014 item 1): `systemData.languageSource`, its rules base's by default. The creation wizard
+  offers it then; `leftOutLanguageSide` (`languages.ts`) says when, as ENG-35's `leftOutSide`
+  does for the ability bonus conflict window.
 - **Phase 4** — found by ENG-19: a subclass chosen below its class's `subclassLevel` (2014: 1, 2
   or 3 by class; 2024: 3) gives no warning, and its spellcasting counts. The level-up wizard
   offers the subclass at that level, or the module gains a warning.

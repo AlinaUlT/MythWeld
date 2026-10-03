@@ -7,7 +7,7 @@ import {
   type StatDefaults,
   type SystemModule,
 } from '@grimoire/engine';
-import { abilityBonusWarnings, bonusSideOf, leftOutSide } from './ability-bonus';
+import { abilityBonusWarnings, leftOutSide } from './ability-bonus';
 import { attackSteps } from './attacks';
 import type { FifthEditionCharacter } from './character';
 import { checkSteps, skillKeys } from './checks';
@@ -16,6 +16,13 @@ import { combatSteps } from './combat';
 import type { FifthEditionEntity } from './entity-types';
 import { equipmentOf } from './equipment';
 import { hitDiceSteps } from './hit-dice';
+import {
+  isLanguageGrant,
+  languageWarnings,
+  leftOutLanguageSide,
+  startingLanguageSideOf,
+} from './languages';
+import { originSideOf } from './origin';
 import { rollModeSteps } from './rolls';
 import { sizeKeys } from './size';
 import { spellDiceSteps } from './spell-dice';
@@ -34,6 +41,7 @@ import { trainingSteps, untrainedEffects } from './training';
 // ENG-54: a stat's highest score is the character's house rule `abilityMax`, 20 by default.
 // ENG-21 adds the hit dice by size (`hit-dice.ts`).
 // ENG-46 adds armor training's paths to `derive`, and suppresses a 2024 shield's AC without it.
+// ENG-56: the side of the starting languages not taken gives none; a mix that gives none warns.
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -126,14 +134,25 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
       ?.level,
 
   // The two rules of `ruledGrants`; then a species, lineage or background on the side of the
-  // ability score increases not taken gives none of them (ENG-35).
+  // ability score increases not taken gives none of them (ENG-35), and one on the side of the
+  // starting languages not taken gives none of those (ENG-56).
   grantsOf: (character, entity, find) => {
     const grants = ruledGrants(character, entity);
-    const side = bonusSideOf(entity);
-    if (side === undefined || !grants.some((grant) => grant.kind === 'abilityScore')) return grants;
+    const side = originSideOf(entity);
+    if (side === undefined) return grants;
     const ruled = (each: FifthEditionEntity) => ruledGrants(character, each);
-    if (leftOutSide(character, find, ruled) !== side) return grants;
-    return grants.filter((grant) => grant.kind !== 'abilityScore');
+    const increases =
+      grants.some((grant) => grant.kind === 'abilityScore') &&
+      leftOutSide(character, find, ruled) === side;
+    const languages =
+      startingLanguageSideOf(character, entity) === side &&
+      grants.some(isLanguageGrant) &&
+      leftOutLanguageSide(character, find, ruled) === side;
+    if (!increases && !languages) return grants;
+    return grants.filter(
+      (grant) =>
+        !(increases && grant.kind === 'abilityScore') && !(languages && isLanguageGrant(grant)),
+    );
   },
 
   // A spell grant's spells and an item grant's items are known or carried, not had: gathering
@@ -159,8 +178,9 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
   // Each skill's stat, which an effect may set; the character's size.
   keys: (input) => ({ ...skillKeys(input), ...sizeKeys(input) }),
 
-  // Ability score increases taken from both the species and the background.
-  ruleWarnings: abilityBonusWarnings,
+  // Ability score increases taken from both the species and the background; a mix that gives no
+  // starting languages.
+  ruleWarnings: (input) => [...abilityBonusWarnings(input), ...languageWarnings(input)],
 
   // The AC effects of a shield worn without training, when its edition takes its AC away.
   suppressedEffects: untrainedEffects,

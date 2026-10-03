@@ -52,6 +52,12 @@ export interface EditionRules {
   /** Whose ability score increases a new character takes: its species' or its background's. */
   readonly abilityBonusSource: Exclude<FifthEditionData['abilities']['bonusSource'], 'both'>;
   /**
+   * ENG-56: the side of the origin whose `language` grants are the edition's starting languages:
+   * the species with its lineages, or the background. Also the place a new character takes them
+   * from when a mix gives them from both (`systemData.languageSource`).
+   */
+  readonly languageSource: FifthEditionData['languageSource'];
+  /**
    * Inspiration: the most the rules let a character hold, shown beside the house rule's
    * `inspirationMax` (ADR 009 item 5), and what spending it does: advantage on a d20 test, or a
    * die rolled again.

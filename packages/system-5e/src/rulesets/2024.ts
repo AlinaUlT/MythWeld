@@ -14,6 +14,9 @@ export const RULES_2024: EditionRules = {
   terms: { species: 'species', lineage: 'lineage', inspiration: 'heroicInspiration' },
   // "adjust them according to your background" (Step 3: Ability Scores, ENG-19 §8).
   abilityBonusSource: 'background',
+  // "Common plus two languages", chosen in the origin step (Choose Languages); in data, each 2024
+  // background gives them, as dnd5e's do (ENG-56 §8).
+  languageSource: 'background',
   // "If you gain Heroic Inspiration but already have it, it's lost"; "you can expend it to reroll
   // any die immediately after rolling it" (Heroic Inspiration, ENG-19 §8).
   inspiration: { max: 1, use: 'reroll' },

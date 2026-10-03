@@ -1,4 +1,6 @@
+import { ANY_RULESET } from '@grimoire/engine';
 import type { FifthEditionCharacter } from '../character';
+import type { FifthEditionEntity } from '../entity-types';
 import { RULES_2014 } from './2014';
 import { RULES_2024 } from './2024';
 import type { EditionRules } from './edition-rules';
@@ -19,4 +21,15 @@ export const EDITION_RULES: Readonly<Record<FifthEditionCharacter['ruleset'], Ed
 /** The rules of the character's edition: its rules base's, whatever editions its content mixes. */
 export function rulesOf(character: Pick<FifthEditionCharacter, 'ruleset'>): EditionRules {
   return EDITION_RULES[character.ruleset];
+}
+
+/**
+ * ENG-56: the rules an entity was written for: its edition's, or the character's rules base's for
+ * an entity of `any`.
+ */
+export function rulesOfEntity(
+  entity: Pick<FifthEditionEntity, 'ruleset'>,
+  character: Pick<FifthEditionCharacter, 'ruleset'>,
+): EditionRules {
+  return EDITION_RULES[entity.ruleset === ANY_RULESET ? character.ruleset : entity.ruleset];
 }

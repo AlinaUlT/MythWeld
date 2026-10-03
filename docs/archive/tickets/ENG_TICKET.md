@@ -13253,3 +13253,299 @@ Found, not fixed:
 - ENG-60's healing bonus can be written in with `addPath`; its note says so now.
 
 Nothing for the changelog: no screen and no published file changes.
+
+---
+
+### ENG-56 The starting languages' place
+
+**Hat:** A mixed character's starting languages come from one place
+**Depends on:** ENG-35 (the origin's two sides, `ruleWarnings`), ENG-33 (`systemData`), ENG-19
+(`rulesets/`), ENG-09, ENG-10 (the dwarf, the Acolyte, the 2024 human)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.5 (`proficiency` grants of the category `language`); §5.8 (`systemData`, migrations);
+§6.3; ADR 005 item 3.4; ADR 014 item 1
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/languages.ts` — new: which language grants are an
+edition's starting languages, the side left out, the warning for a mix that gives none.
+- `packages/system-5e/src/origin.ts` — new: the origin's two sides and the entities on each,
+  moved out of `ability-bonus.ts` so both bonuses read one copy.
+- `packages/system-5e/src/ability-bonus.ts` — changes: reads `origin.ts`.
+- `packages/system-5e/src/module.ts` — changes: `grantsOf` also leaves out the starting languages
+  of the side not taken; `ruleWarnings` adds the new warning.
+- `packages/system-5e/src/rulesets/edition-rules.ts`, `2014.ts`, `2024.ts` — change: the field
+  `languageSource`. `rulesets/index.ts` — changes: `rulesOfEntity`, the rules an entity was
+  written for.
+- `packages/system-5e/src/character.ts` — changes: `systemData.languageSource`, and the step
+  3 → 4. `pack.ts` — changes: the pack's step 3 → 4. `system.ts` — the version, 4.
+- `packages/system-5e/src/index.ts` — exports the two new files.
+- `apps/web/public/schema/5e/pack.schema.json` — the published schema's version, 4 (ENG-38's
+  test writes it).
+- Tests: `packages/system-5e/test/languages.test.ts` — new; `character.test.ts`,
+  `rulesets.test.ts` and the goldens' characters (`golden/characters-2014.ts`,
+  `characters-2024.ts`) — the new field.
+
+#### 2. What is missing now
+
+Measured on `main` at `b212371`, with both SRD packs and mixing on:
+- `grep -rn "languageSource" packages` finds nothing. No code tells a starting language from any
+  other: every `language` proficiency grant gathered applies.
+- Golden A (2014, the dwarf, the Acolyte): `common`, `dwarvish` from
+  `srd-2014:species/dwarf#languages`, `celestial`, `elvish` from
+  `srd-2014:background/acolyte#languages`.
+- Golden A with a 2024 background of its own that gives `common` and two chosen languages
+  (`giant`, `elvish`), as dnd5e's 2024 backgrounds do (§8): five languages, `common` and
+  `dwarvish` from the dwarf, then `common`, `giant`, `elvish` from the background. The race's and
+  2024's starting languages both count. No warning but `otherRuleset`.
+- Golden A with the 2024 human as its species: `celestial`, `elvish` only, from the Acolyte; no
+  `common`. No warning but `otherRuleset`.
+- `pnpm test`: `Test Files 56 passed (56)`, `Tests 696 passed (696)`.
+
+#### 3. What it should look like when done
+
+1. **Starting languages.** An entity's `language` proficiency grants are *starting languages*
+   when the entity is on the side of the origin its own edition gives them from:
+   `rulesOfEntity(entity, character).languageSource`, `species` in 2014 (the species with its
+   lineages), `background` in 2024. An entity of `any` follows the character's rules base. Every
+   other language grant (a 2014 background's, a feat's, a class's) adds to them and is never left
+   out. A side *gives* when one of its starting-language grants applies at the character's level.
+2. **When both sides give**, `systemData.languageSource` (`species` or `background`, no `both`:
+   ADR 014 item 1 keeps "counts once" for every bonus but ability increases) decides. Golden A
+   with the made-up 2024 background "Wayfarer" (`common` fixed, `giant` and `elvish` chosen):
+   | `languageSource` | Languages | Left out |
+   |---|---|---|
+   | `species` | `common`, `dwarvish` (the dwarf) | the Wayfarer's `languages` grant |
+   | `background` | `common`, `giant`, `elvish` (the Wayfarer) | the dwarf's `languages` grant |
+   A grant left out is not gathered: it is not in `grants`, its choice is not in
+   `pendingChoices`, its stored choice is not read. No `characterRule` warning either way.
+3. **When one side gives**, its starting languages apply whatever is stored: golden A stored as
+   `background` keeps `common`, `dwarvish`, `celestial`, `elvish` (the 2014 Acolyte's are not
+   starting languages); golden B with the dwarf (the 2024 Soldier's fixture gives no language)
+   stored as `background` keeps `common`, `dwarvish`. A species-side grant at a level not yet
+   reached does not give: a 2014 species whose languages come at level 4, beside the Wayfarer,
+   stored `species`, at level 1, takes the Wayfarer's.
+4. **The rules base by default.** `rulesOf(character).languageSource` is `species` for 2014 and
+   `background` for 2024; goldens A and C 2014 store `species`, goldens B, B4, C 2024, D and E
+   store `background`. Golden B (2024) with the dwarf and the Wayfarer takes the Wayfarer's
+   `common`, `giant`, `elvish`; stored `species`, the dwarf's `common`, `dwarvish`.
+5. **`any` follows the rules base.** The Wayfarer written as `any`: beside golden A's dwarf (2014)
+   its languages add (`common`, `dwarvish`, `common`, `giant`, `elvish`, whatever is stored); on
+   golden B with the dwarf it is 2024's place, as row 4.
+6. **A lineage** gives on its species' side: a 2014 species with no languages whose fixed 2014
+   lineage gives `giant`, on golden B beside the Wayfarer, stored `species`, gives `giant` only.
+7. **A mix that gives none warns.** When no starting-language grant was gathered and a species,
+   lineage or background is of the edition the rules base is not, one warning:
+   `{ code: 'characterRule', rule: 'noStartingLanguages', data: { entity }, message }`, `entity`
+   the first such one. Golden A with the 2024 human: the warning, with `entity`
+   `srd-2024:species/human`. No warning for golden B (one edition; the Soldier's fixture has no
+   languages), golden C 2014 (no origin), or any character of rows 2–6.
+8. **Stored data.** The fifth-edition version is 4 (ENG-58 took 3 while this ticket was built). A
+   character of version 3 opens with `languageSource` set to its rules base's (golden A:
+   `species`; golden B: `background`); one of version 1 or 2 opens through every step. A pack of
+   version 3 opens as it is. The published `pack.schema.json` says `systemSchemaVersion` 4.
+9. Goldens A–E compute exactly as before: `golden-values.test.ts` and `fixtures-2014.test.ts`
+   pass with no expected value changed.
+10. The quality gate is green, `pnpm e2e` included (`apps/web/public` changes).
+
+#### 4. How to do it
+
+1. **`origin.ts`**, moved out of `ability-bonus.ts` unchanged in meaning: `OriginSide`
+   (`species` | `background`), `GrantsBy`, `originSideOf(entity)` (was `bonusSideOf`),
+   `reached(grant, level)`, and `originEntities(character, find, grantsBy)`: each side's entities,
+   the species with the lineages its `entity` grants give (fixed or chosen), and the background.
+   `ability-bonus.ts` keeps `BonusSide` and filters `originEntities` by its `abilityScore` grants.
+2. **The edition rule.** `EditionRules.languageSource: FifthEditionData['languageSource']`;
+   `RULES_2014`: `species`, `RULES_2024`: `background`, each with its quote (§8).
+   `rulesOfEntity(entity, character)` in `rulesets/index.ts`: `EDITION_RULES` of the entity's
+   ruleset, or of the character's for `ANY_RULESET`. The one lookup stays in `rulesets/`.
+3. **`languages.ts`.**
+   - `LANGUAGE_PROFICIENCY = 'language'`, as `WEAPON_PROFICIENCY` in `attacks.ts`;
+     `isLanguageGrant(grant)`.
+   - `startingLanguageSideOf(character, entity)`: the entity's side when it is its edition's
+     `languageSource`, else nothing.
+   - `leftOutLanguageSide(character, find, grantsBy)`: when both sides have an entity whose
+     starting-language grant applies at the level, the side `languageSource` does not name; else
+     none.
+   - `languageWarnings({ character, gathered })`: row 7 of §3. It reads what was gathered, as
+     `abilityBonusWarnings` does.
+4. **The module.** `grantsOf`: `ruledGrants`, then an entity on a side left out loses its
+   `abilityScore` grants (ENG-35) and its starting-language grants (this ticket); each check runs
+   only when the entity has such a grant. `ruleWarnings`: ENG-35's, then this ticket's.
+5. **The stored field.** `systemData.languageSource: z.enum(['species', 'background'])`,
+   required, as `abilities.bonusSource` is (ENG-35 §4 item 6: no third state for the same
+   choice). `FIFTH_EDITION_SCHEMA_VERSION` 4. Character step 3 → 4: `systemData.languageSource`
+   is `EDITION_RULES[ruleset].languageSource` when `ruleset` is an edition and `systemData` an
+   object; else the file as it is, which the schema then refuses. Pack step 3 → 4: the file as it
+   is. The goldens store their rules base's value. `apps/web`'s pack schema test rewrites the
+   published file (`vitest -u`).
+6. Why 2024's place is the background: SRD 5.2.1 gives the three languages in the origin step,
+   beside the background and the species, and no entity of either SRD's data holds them;
+   dnd5e puts them on each of the four 2024 backgrounds (§8), and the Phase 3 note found by
+   ENG-10 leaves the import to decide. The rule is one field, so an import that puts them
+   elsewhere changes that field. The note now says the import puts them on each 2024 background.
+7. Why the edition of the entity, not its type alone: a 2014 background gives languages too (the
+   Acolyte's two), "additional" ones (§8). With sides by type only, golden A would be a conflict
+   and lose them by default.
+
+#### 5. Stored data
+
+`systemData` gains the required `languageSource`. `FIFTH_EDITION_SCHEMA_VERSION` 3 → 4, with a
+step in each list of migrations: the character's writes its rules base's value; the pack's
+returns the pack as it is. Tests: a character of version 3, and ones of versions 1 and 2, open as
+version 4; the step leaves its argument unchanged; a pack of version 3 opens as it is.
+
+#### 6. What a person will see
+
+Not a screen. The place is picked in the creation wizard when both places give (phase 4, a note
+in `BACKLOG.md`); a new character is written with its rules base's value (the phase 2 note found
+by ENG-19).
+
+#### 7. Tests
+
+- `packages/system-5e/test/languages.test.ts` — §3 rows 1–7: the made-up 2024 and `any`
+  "Wayfarer" backgrounds, a 2014 species whose languages come at level 4, a 2014 species with no
+  languages whose lineage gives one, all the character's own entities (test data).
+- `packages/system-5e/test/character.test.ts` — §3 row 8: the field is required and takes two
+  values; versions 1, 2 and 3 open as 4; the pack's step.
+- `packages/system-5e/test/rulesets.test.ts` — each edition's `languageSource`; `rulesOfEntity`.
+- Control numbers from: the fixtures' language grants (`srd-2014.ts`: the dwarf `common`,
+  `dwarvish`; the Acolyte two chosen, golden A's `celestial`, `elvish`), the made-up entities'
+  own grants, and §8's sources for each edition's place.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-03: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`,
+`packages/5e-database/src/{2014,2024}/en/`, read with `jq` and `grep`; foundryvtt/dnd5e at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`, `packs/_source/rules` (SRD 5.1),
+`packs/_source/content24` (SRD 5.2.1) and `packs/_source/origins24`. The same commits as ENG-35.
+
+**SRD 5.1: the race gives them; the background adds.** `rules/chapter-4-personality-and-background.yml`,
+Languages: "Your race indicates the languages your character can speak by default, and your
+background might give you access to one or more additional languages of your choice." The same
+file, a background's Languages: "Some backgrounds also allow characters to learn additional
+languages beyond those given by race." 5e-database 2014: each of the 9 races has `languages`
+(the dwarf `common`, `dwarvish`; the human `common` and `language_options`, choose 1 of 15; the
+half-elf `common`, `elvish` and choose 1 of 14); no subrace has a language field; one trait has
+`language_options`, the high elf's `extra-language` ("You can speak, read, and write one extra
+language of your choice", choose 1); the one background, `acolyte`, has `language_options`,
+choose 2 of every language. So 2014's place is the race and its subrace (`species`).
+
+**SRD 5.2.1: the origin step gives them.** `content24/chapter-2/character-creation.yml`, Step 2:
+"Determining your character's origin involves choosing a background, a species, and two
+languages." Choose Languages: "Your character knows at least three languages: Common plus two
+languages you roll or choose from the Standard Languages table. … Your class and other features
+might also give you languages." 5e-database 2024: `grep -c -i language` gives 0 in
+`5e-SRD-Backgrounds.json`, `5e-SRD-Species.json` and `5e-SRD-Subspecies.json`. dnd5e
+`origins24/backgrounds/`: each of `acolyte.yml`, `criminal.yml`, `sage.yml`, `soldier.yml` has
+one `Trait` advancement at level 0 with `grants: [languages:standard:common]` and `choices:
+[{ count: 2, pool: [languages:standard:*] }]`; no other file in `origins24` names `languages:`.
+So 2024's place, in data, is the background.
+
+**What a mix does without this ticket** (§2): a 2014 race in a 2024-based character counts its
+languages and the 2024 background's; a 2024 species in a 2014-based character gives none, and a
+2014 background gives only its additional ones. ADR 005 item 3.4: "Where both editions give the
+same kind of bonus from different places, the person picks the place. The default is the rules
+base's place." ADR 014 item 1 gives `both` to ability increases only.
+
+No golden value looks wrong; nothing stops.
+
+#### 9. Not in this ticket
+
+- The control that picks the place: the creation wizard, phase 4 (a note in `BACKLOG.md`).
+- Where the import puts 2024's three languages and the high elf's Extra Language: phase 3 (the
+  note found by ENG-10, widened here). A starting language a side's *feature* gives (a trait the
+  species grants) is not read here: the side's own grants are, as ENG-35 reads its increases.
+- SRD 5.1's "choose a different proficiency of the same kind" for one given twice: the Phase 4
+  note found by ENG-35. `common` given by two grants is listed twice in `proficiencies`, as any
+  key two grants give.
+- Golden F's stored place: ENG-37.
+
+#### 10. Rake check
+
+- **Everything is data.** No language is named: a starting language is any `language` grant on
+  its edition's side; the category is the module's own list (`system.ts`).
+- **Each system's rules live in its own module; no `ruleset ===` test.** Each edition's place is
+  `languageSource` in its `rulesets/` file, read through `rulesOf` or `rulesOfEntity`. The core
+  does not change.
+- **A stored-shape change needs a migration.** Version 4, a step in each list, each with its test.
+- **Missing is not broken; prerequisites warn, never block.** A mix that gives no starting
+  languages warns and computes. An id no pack has gives nothing to either side, and gathering
+  warns `missing` as before.
+- **`compute()` is pure.** The new functions read the character and `find` only.
+- **The golden tests are the truth.** No expected value changes; each golden stores its rules
+  base's place.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-03, on `main` at `501ac00` (ENG-58, then ENG-55, reached `main` while this
+ticket was built; the work was brought onto each):
+- `pnpm lint`: `Checked 185 files`, no errors.
+- `pnpm typecheck`: 6 projects, all `Done`.
+- `pnpm test`: `Test Files 58 passed (58)`, `Tests 744 passed (744)`, 9.12 s (`main` alone,
+  measured: 57 files, 730 tests). This ticket's 14: 9 in `languages.test.ts` (1.05 s alone), 4
+  in `character.test.ts`, 1 in `rulesets.test.ts`.
+- `pnpm build`: `apps/web build: Done`.
+- `pnpm e2e`, with `PLAYWRIGHT_CHROMIUM_PATH` set as `docs/RUNNING.md` says for the cloud
+  container: `12 passed (8.8s)`. Without it, Playwright looks for a browser build the container
+  does not have, and 11 of 12 fail before any test runs.
+- `golden-values.test.ts`, `fixtures-2014.test.ts` and `fixtures-2024.test.ts` pass with no
+  expected value changed. The fixture files and the goldens now say version 4, and each golden
+  stores its rules base's `languageSource`.
+- The mixed characters of §2, now. Golden A with the 2024 Wayfarer: `species` (its default) gives
+  `common`, `dwarvish` from the dwarf only; `background` gives `common`, `giant`, `elvish` from the
+  Wayfarer only. In §2 it had all five. Golden A with the 2024 human: `celestial`, `elvish`, and
+  one `characterRule` warning `noStartingLanguages` with `{ entity: 'srd-2024:species/human' }`.
+  In §2 it had no warning.
+- The published `pack.schema.json` changed in one line: `"const": 3` became `"const": 4`.
+- The tests bite. Each guard was broken on its own, then restored. Before the rebase (the
+  `system-5e` tests: 340):
+  - starting languages never left out: 6 fail;
+  - sides by type only, the edition not read: 4;
+  - the level not checked: 1;
+  - one side giving still a conflict: 4;
+  - `any` read as 2014: 2;
+  - no warning: 1;
+  - the warning without the mix condition: 67;
+  - the warning counting any language grant, not only starting ones: 1;
+  - an origin of `any` counted as a mix: 2;
+  - any entity of another edition counted, not only an origin: 1 (`attacks.test.ts`'s 2014
+    greatsword on golden B);
+  - the warning naming the first entity of any edition: 52;
+  - no lineage on the species side: 2.
+  After the rebase (362): the step writing no place, 4; writing `species` always, 4; with no
+  check of the edition, 1; starting languages never left out, 6; no warning, 1.
+
+Differences from §3 and from the row:
+- The row named two symptoms. "A 2014 race in a 2024-based character counts both": now one
+  place counts. "A 2024 species in a 2014-based character gets none from its species": beside a
+  2024 background that gives languages (once the import gives them), that background's apply,
+  since one side gives. Beside a 2014 background no place gives, and no data holds 2024's three,
+  so the mix warns (§3 row 7); nothing is added.
+- A stored-shape change, which the row did not name, for the person's pick (ADR 005 item 3.4
+  says the person picks the place). It was version 3 until ENG-58 took 3 on `main`; it is version
+  4, its steps 3 → 4, built on ENG-58's `fieldsOf` and its test helper `version2`, beside a new
+  `version3`.
+- ENG-35's sides moved to `origin.ts` unchanged in meaning (`bonusSideOf` is now `originSideOf`;
+  `GrantsBy` moved with it). ENG-35's tests pass unchanged.
+- The test character of `character.test.ts` stores its rules base's place (`background`), so
+  ENG-47's and ENG-58's tests still open an old file to exactly that character. ENG-58's two
+  tests named "as version 3" now say "then at the current version", as ENG-47's do.
+- One line was added to §3 row 7's test once the bite check showed nothing tested it: an origin of
+  `any` is no mix.
+- Size S held.
+
+Found, not fixed:
+- 5e-database's high elf Extra Language is a trait, and this ticket reads a side's own grants
+  (§9). The Phase 3 note found by ENG-10 now says the import puts it on the lineage.
+- ENG-57's note said its stored-shape change is version 3; ENG-58 took 3 and this ticket 4, so
+  the note says 5.
+- New notes in `BACKLOG.md`: Phase 4, the creation wizard offers the place when both give;
+  Phase 2 (the note found by ENG-19), a new character is written with its edition's
+  `languageSource`; ENG-37, golden F states it and may expect the new warning.
+
+Nothing for the changelog: no screen changes.

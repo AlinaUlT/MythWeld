@@ -1,7 +1,8 @@
-import type { DeriveInput, EntityFinder, GrantOf, RuleWarning } from '@grimoire/engine';
+import type { DeriveInput, EntityFinder, RuleWarning } from '@grimoire/engine';
 import type { FifthEditionCharacter } from './character';
 import { characterLevel } from './classes';
 import type { FifthEditionEntity } from './entity-types';
+import { type GrantsBy, originEntities, originSideOf, reached } from './origin';
 import type { EditionRules } from './rulesets';
 
 // ENG-35: whose ability score increases a character takes (ADR 014 item 1, from ADR 013 item 10).
@@ -10,40 +11,14 @@ import type { EditionRules } from './rulesets';
 // the side it names applies and the other gives none, or with `both` all apply and a warning says
 // so, never a block. When one side gives none, there is nothing to pick: the other applies,
 // whatever is stored. A new character stores its rules base's source,
-// `rulesOf(character).abilityBonusSource` (ENG-19).
+// `rulesOf(character).abilityBonusSource` (ENG-19). ENG-56 moved the sides to `origin.ts`.
 
 /** A side ability score increases come from: the species, with its lineages, or the background. */
 export type BonusSide = EditionRules['abilityBonusSource'];
 
-/** The grants an entity gives the character by the module's other rules (ENG-13). */
-export type GrantsBy = (entity: FifthEditionEntity) => readonly GrantOf<FifthEditionEntity>[];
-
-/** The side an entity's increases are on, by its type; none for any other type. */
-export function bonusSideOf(entity: FifthEditionEntity): BonusSide | undefined {
-  if (entity.type === 'species' || entity.type === 'lineage') return 'species';
-  if (entity.type === 'background') return 'background';
-  return undefined;
-}
-
-/** The grant applies at the character's level. */
-function reached(grant: GrantOf<FifthEditionEntity>, level: number): boolean {
-  return grant.atLevel === undefined || grant.atLevel <= level;
-}
-
-/** The entity found for the id, when it is on the side. */
-function onSide(
-  find: EntityFinder<FifthEditionEntity>,
-  id: string | undefined,
-  side: BonusSide,
-): FifthEditionEntity[] {
-  const entity = id === undefined ? undefined : find(id);
-  return entity !== undefined && bonusSideOf(entity) === side ? [entity] : [];
-}
-
 /**
- * The entities on each side that give the character increases: its species and the lineages the
- * species' `entity` grants give, fixed or chosen; its background. Found as gathering will find
- * them, before gathering.
+ * The entities on each side that give the character increases: those of `originEntities` with an
+ * `abilityScore` grant that applies at the character's level.
  */
 function bonusGivers(
   character: FifthEditionCharacter,
@@ -51,22 +26,10 @@ function bonusGivers(
   grantsBy: GrantsBy,
 ): Record<BonusSide, FifthEditionEntity[]> {
   const level = characterLevel(character);
-  const { species: speciesEntry, background } = character.systemData;
-  const species = onSide(find, speciesEntry?.id, 'species');
-  const lineages = species.flatMap((entity) =>
-    grantsBy(entity).flatMap((grant) => {
-      if (grant.kind !== 'entity' || !reached(grant, level)) return [];
-      const stored = character.choices[`${entity.id}#${grant.id}`] ?? [];
-      const chosen = stored.slice(0, grant.choose?.count ?? 0);
-      return [...(grant.fixed ?? []), ...chosen].flatMap((id) => onSide(find, id, 'species'));
-    }),
-  );
   const gives = (entity: FifthEditionEntity) =>
     grantsBy(entity).some((grant) => grant.kind === 'abilityScore' && reached(grant, level));
-  return {
-    species: [...species, ...lineages].filter(gives),
-    background: onSide(find, background?.id, 'background').filter(gives),
-  };
+  const sides = originEntities(character, find, grantsBy);
+  return { species: sides.species.filter(gives), background: sides.background.filter(gives) };
 }
 
 /**
@@ -98,7 +61,7 @@ export function abilityBonusWarnings({
   const first: Partial<Record<BonusSide, string>> = {};
   for (const { grant, source } of gathered.grants) {
     const entity = had.get(source);
-    const side = entity === undefined ? undefined : bonusSideOf(entity);
+    const side = entity === undefined ? undefined : originSideOf(entity);
     if (grant.kind === 'abilityScore' && side !== undefined) first[side] ??= source;
   }
   const { species, background } = first;
