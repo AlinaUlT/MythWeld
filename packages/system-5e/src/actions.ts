@@ -41,6 +41,9 @@ export const CONCENTRATION_PATH = [...STATE, 'concentration'];
 /** The pact magic slots spent. */
 export const PACT_SPENT_PATH = [...STATE, 'pactSlotsSpent'];
 
+/** The inspiration the character holds. */
+export const INSPIRATION_PATH = [...STATE, 'inspiration'];
+
 /** ENG-21: the hit dice of one size spent: `hitDiceSpent`'s key is the die, `"d6"` to `"d12"`. */
 export function hitDiceSpentPath(die: number): string[] {
   return [...STATE, 'hitDiceSpent', `d${die}`];

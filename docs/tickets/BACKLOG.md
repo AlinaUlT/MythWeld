@@ -118,9 +118,10 @@ split off an old row got a new id.
 | ENG-58 | A death save roll changes the character by fifth-edition rules | S | ✅ 2026-10-03 |
 | ENG-62 | Dropping to 0 hit points gives the Unconscious condition | S | 🔲 |
 | ENG-63 | Death ends attunement to magic items | XS | 🔲 |
-| ENG-59 | Inspiration is gained or spent up to its maximum | XS | 🔲 |
+| ENG-59 | Inspiration is gained or spent up to its maximum | XS | ✅ 2026-10-03 |
 | ENG-21 | A rest changes the character by its edition's rules | S | ✅ 2026-10-03 |
 | ENG-61 | A long rest lowers a condition's level as its entry says | S | 🔲 |
+| ENG-64 | A long rest gives the inspiration a trait names | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
@@ -152,12 +153,13 @@ split off an old row got a new id.
   them." Death, 3 failures, is written by `applyDamage` (`hit-points.ts`) and `rollDeathSave`
   (`death-saves.ts`); neither changes an inventory row's `attuned`. One list of the changes dying
   makes, shared by both, as `deathSavesReset` (`actions.ts`) is for the end of a run of saves.
-- **ENG-59** — re-cut from ENG-20 (ENG-20 §4). Found by ENG-33: the schema refuses inspiration
-  above `houseRules.inspirationMax`, so the action stops there. Found by ENG-19: both SRDs allow
-  1 (`rulesOf(character).inspiration.max`); SRD 5.2.1 says Heroic Inspiration gained while had is
-  lost unless given away (ENG-19 §8). Found by ENG-21: SRD 5.2.1's human, Resourceful, "You gain
-  Heroic Inspiration whenever you finish a Long Rest" (golden B is that human); no data shape
-  gives inspiration on a rest, and `longRest` (`rests.ts`) gives none.
+- **ENG-64** — found by ENG-21 (ENG-21 §8), taken off ENG-59 (ENG-59 §11). SRD 5.2.1's human,
+  Resourceful: "You gain Heroic Inspiration whenever you finish a Long Rest." Golden B is that
+  human; its Resourceful (`test/golden/srd-2024.ts`) is a name with no mechanics. No entity has a
+  data shape that gives inspiration on a rest, and `longRest` (`rests.ts`) gives none. The row
+  decides the shape (a computed path an effect adds to and the rest reads, as `spellDice` reads
+  ENG-55's `damage.spell.bonus`; or a field on the entity, a stored-shape change). The rest gains
+  it in its one entry, up to ENG-59's bound, `houseRules.inspirationMax`.
 - **ENG-37** — ADR 005 item 3.6; the fixture states its ability bonus source (ADR 014 item 1).
   Found by ENG-35: a source of `both`, with increases from both sides, warns `characterRule`
   `abilityBonusesFromBoth`, so a golden storing it expects that warning. Found by ENG-56: the

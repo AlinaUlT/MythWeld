@@ -14129,3 +14129,94 @@ Found, not fixed:
   phase 3 note in `BACKLOG.md`.
 
 Nothing for the changelog: no screen changes.
+
+---
+
+### ENG-59 Inspiration up to its maximum · XS
+
+**Hat:** Inspiration is gained or spent up to its maximum
+**Where:** `packages/system-5e/src/inspiration.ts` — new: `gainInspiration`, `spendInspiration`;
+`actions.ts` — changes: `INSPIRATION_PATH`; `index.ts` — exports the new file;
+`packages/system-5e/test/inspiration.test.ts` — new; `test/action-checks.ts` — changes: a test
+sets `inspiration`, and its path `INSPIRATION`
+**Depends on:** ENG-33 (`state.inspiration`, `houseRules.inspirationMax` and the check between
+them), ENG-20 (`settled`, the shape of a tracker action), ENG-19 (`rulesOf(...).inspiration`;
+the SRD text, ENG-19 §8)
+**Screen:** No
+
+**What it should look like when done:**
+1. `gainInspiration(character, stamp)` raises `systemData.state.inspiration` by 1: one entry,
+   `action` `gainInspiration`, `subject` `inspiration`, no `label`, one change. Golden A (2014)
+   and golden B (2024), each stored with `houseRules.inspirationMax` 1 and inspiration 0:
+   `{ path: INSPIRATION, before: 0, after: 1 }`.
+2. At the maximum it is refused `atMax` with `max`, and nothing changes: golden A and golden B
+   at 1: `{ code: 'atMax', max: 1 }`.
+3. The owner's house rule (`DEFAULT_HOUSE_RULES.inspirationMax`, 3) on golden A and golden B:
+   0 → 1, 1 → 2, 2 → 3; at 3: `{ code: 'atMax', max: 3 }`.
+4. `spendInspiration(character, stamp)` lowers it by 1: `action` `spendInspiration`, `subject`
+   `inspiration`, no `label`. Golden A and golden B at 1: 1 → 0; with the house rule's 3, at 3:
+   3 → 2. At 0 it is refused `noInspiration`.
+5. Each action that happens passes the shared checks (`done`, `test/action-checks.ts`): its entry
+   parses with `logEntrySchema` and carries the stamp, its character opens unchanged, and
+   reversing the entry gives back the character before. Each refusal carries an English
+   `message` that is not empty.
+6. A dying or dead character gains and spends like any other: golden A at 0 hit points with 3
+   failures (`isDead`): 0 → 1, then 1 → 0.
+7. Deep-frozen inputs: neither action throws, and each input equals its copy after the call.
+8. The quality gate is green.
+
+**Choices (ADR 002):**
+- **The maximum is the house rule's**, `houseRules.inspirationMax`: it is the bound the stored
+  shape checks (ENG-33), so the action stops where the schema does. The edition's own,
+  `rulesOf(character).inspiration.max` (1 in both SRDs, ENG-19 §8), is the number the screen
+  shows beside it (ADR 009 item 5); the action does not read it.
+- **One at a time.** Both SRDs speak of gaining it and of expending it, one (ENG-19 §8). A DM who
+  gives two calls the action twice, and each is its own undo.
+- **A gain at the maximum is a refusal with its own code**, `atMax` with the maximum, not
+  `unchanged`, so the screen can say why. What the rules then do with it is the screen's words:
+  SRD 5.2.1 "it's lost unless you give it to a player character who lacks it", SRD 5.1 "you can't
+  stockpile multiple" (ENG-19 §8). The app keeps no party, so the action gives nothing to another
+  character.
+- **No label.** The word is the edition's (`rulesOf(...).terms.inspiration`), so the screen names
+  the entry from its `action`, as it does a death save's.
+- **No refusal for a dying or dead character.** Neither SRD's inspiration text names hit points
+  or death (ENG-19 §8), so the action makes up no rule.
+- **The count is read as stored.** An opened character never holds more than its maximum (the
+  schema refuses it), so a gain compares with `>=` and needs no clamp.
+
+**Not in this ticket:**
+- What spending does to a roll (2014: advantage; 2024: one die rolled again): phase 2, reading
+  `inspiration.use` (ENG-34 §9). The screen calls `spendInspiration` with that roll.
+- Heroic Inspiration on a long rest (SRD 5.2.1's human, Resourceful, the note this row carried
+  from ENG-21): no entity has a data shape that gives inspiration on a rest. New row (§11).
+- The stars on the sheet, and the DM setting the maximum: phase 2 (ADR 009 items 5 and 13).
+
+**Tests:** `packages/system-5e/test/inspiration.test.ts` — `describe('ENG-59 inspiration')`:
+items 1–7. Control numbers: golden A's and B's stored `inspirationMax` 1 and `inspiration` 0
+(`test/golden/character-parts.ts`), `DEFAULT_HOUSE_RULES.inspirationMax` 3 (ADR 009 item 5);
+each value worked out by hand above.
+**What came out of it:**
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- Before: `grep -rn "Inspiration(" packages --include=*.ts` found two lines, both
+  `withInspiration` in `rulesets.test.ts`: no action changed `state.inspiration`. `pnpm test`:
+  `Test Files 59 passed (59)`, `Tests 770 passed (770)`, 8.79 s.
+- After: `pnpm test`: `Test Files 60 passed (60)`, `Tests 775 passed (775)`, 8.72 s.
+  `inspiration.test.ts` alone: `Tests 5 passed (5)`, 904 ms.
+- Lint: `Checked 190 files`, no error. Typecheck: `Scope: 6 of 7 workspace projects`, all 6
+  `Done`. Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The tests catch mistakes. Each change made alone in `inspiration.ts`, then
+  `inspiration.test.ts` run (5 tests); every one failed at least one test, and each was undone: a
+  gain past the maximum (`>` for `>=`), 2 failed; the edition's 1 read for the house rule's
+  maximum, 2; a spend at 0 allowed, 1; a gain of 2, 3; a spend of all held, 1; a gain written as
+  `spendInspiration`, 1; a refusal at 0 hit points, 1.
+
+Differences from §3: none. Every item holds as written.
+
+Found, not fixed:
+- SRD 5.2.1's human, Resourceful: "You gain Heroic Inspiration whenever you finish a Long Rest"
+  (ENG-21 §8). No entity has a data shape that gives inspiration on a rest, and `longRest`
+  (`rests.ts`) gives none. Golden B is that human; its Resourceful (`test/golden/srd-2024.ts`) is
+  a name with no mechanics. New row ENG-64 in `BACKLOG.md`, which takes this row's note on it.
+
+Nothing for the changelog: no screen changes.
