@@ -36,8 +36,13 @@ import { goldenA, goldenB, goldenB4, goldenC2014, goldenC2024 } from './golden/i
 // d10, hit points 36, Second Wind 3. Golden C: wizard 3 (d6) and paladin 3 (d10), CON +1, hit
 // points 38. The hexer, the spells and the feat `character:` are made up. Every value was worked
 // out by hand in ENG-21 §3.
+// ENG-64: golden B's Resourceful gives 1 inspiration on a long rest, and a rest's outcome says how
+// much was lost. Where a long rest here compares its changes, a golden 2024 human holds its maximum
+// of 1 (`INSPIRED`), so the gain is lost and the changes are ENG-21 §3's.
 
 const BLESS = 'srd-2014:spell/bless';
+/** The inspiration a golden holds at its maximum of 1 (ENG-64). */
+const INSPIRED = { inspiration: 1 };
 const SECOND_WIND = 'secondWind';
 const GLIMMER = ownSpell('glimmer', 1, true);
 
@@ -75,10 +80,14 @@ const RALLY: FifthEditionCharacter['localEntities'][number] = {
 
 /** Golden B with the feat Rally, given by hand. */
 const rallying = (trackers: Parameters<typeof withTrackers>[1]) =>
-  withTrackers(goldenB, trackers, {
-    localEntities: [RALLY],
-    systemData: { ...goldenB.systemData, feats: [{ id: RALLY.id }] },
-  });
+  withTrackers(
+    goldenB,
+    { ...INSPIRED, ...trackers },
+    {
+      localEntities: [RALLY],
+      systemData: { ...goldenB.systemData, feats: [{ id: RALLY.id }] },
+    },
+  );
 
 /**
  * Golden B as hexer 3: two pact slots of level 2, at its hit point maximum: the d8's 8, 1 and 1,
@@ -87,7 +96,7 @@ const rallying = (trackers: Parameters<typeof withTrackers>[1]) =>
 const pactCaster = (pactSlotsSpent: number) =>
   withTrackers(
     goldenB,
-    { pactSlotsSpent, current: 16 },
+    { ...INSPIRED, pactSlotsSpent, current: 16 },
     {
       localEntities: [hexer],
       systemData: {
@@ -169,7 +178,11 @@ describe('ENG-21 rests', () => {
       { path: HP, before: 3, after: 11 },
       { path: hitDice(10), after: 1 },
     ]);
-    expect(rest.outcome).toEqual({ hitDice: [{ die: 10, roll: 6, hp: 8 }], warnings: [] });
+    expect(rest.outcome).toEqual({
+      hitDice: [{ die: 10, roll: 6, hp: 8 }],
+      warnings: [],
+      inspirationLost: 0,
+    });
   });
 
   it('stops the hit points at the maximum, and never lowers them', () => {
@@ -307,13 +320,14 @@ describe('ENG-21 rests', () => {
       { path: slot(1), before: 2, after: 0 },
     ]);
     expect(rest.character.systemData.state.concentration).toBe(BLESS);
-    expect(rest.outcome).toEqual({ hitDice: [], warnings: [] });
+    expect(rest.outcome).toEqual({ hitDice: [], warnings: [], inspirationLost: 0 });
   });
 
   it('gives back every hit die and use in 2024, and ends concentration', () => {
     const b = withTrackers(
       goldenB,
       {
+        ...INSPIRED,
         current: 3,
         temp: 5,
         hitDiceSpent: { d10: 1 },
@@ -361,7 +375,7 @@ describe('ENG-21 rests', () => {
     ]);
     const hexed = pactCaster(2);
     expect(done(hexed, long(hexed)).entry.changes).toEqual([{ path: PACT, before: 2, after: 0 }]);
-    const b4 = withTrackers(goldenB4, { resources: { [SECOND_WIND]: 3 } });
+    const b4 = withTrackers(goldenB4, { ...INSPIRED, resources: { [SECOND_WIND]: 3 } });
     expect(done(b4, long(b4)).entry.changes).toEqual([
       { path: resource(SECOND_WIND), before: 3, after: 0 },
     ]);
@@ -399,7 +413,7 @@ describe('ENG-21 rests', () => {
       { path: slot(1), before: 1, after: 0 },
     ]);
     expect(refused(long(above))).toEqual({ code: 'unchanged' });
-    expect(refused(long(withTrackers(goldenB, {})))).toEqual({ code: 'unchanged' });
+    expect(refused(long(withTrackers(goldenB, INSPIRED)))).toEqual({ code: 'unchanged' });
   });
 
   it('starts a long rest at 1 hit point in both editions', () => {

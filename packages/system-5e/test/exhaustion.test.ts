@@ -209,23 +209,32 @@ describe('ENG-19 exhaustion is data in both editions', () => {
 // ENG-61: each edition's exhaustion loses 1 level on a long rest, as its entry's `recovery` says
 // (ENG-61 §8). The rests are ENG-21's; `restStamp` is the stamp `done` checks. Golden B: 12 hit
 // points, one d10, CON +2. Every value was worked out by hand in ENG-61 §3 from the tables above.
+// ENG-64: golden B's Resourceful gives 1 inspiration on a long rest. A character resting here holds
+// its maximum of 1, so the gain is lost and the rest changes only what ENG-61 §3 says.
 
 const CONDITIONS = ['state', 'conditions'];
 
 type StoredCondition = CharacterInput['state']['conditions'][number];
 type OwnEntity = FifthEditionCharacter['localEntities'][number];
 
-/** A golden character with `trackers` set, these stored conditions, and entities of its own. */
+/**
+ * A golden character with `trackers` set, these stored conditions, and entities of its own. It
+ * holds 1 inspiration, the goldens' maximum, unless `trackers` says otherwise.
+ */
 function resting(
   golden: CharacterInput,
   trackers: Parameters<typeof withTrackers>[1],
   conditions: StoredCondition[],
   own: OwnEntity[] = [],
 ): FifthEditionCharacter {
-  return withTrackers(golden, trackers, {
-    state: { ...golden.state, conditions },
-    ...(own.length > 0 && { localEntities: own }),
-  });
+  return withTrackers(
+    golden,
+    { inspiration: 1, ...trackers },
+    {
+      state: { ...golden.state, conditions },
+      ...(own.length > 0 && { localEntities: own }),
+    },
+  );
 }
 
 /** The index of the character's edition, with the 2014 exhaustion. */

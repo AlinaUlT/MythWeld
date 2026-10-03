@@ -17,6 +17,7 @@ import { combatSteps } from './combat';
 import type { FifthEditionEntity } from './entity-types';
 import { equipmentOf } from './equipment';
 import { hitDiceSteps } from './hit-dice';
+import { inspirationSteps } from './inspiration';
 import {
   isLanguageGrant,
   languageWarnings,
@@ -47,6 +48,7 @@ import { unconsciousNamed, unconsciousWarnings } from './unconscious';
 // ENG-56: the side of the starting languages not taken gives none; a mix that gives none warns.
 // ENG-57: a spell grant's own uses are a resource, given beside it (`spell-uses.ts`).
 // ENG-62: at 0 hit points and alive, the Unconscious condition is named by its key; none warns.
+// ENG-64 adds `inspiration.longRest`, the inspiration a long rest gives (`inspiration.ts`).
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -191,6 +193,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     ...rollModeSteps(input),
     ...trainingSteps(input),
     ...spellDiceSteps(),
+    ...inspirationSteps(),
   }),
 
   // Each skill's stat, which an effect may set; the character's size.

@@ -17,6 +17,7 @@ import {
   HP_CURRENT_PATH,
   HP_TEMP_PATH,
   hitDiceSpentPath,
+  INSPIRATION_PATH,
   isWhole,
   PACT_SPENT_PATH,
   settled,
@@ -29,6 +30,7 @@ import { RULE_STATS } from './combat';
 import { isDead } from './death-saves';
 import type { FifthEditionEntity } from './entity-types';
 import { hitDicePath } from './hit-dice';
+import { inspirationGained, LONG_REST_INSPIRATION_PATH } from './inspiration';
 import { fifthEditionModule } from './module';
 import { rulesOf } from './rulesets';
 import { HIT_DIE_SIZES, MAX_SPELL_LEVEL } from './system';
@@ -45,6 +47,8 @@ import { HIT_DIE_SIZES, MAX_SPELL_LEVEL } from './system';
 // (the core's `conditionsRecoveredOn`), as both SRDs' exhaustion says of a long rest. The hit
 // points come from the one `compute()` made before the rest, so 2014's halved maximum at
 // exhaustion 4 is the one a long rest fills (dnd5e's order, ENG-61 §8).
+// ENG-64: a long rest gains the inspiration `inspiration.longRest` counts, up to the house rules'
+// maximum; the outcome says how much was above it, lost (SRD 5.2.1, ENG-64 §8).
 
 /**
  * The recovery events each rest triggers, in order: a long rest gives back what comes back on a
@@ -77,6 +81,8 @@ export interface RestOutcome {
   hitDice: SpentHitDie[];
   /** What the formulas of the uses given back, and of the condition levels lowered, met. */
   warnings: (RecoveryWarning | ConditionRecoveryWarning)[];
+  /** The inspiration the rest gave above the house rules' maximum, which is lost: 0 or more. */
+  inspirationLost: number;
 }
 
 /** Why a rest did not happen. `code` and its data are for the screen; `message` is for logs. */
@@ -200,7 +206,7 @@ export function shortRest(
       ...recovered.changes,
       ...eased.changes,
     ],
-    { hitDice: spent, warnings: [...recovered.warnings, ...eased.warnings] },
+    { hitDice: spent, warnings: [...recovered.warnings, ...eased.warnings], inspirationLost: 0 },
   );
 }
 
@@ -210,8 +216,9 @@ export function shortRest(
  * dice back (rounded down, at least 1, the largest first), every slot and pact slot back, the uses
  * that come back on `long`, else on `short`, and no concentration where the edition's
  * `longRestEndsConcentration` says so. ENG-61: the stored conditions lose the levels their
- * entries take on `long`, else on `short` (each SRD's exhaustion: 1). Refused for a dead
- * character, one at 0 hit points, and as `unchanged` when nothing changes.
+ * entries take on `long`, else on `short` (each SRD's exhaustion: 1). ENG-64: the inspiration
+ * `inspiration.longRest` counts, up to the house rules' maximum. Refused for a dead character, one
+ * at 0 hit points, and as `unchanged` when nothing changes.
  */
 export function longRest(
   character: FifthEditionCharacter,
@@ -241,6 +248,7 @@ export function longRest(
   const levels = Array.from({ length: MAX_SPELL_LEVEL }, (_, at) => at + 1);
   const recovered = recoveredOn(character, computed, REST_EVENTS.long);
   const eased = conditionsRecoveredOn(character, computed, REST_EVENTS.long);
+  const inspired = inspirationGained(character, whole(computed.values[LONG_REST_INSPIRATION_PATH]));
   return rested(
     character,
     stamp,
@@ -255,10 +263,15 @@ export function longRest(
       changeTo(character, PACT_SPENT_PATH, 0),
       ...recovered.changes,
       ...eased.changes,
+      changeTo(character, INSPIRATION_PATH, inspired.after),
       ...(rules.longRestEndsConcentration && concentration !== undefined
         ? [changeTo(character, CONCENTRATION_PATH, undefined)]
         : []),
     ],
-    { hitDice: [], warnings: [...recovered.warnings, ...eased.warnings] },
+    {
+      hitDice: [],
+      warnings: [...recovered.warnings, ...eased.warnings],
+      inspirationLost: inspired.lost,
+    },
   );
 }

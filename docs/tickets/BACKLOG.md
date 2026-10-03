@@ -124,7 +124,7 @@ split off an old row got a new id.
 | ENG-61 | A long rest lowers a condition's level as its entry says | S | ✅ 2026-10-03 |
 | ENG-66 | Coming back to life lowers a condition's level as its entry says | S | 🔲 |
 | ENG-67 | Exhaustion at level 6 makes the character dead | S | 🔲 |
-| ENG-64 | A long rest gives the inspiration a trait names | S | 🔲 |
+| ENG-64 | A long rest gives the inspiration a trait names | S | ✅ 2026-10-03 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
@@ -156,13 +156,6 @@ split off an old row got a new id.
   it must end on these events only: a stored Unconscious condition from a spell's sleep ends on
   damage, not healing. A mark of its own is a stored-shape change (a version and its migrations).
   SRD 5.1's knocking out is damage to 0 and `stabilize` (ENG-62 §8): nothing to add.
-- **ENG-64** — found by ENG-21 (ENG-21 §8), taken off ENG-59 (ENG-59 §11). SRD 5.2.1's human,
-  Resourceful: "You gain Heroic Inspiration whenever you finish a Long Rest." Golden B is that
-  human; its Resourceful (`test/golden/srd-2024.ts`) is a name with no mechanics. No entity has a
-  data shape that gives inspiration on a rest, and `longRest` (`rests.ts`) gives none. The row
-  decides the shape (a computed path an effect adds to and the rest reads, as `spellDice` reads
-  ENG-55's `damage.spell.bonus`; or a field on the entity, a stored-shape change). The rest gains
-  it in its one entry, up to ENG-59's bound, `houseRules.inspirationMax`.
 - **ENG-37** — ADR 005 item 3.6; the fixture states its ability bonus source (ADR 014 item 1).
   Found by ENG-35: a source of `both`, with increases from both sides, warns `characterRule`
   `abilityBonusesFromBoth`, so a golden storing it expects that warning. Found by ENG-56: the
@@ -392,7 +385,11 @@ split off an old row got a new id.
   `manual` are triggered by no action (a magic item's charges at dawn). Found by ENG-61: a long
   rest lowers exhaustion in both editions, but SRD 5.1's only "provided that the creature has also
   ingested some food and drink"; the 2014 Rest frame says so, and a person whose character did not
-  eat sets the level back with `setCondition` (ENG-61 §4).
+  eat sets the level back with `setCondition` (ENG-61 §4). Found by ENG-64: a long rest gains
+  `inspiration.longRest` (SRD 5.2.1's Resourceful) up to `houseRules.inspirationMax`, and its
+  `outcome.inspirationLost` is what was above it, which the Rest frame names; SRD 5.2.1's Champion,
+  Heroic Warrior (fighter 10), gives Heroic Inspiration at the start of a turn, which no action
+  triggers either.
 - **Phase 2** — found by ENG-58: the death save tracker calls `rollDeathSave` (`death-saves.ts`)
   with the kept d20 face and the total the dice panel gives (`d20Formula(deathSave.mode)`, with
   the person's bonuses); its outcome's `status` (`dying`, `stable`, `dead`, `up`) says what to

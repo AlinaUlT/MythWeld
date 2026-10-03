@@ -116,7 +116,11 @@ const human: Of<'species'> = {
 };
 
 const humanTraits: Of<'feature'>[] = [
-  named('resourceful', 'Resourceful'),
+  {
+    // ENG-64: Heroic Inspiration on every long rest (ENG-64 §8).
+    ...named('resourceful', 'Resourceful'),
+    effects: [{ id: 'heroic-inspiration', target: 'inspiration.longRest', op: 'add', value: 1 }],
+  },
   {
     ...named('skillful', 'Skillful'),
     grants: [

@@ -1,11 +1,42 @@
-import { type ActionResult, changeTo, type LogStamp } from '@grimoire/engine';
+import { type ActionResult, changeTo, type DerivedStep, type LogStamp } from '@grimoire/engine';
 import { INSPIRATION_PATH, settled, type Unchanged } from './actions';
 import type { FifthEditionCharacter } from './character';
+import { zeroStep } from './checks';
 
 // ENG-59: inspiration is gained or spent one at a time, each one log entry, up to the house
 // rules' maximum: the bound the stored shape checks (ENG-33). The edition's own maximum,
 // `rulesOf(...).inspiration.max`, is what the screen shows beside it (ADR 009 item 5); what
 // spending does to a roll is the screen's, by `inspiration.use`.
+// ENG-64: a long rest gives the inspiration `inspiration.longRest` counts, a target for effects
+// every character has, 0 until a trait's effect adds to it (SRD 5.2.1's human, Resourceful). The
+// rest gains it up to the same maximum; what is above it is lost (SRD 5.2.1). ENG-64 §8.
+
+/** How much inspiration a long rest gives: a target for effects, 0 until one changes it. */
+export const LONG_REST_INSPIRATION_PATH = 'inspiration.longRest';
+
+/** `inspiration.longRest`: 0 until an effect changes it. */
+export function inspirationSteps(): Record<string, DerivedStep> {
+  return { [LONG_REST_INSPIRATION_PATH]: zeroStep };
+}
+
+/** What a gain of inspiration does: the count held after it, and the part above the maximum. */
+export interface InspirationGain {
+  after: number;
+  lost: number;
+}
+
+/**
+ * What gaining `count` inspiration (whole, from 0) does: the count held after it, up to the house
+ * rules' maximum (`houseRules.inspirationMax`), and the part above that maximum, which is lost.
+ */
+export function inspirationGained(
+  character: FifthEditionCharacter,
+  count: number,
+): InspirationGain {
+  const { houseRules, state } = character.systemData;
+  const after = Math.min(houseRules.inspirationMax, state.inspiration + count);
+  return { after, lost: state.inspiration + count - after };
+}
 
 /** Why inspiration was not gained or spent. `code` and its data are for the screen. */
 export type InspirationRefusal = { message: string } & (
