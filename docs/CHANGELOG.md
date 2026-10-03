@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-10-03 · ENG-58 · The published fifth-edition pack JSON Schema asks for
+  `systemSchemaVersion` 3; a pack of version 2 still opens in the app.
 - 2026-10-03 · ENG-53 · The fifth-edition pack schema accepts a spell's `healing`: a roll formula,
   and whether it gives hit points or temporary hit points. `@mod` in a spell's formulas is the
   modifier of the stat it is cast with.

@@ -1,18 +1,22 @@
 import {
   type ActionResult,
   applyEntry,
+  changeTo,
   entryOf,
   type FormulaValue,
   type LogStamp,
   type MadeChanges,
   sameJson,
 } from '@grimoire/engine';
+import type { LogChange } from '@grimoire/schema';
 import type { FifthEditionCharacter } from './character';
 
 // ENG-20: what fifth edition's tracker actions share: the places in `systemData.state` they
 // change, and the one way each ends. An action lists a change for every field it may write; the
 // ones that keep their value are dropped, an action left with none is refused as `unchanged` (as
 // ENG-30's are), and the rest are one entry, applied.
+// ENG-58: every action that ends a run of death saves (hit points regained, stable, revived)
+// writes it through `deathSavesReset`, so `stable` is never left behind.
 
 const STATE = ['systemData', 'state'] as const;
 
@@ -27,6 +31,9 @@ export const DEATH_SUCCESS_PATH = [...STATE, 'deathSaves', 'success'];
 
 /** The death save failures. */
 export const DEATH_FAILURE_PATH = [...STATE, 'deathSaves', 'failure'];
+
+/** ENG-58: whether the character, at 0 hit points, is stable. */
+export const DEATH_STABLE_PATH = [...STATE, 'deathSaves', 'stable'];
 
 /** The spell the character concentrates on. */
 export const CONCENTRATION_PATH = [...STATE, 'concentration'];
@@ -65,6 +72,18 @@ export function settled<R extends { code: string; message: string }>(
   const entry = entryOf(stamp, { ...made, changes });
   const applied = applyEntry(character, entry);
   return applied.ok ? { ok: true, character: applied.character, entry } : applied;
+}
+
+/**
+ * The changes that end a run of death saves: both counts back to 0 (both SRDs: "reset to zero when
+ * you regain any hit points or become stable"), and `stable` as given.
+ */
+export function deathSavesReset(character: FifthEditionCharacter, stable = false): LogChange[] {
+  return [
+    changeTo(character, DEATH_SUCCESS_PATH, 0),
+    changeTo(character, DEATH_FAILURE_PATH, 0),
+    changeTo(character, DEATH_STABLE_PATH, stable),
+  ];
 }
 
 /** A whole number from `min`. */

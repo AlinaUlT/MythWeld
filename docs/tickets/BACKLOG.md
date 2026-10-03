@@ -115,7 +115,9 @@ split off an old row got a new id.
 | ENG-54 | The house rule's highest score caps every stat | S | ✅ 2026-10-03 |
 | ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | ✅ 2026-10-03 |
 | ENG-57 | A spell a grant gives is cast through its own uses | S | 🔲 |
-| ENG-58 | A death save roll changes the character by fifth-edition rules | S | 🔲 |
+| ENG-58 | A death save roll changes the character by fifth-edition rules | S | ✅ 2026-10-03 |
+| ENG-62 | Dropping to 0 hit points gives the Unconscious condition | S | 🔲 |
+| ENG-63 | Death ends attunement to magic items | XS | 🔲 |
 | ENG-59 | Inspiration is gained or spent up to its maximum | XS | 🔲 |
 | ENG-21 | A rest changes the character by its edition's rules | S | ✅ 2026-10-03 |
 | ENG-61 | A long rest lowers a condition's level as its entry says | S | 🔲 |
@@ -130,7 +132,10 @@ split off an old row got a new id.
   its schema (`conditionDefSchema`) has only `maxLevel`, and the module names no condition
   (ENG-20 §4). A field on the condition saying what a recovery event takes from its level is a
   stored-shape change (a version and its migrations); at level 0 the condition is removed.
-  `longRest` (`rests.ts`) builds one entry; this row adds the change to it.
+  `longRest` (`rests.ts`) builds one entry; this row adds the change to it. Found by ENG-58: SRD
+  5.2.1 (Rules Glossary, Dead) "If the creature died with any Exhaustion levels, it returns with 1
+  fewer level"; `revive` (`hit-points.ts`) lowers none. No sentence of SRD 5.1's rules, spells or
+  conditions ties exhaustion to a return to life (ENG-58 §11).
 - **ENG-55** — found by ENG-51: SPEC §5.4's `damage.spell.bonus` is no path, so an effect on it
   warns `noTarget`. A spell's damage is dice text (ENG-50's `spellDice`), which reads no bonus;
   a weapon's damage reads `damage.weapon.<kind>.bonus` (ENG-16). The row decides which of a
@@ -150,15 +155,22 @@ split off an old row got a new id.
   through the uses. ENG-21's `shortRest` and `longRest` (`rests.ts`) give back the core's
   resources through `recoveredOn` (`trackers.ts`); this row adds the grant's uses to both, by
   their `recovery`, in `REST_EVENTS`' order (a long rest: `long`, else `short`).
-- **ENG-58** — re-cut from ENG-20 (ENG-20 §4). Found by ENG-33: the schema refuses a death save
-  count above 3 (`DEATH_SAVES`), so the action stops there. ENG-20 writes failures from damage
-  and resets both counts on healing (`hit-points.ts`); death is 0 hit points with 3 failures
-  (`isDead`). Both SRDs: 10 or higher a success, a 1 two failures, a 20 one hit point back; the
-  third success makes the character stable, and both counts reset to 0 (ENG-20 §8). Stable has
-  no field, and a stable character that takes damage stops being stable; dnd5e keeps a status of
-  its own. Found by ENG-20: at 0 hit points both SRDs give the Unconscious condition, which
-  `applyDamage` does not set (a pack's entry; the module names no id), so its effects do not
-  apply. Bringing a dead character back (`isDead` refuses damage and healing) is this row's too.
+- **ENG-62** — re-cut from ENG-58 (ENG-58 §4). Found by ENG-20: at 0 hit points both SRDs give
+  the Unconscious condition (SRD 5.1: "you fall unconscious … This unconsciousness ends if you
+  regain any hit points"; SRD 5.2.1: "you have the Unconscious condition until you regain any Hit
+  Points"), which `applyDamage` does not set: a condition is a pack's entry and the module names
+  no condition id, so its effects do not apply. The row decides how the module finds the entry (a
+  key, as `STEALTH_SKILL` names a skill, or a field on the condition, a stored-shape change), and
+  whether the actions store the condition or `compute()` gives it at 0 hit points. A stable
+  character keeps it (`isStable`, ENG-58 §8). SRD 5.2.1's Knocking Out a Creature leaves 1 hit
+  point and the condition until a short rest ends; SRD 5.1's leaves the creature "unconscious and
+  … stable" (`stabilize`).
+- **ENG-63** — found by ENG-58 (ENG-58 §11): death ends attunement in both SRDs. SRD 5.1: "A
+  creature's attunement to an item ends if … if the creature dies"; SRD 5.2.1 (Rules Glossary,
+  Dead): "If the creature had Attunement to one or more magic items, it is no longer attuned to
+  them." Death, 3 failures, is written by `applyDamage` (`hit-points.ts`) and `rollDeathSave`
+  (`death-saves.ts`); neither changes an inventory row's `attuned`. One list of the changes dying
+  makes, shared by both, as `deathSavesReset` (`actions.ts`) is for the end of a run of saves.
 - **ENG-59** — re-cut from ENG-20 (ENG-20 §4). Found by ENG-33: the schema refuses inspiration
   above `houseRules.inspirationMax`, so the action stops there. Found by ENG-19: both SRDs allow
   1 (`rulesOf(character).inspiration.max`); SRD 5.2.1 says Heroic Inspiration gained while had is
@@ -372,6 +384,13 @@ split off an old row got a new id.
   `Computed.resources[].uses.recovery`; an amount that is a formula has no computed value with a
   breakdown, so the row that shows one computes it. The recovery events `dawn`, `turn` and
   `manual` are triggered by no action (a magic item's charges at dawn).
+- **Phase 2** — found by ENG-58: the death save tracker calls `rollDeathSave` (`death-saves.ts`)
+  with the kept d20 face and the total the dice panel gives (`d20Formula(deathSave.mode)`, with
+  the person's bonuses); its outcome's `status` (`dying`, `stable`, `dead`, `up`) says what to
+  show, and `isStable`, `isDead` give the state at any time. First aid's Medicine check, Spare the
+  Dying and 2014's knocking out call `stabilize`; a revival spell calls `revive` with `1` or
+  `max`. A stable character's 1 hit point after 1d4 hours is the person's `applyHealing` of 1:
+  nothing keeps the time.
 - **Phase 2** — found by ENG-34: each d20 test's roll mode is a number path, 1 advantage, −1
   disadvantage, 0 neither, with a step per source: `checks.<stat>.mode`,
   `abilities.<stat>.saveMode`, `skills.<key>.mode`, `init.mode`, `attacks.<key>.mode`,
@@ -412,6 +431,11 @@ split off an old row got a new id.
   proficiency from two different sources, he or she can choose a different proficiency of the
   same kind (skill or tool) instead"; SRD 5.2.1 has no such text. An edition difference the
   creation wizard offers; its value joins `rulesets/` (ENG-19).
+- **Phase 4** — found by ENG-58: `levelUp` (`level-up.ts`) at 0 hit points raises them and keeps
+  the death saves: golden A at 0 with 1 success and 2 failures, a 2014 cleric level at `avg`,
+  gives 9 hit points and death saves `{ success: 1, failure: 2 }` (measured, ENG-58 §11). Hit
+  points regained from 0 reset them in both SRDs. The level-up wizard offers no level-up at 0 hit
+  points, or `levelUp` writes `deathSavesReset` (`actions.ts`) as healing does.
 - **Phase 4** — found by ENG-19: a subclass chosen below its class's `subclassLevel` (2014: 1, 2
   or 3 by class; 2024: 3) gives no warning, and its spellcasting counts. The level-up wizard
   offers the subclass at that level, or the module gains a warning.

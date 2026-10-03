@@ -22,6 +22,7 @@ import {
   PACT,
   refused,
   resource,
+  STABLE,
   SUCCESS,
   slot,
   stamp,
@@ -427,5 +428,16 @@ describe('ENG-21 rests', () => {
     expect(longRest(character, indexOf(b), theStamp).ok).toBe(true);
     expect(character).toEqual(copyOf(b));
     expect(ask).toEqual({ hitDice: [d10(6)] });
+  });
+});
+
+describe('ENG-58 a short rest ends stable', () => {
+  it('ends stable when the 2014 short rest raises the hit points from 0', () => {
+    const down = withTrackers(goldenA, { current: 0, stable: true });
+    expect(done(down, short(down, [{ die: 8, roll: 5 }])).entry.changes).toEqual([
+      { path: HP, before: 0, after: 8 },
+      { path: STABLE, before: true, after: false },
+      { path: hitDice(8), after: 1 },
+    ]);
   });
 });

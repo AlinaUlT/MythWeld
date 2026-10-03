@@ -8,6 +8,7 @@ import {
   listWithUniqueIds,
   type Migration,
   rollRecordSchema,
+  type StoredObject,
   uniqueList,
   uuidSchema,
   visibleTextSchema,
@@ -31,10 +32,29 @@ import {
 // checked against each other only inside this file; an id naming nothing in a pack is valid here
 // (missing is not broken).
 
+/** `value` when it is an object of fields: not a list, not a plain value. */
+function fieldsOf(value: unknown): StoredObject | undefined {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as StoredObject)
+    : undefined;
+}
+
 /** The steps to `FIFTH_EDITION_SCHEMA_VERSION` for a character: step N takes N + 1 to N + 2. */
 export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
   // 1 → 2 (ENG-47): `acCalc` is new and optional, and a character of version 1 pinned nothing.
   (file) => ({ ...file }),
+  // 2 → 3 (ENG-58): `deathSaves.stable` is new and needed. Nothing in version 2 made a character
+  // stable, so it was not. A file without those fields is returned as it is, for the schema.
+  (file) => {
+    const data = fieldsOf(file.systemData);
+    const state = fieldsOf(data?.state);
+    const deathSaves = fieldsOf(state?.deathSaves);
+    if (data === undefined || state === undefined || deathSaves === undefined) return { ...file };
+    return {
+      ...file,
+      systemData: { ...data, state: { ...state, deathSaves: { ...deathSaves, stable: false } } },
+    };
+  },
 ];
 
 /** The successes, or the failures, that end a run of death saves (ENG-33 §8). */
@@ -212,7 +232,15 @@ const trackersSchema = z.strictObject({
   slotsSpent: z.partialRecord(z.enum(slotLevels as [string, ...string[]]), z.int().nonnegative()),
   /** Pact magic slots spent: all of them are of one level. */
   pactSlotsSpent: z.int().nonnegative(),
-  deathSaves: z.strictObject({ success: deathSaveCountSchema, failure: deathSaveCountSchema }),
+  /**
+   * The death saves of the run at 0 hit points; `stable` once the third success, or first aid,
+   * ends the run with the character alive (ENG-58).
+   */
+  deathSaves: z.strictObject({
+    success: deathSaveCountSchema,
+    failure: deathSaveCountSchema,
+    stable: z.boolean(),
+  }),
   /** The spell the character concentrates on. */
   concentration: entityIdSchema.optional(),
   inspiration: z.int().nonnegative(),

@@ -130,7 +130,7 @@ const systemData = {
     hitDiceSpent: { d8: 1, d6: 0 },
     slotsSpent: { '1': 1, '2': 0 },
     pactSlotsSpent: 0,
-    deathSaves: { success: 1, failure: 2 },
+    deathSaves: { success: 1, failure: 2, stable: false },
     concentration: 'hb-test:spell/lantern-light',
     inspiration: 2,
   },
@@ -144,7 +144,7 @@ const character = {
   createdAt: '2026-10-01T09:00:00.000Z',
   updatedAt: '2026-10-01T09:30:00.000Z',
   system: '5e',
-  systemSchemaVersion: 2,
+  systemSchemaVersion: 3,
   ruleset: '2024',
   allowMixedRulesets: true,
   kind: 'pc',
@@ -182,12 +182,18 @@ function refused(change: Record<string, unknown>): string[] {
 const [warden, scholar] = systemData.classes;
 const state = systemData.state;
 
+/** `data` as a file of version 2 stores it: death saves without `stable` (ENG-58). */
+function version2<D extends { state: Data['state'] }>(data: D) {
+  const { stable: _, ...counts } = data.state.deathSaves;
+  return { ...data, state: { ...data.state, deathSaves: counts } };
+}
+
 describe('ENG-33 fifth-edition character', () => {
   it('parses a full character to an equal object', () => {
     expect(fifthEditionCharacterSchema.parse(character)).toEqual(character);
-    expect(FIFTH_EDITION_SCHEMA_VERSION).toBe(2);
-    expect(FIFTH_EDITION_CHARACTER_MIGRATIONS).toHaveLength(1);
-    expect(FIFTH_EDITION_PACK_MIGRATIONS).toHaveLength(1);
+    expect(FIFTH_EDITION_SCHEMA_VERSION).toBe(3);
+    expect(FIFTH_EDITION_CHARACTER_MIGRATIONS).toHaveLength(2);
+    expect(FIFTH_EDITION_PACK_MIGRATIONS).toHaveLength(2);
     expect(HIT_DIE_SIZES).toEqual([6, 8, 10, 12]);
     expect(COINS).toEqual(['cp', 'sp', 'ep', 'gp', 'pp']);
     expect(DEATH_SAVES).toBe(3);
@@ -366,8 +372,8 @@ describe('ENG-33 fifth-edition character', () => {
     }
     expect(trackers({ hp: { current: -1, temp: 0 } })).toEqual(['systemData.state.hp.current']);
     expect(trackers({ pactSlotsSpent: -1 })).toEqual(['systemData.state.pactSlotsSpent']);
-    expect(trackers({ deathSaves: { success: 3, failure: 3 } })).toEqual([]);
-    expect(trackers({ deathSaves: { success: 0, failure: 4 } })).toEqual([
+    expect(trackers({ deathSaves: { success: 3, failure: 3, stable: false } })).toEqual([]);
+    expect(trackers({ deathSaves: { success: 0, failure: 4, stable: false } })).toEqual([
       'systemData.state.deathSaves.failure',
     ]);
     expect(trackers({ concentration: 'lantern-light' })).toEqual([
@@ -503,7 +509,7 @@ describe('ENG-33 fifth-edition character', () => {
     type Character = z.infer<typeof fifthEditionCharacterSchema>;
     expectTypeOf<Character>().toEqualTypeOf<FifthEditionCharacter>();
     expectTypeOf<Character['ruleset']>().toEqualTypeOf<'2014' | '2024'>();
-    expectTypeOf<Character['systemSchemaVersion']>().toEqualTypeOf<2>();
+    expectTypeOf<Character['systemSchemaVersion']>().toEqualTypeOf<3>();
     type Part = Character['systemData'];
     expectTypeOf<Part['classes'][number]['hp'][number]>().toEqualTypeOf<number | 'avg' | 'max'>();
     expectTypeOf<Part['currency']>().toEqualTypeOf<
@@ -528,7 +534,7 @@ const pack = {
   version: '1.0.0',
   schemaVersion: 1,
   system: '5e',
-  systemSchemaVersion: 2,
+  systemSchemaVersion: 3,
   title: { en: 'Test pack' },
   ruleset: 'any',
   license: { name: 'Made up for the tests', redistributable: false },
@@ -540,14 +546,14 @@ describe('ENG-33 fifth-edition files open through both chains', () => {
     expect(openFifthEditionCharacter(character)).toEqual({
       ok: true,
       value: character,
-      from: { schemaVersion: 1, systemSchemaVersion: 2 },
+      from: { schemaVersion: 1, systemSchemaVersion: 3 },
     });
-    expect(openFifthEditionCharacter({ ...character, systemSchemaVersion: 3 })).toMatchObject({
+    expect(openFifthEditionCharacter({ ...character, systemSchemaVersion: 4 })).toMatchObject({
       ok: false,
       code: 'newer',
       field: 'systemSchemaVersion',
-      found: 3,
-      current: 2,
+      found: 4,
+      current: 3,
     });
   });
 
@@ -556,14 +562,14 @@ describe('ENG-33 fifth-edition files open through both chains', () => {
     expect(openFifthEditionPack(pack)).toEqual({
       ok: true,
       value: pack,
-      from: { schemaVersion: 1, systemSchemaVersion: 2 },
+      from: { schemaVersion: 1, systemSchemaVersion: 3 },
     });
-    expect(openFifthEditionPack({ ...pack, systemSchemaVersion: 3 })).toMatchObject({
+    expect(openFifthEditionPack({ ...pack, systemSchemaVersion: 4 })).toMatchObject({
       ok: false,
       code: 'newer',
       field: 'systemSchemaVersion',
-      found: 3,
-      current: 2,
+      found: 4,
+      current: 3,
     });
     const talent = { ...pack.entities[0], id: 'hb-test:talent/lucky-find', type: 'talent' };
     const opened = openFifthEditionPack({ ...pack, entities: [talent] });
@@ -587,12 +593,12 @@ describe('ENG-47 the pinned AC calculation is stored', () => {
     >();
   });
 
-  it('opens a character of version 1 as version 2, with no pin', () => {
+  it('opens a character of version 1 as version 2, with no pin, then at the current version', () => {
     const { acCalc: _, ...unpinned } = systemData;
-    const old = { ...character, systemSchemaVersion: 1, systemData: unpinned };
+    const old = { ...character, systemSchemaVersion: 1, systemData: version2(unpinned) };
     expect(openFifthEditionCharacter(old)).toEqual({
       ok: true,
-      value: { ...old, systemSchemaVersion: 2 },
+      value: { ...character, systemSchemaVersion: 3, systemData: unpinned },
       from: { schemaVersion: 1, systemSchemaVersion: 1 },
     });
     const [step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
@@ -602,7 +608,7 @@ describe('ENG-47 the pinned AC calculation is stored', () => {
     expect(frozen).toEqual(old);
   });
 
-  it('opens a pack of version 1 as version 2, as it is', () => {
+  it('opens a pack of version 1 as version 2, as it is, then at the current version', () => {
     const old = { ...pack, systemSchemaVersion: 1 };
     expect(openFifthEditionPack(old)).toEqual({
       ok: true,
@@ -610,6 +616,69 @@ describe('ENG-47 the pinned AC calculation is stored', () => {
       from: { schemaVersion: 1, systemSchemaVersion: 1 },
     });
     const [step] = FIFTH_EDITION_PACK_MIGRATIONS;
+    const frozen = Object.freeze({ ...old });
+    expect(step?.(frozen)).toEqual(old);
+    expect(frozen).toEqual(old);
+  });
+});
+
+describe('ENG-58 stable is stored', () => {
+  it('needs `stable`, a yes or no, in the death saves', () => {
+    const deathSaves = (saves: Record<string, unknown>) =>
+      refused({ state: { ...state, deathSaves: saves } });
+    expect(deathSaves({ success: 0, failure: 0, stable: true })).toEqual([]);
+    expect(deathSaves({ success: 0, failure: 0 })).toEqual(['systemData.state.deathSaves.stable']);
+    expect(deathSaves({ success: 0, failure: 0, stable: 1 })).toEqual([
+      'systemData.state.deathSaves.stable',
+    ]);
+  });
+
+  it('opens a character of version 2 as version 3, not stable', () => {
+    const old = { ...character, systemSchemaVersion: 2, systemData: version2(systemData) };
+    expect(old.systemData.state.deathSaves).toEqual({ success: 1, failure: 2 });
+    expect(openFifthEditionCharacter(old)).toEqual({
+      ok: true,
+      value: character,
+      from: { schemaVersion: 1, systemSchemaVersion: 2 },
+    });
+    expect(character.systemData.state.deathSaves).toEqual({
+      success: 1,
+      failure: 2,
+      stable: false,
+    });
+    const [, step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
+    const ice = JSON.parse(JSON.stringify(old));
+    const freeze = (each: unknown) => {
+      if (typeof each !== 'object' || each === null) return;
+      Object.freeze(each);
+      for (const inner of Object.values(each)) freeze(inner);
+    };
+    freeze(ice);
+    expect(step?.(ice)).toEqual({ ...character, systemSchemaVersion: 2 });
+    expect(ice).toEqual(old);
+  });
+
+  it('returns a version 2 file without death saves as it is, for the schema to refuse', () => {
+    const [, step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
+    const { deathSaves: _, ...noSaves } = state;
+    for (const file of [
+      { ...character, systemSchemaVersion: 2, systemData: { ...systemData, state: noSaves } },
+      { ...character, systemSchemaVersion: 2, systemData: { ...systemData, state: [] } },
+      { ...character, systemSchemaVersion: 2, systemData: 'none' },
+    ]) {
+      expect(step?.(file)).toEqual(file);
+      expect(openFifthEditionCharacter(file)).toMatchObject({ ok: false, code: 'invalid' });
+    }
+  });
+
+  it('opens a pack of version 2 as version 3, as it is', () => {
+    const old = { ...pack, systemSchemaVersion: 2 };
+    expect(openFifthEditionPack(old)).toEqual({
+      ok: true,
+      value: pack,
+      from: { schemaVersion: 1, systemSchemaVersion: 2 },
+    });
+    const [, step] = FIFTH_EDITION_PACK_MIGRATIONS;
     const frozen = Object.freeze({ ...old });
     expect(step?.(frozen)).toEqual(old);
     expect(frozen).toEqual(old);

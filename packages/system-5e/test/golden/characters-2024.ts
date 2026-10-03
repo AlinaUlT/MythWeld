@@ -15,7 +15,7 @@ const core: Omit<CharacterInput, 'id' | 'name' | 'abilities' | 'choices' | 'syst
   createdAt: '2026-10-02T09:00:00.000Z',
   updatedAt: '2026-10-02T09:00:00.000Z',
   system: '5e',
-  systemSchemaVersion: 2,
+  systemSchemaVersion: 3,
   ruleset: '2024',
   allowMixedRulesets: false,
   kind: 'pc',

@@ -13,6 +13,7 @@ export * from './character';
 export * from './checks';
 export * from './classes';
 export * from './combat';
+export * from './death-saves';
 export * from './entity-types';
 export * from './equipment';
 export * from './hit-dice';

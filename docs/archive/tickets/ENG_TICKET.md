@@ -12606,3 +12606,353 @@ Found, not fixed:
   ENG-16 and this ticket read. A phase 3 note in `BACKLOG.md`.
 
 Nothing for the changelog: no screen shows armor training yet.
+
+---
+
+### ENG-58 Death saves
+
+**Hat:** A death save roll changes the character by fifth-edition rules
+**Depends on:** ENG-20 (`applyDamage`, `applyHealing`, `isDead`, `settled`, the state paths),
+ENG-21 (`shortRest`), ENG-33 (`systemData.state.deathSaves`, `DEATH_SAVES`), ENG-47 (the last
+version step, the model for this one)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.8 (`state.deathSaves`, `schemaVersion` and its migrations); §6.4 (the actions, one
+log entry each); ENG-20 §4's re-cut
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/death-saves.ts` — new: `rollDeathSave`, `stabilize`,
+`isStable`, `DEATH_SAVE_DC`, `DEATH_SAVE_FACES`.
+- `packages/system-5e/src/character.ts` — changes: `deathSaves.stable`; the character's step
+  2 → 3.
+- `packages/system-5e/src/system.ts` — changes: `FIFTH_EDITION_SCHEMA_VERSION` 3.
+- `packages/system-5e/src/pack.ts` — changes: the pack's step 2 → 3, the pack as it is.
+- `packages/system-5e/src/actions.ts` — changes: `DEATH_STABLE_PATH`, `deathSavesReset`.
+- `packages/system-5e/src/hit-points.ts` — changes: damage ends stable; healing resets through
+  `deathSavesReset`; new `revive`.
+- `packages/system-5e/src/rests.ts` — changes: a short rest from 0 resets through
+  `deathSavesReset`.
+- `packages/system-5e/src/index.ts` — exports the new file.
+- `packages/system-5e/test/death-saves.test.ts` — new. `test/action-checks.ts` — the `stable`
+  tracker. `test/hit-points.test.ts`, `test/rests.test.ts`, `test/character.test.ts` — the new
+  cases. `test/golden/*` — the fixtures written as version 3 files.
+- `apps/web/public/schema/5e/pack.schema.json` — `systemSchemaVersion` 3, rewritten by its test.
+- `docs/tickets/BACKLOG.md` — the re-cut (§4) and the rows found (§11).
+
+#### 2. What is missing now
+
+Measured on `main` at `b212371`:
+- `grep -rn "rollDeathSave\|stabilize\|revive\|stable" packages/system-5e/src` finds only
+  `rulesets/` and `hit-points.ts`'s comment "at 0 (dying or stable)": no action rolls a death
+  save, nothing makes a character stable, and nothing brings a dead one back (`isDead` refuses
+  damage, healing and temporary hit points).
+- `systemData.state.deathSaves` is `{ success, failure }`, each 0 to 3. The SRDs reset both to 0
+  when a character becomes stable (§8), so a stable character at 0 hit points stores what a
+  dying one who just dropped stores: `{ success: 0, failure: 0 }`.
+- `FIFTH_EDITION_SCHEMA_VERSION` is 2; the published pack JSON Schema asks for 2.
+- `pnpm test`: `Test Files 56 passed (56)`, `Tests 696 passed (696)`, 8.39 s.
+
+#### 3. What it should look like when done
+
+`stamp` is `action-checks.ts`'s. Golden A (2014) and golden B (2024) have a hit point maximum of 12
+(SPEC §6.7); golden A spends a d8 hit die and adds 3 (ENG-21's test: a roll of 5 gives 8). The
+death save rules are one rule in both SRDs (§8), so each rule is tested on both goldens. Every
+value below is worked out by hand from §8.
+
+**The stored shape**
+1. `systemData.state.deathSaves` is `{ success, failure, stable }`; `stable` is a yes/no, needed.
+   A file without it, or with `stable: 1`, is refused at `systemData.state.deathSaves.stable`.
+2. `FIFTH_EDITION_SCHEMA_VERSION` is 3. A version 2 character with death saves `{ success: 1,
+   failure: 2 }` opens as version 3 with `{ success: 1, failure: 2, stable: false }`; a version 1
+   character opens through both steps. The step changes nothing it is given. A version 2 pack
+   opens as version 3, as it is. The published pack JSON Schema asks for `systemSchemaVersion` 3.
+
+**A death save** — `rollDeathSave(character, { natural, total? }, stamp)`: `natural` the d20's
+face the roll kept, `total` the roll with its bonuses, `natural` when not given. Each from 0 hit
+points, dying (not stable):
+3. A success: at 0 and 0, natural 10: success 0 → 1; the entry's `action` `rollDeathSave`,
+   `subject` `deathSaves`, no label; the outcome `{ successes: 1, failures: 0, hp: 0, status:
+   'dying' }`. Natural 9: failure 0 → 1, `{ successes: 0, failures: 1, hp: 0, status: 'dying' }`.
+   Natural 9 with total 10: a success. Natural 12 with total 9: a failure.
+4. A 1 is two failures, whatever the total: natural 1: failure 0 → 2, `failures: 2`. Natural 1
+   with total 12: the same. At 1 failure, a 1: 3, `status: 'dead'`, `failures: 2`. At 2, a 1: 3
+   (never 4), `failures: 1`.
+5. A 20 gives 1 hit point back: at 1 success and 2 failures, natural 20: hit points 0 → 1, success
+   1 → 0, failure 2 → 0; `{ successes: 0, failures: 0, hp: 1, status: 'up' }`. Natural 20 with
+   total 15: the same.
+6. The third success makes the character stable: at 2 successes and 1 failure, natural 15: success
+   2 → 0, failure 1 → 0, stable false → true; `{ successes: 1, failures: 0, hp: 0, status:
+   'stable' }`. `isStable` is then true.
+7. The third failure kills: at 2 failures, natural 5: failure 2 → 3, `status: 'dead'`; `isDead`
+   is then true.
+8. Refusals: natural 0, 21 or 1.5: `badFace`; total 9.5: `badTotal`; a dead character: `dead`;
+   at 5 hit points: `notDying` with `hp: 5`; a stable character: `stable`.
+
+**Stable** — `stabilize(character, stamp)` (first aid's DC 10 Medicine check, Spare the Dying,
+2014's knocking out; the screen decides when)
+9. At 0 with 1 success and 2 failures: success 1 → 0, failure 2 → 0, stable false → true; the
+   entry's `action` `stabilize`, `subject` `deathSaves`. At 0 and 0: only stable changes.
+10. Refusals: a dead character: `dead`; at 5 hit points: `notDying`; already stable: `unchanged`.
+11. `isStable(character)`: 0 hit points and `stable`, and not dead. A stored `stable` at 5 hit
+    points is not stable.
+
+**Stable and the other actions**
+12. Damage ends stable: stable at 0, 3 damage: failure 0 → 1, stable true → false, `status:
+    'down'`, `failures: 1`. A critical hit: failure 0 → 2. 12 damage: failure 0 → 3, stable
+    true → false, `status: 'dead'`.
+13. Damage the temporary hit points take whole does not (§8, ENG-20's reading): stable at 0 with 5
+    temporary takes 3: temporary 5 → 2, nothing else; still stable. Takes 7: temporary 5 → 0,
+    failure 0 → 1, stable true → false.
+14. Healing ends stable: stable at 0, healed 3: hit points 0 → 3, stable true → false.
+15. A 2014 short rest from 0 ends stable: golden A stable at 0 spends a d8 that rolled 5: hit
+    points 0 → 8, stable true → false, d8 spent 1.
+16. Temporary hit points keep it: stable at 0 receives 5: temporary 0 → 5, nothing else.
+17. ENG-20's and ENG-21's entries that do not touch stable are unchanged: the existing tests pass
+    as they are.
+
+**Bringing a dead character back** — `revive(character, index, { hp }, stamp)`, `hp` a whole
+number from 1 or `'max'` (§8: Revivify and Raise Dead 1, Resurrection and True Resurrection all)
+18. Dead at 0 with 1 success and 3 failures, `hp: 1`: hit points 0 → 1, success 1 → 0, failure
+    3 → 0; the entry's `action` `revive`, `subject` `hp`. `hp: 'max'`: 0 → 12. `hp: 20`: 0 →
+    12 (the maximum). With an override `hp.max` 20, `'max'`: 0 → 20.
+19. Refusals: `hp` 0, -1 or 1.5: `badAmount`; at 5 hit points, or at 0 and dying: `notDead`.
+
+**Every action**
+20. Each entry parses with `logEntrySchema`; each character an action gives opens unchanged;
+    `reverseEntry` gives back the character before. Deep-frozen inputs: no action throws, none
+    changes what it is given.
+21. The quality gate is green, `pnpm e2e` included (the published schema is in `apps/web`).
+
+#### 4. How to do it
+
+**The re-cut first** (`BACKLOG.md`). The row's note gives ENG-58 four things beside the roll:
+stable, damage ending it, the Unconscious condition at 0 hit points, and bringing a dead character
+back. Stable is what the third success does, and damage ending it is the same field; reviving is
+one small action the note names. The Unconscious condition is not a death save: it comes from
+damage, and it needs its own design (which entry is "the" Unconscious condition, when the
+module names no condition id; whether it is stored or follows 0 hit points; 2024's knocking out
+at 1 hit point). It becomes **ENG-62** (S) "Dropping to 0 hit points gives the Unconscious
+condition", after ENG-58, with the note's part about it.
+
+Then:
+1. `system.ts`, `character.ts`, `pack.ts`: version 3, `stable`, both steps.
+2. `actions.ts`: `DEATH_STABLE_PATH`; `deathSavesReset(character, stable = false)`, the changes that
+   put both counts to 0 and `stable` to the value given.
+3. `hit-points.ts`: `applyDamage` writes `stable` false when damage gets past the temporary hit
+   points; `applyHealing` from 0 writes `deathSavesReset`; `revive`.
+4. `rests.ts`: `shortRest` from 0 writes `deathSavesReset`.
+5. `death-saves.ts`: `isStable`, `rollDeathSave`, `stabilize`.
+6. Tests (§7); the fixtures and the published schema as version 3; then the gate.
+
+Technical choices (ADR 002):
+- **Stable is a stored field** (`deathSaves.stable`), a SPEC §5.8 detail changed. Both SRDs reset
+  both counts to 0 when the character becomes stable, and a stable character makes no death
+  saves, so the counts cannot say it; 3 successes kept as "stable" would show three successes the
+  rules have reset, and first aid gives none. dnd5e keeps a `stable` status of its own (§8).
+  Death stays 0 hit points with 3 failures (ENG-20).
+- **A needed yes/no, with a migration that writes `false`**, not an optional field: every file
+  says it, and a version 2 file stored nothing that made a character stable, so `false` is what it
+  was. The pack's step returns the pack as it is (ENG-47's model).
+- **One way to reset the death saves**, `deathSavesReset`: healing from 0, a short rest from 0, a
+  20, the third success, first aid and reviving all write it, so `stable` cannot be left behind by
+  one of them.
+- **Damage ends stable when it gets past the temporary hit points**, the same damage that gives a
+  failure (ENG-20 §8's reading of "only true healing can save you"): temporary hit points that
+  absorb it whole leave the character as it was.
+- **The roll is the screen's; the action takes its numbers**, as ENG-21's short rest takes each
+  die's roll: `natural`, the kept d20 face (with advantage, the higher), and `total`, the face
+  with the bonuses the dice panel added (Bless, an aura: "aided only by spells and features that
+  improve your chances", §8). Both SRDs read the 1 and the 20 on the d20, and "10 or higher" on
+  the roll, so a 1 is two failures even when its total reaches 10, and a 20 gives the hit point
+  whatever its total (dnd5e counts a 1 with a total of 10 as a success; the SRDs are followed).
+- **A 20 is neither a success nor a failure**: the hit point back resets both counts ("when you
+  regain any hit points"), as dnd5e's `applyDeathSaveResult` does.
+- **The rules have no edition difference** (§8), so nothing joins `rulesets/`; the DC and the two
+  faces are named constants (`DEATH_SAVE_DC`, `DEATH_SAVE_FACES`), as ENG-34's `CRITICAL_FACE`.
+- **Reviving is a hit point action** (`hit-points.ts`, beside healing, which it reverses the
+  refusal of): the hit points the revival gives, at most the maximum and at least 1, both counts 0.
+  What else a revival does is not this ticket's (§9).
+- **Stabilizing is one action, whoever does it**: the Medicine check and its roll are the
+  screen's; the action is the result.
+
+#### 5. Stored data
+
+`CharacterDoc` changes: `systemData.state.deathSaves` gains `stable`, a needed yes/no.
+`FIFTH_EDITION_SCHEMA_VERSION` 2 → 3; the module's version is shared by its characters and its
+packs (ENG-39), so each list of migrations gains a step:
+- characters, 2 → 3: `state.deathSaves.stable` is written `false`. A file whose `systemData`,
+  `state` or `deathSaves` is not an object is returned as it is, for the schema to refuse.
+- packs, 2 → 3: the pack as it is (no pack field changes).
+Test: `character.test.ts`, `describe('ENG-58 stable is stored')`: §3 items 1 and 2, the step on a
+frozen file. The golden fixtures are written as version 3 files; the published pack JSON Schema
+asks for 3.
+
+#### 6. What a person will see
+
+Not a screen. The published pack JSON Schema asks for `systemSchemaVersion` 3: a pack written for
+version 2 still opens in the app (its step), and an editor using the published schema asks for 3.
+
+#### 7. Tests
+
+- `packages/system-5e/test/death-saves.test.ts` — `describe('ENG-58 death saves')`: §3 items
+  3–11, 20 for these actions, on goldens A and B.
+- `packages/system-5e/test/hit-points.test.ts` — `describe('ENG-58 stable and hit points')`:
+  items 12–14, 16, 18–20 for `revive`.
+- `packages/system-5e/test/rests.test.ts` — item 15.
+- `packages/system-5e/test/character.test.ts` — items 1, 2.
+- Control values from: the SRD texts of §8 (the DC 10, the 1 and the 20, three of a kind, the
+  reset, damage ending stable, the revival spells' hit points); SPEC §6.7 (A's and B's maximum
+  12); ENG-21's test (golden A's d8 of 5 gives 8); the rest worked out by hand in §3.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-03: SRD 5.1 as 5e-bits/5e-srd-api quotes it at
+`e6edf9a51fad4b59a7e9561fad6c15232caed214` (`packages/5e-database/src/2014/en/5e-SRD-Rules.json`,
+`5e-SRD-Spells.json`); SRD 5.2.1 as foundryvtt/dnd5e quotes it at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (`packs/_source/content24/chapter-1/damage-and-healing.yml`,
+`appendices/rules-glossary.yml`) and 5e-database's 2024 `5e-SRD-Spells.json`; dnd5e's code at the
+same commit (`module/documents/actor/actor.mjs`, `module/data/actor/templates/attributes.mjs`,
+`module/config.mjs`). The same commits as ENG-13 to ENG-21. All CC-BY-4.0.
+
+**The roll.** SRD 5.1 (Death Saving Throws): "Roll a d20. If the roll is 10 or higher, you
+succeed. Otherwise, you fail. A success or failure has no effect by itself. On your third
+success, you become stable (see below). On your third failure, you die. The successes and
+failures don't need to be consecutive; keep track of both until you collect three of a kind. The
+number of both is reset to zero when you regain any hit points or become stable." SRD 5.2.1
+(Three Successes/Failures): "Roll 1d20. If the roll is 10 or higher, you succeed. Otherwise, you
+fail. A success or failure has no effect by itself. On your third success, you become Stable (see
+“Stabilizing a Character” below). On your third failure, you die." and the same two sentences
+after. One rule in both editions.
+
+**Its bonuses.** SRD 5.1: "a special saving throw … You are in the hands of fate now, aided only
+by spells and features that improve your chances of succeeding on a saving throw." SRD 5.2.1:
+"Unlike other saving throws, this one isn't tied to an ability score. You're in the hands of fate
+now." ENG-34 gives its roll mode (`deathSave.mode`, reading `roll.save.all`); the total is the
+dice panel's.
+
+**The 1 and the 20.** SRD 5.1 (Rolling 1 or 20): "When you make a death saving throw and roll a 1
+on the d20, it counts as two failures. If you roll a 20 on the d20, you regain 1 hit point." SRD
+5.2.1 (Rolling a 1 or 20): "When you roll a 1 on the d20 for a Death Saving Throw, you suffer two
+failures. If you roll a 20 on the d20, you regain 1 Hit Point." dnd5e
+(`AttributesFields.applyDeathSaveResult`): a success (`roll.total >= 10`) that is critical gives
+`hp.value` 1 and both counts 0; the third success gives both counts 0 (`outcome = "stable"`); a
+failure adds 2 when it is a fumble, at most 3. dnd5e reads the fumble only on a failure, so a 1
+whose total reaches 10 is a success there; the SRDs say a 1 "counts as two failures", which is
+followed.
+
+**Stable.** SRD 5.1 (Stabilizing a Creature): "You can use your action to administer first aid to
+an unconscious creature and attempt to stabilize it, which requires a successful DC 10 Wisdom
+(Medicine) check. A stable creature doesn't make death saving throws, even though it has 0 hit
+points, but it does remain unconscious. The creature stops being stable, and must start making
+death saving throws again, if it takes any damage. A stable creature that isn't healed regains 1
+hit point after 1d4 hours." SRD 5.2.1 (Stabilizing a Character): "You can take the Help action to
+try to stabilize a creature with 0 Hit Points, which requires a successful DC 10 Wisdom (Medicine)
+check. A Stable creature doesn't make Death Saving Throws even though it has 0 Hit Points, but it
+still has the Unconscious condition. If the creature takes damage, it stops being Stable and
+starts making Death Saving Throws again. A Stable creature that isn't healed regains 1 Hit Point
+after 1d4 hours." SRD 5.2.1 (Rules Glossary, Stable): "A creature is Stable if it has 0 Hit Points
+but isn't required to make Death Saving Throws." Spare the Dying: SRD 5.1 "You touch a living
+creature that has 0 hit points. The creature becomes stable."; SRD 5.2.1 "Choose a creature within
+range that has 0 Hit Points and isn't dead. … The creature becomes Stable." SRD 5.1 (Knocking a
+Creature Out): "The creature falls unconscious and is stable." dnd5e: `rollDeathSave` refuses at
+more than 0 hit points, or at 3 successes or failures; `CONFIG.DND5E.statusEffects.stable` is a
+status of its own.
+
+**Damage at 0.** Both (ENG-20 §8): "If you take any damage while you have 0 hit points, you
+suffer a death saving throw failure." Temporary hit points, SRD 5.1: "They can still absorb
+damage directed at you while you're in that state, but only true healing can save you." So damage
+they absorb whole neither gives a failure (ENG-20) nor ends stable.
+
+**Dead, and back.** SRD 5.1 (Healing): "A creature that has died can't regain hit points until
+magic such as the revivify spell has restored it to life." SRD 5.2.1 (Rules Glossary, Dead): "A
+dead creature has no Hit Points and can't regain them unless it is first revived by magic such as
+the Raise Dead or Revivify spell. … If the creature returns to life, the revival effect determines
+the creature's current Hit Points." The hit points: SRD 5.1 Revivify "That creature returns to life
+with 1 hit point", Raise Dead "the creature returns to life with 1 hit point", Resurrection "the
+target returns to life with all its hit points", True Resurrection "the creature is restored to
+life with all its hit points"; SRD 5.2.1 Revivify "That creature revives with 1 Hit Point", Raise
+Dead "The creature returns to life with 1 Hit Point", Resurrection "The creature returns to life
+with all its Hit Points", True Resurrection "The creature is revived with all its Hit Points".
+Reincarnate states no hit points in either. So `hp` is a number or `'max'`.
+
+No golden value is touched; no rules source disagrees with the SPEC. Nothing stops.
+
+#### 9. Not in this ticket
+
+- The Unconscious condition at 0 hit points, and 2024's knocking out at 1 hit point: ENG-62
+  (re-cut, §4).
+- Rolling the death save, its roll mode and its bonuses: the screen (phase 2) with ENG-34's
+  `deathSave.mode` and `d20Formula`; the action takes the face and the total.
+- A stable character's 1 hit point after 1d4 hours: the screen heals 1 (`applyHealing`); nothing
+  keeps the time.
+- What a revival does beside hit points (§11): the spells' own penalties (Raise Dead's −4), their
+  mechanics in phase 3.
+- Death saves for a monster, which most tables let die at 0: the DM tools' phase.
+
+#### 10. Rake check
+
+- **A stored-shape change needs a migration.** Version 3, a step in each list, each tested on a
+  frozen file; the fixtures are version 3 files.
+- **Each system's rules live in its module; no `if (ruleset === …)`.** The actions are
+  `system-5e`'s; the rules are one in both editions (§8), so no edition is tested.
+- **Measure, never estimate.** Every expected value is §8's rule worked out in §3 before the run.
+- **Missing is not broken.** A character whose maximum does not compute is revived to 1, never
+  thrown at; a refusal has a code.
+- **The engine is pure.** No clock, no random source: the caller gives the stamp and the roll;
+  nothing given is changed (the frozen-input tests).
+- **No user-facing string in the module.** Messages are English for logs; the screen uses `code`.
+- **Licensing.** The rules are quoted from the CC-BY-4.0 SRDs in this ticket only; the tests use
+  the goldens and no rules text.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- Before: `pnpm test`: `Test Files 56 passed (56)`, `Tests 696 passed (696)`, 8.39 s.
+- After: `pnpm test`: `Test Files 57 passed (57)`, `Tests 718 passed (718)`, 8.47 s. 22 are new:
+  `death-saves.test.ts` 11, `hit-points.test.ts` 6, `character.test.ts` 4, `rests.test.ts` 1.
+- Lint: `Checked 182 files`, no error. Typecheck: `Scope: 6 of 7 workspace projects`, all 6
+  `Done`. Build: `apps/web build: Done`. `pnpm e2e`: `12 passed (9.9s)`.
+- The published pack JSON Schema: `"const": 2` → `"const": 3` under `systemSchemaVersion`,
+  rewritten by its test with `--update`; no other line changed.
+- The tests catch mistakes. Each change made alone in the code, then the four test files run (71
+  tests); every one failed at least one test, and each was undone (each file compared equal to its
+  copy after): a 1 with a total of 10 counted a success (dnd5e's reading), 1 failed; a 20 counted
+  a plain success, 1; the third success not stable, 1; a 1 counted one failure, 1; failures past 3,
+  1; a stable character allowed to roll, 1; `isStable` not reading the hit points, 1; damage not
+  ending stable, 2; damage the temporary hit points absorb ending it, 1; a revival past the
+  maximum, 1; a revival of the living, 1; the reset keeping stable, 4; the migration writing
+  `true`, 2.
+
+Differences from §3:
+- §3 item 20's frozen-input check for `revive` is a test of its own in `describe('ENG-58 stable and
+  hit points')`, not a line added to ENG-20's test.
+- Two earlier tests changed with the version, as ENG-47's change did: ENG-33's bounds test writes
+  `stable: false` in its death saves; ENG-47's "version 1" tests now open through both steps, to
+  version 3 (their step 1 → 2 checks are as they were). The fixtures are version 3 files. No
+  expected value of a rule changed.
+- Size S held.
+
+Re-cut (§4): the Unconscious condition at 0 hit points is ENG-62 (S), after ENG-58, with the part
+of the row's note on it.
+
+Found, not fixed:
+- Death ends attunement in both SRDs: SRD 5.1 (`5e-SRD-Rules.json`) "A creature's attunement to an
+  item ends if … if the creature dies"; SRD 5.2.1 (Rules Glossary, Dead) "If the creature had
+  Attunement to one or more magic items, it is no longer attuned to them." No action changes an
+  inventory row's `attuned`. New row ENG-63 (XS).
+- SRD 5.2.1 (Rules Glossary, Dead): "If the creature died with any Exhaustion levels, it returns
+  with 1 fewer level." `revive` lowers none: a condition is a pack's entry, as for ENG-61's long
+  rest. Added to ENG-61's note. In SRD 5.1, no sentence of `5e-SRD-Rules.json`,
+  `5e-SRD-Spells.json` or `5e-SRD-Conditions.json` names exhaustion with life, death or revival
+  (searched with python3: 0 sentences).
+- `levelUp` at 0 hit points raises them and keeps the death saves: golden A at 0 with 1 success
+  and 2 failures, a cleric level at `avg`: hit points 0 → 9, death saves `{ success: 1, failure:
+  2 }` (measured by a test written for it, then deleted). A phase 4 note.
+- The screen's part (the death save tracker, first aid, revival, a stable character's hit point
+  after 1d4 hours): a phase 2 note.
+
+Changelog: the published pack JSON Schema asks for `systemSchemaVersion` 3.

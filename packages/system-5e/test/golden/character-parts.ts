@@ -29,6 +29,6 @@ export const rested: Omit<DataInput['state'], 'hp'> = {
   hitDiceSpent: {},
   slotsSpent: {},
   pactSlotsSpent: 0,
-  deathSaves: { success: 0, failure: 0 },
+  deathSaves: { success: 0, failure: 0, stable: false },
   inspiration: 0,
 };

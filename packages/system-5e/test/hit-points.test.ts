@@ -7,6 +7,8 @@ import {
   type FifthEditionCharacter,
   fifthEditionModule,
   isDead,
+  isStable,
+  revive,
   setTempHp,
 } from '../src/index.ts';
 import {
@@ -20,6 +22,7 @@ import {
   indexOf,
   refused,
   type SpellId,
+  STABLE,
   SUCCESS,
   stamp,
   TEMP,
@@ -258,5 +261,112 @@ describe('ENG-20 hit points', () => {
     expect(setTempHp(ice, ask, frozenStamp).ok).toBe(true);
     expect(ice).toEqual(copy);
     expect(ask).toEqual({ amount: 5 });
+  });
+});
+
+describe('ENG-58 stable and hit points', () => {
+  /** The golden at 0 hit points, stable, with `temp` temporary hit points. */
+  const stable = (golden: CharacterInput, temp = 0) =>
+    withTrackers(golden, { current: 0, temp, stable: true });
+
+  /** The golden dead: at 0 hit points with 1 success and 3 failures. */
+  const dead = (golden: CharacterInput, more: Partial<CharacterInput> = {}) =>
+    withTrackers(golden, { current: 0, success: 1, failure: 3 }, more);
+
+  /** `character` revived with `hp`, from its edition's pack. */
+  const back = (character: FifthEditionCharacter, hp: number | 'max') =>
+    revive(character, indexOf(character), { hp }, stamp);
+
+  it('ends stable with damage at 0: a failure, two from a critical hit, death from the maximum', () => {
+    for (const golden of [goldenA, goldenB]) {
+      const before = stable(golden);
+      const hit = done(before, damage(before, 3));
+      expect(hit.entry.changes).toEqual([
+        { path: FAILURE, before: 0, after: 1 },
+        { path: STABLE, before: true, after: false },
+      ]);
+      expect(hit.outcome).toEqual({ temp: 0, hp: 0, status: 'down', failures: 1 });
+      expect(isStable(hit.character)).toBe(false);
+      expect(done(before, damage(before, 3, true)).entry.changes).toEqual([
+        { path: FAILURE, before: 0, after: 2 },
+        { path: STABLE, before: true, after: false },
+      ]);
+      const killed = done(before, damage(before, 12));
+      expect(killed.entry.changes).toEqual([
+        { path: FAILURE, before: 0, after: 3 },
+        { path: STABLE, before: true, after: false },
+      ]);
+      expect(killed.outcome).toEqual({ temp: 0, hp: 0, status: 'dead', failures: 3 });
+    }
+  });
+
+  it('keeps stable when the temporary hit points take the damage whole', () => {
+    const before = stable(goldenA, 5);
+    const absorbed = done(before, damage(before, 3));
+    expect(absorbed.entry.changes).toEqual([{ path: TEMP, before: 5, after: 2 }]);
+    expect(isStable(absorbed.character)).toBe(true);
+    expect(done(before, damage(before, 7)).entry.changes).toEqual([
+      { path: TEMP, before: 5, after: 0 },
+      { path: FAILURE, before: 0, after: 1 },
+      { path: STABLE, before: true, after: false },
+    ]);
+  });
+
+  it('ends stable with healing from 0; temporary hit points keep it', () => {
+    const before = stable(goldenA);
+    expect(done(before, heal(before, 3)).entry.changes).toEqual([
+      { path: HP, before: 0, after: 3 },
+      { path: STABLE, before: true, after: false },
+    ]);
+    const temp = done(before, setTempHp(before, { amount: 5 }, stamp));
+    expect(temp.entry.changes).toEqual([{ path: TEMP, before: 0, after: 5 }]);
+    expect(isStable(temp.character)).toBe(true);
+  });
+
+  it('brings a dead character back with the hit points its revival gives, at most the maximum', () => {
+    for (const golden of [goldenA, goldenB]) {
+      const before = dead(golden);
+      const one = done(before, back(before, 1));
+      expect(one.entry).toMatchObject({ action: 'revive', subject: 'hp' });
+      expect(one.entry.changes).toEqual([
+        { path: HP, before: 0, after: 1 },
+        { path: SUCCESS, before: 1, after: 0 },
+        { path: FAILURE, before: 3, after: 0 },
+      ]);
+      expect(isDead(one.character)).toBe(false);
+      for (const hp of ['max', 20] as const) {
+        expect(done(before, back(before, hp)).entry.changes[0]).toEqual({
+          path: HP,
+          before: 0,
+          after: 12,
+        });
+      }
+    }
+    const twenty = dead(goldenA, withMax(20));
+    expect(done(twenty, back(twenty, 'max')).entry.changes[0]).toEqual({
+      path: HP,
+      before: 0,
+      after: 20,
+    });
+  });
+
+  it('refuses a revival of hit points that are not a whole number from 1, and of the living', () => {
+    for (const hp of [0, -1, 1.5]) {
+      expect(refused(back(dead(goldenA), hp))).toEqual({ code: 'badAmount', amount: hp });
+    }
+    expect(refused(back(withTrackers(goldenA, { current: 5 }), 1))).toEqual({ code: 'notDead' });
+    expect(refused(back(withTrackers(goldenA, { current: 0, failure: 2 }), 1))).toEqual({
+      code: 'notDead',
+    });
+  });
+
+  it('changes nothing it is given when it revives: frozen inputs', () => {
+    const character = dead(goldenB);
+    const copy = copyOf(character);
+    const ice = frozen(character);
+    const ask = frozen({ hp: 'max' as const });
+    expect(revive(ice, indexOf(character), ask, frozen(stamp)).ok).toBe(true);
+    expect(ice).toEqual(copy);
+    expect(ask).toEqual({ hp: 'max' });
   });
 });

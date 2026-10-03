@@ -10,7 +10,8 @@ import type { LogChange, LogEntry } from '@grimoire/schema';
 import {
   CONCENTRATION_PATH,
   DEATH_FAILURE_PATH,
-  DEATH_SUCCESS_PATH,
+  DEATH_STABLE_PATH,
+  deathSavesReset,
   HP_CURRENT_PATH,
   HP_TEMP_PATH,
   isWhole,
@@ -29,6 +30,8 @@ import { rulesOf } from './rulesets';
 // failures: no other field says it. At 0 hit points concentration ends; above 0 the outcome gives
 // the DC of the save that keeps it, which the screen rolls. Healing never passes the maximum and,
 // from 0, resets the death saves. Temporary hit points never add up. The rules are ENG-20 §8's.
+// ENG-58: damage that gets past the temporary hit points ends stable; healing from 0 ends it too.
+// A dead character comes back only through `revive`, with the hit points its revival gives.
 
 /** The lowest DC of the Constitution save that keeps concentration after damage (both SRDs). */
 export const CONCENTRATION_DC_MIN = 10;
@@ -37,6 +40,7 @@ export const CONCENTRATION_DC_MIN = 10;
 export type HitPointRefusal = { message: string } & (
   | { code: 'badAmount'; amount: number }
   | { code: 'dead' }
+  | { code: 'notDead' }
 );
 
 /** What healing or temporary hit points give: the changed character and its entry, or why not. */
@@ -121,9 +125,9 @@ function hitPoints(action: string, changes: LogChange[]): MadeChanges {
  * The character after taking `ask.amount` damage, the entry, and what the damage did: the
  * temporary hit points first, then the hit points, never below 0. Dropped to 0 with damage left
  * over equal to the maximum or more, it dies; already at 0, damage past the temporary hit points
- * gives a failure, two from a critical hit, and kills when it is the maximum or more. At 0
- * concentration ends. Refused for an amount that is not a whole number from 1, and for a dead
- * character.
+ * gives a failure, two from a critical hit, and kills when it is the maximum or more. Damage
+ * past the temporary hit points ends stable. At 0 concentration ends. Refused for an amount that is
+ * not a whole number from 1, and for a dead character.
  */
 export function applyDamage(
   character: FifthEditionCharacter,
@@ -157,6 +161,7 @@ export function applyDamage(
       changeTo(character, HP_TEMP_PATH, hp.temp - temp),
       changeTo(character, HP_CURRENT_PATH, current),
       changeTo(character, DEATH_FAILURE_PATH, failure),
+      ...(through > 0 ? [changeTo(character, DEATH_STABLE_PATH, false)] : []),
       ...(ends ? [changeTo(character, CONCENTRATION_PATH, undefined)] : []),
     ]),
     'The damage changes nothing.',
@@ -176,9 +181,9 @@ export function applyDamage(
 
 /**
  * The character after regaining `ask.amount` hit points, up to its maximum, and the entry: from 0,
- * the death saves go back to none. Hit points above the maximum stay as they are. Refused for an
- * amount that is not a whole number from 1, for a dead character, and as `unchanged` at the
- * maximum.
+ * the death saves go back to none, and stable ends. Hit points above the maximum stay as they
+ * are. Refused for an amount that is not a whole number from 1, for a dead character, and as
+ * `unchanged` at the maximum.
  */
 export function applyHealing(
   character: FifthEditionCharacter,
@@ -198,11 +203,42 @@ export function applyHealing(
     stamp,
     hitPoints('applyHealing', [
       changeTo(character, HP_CURRENT_PATH, current),
-      ...(revived
-        ? [changeTo(character, DEATH_SUCCESS_PATH, 0), changeTo(character, DEATH_FAILURE_PATH, 0)]
-        : []),
+      ...(revived ? deathSavesReset(character) : []),
     ]),
     'The character is at its hit point maximum or above it.',
+  );
+}
+
+/**
+ * ENG-58: the dead character brought back to life with `ask.hp` hit points, a whole number from 1
+ * or `max`, at most its maximum and at least 1, both death save counts at 0; and the entry. The
+ * revival spells give 1 or all (ENG-58 §8). Refused for an amount that is not a whole number from
+ * 1, and for a character that is not dead.
+ */
+export function revive(
+  character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
+  ask: { readonly hp: number | 'max' },
+  stamp: LogStamp,
+): HitPointResult {
+  const { hp } = ask;
+  if (hp !== 'max' && !isWhole(hp, 1)) {
+    const message = `${hp} is not a whole number of hit points from 1.`;
+    return { ok: false, code: 'badAmount', amount: hp, message };
+  }
+  if (!isDead(character)) {
+    return { ok: false, code: 'notDead', message: 'The character is not dead.' };
+  }
+  const max = maxOf(character, index);
+  const current = Math.max(1, hp === 'max' ? max : Math.min(max, hp));
+  return settled<HitPointRefusal>(
+    character,
+    stamp,
+    hitPoints('revive', [
+      changeTo(character, HP_CURRENT_PATH, current),
+      ...deathSavesReset(character),
+    ]),
+    'The revival changes nothing.',
   );
 }
 

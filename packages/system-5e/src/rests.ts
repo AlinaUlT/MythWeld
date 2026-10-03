@@ -11,8 +11,7 @@ import {
 import type { LogChange, LogEntry } from '@grimoire/schema';
 import {
   CONCENTRATION_PATH,
-  DEATH_FAILURE_PATH,
-  DEATH_SUCCESS_PATH,
+  deathSavesReset,
   HP_CURRENT_PATH,
   HP_TEMP_PATH,
   hitDiceSpentPath,
@@ -130,10 +129,10 @@ function rested(
 /**
  * The character after a short rest that spends `ask.hitDice`, and the entry. Each die gives its
  * roll plus the Constitution modifier, at least the edition's `hitDieMinimum`; the hit points go
- * up to the maximum, never down, and from 0 they reset the death saves. The pact slots and the uses
- * that come back on `short` come back. Refused for a die no class has, a roll it cannot show, a die
- * more than the character has left, a dead character, one below the edition's `shortRestMinHp`,
- * and as `unchanged` when nothing changes.
+ * up to the maximum, never down, and from 0 they reset the death saves and end stable. The pact
+ * slots and the uses that come back on `short` come back. Refused for a die no class has, a roll
+ * it cannot show, a die more than the character has left, a dead character, one below the
+ * edition's `shortRestMinHp`, and as `unchanged` when nothing changes.
  */
 export function shortRest(
   character: FifthEditionCharacter,
@@ -185,9 +184,7 @@ export function shortRest(
     'shortRest',
     [
       changeTo(character, HP_CURRENT_PATH, current),
-      ...(revived
-        ? [changeTo(character, DEATH_SUCCESS_PATH, 0), changeTo(character, DEATH_FAILURE_PATH, 0)]
-        : []),
+      ...(revived ? deathSavesReset(character) : []),
       ...[...spentNow].map(([die, count]) =>
         changeTo(character, hitDiceSpentPath(die), (spentBefore[`d${die}`] ?? 0) + count),
       ),

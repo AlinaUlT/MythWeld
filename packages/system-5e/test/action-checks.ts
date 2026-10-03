@@ -15,7 +15,7 @@ import { srd2014, srd2024 } from './golden/index.ts';
 // ENG-20: what the tests of fifth edition's tracker actions share: the packs, a character with
 // its trackers set, the checks every entry passes, and the made-up spells and pact class. The
 // made-up entities (`character:`) carry no text of a book. ENG-21: the hit dice and the core's
-// resources a test sets.
+// resources a test sets. ENG-58: whether the character is stable.
 
 export type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 type EntityInput = FifthEditionCharacter['localEntities'][number];
@@ -45,6 +45,7 @@ interface Trackers {
   temp?: number;
   success?: number;
   failure?: number;
+  stable?: boolean;
   concentration?: SpellId;
   slotsSpent?: Record<string, number>;
   pactSlotsSpent?: number;
@@ -60,7 +61,8 @@ export function withTrackers(
   more: Partial<CharacterInput> = {},
 ): FifthEditionCharacter {
   const state = golden.systemData.state;
-  const { current, temp, success, failure, concentration, slotsSpent, pactSlotsSpent } = trackers;
+  const { current, temp, success, failure, stable, concentration, slotsSpent } = trackers;
+  const { pactSlotsSpent } = trackers;
   const { hitDiceSpent, resources } = trackers;
   const core = more.state ?? golden.state;
   return open({
@@ -76,6 +78,7 @@ export function withTrackers(
         deathSaves: {
           success: success ?? state.deathSaves.success,
           failure: failure ?? state.deathSaves.failure,
+          stable: stable ?? state.deathSaves.stable,
         },
         ...(concentration !== undefined && { concentration }),
         ...(slotsSpent !== undefined && { slotsSpent }),
@@ -141,6 +144,7 @@ export const HP = [...STATE, 'hp', 'current'];
 export const TEMP = [...STATE, 'hp', 'temp'];
 export const SUCCESS = [...STATE, 'deathSaves', 'success'];
 export const FAILURE = [...STATE, 'deathSaves', 'failure'];
+export const STABLE = [...STATE, 'deathSaves', 'stable'];
 export const CONCENTRATION = [...STATE, 'concentration'];
 export const PACT = [...STATE, 'pactSlotsSpent'];
 export const slot = (level: number) => [...STATE, 'slotsSpent', `${level}`];
