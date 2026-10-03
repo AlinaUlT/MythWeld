@@ -5,6 +5,7 @@
 // ENG-41: its code is pure TypeScript, as the engine's is. Lint refuses here every global the
 // engine refuses, `Math.random`, and any import but its own files, the core and `zod`.
 
+export * from './ability-bonus';
 export * from './attacks';
 export * from './character';
 export * from './checks';

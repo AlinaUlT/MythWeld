@@ -12,6 +12,11 @@ export interface HadClass {
   subclass?: SubclassDef;
 }
 
+/** The character's level: its classes' levels added up. */
+export function characterLevel({ systemData }: Pick<FifthEditionCharacter, 'systemData'>): number {
+  return systemData.classes.reduce((sum, entry) => sum + entry.level, 0);
+}
+
 /** Each class the character has that a pack holds, with its level, in the order taken. */
 export function classesOf(
   character: FifthEditionCharacter,

@@ -8,6 +8,7 @@ import {
   type KeyPath,
   LEVEL_PATH,
   type PendingKey,
+  type RuleWarning,
   type StatDefaults,
   statsOf,
 } from './derived';
@@ -54,9 +55,10 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    * The grants an entity gives this character, when a rule of the system leaves some of its own
    * out or adds others (ENG-13: a fifth-edition class taken after the first). Gathering reads
    * every entity's grants through it, once each; without it, an entity gives its own `grants`.
-   * A grant's part is `<entityId>#<grantId>` either way.
+   * A grant's part is `<entityId>#<grantId>` either way. `find` looks an id up as gathering will
+   * (ENG-35: a fifth-edition background's increases depend on what the species gives).
    */
-  grantsOf?(character: C, entity: E): readonly GrantOf<E>[];
+  grantsOf?(character: C, entity: E, find: EntityFinder<E>): readonly GrantOf<E>[];
   /**
    * ENG-49: the entity ids a grant of the module's own kind names (a fifth-edition `spell`
    * grant's `fixed` spells, an `item` grant's `fixed` items). Gathering asks it of each grant it
@@ -81,10 +83,33 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    * character has not made (ENG-48: a fifth-edition species' size), listed in `pendingKeys`.
    */
   keys?(input: DeriveInput<C, E>): Readonly<Record<string, KeyPath>>;
+  /**
+   * ENG-35: what a rule of the system met about the character as a whole, not about one path (a
+   * fifth-edition character taking ability increases from both its species and its background).
+   * Each is warned as `characterRule`.
+   */
+  ruleWarnings?(input: DeriveInput<C, E>): readonly RuleWarning[];
 }
 
-/** Something computing met: gathering, the base phase, the derived values, then the phases. */
-export type ComputeWarning = GatherWarning | StatWarning | DerivedWarning | PhaseWarning;
+/** A warning a module's `ruleWarnings` gave: `rule` is the module's name for it (ENG-35). */
+export interface CharacterRuleWarning {
+  readonly code: 'characterRule';
+  readonly rule: string;
+  /** What the screen shows with it. */
+  readonly data?: Readonly<Record<string, string | number>>;
+  readonly message: string;
+}
+
+/**
+ * Something computing met: gathering, the base phase, the derived values, the phases, then the
+ * module's rules about the whole character.
+ */
+export type ComputeWarning =
+  | GatherWarning
+  | StatWarning
+  | DerivedWarning
+  | PhaseWarning
+  | CharacterRuleWarning;
 
 /** What `compute()` gives: what the character has (SPEC §6.1 steps 1–2), then its values. */
 export interface Computed<E extends GatherableEntity> extends Omit<Gathered<E>, 'warnings'> {
@@ -121,7 +146,7 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
     index,
     level,
     system.entities(character, find),
-    grantsOf === undefined ? ownGrants : (entity) => grantsOf(character, entity),
+    grantsOf === undefined ? ownGrants : (entity) => grantsOf(character, entity, find),
     system.namedIds,
   );
   const defaults = system.statDefaults;
@@ -133,6 +158,14 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
   const stats = statsOf(gathered, defaults);
   const steps = system.derive({ character, gathered, stats, find });
   const keys = system.keys?.({ character, gathered, stats, find }) ?? {};
+  const rules: CharacterRuleWarning[] = (
+    system.ruleWarnings?.({ character, gathered, stats, find }) ?? []
+  ).map(({ rule, data, message }) => ({
+    code: 'characterRule',
+    rule,
+    ...(data && { data }),
+    message,
+  }));
   const phases = phasesOf(character, gathered, basePhase);
   const { finish, finishKey } = phases;
   const derived = computeDerived({
@@ -152,6 +185,12 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
     breakdown: derived.breakdown,
     keys: derived.keys,
     pendingKeys: derived.pendingKeys,
-    warnings: [...gathered.warnings, ...base.warnings, ...derived.warnings, ...phases.end()],
+    warnings: [
+      ...gathered.warnings,
+      ...base.warnings,
+      ...derived.warnings,
+      ...phases.end(),
+      ...rules,
+    ],
   };
 }

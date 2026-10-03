@@ -7,10 +7,11 @@ import {
   type StatDefaults,
   type SystemModule,
 } from '@grimoire/engine';
+import { abilityBonusWarnings, bonusSideOf, leftOutSide } from './ability-bonus';
 import { attackSteps } from './attacks';
 import type { FifthEditionCharacter } from './character';
 import { checkSteps, skillKeys } from './checks';
-import { classesOf } from './classes';
+import { characterLevel, classesOf } from './classes';
 import { combatSteps } from './combat';
 import type { FifthEditionEntity } from './entity-types';
 import { equipmentOf } from './equipment';
@@ -25,6 +26,7 @@ import { spellcastingSteps } from './spellcasting';
 // ENG-16 the attack steps. ENG-50 adds `cantrip.upgrades`.
 // ENG-14: each equipped item is named, with its own paths. ENG-44: as `equipmentOf` counts it.
 // ENG-48 adds the size to `keys`. ENG-49: a `spell` or `item` grant's own ids are looked up.
+// ENG-35: the side of the ability score increases not taken gives none; `both` warns.
 
 /** A stat's defaults (SPEC §5.3): the modifier, a save, a highest score of 20 (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: StatDefaults = {
@@ -36,6 +38,26 @@ export const FIFTH_EDITION_STAT_DEFAULTS: StatDefaults = {
 /** A class's grant only the first class gives: a starting proficiency or item (ENG-13 §8). */
 function isStarting(grant: GrantOf<FifthEditionEntity>): boolean {
   return (grant.kind === 'proficiency' || grant.kind === 'item') && (grant.atLevel ?? 1) <= 1;
+}
+
+/**
+ * The grants an entity gives the character by two rules (ENG-13 §4): a class taken after the first
+ * gives its multiclass grants in place of its starting ones; a grant a feat is taken in place of
+ * gives nothing.
+ */
+function ruledGrants(
+  { systemData }: FifthEditionCharacter,
+  entity: FifthEditionEntity,
+): readonly GrantOf<FifthEditionEntity>[] {
+  let grants = ownGrants(entity);
+  if (entity.type === 'class' && systemData.classes.findIndex(({ id }) => id === entity.id) > 0) {
+    grants = [
+      ...grants.filter((grant) => !isStarting(grant)),
+      ...(entity.multiclass?.grants ?? []),
+    ];
+  }
+  const replaced = new Set(systemData.feats.flatMap(({ replaces }) => replaces ?? []));
+  return grants.filter((grant) => !replaced.has(`${entity.id}#${grant.id}`));
 }
 
 /** Each class's level, `classes.<key>.level`, and its table's numbers at that level. */
@@ -68,7 +90,7 @@ function classSteps({
 
 /** Fifth edition's module: both editions' rules, as the core runs them. */
 export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditionEntity> = {
-  level: ({ systemData }) => systemData.classes.reduce((sum, entry) => sum + entry.level, 0),
+  level: characterLevel,
 
   entities: (character, find) => {
     const data = character.systemData;
@@ -92,18 +114,15 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     classesOf(character, gathered).find(({ entity }) => path === `classes.${entity.key}.level`)
       ?.level,
 
-  // A class taken after the first gives its multiclass grants in place of its starting ones; a
-  // grant a feat is taken in place of gives nothing (ENG-13 §4).
-  grantsOf: ({ systemData }, entity) => {
-    let grants = ownGrants(entity);
-    if (entity.type === 'class' && systemData.classes.findIndex(({ id }) => id === entity.id) > 0) {
-      grants = [
-        ...grants.filter((grant) => !isStarting(grant)),
-        ...(entity.multiclass?.grants ?? []),
-      ];
-    }
-    const replaced = new Set(systemData.feats.flatMap(({ replaces }) => replaces ?? []));
-    return grants.filter((grant) => !replaced.has(`${entity.id}#${grant.id}`));
+  // The two rules of `ruledGrants`; then a species, lineage or background on the side of the
+  // ability score increases not taken gives none of them (ENG-35).
+  grantsOf: (character, entity, find) => {
+    const grants = ruledGrants(character, entity);
+    const side = bonusSideOf(entity);
+    if (side === undefined || !grants.some((grant) => grant.kind === 'abilityScore')) return grants;
+    const ruled = (each: FifthEditionEntity) => ruledGrants(character, each);
+    if (leftOutSide(character, find, ruled) !== side) return grants;
+    return grants.filter((grant) => grant.kind !== 'abilityScore');
   },
 
   // A spell grant's spells and an item grant's items are known or carried, not had: gathering
@@ -125,4 +144,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
 
   // Each skill's stat, which an effect may set; the character's size.
   keys: (input) => ({ ...skillKeys(input), ...sizeKeys(input) }),
+
+  // Ability score increases taken from both the species and the background.
+  ruleWarnings: abilityBonusWarnings,
 };

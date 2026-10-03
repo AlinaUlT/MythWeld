@@ -10438,3 +10438,254 @@ Found, not fixed:
   `BACKLOG.md`.
 
 Nothing for the changelog: no screen and no published file changes.
+
+---
+
+### ENG-35 The ability-bonus source
+
+**Hat:** The ability-bonus source is a choice, the rules base by default
+**Depends on:** ENG-33 (`systemData.abilities.bonusSource`), ENG-19
+(`rulesOf(character).abilityBonusSource`), ENG-13 (the module's `grantsOf`), ENG-12 (an
+`abilityScore` grant raises a score), ENG-09, ENG-10 (the dwarf, the hill dwarf, the Soldier)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.3 "Повышение характеристик"; ADR 014 item 1 (from ADR 013 item 10); ADR 005 item 3.4
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/ability-bonus.ts` — new: which side's ability score
+increases a character takes, and the warning for `both`.
+- `packages/system-5e/src/module.ts` — changes: its two grant rules move into `ruledGrants`;
+  `grantsOf` then leaves out the side not taken; `ruleWarnings` gives the warning.
+- `packages/system-5e/src/classes.ts` — changes: `characterLevel`, the character's level, which the
+  module's `level` and the new file both read.
+- `packages/system-5e/src/index.ts` — exports the new file.
+- `packages/engine/src/compute.ts` — changes: `grantsOf` is given `find`; a new optional
+  `ruleWarnings`, warnings about the character as a whole, each a `characterRule` warning.
+- `packages/engine/test/compute.test.ts` — the two core changes, on the made-up system.
+- `packages/system-5e/test/ability-bonus.test.ts` — new.
+
+#### 2. What is missing now
+
+- `grep -rn "bonusSource" packages/*/src` finds the schema field (`character.ts`) and the type of
+  `abilityBonusSource` (`edition-rules.ts`) only. No code reads the stored choice.
+- Measured on golden A (2014, hill dwarf) with mixing on, both SRD packs, the 2024 Soldier as its
+  background and the Soldier's increases put on `str`, `dex`: each of the three stored values
+  gives the same scores, `str 15, dex 11, con 16, wis 16`. Every one of the three `abilityScore`
+  grants applies (`dwarf#ability-scores`, `hill-dwarf#ability-scores`,
+  `soldier#ability-scores`). The only warnings are `otherRuleset`; `both` gives none.
+- A module can warn only about one computed path (`stepRule`, a key path's `ruleWarnings`). No
+  path is the character's bonus source.
+- `pnpm test`: `Test Files 48 passed (48)`, `Tests 560 passed (560)`.
+
+#### 3. What it should look like when done
+
+1. **The two sides.** The species side is the `abilityScore` grants of the character's species
+   and of the lineages that species' `entity` grants give (fixed or chosen). The background side is
+   the `abilityScore` grants of its background. A side *gives* when one of its grants applies at
+   the character's level and no feat is taken in its place.
+2. **When both sides give**, `systemData.abilities.bonusSource` decides. The mixed character of
+   §2 (bases `str 13, dex 10, con 14, wis 15`; dwarf `con +2`, hill dwarf `wis +1`, Soldier
+   `str +2, dex +1`):
+   | `bonusSource` | `str` | `dex` | `con` | `wis` | Warning |
+   |---|---|---|---|---|---|
+   | `species` | 13 | 10 | 16 | 16 | none |
+   | `background` | 15 | 11 | 14 | 15 | none |
+   | `both` | 15 | 11 | 16 | 16 | one `characterRule`, rule `abilityBonusesFromBoth` |
+   A side left out is not gathered: its grants are not in `grants`, its distribution is not in
+   `pendingChoices`, and its stored choice is not read. The background's other grants still give
+   (the Soldier's `athletics`, `intimidation`).
+3. **The warning** is `{ code: 'characterRule', rule: 'abilityBonusesFromBoth', data: { species,
+   background }, message }`: the id of the first entity of each side whose increase applied (the
+   dwarf, the Soldier). It never blocks: the scores are computed as row 2 says.
+4. **When only one side gives**, its increases apply whatever is stored, and nothing warns:
+   golden A stored as `background` keeps `con 16, wis 16` (the 2014 Acolyte gives none); golden B
+   stored as `species` keeps `str 17, con 15` (the 2024 human gives none). Golden A stored as
+   `both` gives no warning.
+5. **The rules base by default.** Every golden stores its rules base's source:
+   `rulesOf(character).abilityBonusSource` (ENG-19) is `species` for goldens A and C 2014 and
+   `background` for goldens B, B4, C 2024, D and E, and each stores that value. Golden B (2024)
+   with the 2014 dwarf and hill dwarf as its species takes the Soldier's: `str 17, con 15, wis 12`;
+   stored as `species`, the dwarf's: `str 15, con 16, wis 13`.
+6. **The core.** A module's `grantsOf` is given `find`, the same finder `entities` and `derive`
+   get. A module's `ruleWarnings(input)` gives warnings about the whole character; each is a
+   `characterRule` warning in `Computed.warnings`, with `data` only when the module gives it. A
+   module without `ruleWarnings` adds none.
+7. Goldens A–E compute exactly as before: `golden-values.test.ts` passes unchanged.
+8. The quality gate is green.
+
+#### 4. How to do it
+
+1. **Core.** `SystemModule.grantsOf(character, entity, find)`; `compute()` passes its `find`.
+   `SystemModule.ruleWarnings?(input: DeriveInput<C, E>): readonly RuleWarning[]`, called after
+   gathering; each result becomes `{ code: 'characterRule', rule, data?, message }`
+   (`CharacterRuleWarning`, part of `ComputeWarning`), after the other warnings.
+2. **`characterLevel(character)`** in `classes.ts`: the sum of the class levels, as the module's `level`
+   computes it now. The module's `level` calls it.
+3. **`ability-bonus.ts`.**
+   - `type BonusSide = EditionRules['abilityBonusSource']` (`species` | `background`).
+   - `bonusSideOf(entity)`: `species` for a `species` or `lineage`, `background` for a
+     `background`, else nothing. By type: a lineage is reached only through its species.
+   - `bonusGivers(character, find, grantsBy)`: for each side, its entities that give increases
+     (row 1 of §3), found before gathering. The lineages are the species' `entity` grants' fixed
+     ids and the ids stored in `character.choices` for them, found as type `lineage`. `grantsBy`
+     is the module's own grant rules, so a grant a feat replaces gives nothing here either.
+   - `leftOutSide(character, find, grantsBy)`: with `both` stored, or when a side gives nothing,
+     none; else the side not stored.
+   - `abilityBonusWarnings({ character, gathered })`: with `both` stored and an `abilityScore`
+     grant of each side gathered, the one warning of §3 row 3. It reads what was gathered, so it
+     names what applied.
+4. **The module.** Its two grant rules (a later class's grants, a grant a feat replaces) move
+   from `grantsOf` into `ruledGrants`, unchanged. `grantsOf`: `ruledGrants`, then an entity on the
+   left-out side gives its grants without its `abilityScore` ones. `ruleWarnings:
+   abilityBonusWarnings`.
+5. Why a conflict is "both sides give", not "both editions": ADR 013 item 10 shows the choice
+   when both raise scores; with one side giving there is nothing to pick, and taking the stored
+   side would leave a 2024-based character with a 2014 race and a 2014 background with no
+   increases at all. A homebrew entity of either edition, or of `any`, counts by its side, so the
+   rule ADR 005 item 3.4 states, "a bonus of one kind counts once", holds for it too.
+6. Why the field stays required: ENG-33 made it so, and a new character is written with
+   `rulesOf(character).abilityBonusSource` (ENG-19). An absent value would need a version bump and
+   a migration, and would add a third state for the same choice.
+
+#### 5. Stored data
+
+Nothing stored changes. `bonusSource` keeps ENG-33's shape and values.
+
+#### 6. What a person will see
+
+Not a screen. The window with a checkbox for each source is phase 4's (ADR 013 item 10).
+
+#### 7. Tests
+
+- `packages/system-5e/test/ability-bonus.test.ts` — §3 rows 1–5: the three stored values on the
+  mixed character, its pending choices and kept grants, the warning, one side giving (and no
+  background at all), the goldens' defaults, golden B with a 2014 race. Two made-up species of
+  the character's own: one whose increase comes at level 4 (golden B at level 1, B4 at level 4),
+  and one with no increase whose lineage, fixed or chosen, gives `str +1`.
+- `packages/engine/test/compute.test.ts` — §3 row 6: `grantsOf` finds as `entities` does;
+  `ruleWarnings` become `characterRule` warnings, with and without `data`, after the others.
+- Control numbers from: the fixtures' increases (`srd-2014.ts` dwarf `con 2`, hill dwarf `wis 1`;
+  `srd-2024.ts` Soldier `[2, 1]` or `[1, 1, 1]` over `str`, `dex`, `con`), added by hand to the
+  goldens' stored bases.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-02: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`,
+`packages/5e-database/src/{2014,2024}/en/`, read with `jq`; foundryvtt/dnd5e at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`, `packs/_source/rules` (SRD 5.1) and
+`packs/_source/content24` (SRD 5.2.1), which quote the SRDs (CC-BY-4.0). The same commits as
+ENG-19.
+
+**Ability score increases (the known case).** SRD 5.1 (`rules/chapter-2-races.yml`): "Every race
+increases one or more of a character's ability scores"; the dwarf: "Your Constitution score
+increases by 2". 5e-database 2014: every race has `ability_bonuses` (the half-elf also
+`ability_bonus_options`, choose 2), every subrace has `ability_bonuses`, and the one background
+(`acolyte`) has no ability field. SRD 5.2.1 (`chapter-2/character-creation.yml`, Adjust Ability
+Scores): "adjust them according to your background. Your background lists three abilities;
+increase one of those scores by 2 and a different one by 1, or increase all three by 1."
+5e-database 2024: each background has `ability_scores`; no species or subspecies has an ability
+field. So in each SRD only one side gives; a conflict needs a mix (or homebrew).
+
+**Other bonuses of one kind given in two places** (ADR 005 item 3.4), each kind compared between
+the two SRDs' fields and texts:
+
+| Kind | SRD 5.1 gives it from | SRD 5.2.1 gives it from | Moved between places? |
+|---|---|---|---|
+| Languages | race (`languages`: Common and one more; the human and half-elf one of choice), the high elf's Extra Language, background (Acolyte: two of choice) | character creation itself: "Common plus two languages you roll or choose from the Standard Languages table" (Choose Languages); no species or background has a language field | **Yes** |
+| Skill proficiencies | background (two), race traits (elf, half-elf, half-orc), class | background (two), species traits (elf Keen Senses, human Skillful), class | No |
+| Tool proficiencies | race traits (the dwarf's Tool Proficiency, the rock gnome's Tinker), class; "most backgrounds give … one or more tools" | background (one each), class | No: the background in both; the 2014 race's tools are an extra the 2024 species dropped |
+| Weapon proficiencies | race traits (dwarf, high elf), class | class | No: dropped, not moved |
+| Feats | none at level 1 | background (an origin feat), the human's Versatile | No: no 2014 place to double |
+| Starting equipment and coins | background (the Acolyte's gear, 15 gp), class | background (gear and 8 GP, or 50 GP), class | No |
+| Spells from origins | race and subrace traits (the high elf's cantrip, the tiefling's legacy) | species and lineage traits; Magic Initiate, a feat, from the Acolyte and the Sage | No: species in both |
+| Size, speed, darkvision | race | species | No |
+
+The one new case is languages. SRD 5.1 (`rules/chapter-4-personality-and-background.yml`): "Your
+race indicates the languages your character can speak by default, and your background might give
+you access to one or more additional languages of your choice." SRD 5.2.1: "Your character knows
+at least three languages: Common plus two languages … Your class and other features might also
+give you languages." A 2014 race in a 2024-based character would count its languages and 2024's
+three; a 2024 species in a 2014-based character gets none from its species. A new row (§11).
+
+**A rule met on the way.** SRD 5.1, the same chapter: "If a character would gain the same
+proficiency from two different sources, he or she can choose a different proficiency of the same
+kind (skill or tool) instead." No text of `content24` has "different proficiency" or "already
+have proficiency" (grep). It is a choice at creation, not a bonus moved between places (§11).
+
+No golden value looks wrong; nothing stops.
+
+#### 9. Not in this ticket
+
+- The window with a checkbox for each source, and the DM's setting in a campaign: phase 4 and the
+  table link (ADR 013 item 10, ADR 014 item 1).
+- Languages from two places: ENG-56, the new row (§8).
+- Golden F's stated source: ENG-37.
+- A breakdown step for an increase left out: the score's breakdown lists what made the number; an
+  increase left out made none of it.
+
+#### 10. Rake check
+
+- **Everything is data.** No stat is named: the sides are entity types of the fifth-edition
+  module, and every `abilityScore` grant of a side is left out, whatever stats it raises.
+- **Each system's rules live in its own module.** The core gets two game-free hooks; it never
+  reads `bonusSource`. No `ruleset ===` test: the default is `rulesOf`'s field.
+- **Missing is not broken; prerequisites warn, never block.** `both` warns and computes; a species
+  or lineage id no pack has gives nothing to either side, and gathering warns `missing` as before.
+- **`compute()` is pure.** The new functions read the character and `find` only.
+- **The golden tests are the truth.** No golden changes; each stores its rules base's source.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-03, on `main` at `fe4d2b5` (ENG-51 reached `main` while this ticket was built;
+the work was rebased onto it):
+- `pnpm lint`: `Checked 166 files`, no errors.
+- `pnpm typecheck`: 6 projects, all `Done`.
+- `pnpm test`: `Test Files 50 passed (50)`, `Tests 577 passed (577)`, 7.13 s (`main` alone,
+  measured: 49 files, 568 tests). This ticket's 9: 6 in `ability-bonus.test.ts` (690 ms alone),
+  3 in `compute.test.ts`.
+- `pnpm build`: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- `golden-values.test.ts` passes unchanged: no golden value or fixture changed.
+- The mixed character of §2, now: `species` → `str 13, dex 10, con 16, wis 16`, the dwarf's and
+  the hill dwarf's grants only; `background` → `str 15, dex 11, con 14, wis 15`, the Soldier's
+  only; `both` → `str 15, dex 11, con 16, wis 16`, all three, and one `characterRule` warning
+  `abilityBonusesFromBoth` with `{ species: 'srd-2014:species/dwarf', background:
+  'srd-2024:background/soldier' }`. In §2 all three gave `str 15, dex 11, con 16, wis 16`.
+- Golden B with the 2014 dwarf: `background` (its rules base's) → `str 17, con 15, wis 12`;
+  `species` → `str 15, con 16, wis 13`.
+- The tests bite. Each guard broken on its own, then restored, measured before the rebase (the
+  `system-5e` tests: 222; the `engine` tests: 219; both: 441): no side ever left out, 5 fail;
+  an increase at a later level counted at once, 1; a side giving none still a conflict, 2; no
+  warning for `both`, 2; a fixed lineage not looked at, 1; a chosen one, 1; a lineage not on the
+  species side, 3; a left-out entity giving no grant at all, 1; the core dropping a warning's
+  `data`, 1; the core giving `grantsOf` no finder, 6; the core dropping the module's warnings, 3.
+
+Differences from §3 and from the row:
+- A conflict is "both sides give", not "the stored side decides always" (§4 item 5). A stored
+  source matters only when both sides give: golden A stored as `background` keeps its dwarf's
+  increases, since the 2014 Acolyte gives none.
+- The core changed, which the row did not name: `grantsOf` gets `find`, and a module has
+  `ruleWarnings`, warned `characterRule`. A module had no way to look at the other side before
+  gathering, nor to warn about the character as a whole (only about one path, `stepRule`).
+- "The rules base by default" needed no new code: the field stays required (ENG-33), a new
+  character is written with `rulesOf(character).abilityBonusSource` (ENG-19; the phase 2 note
+  found by ENG-19 says so), and the test shows every golden stores it.
+- The module's two grant rules moved from `grantsOf` into `ruledGrants`, unchanged, so the look
+  ahead reads the same rules. The module's level is `characterLevel` in `classes.ts` (the name
+  `levelOf` was taken in `checks.ts`).
+- Two made-up cases were added to §7 once the bite check showed the SRD fixtures never test them:
+  an increase at a later level, and a lineage giving the only increase of its species' side.
+
+Found, not fixed:
+- Languages are a bonus of one kind given in two places (§8): SRD 5.1's race, SRD 5.2.1's
+  character creation. New row ENG-56.
+- SRD 5.1's "If a character would gain the same proficiency from two different sources, he or
+  she can choose a different proficiency of the same kind" has no SRD 5.2.1 text (§8). A choice
+  at creation: a Phase 4 note in `BACKLOG.md`.
+- The Phase 4 note found by ENG-13 said the module has no warning of its own but `stepFormula`;
+  it now has `ruleWarnings`. The note says so.
+
+Nothing for the changelog: no screen changes.

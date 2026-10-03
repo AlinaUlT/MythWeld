@@ -109,7 +109,8 @@ split off an old row got a new id.
 | ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | S | 🔲 |
 | ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | ✅ 2026-10-02 |
 | ENG-46 | Armor worn without training has its edition's penalties | S | 🔲 |
-| ENG-35 | The ability-bonus source is a choice, the rules base by default | S | 🔲 |
+| ENG-35 | The ability-bonus source is a choice, the rules base by default | S | ✅ 2026-10-03 |
+| ENG-56 | A mixed character's starting languages come from one place | S | 🔲 |
 | ENG-54 | The house rule's highest score caps every stat | S | 🔲 |
 | ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | 🔲 |
 | ENG-21 | A rest changes the character by its edition's rules | S | 🔲 |
@@ -176,16 +177,21 @@ split off an old row got a new id.
   armor and the shield worn are `equipmentOf`'s (`equipment.ts`); a shield's +2 is its own
   effect, so a shield without training gives none only if that function leaves it out or names
   it dormant.
-- **ENG-35** — ADR 014 item 1 (from ADR 013 item 10): a 2014 race with a 2024 background gives
-  ability increases from the race, the background or both; `both` warns, never blocks; the
-  default is the rules base's source. Its §8 reads both SRDs for other bonuses of one kind given
-  in two places (ADR 005 item 3.4, still in force for those); each one found becomes a new row.
-  The choice is ENG-33's `systemData.abilities.bonusSource`; its `species` is ADR 014's `race`.
-  The rules base's source is `rulesOf(character).abilityBonusSource` (ENG-19 §8).
+- **ENG-56** — found by ENG-35 (ENG-35 §8): ADR 005 item 3.4's "a bonus of one kind counts once"
+  for languages. SRD 5.1 gives them from the race ("Your race indicates the languages your
+  character can speak by default"; the background may add more); SRD 5.2.1 from character
+  creation itself ("Common plus two languages"), with no species or background language field.
+  A 2014 race in a 2024-based character counts both; a 2024 species in a 2014-based character
+  gets none from its species. No entity gives 2024's three yet: where they live is the Phase 3
+  note found by ENG-10 (dnd5e puts them on each background). ENG-35 is the model: the place
+  picked, the rules base's by default, a choice only when both places give
+  (`ability-bonus.ts`).
 - **ENG-54** — found by ENG-13, made a row by ENG-19 (ENG-19 §4): `statDefaults` is one value
   for every character (`SystemModule.statDefaults`), so the house rule `abilityMax` (ENG-33) is
   read by no code. Its default is 20 in both editions (`DEFAULT_HOUSE_RULES`, ENG-19 §8).
 - **ENG-37** — ADR 005 item 3.6; the fixture states its ability bonus source (ADR 014 item 1).
+  Found by ENG-35: a source of `both`, with increases from both sides, warns `characterRule`
+  `abilityBonusesFromBoth`, so a golden storing it expects that warning.
   The ticket stops to show the character and its hand-computed values to the owner (golden
   values are hers); the test is written only after her yes. No golden F value is written before
   that.
@@ -369,9 +375,14 @@ split off an old row got a new id.
   item 12), not a house rule: `houseRulesSchema` has no field for it. A method is a key in
   `systemData.abilities.method`, with its rolls as ENG-26 roll records.
 - **Phase 4** — found by ENG-13: a feat's `replaces` (ENG-33) leaves out the grant it names
-  (`fifthEditionModule.grantsOf`); one naming a grant the character does not reach is unused with
-  no warning, since the module has no warning of its own but `stepFormula`. The level-up wizard
-  writes `replaces` only for a grant it shows, or the module gains a warning.
+  (`ruledGrants` in `module.ts`); one naming a grant the character does not reach is unused with
+  no warning. The level-up wizard writes `replaces` only for a grant it shows, or the module
+  gains a warning: since ENG-35 a module has warnings about the whole character
+  (`SystemModule.ruleWarnings`, warned `characterRule`).
+- **Phase 4** — found by ENG-35 (ENG-35 §8): SRD 5.1 says "If a character would gain the same
+  proficiency from two different sources, he or she can choose a different proficiency of the
+  same kind (skill or tool) instead"; SRD 5.2.1 has no such text. An edition difference the
+  creation wizard offers; its value joins `rulesets/` (ENG-19).
 - **Phase 4** — found by ENG-19: a subclass chosen below its class's `subclassLevel` (2014: 1, 2
   or 3 by class; 2024: 3) gives no warning, and its spellcasting counts. The level-up wizard
   offers the subclass at that level, or the module gains a warning.

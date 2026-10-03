@@ -831,3 +831,58 @@ describe("ENG-49 ids a module's grant names, looked up once", () => {
     expect(computed(deepFreeze(gone()))).toEqual(computed(gone()));
   });
 });
+
+describe("ENG-35 a module's rules see the whole character", () => {
+  /** Brook's one warning: a talent no pack has, named by the character (ENG-27). */
+  const brookMissing = { code: 'missing', id: 'tales-core:talent/gone-missing', from: 'character' };
+
+  it('gives `grantsOf` the finder gathering uses', () => {
+    const lookedUp = [
+      'tales-core:calling/seeker',
+      'character:talent/lucky-charm',
+      'tales-core:x/none',
+    ];
+    const found: (string | undefined)[][] = [];
+    const looking: SystemModule<TalesCharacter, TalesEntity> = {
+      ...talesModule,
+      grantsOf: (_, entity, find) => {
+        found.push(lookedUp.map((id) => find(id)?.name.en));
+        return entity.grants ?? [];
+      },
+    };
+    const result = computed(brook, looking);
+    // Asked once per entity Brook has (ENG-13): four, each finding what Brook's packs hold.
+    expect(found).toEqual(Array.from({ length: 4 }, () => ['Seeker', 'Lucky charm', undefined]));
+    expect(result.values).toEqual(computed(brook).values);
+  });
+
+  it('warns what `ruleWarnings` gives as `characterRule`, after every other warning', () => {
+    const ruled: SystemModule<TalesCharacter, TalesEntity> = {
+      ...talesModule,
+      ruleWarnings: ({ character, gathered }) => [
+        {
+          rule: 'entitiesCounted',
+          data: { name: character.name, entities: gathered.entities.length },
+          message: 'A rule made up here, given data.',
+        },
+        { rule: 'noData', message: 'A rule made up here, without data.' },
+      ],
+    };
+    const result = computed(brook, ruled);
+    expect(codes(result)).toEqual([
+      brookMissing,
+      { code: 'characterRule', rule: 'entitiesCounted', data: { name: 'Brook', entities: 4 } },
+      { code: 'characterRule', rule: 'noData' },
+    ]);
+    expect(result.warnings.map(({ message }) => message).slice(1)).toEqual([
+      'A rule made up here, given data.',
+      'A rule made up here, without data.',
+    ]);
+    expect(result.values).toEqual(computed(brook).values);
+  });
+
+  it('adds no warning for a module without `ruleWarnings`', () => {
+    expect(talesModule.ruleWarnings).toBeUndefined();
+    expect(codes(computed(brook))).toEqual([brookMissing]);
+  });
+});
