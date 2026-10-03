@@ -32,4 +32,8 @@ export const RULES_2014: EditionRules = {
   // A long rest is time the character "sleeps or performs light activity", with no condition
   // (Long Rest, ENG-21 §8).
   longRestEndsConcentration: false,
+  // "If you wear armor that you lack proficiency with, you have disadvantage on any ability check,
+  // saving throw, or attack roll that involves Strength or Dexterity, and you can't cast spells";
+  // the Armor table's "Shield" is armor (Armor Proficiency, ENG-46 §8).
+  untrained: { armor: ['disadvantage', 'noSpells'], shield: ['disadvantage', 'noSpells'] },
 };

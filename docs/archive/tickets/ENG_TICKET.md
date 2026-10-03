@@ -12270,3 +12270,339 @@ Found, not fixed:
   note now names `recoveredOn` and `REST_EVENTS`.
 
 Nothing for the changelog.
+
+---
+
+### ENG-46 Armor worn without training
+
+**Hat:** Armor worn without training has its edition's penalties
+**Depends on:** ENG-09 (the armor proficiency keys), ENG-13 (`proficiencySources`), ENG-14
+(`armor.worn`, `shield`, the AC paths), ENG-16 (`attacks.<key>.*`), ENG-19 (`rulesets/`), ENG-34
+(`modeOf`, the mode paths), ENG-43 (a skill's stat), ENG-44 (`equipmentOf`)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.3 (`ItemDef.armor`, the shield's effect); §5.5 (`proficiency` grants of the category
+`armor`); §6.1 step 5; §6.3 (2014/2024 differences); §6.5 (disadvantage); ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/training.ts` — new: whether the armor and the shield worn
+have their training, the paths `armor.untrained`, `shield.untrained`, `spell.cannotCast`, the
+roll-mode sources, and the shield effects a 2024 shield without training loses.
+- `packages/engine/src/compute.ts` — changes: `SystemModule.suppressedEffects`, asked once
+  gathering is done; the parts it names are marked on their entities.
+- `packages/engine/src/gather.ts` — changes: `HadEntity.suppressed`, the ids of an entity's
+  effects a module suppressed.
+- `packages/engine/src/effects.ts` — changes: `activeEffects` leaves a suppressed effect out.
+- `packages/system-5e/src/rulesets/edition-rules.ts`, `2014.ts`, `2024.ts` — change: the field
+  `untrained`, what an armor and a shield worn without training do.
+- `packages/system-5e/src/rolls.ts` — changes: each Strength and Dexterity check, save, skill and
+  initiative mode gains the training sources.
+- `packages/system-5e/src/attacks.ts` — changes: each weapon attack's mode gains them.
+- `packages/system-5e/src/combat.ts` — changes: a shield that loses its AC adds no magic bonus;
+  `ac.bonus` names the rule.
+- `packages/system-5e/src/module.ts`, `index.ts` — change: `derive` joins the training paths;
+  `suppressedEffects`; export.
+- `packages/system-5e/test/training.test.ts` — new.
+- `packages/engine/test/phases.test.ts` — changes: suppressed effects, on Tales.
+
+#### 2. What is missing now
+
+Measured on `main` at `613e0ed`:
+- `grep -rni "untrained\|training" packages/system-5e/src packages/engine/src` finds nothing.
+- Golden C (2014) with only its wizard 3 (no paladin, so no armor proficiency at all:
+  `proficiencies` of the category `armor` is `[]`), wearing the SRD chain mail and shield:
+  `ac.base` 16, `ac.bonus` 2, `ac.total` 18; every roll mode 0 but `skills.stealth.mode` −1 (the
+  chain mail's own Stealth rule, ENG-34); `warnings` `[]`. Nothing says the armor is worn without
+  training, no Strength or Dexterity test has disadvantage, and nothing says the character cannot
+  cast spells.
+- No edition field says what a shield without training does; SRD 5.2.1 takes its AC away (§8).
+- The core has no way for a module to switch off an effect once gathering is done; the shield's
+  +2 is its own effect (SPEC §5.3), and ENG-44's `dormant` is decided before gathering, when the
+  character's proficiencies are not known yet.
+- `pnpm test`: `Test Files 53 passed (53)`, `Tests 637 passed (637)`.
+
+#### 3. What it should look like when done
+
+1. **Training.** The armor worn (ENG-44) has its training when a `proficiency` grant of the
+   category `armor` names its `armor.group` (`light`, `medium`, `heavy`) or its own `key`; the
+   shield worn when one names `shield` or its own `key` (ENG-09 §4). An armor carried and not
+   equipped, or a second one that counts for nothing (ENG-44), is not judged. Goldens A (the
+   cleric's `light`, `medium`, `shield`, the Life Domain's `heavy`), B and B4 (the fighter's four)
+   have their training: every golden value stays, and every golden computes with no warning.
+2. **`armor.untrained`** is 1 when the armor worn lacks its training, with one step
+   `{ kind: 'entity', source: <the armor>, label: <its name>, value: 1, change: 1 }` and the
+   warning `{ code: 'stepRule', path: 'armor.untrained', rule: 'untrainedArmor', data: { item:
+   <the armor> } }`; else 0, with no step and no warning. **`shield.untrained`** the same for the
+   shield worn, rule `untrainedShield`.
+3. **The edition field `untrained`** (`rulesets/`), the penalties of each kind of item:
+
+   | | armor | shield |
+   |---|---|---|
+   | 2014 | `disadvantage`, `noSpells` | `disadvantage`, `noSpells` |
+   | 2024 | `disadvantage`, `noSpells` | `noArmorClass` |
+
+4. **Disadvantage.** Each item without training whose penalties hold `disadvantage` gives a
+   source `{ kind: 'rule', rule: 'untrainedArmor' | 'untrainedShield', value: -1, change }`, after
+   the test's other rule sources, to each d20 test of Strength or Dexterity: `checks.str.mode`,
+   `checks.dex.mode`, `abilities.str.saveMode`, `abilities.dex.saveMode`, each skill's mode whose
+   stat (its key path, ENG-43) is `str` or `dex`, `init.mode` (a Dexterity check), and each weapon
+   attack's mode (its stat is `str` or `dex`, ENG-16). Not `spell.attackMode`, not
+   `deathSave.mode`, not a check, save or skill of another stat.
+5. **No spells.** `spell.cannotCast` is 1 when an item without training has `noSpells`, with a
+   step `{ kind: 'rule', rule: 'untrainedArmor' | 'untrainedShield', value: 1, change }` for each
+   (the first's change 1, a second's 0); else 0, with no step.
+6. **A 2024 shield's AC.** When the shield worn lacks its training and has `noArmorClass`, its own
+   effects on a target starting `ac.` are suppressed (never applied), its `magic.bonus` is not
+   added, and `ac.bonus` gains the step `{ kind: 'rule', rule: 'untrainedShield', value: 0,
+   change: 0 }`. Its other effects apply, and `shield` stays 1.
+7. **Worked values** (each from §8 and the data, by hand). Golden C keeps STR 13, DEX 10; "the
+   wizard" is golden C with only its wizard 3.
+   - The wizard (2014) in chain mail: `armor.untrained` 1; `checks.str.mode`, `checks.dex.mode`,
+     both saves' modes, `skills.acrobatics.mode`, `.athletics.mode`, `.sleightOfHand.mode`,
+     `init.mode` −1, each with one step, `untrainedArmor` −1, change −1; `skills.stealth.mode` −1
+     with two steps, the chain mail's −1 (change −1) and `untrainedArmor` −1 (change 0); the 4
+     other checks and saves, the 14 other skills, `spell.attackMode` and `deathSave.mode` 0;
+     `spell.cannotCast` 1; AC 16 as before; one warning.
+   - The wizard (2014) in chain mail with the SRD shield: AC 18 (16 + the shield's 2, kept in
+     2014); each Strength or Dexterity mode above −1, its training steps `untrainedArmor` (change
+     −1 where it is the first source) and `untrainedShield` (change 0); `spell.cannotCast` 1, its
+     steps' changes 1 and 0; two warnings. With the shield alone: `armor.untrained` 0,
+     `shield.untrained` 1, every Strength or Dexterity mode −1 by `untrainedShield`, AC 12
+     (10 + DEX 0 + 2).
+   - Golden C (2014: the paladin's multiclass gives `light`, `medium`, `shield`) in chain mail
+     and the shield: `armor.untrained` 1, `shield.untrained` 0, one warning.
+   - The wizard (2014) in chain mail with the SRD warhammer: `attacks.warhammer.mode` −1.
+   - The wizard (2024) in chain mail: the same modes as the 2014 wizard, `spell.cannotCast` 1.
+   - The wizard (2024) with a made-up shield (+2 `ac.bonus` `when: '@equipped'`, `magic.bonus`
+     1, +1 `init.bonus` `when: '@equipped'`): `shield.untrained` 1; `ac.base` 10, `ac.bonus` 0
+     with the one rule step, `ac.total` 10; `init.bonus` 1; every mode 0; `spell.cannotCast` 0;
+     the shield gathered with `suppressed: ['ac']`; one warning. Golden C (2024: the paladin gives
+     `shield`) with it: `ac.bonus` 3, `ac.total` 13, no warning.
+   - A made-up feat giving the armor proficiency `chainMail` makes the wizard's chain mail
+     trained.
+   - An effect setting `skills.arcana.ability` to `dex` gives the wizard in chain mail
+     `skills.arcana.mode` −1; one setting `skills.athletics.ability` to `int`, 0.
+8. **The core** (game-free): a module's `suppressedEffects(input)` names effect parts once
+   gathering is done; `compute` marks each on its gathered entity as `suppressed` (its effect ids,
+   in the entity's order) before the base phase, and `activeEffects` leaves them out, so they
+   apply in no phase and through no op: a number, an `append`, a roll mode, a key `set`. A toggle
+   switched on or a `when` that is true does not bring one back. A part naming no effect of a
+   gathered entity changes nothing. A module without the hook suppresses nothing. Tested on
+   Tales.
+9. `compute()` stays pure: frozen inputs give equal results. The quality gate is green.
+
+#### 4. How to do it
+
+1. `gather.ts`: `HadEntity.suppressed?: readonly string[]`. `effects.ts`: `activeEffects` skips
+   an effect whose id it lists.
+2. `compute.ts`: `suppressedEffects?(input: DeriveInput<C, E>): readonly EntityPartId[]`; `stats`
+   is worked out right after gathering (it reads only `gathered`), the hook is asked, and the
+   marked `gathered` is what the base phase, the derived values, the phases and `Computed` get.
+3. `rulesets/`: `UntrainedPenalty`, `untrained` in `EditionRules`, each edition's value.
+4. `training.ts`: `untrainedOf(input)` (the armor, then the shield, worn without training, each
+   with its penalties), `trainingSteps(input)` (the three paths), `trainingSources(input, stat)`
+   (a test's rule sources), `untrainedShieldEffects(input)` (the hook's parts),
+   `shieldLosesAC(input)`.
+5. `rolls.ts`, `attacks.ts`, `combat.ts`, `module.ts`: read them.
+6. Tests (§7), then the backlog (§11).
+
+Technical choices (ADR 002):
+- **Training is decided from what the character has**, once gathering is done: the grants'
+  proficiencies and the items worn. The paths `armor.untrained` and `shield.untrained` show it with
+  its breakdown; the penalties read the same decision, not the paths, as `ac.base` and the Stealth
+  rule read `equipmentOf` and not `armor.worn`. An override on `armor.untrained` changes that path
+  only; the way to give a character training is a proficiency grant (a feat, a feature).
+- **A shield's AC is suppressed by the core, not left out by the module.** The shield's +2 is its
+  own effect (SPEC §5.3), and only gathering knows the proficiencies; ENG-44's choices (leave the
+  item out, or name it dormant) are made before gathering, and either would also drop a magic
+  shield's other benefits (an advantage, a resistance), which the rule keeps: "You gain the Armor
+  Class benefit of a Shield only if you have training with it" (§8). So the module names the
+  shield's effects on `ac.*` targets, and the core never applies them. The core learns that a
+  module may switch an effect off after gathering; it does not learn why. Foundry calls such an
+  effect suppressed.
+- **The warning comes once per item**, on its own path, as ENG-44's `oneAtATime`: an untrained
+  shield in 2024 makes the AC lower with nothing on the item saying why, and "cannot cast spells"
+  is shown by no number yet.
+- **"Cannot cast spells" is a path and a warning, not a refused cast.** SPEC §8.2: rules warn,
+  they never block. `castSpell` (ENG-20) does not read it; the sheet's cast button does (phase 2).
+  Making `castSpell` refuse later is one check of `spell.cannotCast`.
+- **The stats are a named constant**, `UNTRAINED_STATS = ['str', 'dex']`, as ENG-14's
+  `RULE_STATS`: the rule names Strength and Dexterity, and a custom stat is never one of them.
+- **A spell attack is left out.** Its mode is one path for every spell attack (ENG-34), its stat
+  is each caster's (never `str` or `dex` in the SRDs), and the same rule forbids casting at all.
+- **An item's own key gives its training too**, as ENG-16 reads a weapon's `key` and dnd5e reads
+  the armor's base item (§8). The SRD grants groups and `shield` only; a homebrew grant may name
+  one armor.
+- **The rule sources come after the test's others**: Stealth's armor, then the training; a
+  Heavy weapon, then the training. The mode is the same in any order (ENG-34: any disadvantage
+  gives −1).
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, no `schemaVersion`, no Dexie table. `suppressed` is computed,
+on `Computed.entities`.
+
+#### 6. What a person will see
+
+Not a screen. The sheet's "no training" mark, the disadvantage marks and the cast button are
+phase 2's, reading the paths and the warnings.
+
+#### 7. Tests
+
+- `packages/system-5e/test/training.test.ts` — `describe('ENG-46 armor without training')`: §3
+  items 1–7 and 9, on golden C (both editions) and its wizard, with the SRD chain mail, shield and
+  warhammer and made-up items, feats and effects (`character:`).
+- `packages/engine/test/phases.test.ts` — `describe('ENG-46 suppressed effects')`: §3 item 8, on
+  Tales.
+- The goldens' own tests (`golden-values.test.ts`, `combat.test.ts`, `rolls.test.ts`): unchanged
+  values, no warning.
+- Control values from: the SRD texts of §8 and the data (golden C's scores, the items), each
+  worked out by hand before the run.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-03: SRD 5.1 as foundryvtt/dnd5e quotes it at `7bfb3f1`
+(`packs/_source/rules/chapter-5-equipment.yml`); SRD 5.2.1 as dnd5e quotes it
+(`packs/_source/content24/chapter-6/equipment.yml`, `appendices/rules-glossary.yml`,
+`chapter-1/d20-tests.yml`); 5e-bits/5e-srd-api at `e6edf9a`
+(`packages/5e-database/src/{2014,2024}/en/5e-SRD-Equipment.json`, read with python3); dnd5e's code
+at `7bfb3f1` (`module/`). The same commits as ENG-13 to ENG-34. All CC-BY-4.0.
+
+**SRD 5.1, Armor Proficiency.** "Anyone can put on a suit of armor or strap a shield to an arm.
+Only those proficient in the armor's use know how to wear it effectively, however. Your class
+gives you proficiency with certain types of armor. If you wear armor that you lack proficiency
+with, you have disadvantage on any ability check, saving throw, or attack roll that involves
+Strength or Dexterity, and you can't cast spells." The Armor table's last category is "Shield"
+(Shield, 10 gp, AC "+2", 6 lb.), beside Light, Medium and Heavy Armor; "Shields. … Wielding a
+shield increases your Armor Class by 2." So in 2014 a shield is armor: without proficiency it gives
+the disadvantage and stops spells, and nothing takes its +2 away.
+
+**SRD 5.2.1, Armor Training.** "Anyone can don armor or hold a Shield, but only those with training
+can use them effectively, as explained below. A character's class and other features determine the
+character's armor training. … Light, Medium, or Heavy Armor. If you wear Light, Medium, or Heavy
+armor and lack training with it, you have Disadvantage on any D20 Test that involves Strength or
+Dexterity, and you can't cast spells. Shield. You gain the Armor Class benefit of a Shield only if
+you have training with it." So in 2024 a shield without training gives no disadvantage and stops
+no spell; it gives no AC.
+
+**D20 Tests.** SRD 5.2.1 (rules glossary): "D20 Tests encompass the three main d20 rolls of the
+game: ability checks, attack rolls, and saving throws." (`d20-tests.yml`: "they come in three kinds:
+ability checks, saving throws, and attack rolls"). SRD 5.1 names the same three. A skill check is
+an ability check of its stat ("Dexterity (Stealth) checks"), initiative a Dexterity check, a weapon
+attack uses Strength (melee) or Dexterity (ranged, finesse either), and a death save is tied to no
+ability (ENG-34 §8 quotes each). So the tests "that involve Strength or Dexterity" are §3 item 4's.
+
+**The shield is armor in the data.** 5e-database 2014 `shield`: `equipment_category` `armor`,
+`armor_category` `Shield`, `armor_class.base` 2; 2024 `shield`: `equipment_categories` `armor` and
+`shields`.
+
+**dnd5e.** `config.mjs`: `armorTypes` holds `light`, `medium`, `heavy`, `natural`, `shield`;
+`armorProficienciesMap` maps `light` → `lgt`, `medium` → `med`, `heavy` → `hvy`, `shield` → `shl`
+(`natural` and `clothing` need none). `data/item/equipment.mjs` `proficiencyMultiplier`: proficient
+when the actor has the type's proficiency or the item's base item (`actorProfs.has(itemProf) ||
+actorProfs.has(this.type.baseItem)`). It computes no penalty from it: `armorProf` is read only
+there (`grep -rn armorProf module`), the item's proficiency is only shown on its chat card
+(`data/item/templates/equippable-item.mjs`), and `prepareArmorClass` adds `ac.shield` whatever the
+training. The SRDs are followed here.
+
+**The goldens.** A: the cleric's `light`, `medium`, `shield` and the Life Domain's Bonus Proficiency
+`heavy` (SPEC §6.7: "тяжёлый доспех — от домена Жизни"): chain mail and the shield trained. B, B4,
+D, E: the fighter's `light`, `medium`, `heavy`, `shield`. C: no item. No golden value changes;
+nothing stops.
+
+#### 9. Not in this ticket
+
+- The sheet: a "no training" mark on the armor, the disadvantage marks, the cast button reading
+  `spell.cannotCast`: phase 2.
+- `castSpell` refusing a cast while `spell.cannotCast` is 1 (§4): not done; phase 2 reads the path.
+- SPEC §5.4's `prof.armor` as a target an effect appends to: no path computes it yet; training is
+  read from the grants. When it is computed, `untrainedOf` reads it.
+- Tool checks: no path computes one yet (ENG-34 §9).
+- A spell's own attack mode or save DC changing with armor: none in either SRD.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** No golden value changes; §8 shows each golden has its
+  training. Every expected value is worked out from §8 and the data before the run.
+- **`packages/engine` is pure; the core names no game.** `suppressedEffects` names parts; the core
+  marks and skips them; it names no item, armor or rule. Tested on Tales.
+- **Everything is data.** The keys compared are the item's own fields (`armor.group`, `category`,
+  `key`); the two stats are one named constant; each skill's stat is read from its key path.
+- **`compute()` is pure; a number with no breakdown entry is a bug.** Every new path and source
+  has its step; `ac.bonus` names the rule that keeps the shield's AC out.
+- **Manual overrides always win.** The new paths are finished by ENG-17's phases.
+- **Each system's rules live in its own module; no `if (ruleset === …)`.** What an item without
+  training does is `rulesOf(character).untrained`.
+- **Missing is not broken; prerequisites warn.** A missing item is not worn (ENG-44); no training
+  warns and never blocks a cast.
+- **Licensing.** The made-up items and feats have no rules text; §8 quotes the SRDs (CC-BY-4.0).
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-03, on `main` at `613e0ed`:
+- `pnpm lint`: `Checked 176 files`, no errors (174 before, measured; 2 new files).
+- `pnpm typecheck`: 6 projects, all `Done`.
+- `pnpm test`: `Test Files 54 passed (54)`, `Tests 650 passed (650)`, 8.09 s (before: 53 files,
+  637 tests). This ticket's 13: 10 in `training.test.ts`, 3 in `phases.test.ts`.
+- `pnpm build`: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- ENG-54, ENG-53 and ENG-21 reached `main` while this ticket was pushed; it was rebased onto
+  `d7a18da`. Conflicts: `compute.ts` (ENG-54 made `statDefaults` a function of the character),
+  `module.ts`'s header, the edition files and their test (ENG-21 added two fields; both sides
+  kept), `BACKLOG.md` and the archive. There: `pnpm lint` `Checked 180 files`, no errors;
+  `pnpm typecheck` 6 projects `Done`; `pnpm test` `Test Files 56 passed (56)`, `Tests 696 passed
+  (696)`, 8.32 s (`main` alone, measured: 55 files, 683 tests, 178 files linted); `pnpm build`
+  `Done`.
+- §3 item 7's values, each worked out by hand before the run: the 10 tests of `training.test.ts`
+  passed on their first run. The 2014 wizard in chain mail: 9 modes −1 (STR and DEX checks and
+  saves, Acrobatics, Athletics, Sleight of Hand, Stealth, initiative), the other 24 of its 33 mode
+  paths 0; `spell.cannotCast` 1; AC 16. With the SRD shield: AC 18, two training steps on each.
+  The 2024 wizard with the made-up shield: AC 10, `init.bonus` 1, the shield gathered with
+  `suppressed: ['ac']`; trained (golden C's paladin), AC 13.
+- Every golden computes with its values unchanged and no warning. Golden B4 has 189 values (186
+  before: `armor.untrained`, `shield.untrained`, `spell.cannotCast`).
+- One compute of golden B4 in this container, 500 runs, 5 rounds: 0.530 to 0.649 ms before; after,
+  three runs, 0.521 to 0.715 ms, but for the first run's first two rounds, 1.224 and 1.309 ms
+  (SPEC §6.6's limit is 10 ms; the benchmark is ENG-23's).
+- The tests bite. 14 breaks, each on its own and restored, every test run: an item's own key
+  ignored, 1 fails; `con` among the stats, 3; no 2014 shield penalty, 2; the 2024 shield keeping
+  its AC, 2; the core ignoring `suppressed`, 3; the shield's magic bonus kept, 1; a skill's own
+  stat read in place of its key path, 1; no weapon attack penalty, 1; no initiative penalty, 3; no
+  save penalty, 3; every effect of the shield suppressed, 1; each `spell.cannotCast` step changing
+  it by 1, 1; no warning, 11; no `ac.bonus` rule step, 1.
+
+Differences from §3: none in values. While building:
+- Six tests of earlier tickets put golden B's chain mail on a class that gives no armor training
+  (the made-up scribe, no class, the made-up warden 5, hexer 3 and mystic 1): 3 ENG-13 tests
+  (`module.test.ts`) and 3 ENG-15 tests (`spellcasting.test.ts`) now expect the one
+  `untrainedArmor` warning; their data did not change. 13 ENG-15 lists of paths (in 8 tests)
+  gain `spell.cannotCast`: 1 for golden B with the warden 5, the hexer 3 and the mystic 1, 0 for
+  the other 10. The ENG-19 test of the edition files gains `untrained`. No other value changed.
+- The Tales test first expected Veil gathered before Night Warden; gathering gives each entity
+  followed by what it gives (`Gathered.entities`), so the warden's Night Warden and Quick Step come
+  first. The expectation was corrected; no code changed.
+- Typecheck refused two test helpers' types (a part id cast, a union of two characters); both
+  typed again, no value changed.
+
+Against the row and its notes:
+- Each note is done: the disadvantage and no spells in both editions; the 2024 shield's AC; the
+  keys `light`, `medium`, `heavy`, `shield` compared with `armor.group` and `category`; a rule
+  source through `modeOf`; the field in the edition files; the worn items from `equipmentOf`.
+- The note offered two ways for the shield, leaving it out of `equipmentOf` or naming it dormant.
+  Neither was used (§4): both are decided before gathering knows the proficiencies, and both would
+  drop a magic shield's other benefits. A core hook suppresses its AC effects.
+- The note did not say what a 2014 shield without training does. SRD 5.1's Armor table lists the
+  shield as armor, so it gives the disadvantage and stops spells, and keeps its +2 (§8). The SPEC
+  says nothing against it, so it is not a stop.
+- Size S held.
+
+Found, not fixed:
+- `castSpell` (ENG-20) does not read `spell.cannotCast` (§4). A phase 2 note in `BACKLOG.md`.
+- SPEC §5.4's targets `prof.armor`, `prof.weapon`, `prof.tool`, `prof.language` are computed by no
+  path; an effect on one changes nothing. Proficiencies come only from grants, which ENG-13,
+  ENG-16 and this ticket read. A phase 3 note in `BACKLOG.md`.
+
+Nothing for the changelog: no screen shows armor training yet.

@@ -11,6 +11,7 @@ import type { FifthEditionCharacter } from './character';
 import type { FifthEditionEntity, ItemDef, LineageDef, SpeciesDef } from './entity-types';
 import { type Equipment, type ExtraItem, equipmentOf, type WornItem } from './equipment';
 import { ARMOR_GROUPS, EQUIPMENT_AC_CALC, SPEED_KINDS } from './system';
+import { shieldWithoutAC, UNTRAINED_RULES, untrainedOf } from './training';
 
 // ENG-14: fifth edition's combat numbers (SPEC §6.1 step 5): the hit point maximum, armor class,
 // initiative and speeds, one rule in both editions (ENG-14 §8). What an item, a feat or a
@@ -19,7 +20,9 @@ import { ARMOR_GROUPS, EQUIPMENT_AC_CALC, SPEED_KINDS } from './system';
 // armor and the shield worn are `equipmentOf`'s. ENG-45: armor whose Strength requirement is above
 // its wearer's Strength takes 10 feet from every speed, through `speed.armorReduction`, which an
 // effect may set to 0 (the SRD 5.1 dwarf, ENG-45 §8). ENG-47: the base AC calculation the person
-// pins counts over the highest while it applies; one that does not apply warns.
+// pins counts over the highest while it applies; one that does not apply warns. ENG-46: a shield
+// worn without training whose edition takes its AC away adds no magic bonus; `ac.bonus` names the
+// rule (its effects on `ac.*` are suppressed, `training.ts`).
 
 /**
  * The stats the rules name: initiative and AC read Dexterity, hit points Constitution (ENG-14 §8);
@@ -90,15 +93,19 @@ function wornOf(worn: WornItem | undefined, extra: readonly ExtraItem[]): Derive
   return (...read) => ({ ...step(...read), ruleWarnings });
 }
 
-/** The magic bonuses of the armor and the shield worn, each when its magic works (ENG-44 §8). */
-function magicBonus({ armor, shield }: Equipment): DerivedStep {
+/**
+ * The magic bonuses of the armor and the shield worn, each when its magic works (ENG-44 §8); the
+ * shield's none when `shieldLost`, which a rule step of change 0 says.
+ */
+function magicBonus({ armor, shield }: Equipment, shieldLost: boolean): DerivedStep {
   const steps: BreakdownStep[] = [];
-  for (const worn of [armor, shield]) {
+  for (const worn of shieldLost ? [armor] : [armor, shield]) {
     const bonus = worn?.magic === true ? worn.item.magic?.bonus : undefined;
     if (worn === undefined || bonus === undefined) continue;
     const { id: source, name: label } = worn.item;
     steps.push({ kind: 'entity', source, label, value: bonus, change: bonus });
   }
+  if (shieldLost) steps.push({ kind: 'rule', rule: UNTRAINED_RULES.shield, value: 0, change: 0 });
   const value = steps.reduce((sum, step) => sum + step.change, 0);
   return () => ({ value, steps });
 }
@@ -338,7 +345,7 @@ export function combatSteps(
     'hp.max': hitPoints(input),
     'armor.worn': wornOf(equipment.armor, equipment.extra.armor),
     shield: wornOf(equipment.shield, equipment.extra.shield),
-    'ac.bonus': magicBonus(equipment),
+    'ac.bonus': magicBonus(equipment, shieldWithoutAC(untrainedOf(input)) !== undefined),
     'ac.base': armorClassBase(input, armor),
     'ac.total': sumOf(['ac.base', 'ac.bonus']),
     'init.bonus': zero,

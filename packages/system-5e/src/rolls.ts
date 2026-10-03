@@ -15,12 +15,15 @@ import type { FifthEditionCharacter } from './character';
 import { RULE_STATS } from './combat';
 import type { FifthEditionEntity, ItemDef } from './entity-types';
 import { equipmentOf } from './equipment';
+import { trainingSources, untrainedOf } from './training';
 
 // ENG-34: fifth edition's roll modes (SPEC §6.5). Each d20 test has advantage (1), disadvantage
 // (−1) or neither (0), from the `advantage` and `disadvantage` effects on the `roll.*` targets it
 // reads (SPEC §5.4) and from the module's own rules: the worn armor's Stealth here, a Heavy weapon
 // in `attacks.ts`. Any advantage and any disadvantage cancel, however many of each: one rule in
 // both editions (ENG-34 §8). A passive value adds 5 × its skill's mode (`checks.ts`).
+// ENG-46: armor worn without training gives disadvantage to each test of Strength or Dexterity
+// when its edition says so (`training.ts`): a check, a save, a skill by its stat, initiative.
 
 /** A roll's mode: advantage 1, disadvantage −1, neither 0 (dnd5e's values, ENG-34 §8). */
 export type RollMode = -1 | 0 | 1;
@@ -154,15 +157,17 @@ export function rollModeSteps(
   input: DeriveInput<FifthEditionCharacter, FifthEditionEntity>,
 ): Record<string, DerivedStep> {
   const effects = modeEffectsOf(input);
+  const untrained = untrainedOf(input);
   const step =
-    (targets: readonly string[]): DerivedStep =>
+    (targets: readonly string[], sources: readonly BreakdownStep[] = []): DerivedStep =>
     (_, readBy) =>
-      modeOf(effects, targets, [], readBy);
+      modeOf(effects, targets, sources, readBy);
 
   const steps: Record<string, DerivedStep> = {};
   for (const { key, hasSave } of input.stats) {
-    steps[ROLL_MODE_PATHS.check(key)] = step(ROLL_TARGETS.check(key));
-    if (hasSave) steps[ROLL_MODE_PATHS.save(key)] = step(ROLL_TARGETS.save(key));
+    const training = trainingSources(untrained, key);
+    steps[ROLL_MODE_PATHS.check(key)] = step(ROLL_TARGETS.check(key), training);
+    if (hasSave) steps[ROLL_MODE_PATHS.save(key)] = step(ROLL_TARGETS.save(key), training);
   }
   const stealth = stealthSources(equipmentOf(input.character, input.find).armor?.item);
   for (const [key, skill] of Object.entries(input.gathered.byKey.skill ?? {})) {
@@ -170,10 +175,12 @@ export function rollModeSteps(
     const sources = key === STEALTH_SKILL ? stealth : [];
     steps[ROLL_MODE_PATHS.skill(key)] = (_, readBy, readKey) => {
       const stat = readKey(`skills.${key}.ability`) ?? skill.ability;
-      return modeOf(effects, ROLL_TARGETS.skill(key, stat), sources, readBy);
+      const all = [...sources, ...trainingSources(untrained, stat)];
+      return modeOf(effects, ROLL_TARGETS.skill(key, stat), all, readBy);
     };
   }
-  steps[ROLL_MODE_PATHS.init] = step(ROLL_TARGETS.init());
+  const initiative = trainingSources(untrained, RULE_STATS.initiative);
+  steps[ROLL_MODE_PATHS.init] = step(ROLL_TARGETS.init(), initiative);
   steps[ROLL_MODE_PATHS.spellAttack] = step(ROLL_TARGETS.spellAttack());
   steps[ROLL_MODE_PATHS.deathSave] = step(ROLL_TARGETS.deathSave());
   return steps;

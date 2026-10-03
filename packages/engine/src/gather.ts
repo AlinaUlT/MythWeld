@@ -103,7 +103,8 @@ export interface NamedEntity {
 /**
  * An entity the character has: every place that gave it, the level its grants count, its own
  * paths when the module named it with some, and `dormant` when it was named so (each the first
- * naming's, when named twice).
+ * naming's, when named twice). `suppressed`, the ids of its effects a rule of the module switched
+ * off once gathering was done (ENG-46), in the entity's order; none of them applies.
  */
 export interface HadEntity<E extends GatherableEntity> {
   entity: E;
@@ -111,6 +112,7 @@ export interface HadEntity<E extends GatherableEntity> {
   from: readonly Origin[];
   paths?: OwnPaths;
   dormant?: true;
+  suppressed?: readonly string[];
 }
 
 /** An entity by its id, as a character finds it; `undefined` when none has the id (ENG-44). */

@@ -12,7 +12,8 @@ import { goldenA, goldenB } from './golden/index.ts';
 
 // ENG-19: the edition files hold every 2014/2024 difference. Each expected value is the SRD's,
 // quoted in ENG-19 §8, never copied from a run. ENG-20 adds the concentration DC's maximum (ENG-20
-// §8); ENG-21 the short rest's hit points and the long rest's concentration (ENG-21 §8).
+// §8); ENG-21 the short rest's hit points and the long rest's concentration (ENG-21 §8);
+// ENG-46 the penalties of armor worn without training (ENG-46 §8).
 
 describe('ENG-19 the edition files', () => {
   it('give the 2014 rules: SRD 5.1', () => {
@@ -28,6 +29,7 @@ describe('ENG-19 the edition files', () => {
       concentrationDcMax: null,
       shortRestMinHp: 0,
       longRestEndsConcentration: false,
+      untrained: { armor: ['disadvantage', 'noSpells'], shield: ['disadvantage', 'noSpells'] },
     });
   });
 
@@ -44,6 +46,7 @@ describe('ENG-19 the edition files', () => {
       concentrationDcMax: 30,
       shortRestMinHp: 1,
       longRestEndsConcentration: true,
+      untrained: { armor: ['disadvantage', 'noSpells'], shield: ['noArmorClass'] },
     });
   });
 

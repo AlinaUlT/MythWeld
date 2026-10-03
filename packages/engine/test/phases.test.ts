@@ -11,6 +11,7 @@ import {
   rollModeEffects,
   type SystemModule,
 } from '@grimoire/engine';
+import type { EntityPartId } from '@grimoire/schema';
 import { describe, expect, it } from 'vitest';
 import {
   ashExpected,
@@ -1197,5 +1198,119 @@ describe('ENG-44 a dormant entity', () => {
     const result = computed(character, emberNamed(true));
     const parts = activeEffects(result.entities, {}).map(({ part }) => part);
     expect(parts.filter((part) => part.startsWith(emberId))).toEqual([`${emberId}#spark`]);
+  });
+});
+
+describe('ENG-46 suppressed effects', () => {
+  // Veil, a talent of Ash's own. Its effects, in order: `quiet` +1 sneak; `flare` +4 sneak,
+  // toggled on; `lit` +2 climb when `@level >= 2` (Ash is level 2); `keep` +3 climb; `grit` +2 to
+  // grit's score (the base phase); `shift` sets sneak's stat to grit; `edge` an advantage on
+  // `roll.climb`; `more` appends 1 to `climb.ways`. No step reads the last two, so neither warns.
+  const veil = talent('veil', [
+    { id: 'quiet', target: 'skills.sneak.bonus', op: 'add', value: 1 },
+    {
+      id: 'flare',
+      target: 'skills.sneak.bonus',
+      op: 'add',
+      value: 4,
+      toggle: { label: { en: 'Flaring' }, default: true },
+    },
+    { id: 'lit', target: 'skills.climb.bonus', op: 'add', value: 2, when: '@level >= 2' },
+    { id: 'keep', target: 'skills.climb.bonus', op: 'add', value: 3 },
+    { id: 'grit', target: 'abilities.grit.score', op: 'add', value: 2 },
+    { id: 'shift', target: 'skills.sneak.ability', op: 'set', value: 'grit' },
+    { id: 'edge', target: 'roll.climb', op: 'advantage', value: true },
+    { id: 'more', target: 'climb.ways', op: 'append', value: '1' },
+  ]);
+  const character = ashWith([veil]);
+  const veilId = 'character:talent/veil' as const;
+  const off = ['quiet', 'flare', 'lit', 'grit', 'shift', 'edge', 'more'];
+
+  /** Tales' module, suppressing these parts. */
+  function suppressing(parts: readonly EntityPartId[]): Module {
+    return { ...talesModule, suppressedEffects: () => parts };
+  }
+
+  /** Veil's parts `activeEffects` gives. */
+  const veilParts = (result: ReturnType<typeof computed>) =>
+    activeEffects(result.entities, character.state.toggles)
+      .map(({ part }) => part)
+      .filter((part) => part.startsWith(veilId));
+
+  it('applies a suppressed effect in no phase, whatever its `when`, toggle or op', () => {
+    const named: EntityPartId[] = [
+      ...off.map((id): EntityPartId => `${veilId}#${id}`),
+      // Neither names an effect of an entity Ash has.
+      `${veilId}#nothing`,
+      'tales-core:talent/unknown#glow',
+    ];
+    const result = computed(character, suppressing(named));
+    expect(result.values).toMatchObject({
+      // Ash's own: base 6 + warden `sturdy` 1.
+      'abilities.grit.score': 7,
+      // wits 2 + 2 × 1 + `shadow` 1 - 1.
+      'skills.sneak.total': 4,
+      // grit 3 + 2 × 1 + `nimble` 2 + `keep` 3 - 1.
+      'skills.climb.total': 9,
+    });
+    expect(result.keys['skills.sneak.ability']?.key).toBe('wits');
+    const had = result.entities.find(({ entity }) => entity.id === veilId);
+    expect(had?.suppressed).toEqual(off);
+    expect(veilParts(result)).toEqual([`${veilId}#keep`]);
+    expect(
+      result.entities
+        .filter(({ suppressed }) => suppressed !== undefined)
+        .map(({ entity }) => entity.id),
+    ).toEqual([veilId]);
+    expect(codes(result)).toEqual([]);
+  });
+
+  it('suppresses nothing without the hook, or when it names nothing', () => {
+    expect(talesModule.suppressedEffects).toBeUndefined();
+    for (const system of [talesModule, suppressing([])]) {
+      const result = computed(character, system);
+      expect(result.values).toMatchObject({
+        // 7 + `grit` 2.
+        'abilities.grit.score': 9,
+        // `shift`: grit's floor(9 / 2) = 4, + 2 × 1 + `shadow` 1 - 1 + `quiet` 1 + `flare` 4.
+        'skills.sneak.total': 11,
+        // grit 4 + 2 × 1 + `nimble` 2 + `lit` 2 + `keep` 3 - 1.
+        'skills.climb.total': 12,
+      });
+      expect(result.keys['skills.sneak.ability']?.key).toBe('grit');
+      expect(veilParts(result)).toEqual(
+        ['quiet', 'flare', 'lit', 'keep', 'grit', 'shift', 'edge', 'more'].map(
+          (id) => `${veilId}#${id}`,
+        ),
+      );
+      expect(result.entities.some((had) => 'suppressed' in had)).toBe(false);
+      expect(codes(result)).toEqual([]);
+    }
+  });
+
+  it('is asked what the character has, before any effect is suppressed', () => {
+    const asked: string[][] = [];
+    const system: Module = {
+      ...talesModule,
+      suppressedEffects: ({ gathered, stats }) => {
+        asked.push(gathered.entities.map(({ entity }) => entity.id));
+        expect(stats.map(({ key }) => key)).toEqual(['grit', 'wits', 'nerve']);
+        expect(gathered.entities.some((had) => 'suppressed' in had)).toBe(false);
+        return [`${veilId}#keep`];
+      },
+    };
+    const result = computed(character, system);
+    expect(asked).toEqual([
+      // Each entity followed by what it gives: the warden's Night Warden gives Quick Step.
+      [
+        'tales-core:calling/warden',
+        'tales-core:talent/night-warden',
+        'tales-core:talent/quick-step',
+        veilId,
+        'tales-core:condition/weary',
+      ],
+    ]);
+    // 12 - `keep` 3.
+    expect(result.values['skills.climb.total']).toBe(9);
   });
 });

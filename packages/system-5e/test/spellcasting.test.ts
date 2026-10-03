@@ -33,6 +33,8 @@ import {
 // entities (`character:`) are made up, no text of a book; each value below was worked out by hand
 // from them and from the goldens' scores, never copied from a run. ENG-34: every character has
 // `spell.attackMode`, 0 for each one here: none has an effect on `roll.attack.spell` or `.all`.
+// ENG-46: every character has `spell.cannotCast`: 1 for golden B in its chain mail with a made-up
+// class in place of its fighter, which gives no armor training; 0 for every other one here.
 
 type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 type EntityInput = FifthEditionCharacter['localEntities'][number];
@@ -60,6 +62,14 @@ function valuesUnder(result: Computed<FifthEditionEntity>, ...prefixes: string[]
 function codes(result: Computed<FifthEditionEntity>) {
   return result.warnings.map(({ message: _, ...warning }) => warning);
 }
+
+/** ENG-46: golden B's chain mail, worn with a class that gives no armor training. */
+const untrainedChainMail = {
+  code: 'stepRule',
+  path: 'armor.untrained',
+  rule: 'untrainedArmor',
+  data: { item: 'srd-2024:item/chain-mail' },
+};
 
 /** A pack's class's spellcasting, read from the golden fixtures. */
 function spellcastingOf(pack: { entities: readonly unknown[] }, id: string): SpellcastingDef {
@@ -244,6 +254,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
       'spell.attackMode': 0,
+      'spell.cannotCast': 0,
       'classes.cleric.spell.dc': 13,
       'classes.cleric.spell.attack': 5,
       'classes.cleric.spell.prepared': 4,
@@ -295,6 +306,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
       'spell.attackMode': 0,
+      'spell.cannotCast': 0,
       'classes.wizard.spell.dc': 13,
       'classes.wizard.spell.attack': 5,
       'classes.wizard.spell.prepared': 5,
@@ -321,6 +333,7 @@ describe('ENG-15 spellcasting', () => {
         'spell.dc.bonus': 0,
         'spell.attack.bonus': 0,
         'spell.attackMode': 0,
+        'spell.cannotCast': 0,
         'classes.wizard.spell.dc': 13,
         'classes.wizard.spell.attack': 5,
         'classes.wizard.spell.prepared': 6,
@@ -360,6 +373,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
       'spell.attackMode': 0,
+      'spell.cannotCast': 0,
       'spell.casterLevel': 3,
       ...slotsOf(4, 2),
     });
@@ -383,6 +397,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
       'spell.attackMode': 0,
+      'spell.cannotCast': 0,
       'classes.paladin.spell.dc': 12,
       'classes.paladin.spell.attack': 4,
       'classes.paladin.spell.prepared': 2,
@@ -405,6 +420,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
       'spell.attackMode': 0,
+      'spell.cannotCast': 0,
       'classes.warden.spell.dc': 10,
       'classes.warden.spell.attack': 2,
       'spell.casterLevel': 3,
@@ -414,6 +430,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
       'spell.attackMode': 0,
+      'spell.cannotCast': 1,
       'classes.warden.spell.dc': 12,
       'classes.warden.spell.attack': 4,
       'spell.casterLevel': 3,
@@ -426,7 +443,7 @@ describe('ENG-15 spellcasting', () => {
       { kind: 'path', path: 'spell.casterLevel', value: 3, change: 4 },
     ]);
     expect(in2014.warnings).toEqual([]);
-    expect(in2024.warnings).toEqual([]);
+    expect(codes(in2024)).toEqual([untrainedChainMail]);
 
     // Warden 1: ⌊1/2⌋ = 0 in 2014, no slot; ⌈1/2⌉ = 1 in 2024, row 1.
     const warden1: CharacterInput['systemData']['classes'] = [
@@ -481,6 +498,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
       'spell.attackMode': 0,
+      'spell.cannotCast': 0,
       'classes.fighter.spell.dc': 9,
       'classes.fighter.spell.attack': 1,
       'classes.fighter.spell.cantrips': 2,
@@ -506,6 +524,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.dc.bonus',
       'spell.attack.bonus',
       'spell.attackMode',
+      'spell.cannotCast',
     ]);
   });
 
@@ -518,6 +537,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
       'spell.attackMode': 0,
+      'spell.cannotCast': 1,
       'classes.hexer.spell.dc': 10,
       'classes.hexer.spell.attack': 2,
       'classes.hexer.spell.cantrips': 2,
@@ -541,6 +561,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
       'spell.attackMode': 0,
+      'spell.cannotCast': 0,
       'classes.hexer.spell.dc': 13,
       'classes.hexer.spell.attack': 5,
       'classes.hexer.spell.cantrips': 2,
@@ -549,7 +570,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.pact.level': 2,
       'spell.pact.slots': 2,
     });
-    expect(alone.warnings).toEqual([]);
+    expect(codes(alone)).toEqual([untrainedChainMail]);
     expect(beside.warnings).toEqual([]);
   });
 
@@ -589,6 +610,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.dc.bonus': 0,
       'spell.attack.bonus': 0,
       'spell.attackMode': 0,
+      'spell.cannotCast': 1,
       'classes.mystic.spell.dc': 10,
       'classes.mystic.spell.attack': 2,
       'classes.mystic.spell.prepared': 0,
@@ -603,6 +625,7 @@ describe('ENG-15 spellcasting', () => {
         path: 'classes.mystic.spell.prepared',
         warning: expect.objectContaining({ code: 'unexpected' }),
       },
+      untrainedChainMail,
     ]);
   });
 
@@ -613,6 +636,7 @@ describe('ENG-15 spellcasting', () => {
       'spell.attack.bonus',
       'attack.spell.bonus',
       'spell.attackMode',
+      'spell.cannotCast',
     ]);
   });
 

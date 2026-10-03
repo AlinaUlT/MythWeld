@@ -20,6 +20,7 @@ import { rollModeSteps } from './rolls';
 import { sizeKeys } from './size';
 import { spellDiceSteps } from './spell-dice';
 import { spellcastingSteps } from './spellcasting';
+import { trainingSteps, untrainedEffects } from './training';
 
 // ENG-13: fifth edition's module (ADR 004 item 1), what the core asks of it: the character's
 // level, the entities its `systemData` names, a stat's defaults, the grants a class taken after
@@ -32,6 +33,7 @@ import { spellcastingSteps } from './spellcasting';
 // ENG-34 adds each d20 test's roll mode to `derive` (`rolls.ts`; a weapon's in `attacks.ts`).
 // ENG-54: a stat's highest score is the character's house rule `abilityMax`, 20 by default.
 // ENG-21 adds the hit dice by size (`hit-dice.ts`).
+// ENG-46 adds armor training's paths to `derive`, and suppresses a 2024 shield's AC without it.
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -150,6 +152,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     ...spellcastingSteps(input),
     ...attackSteps(input),
     ...rollModeSteps(input),
+    ...trainingSteps(input),
     ...spellDiceSteps(),
   }),
 
@@ -158,4 +161,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
 
   // Ability score increases taken from both the species and the background.
   ruleWarnings: abilityBonusWarnings,
+
+  // The AC effects of a shield worn without training, when its edition takes its AC away.
+  suppressedEffects: untrainedEffects,
 };

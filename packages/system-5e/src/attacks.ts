@@ -28,6 +28,7 @@ import { equipmentOf, type WornItem } from './equipment';
 import { modeEffectsOf, modeOf, ROLL_TARGETS } from './rolls';
 import { type HeavyWeaponRule, rulesOf } from './rulesets';
 import { SIZE_PATH } from './size';
+import { trainingSources, type Untrained, untrainedOf } from './training';
 
 // ENG-16: fifth edition's weapon attacks (SPEC §6.1 step 5). Each equipped weapon is numbers under
 // `attacks.<its key>`: whether the character is proficient, the attack bonus, the damage bonus
@@ -37,6 +38,7 @@ import { SIZE_PATH } from './size';
 // edition's (`rulesets/`).
 // ENG-34: each attack's roll mode, `attacks.<key>.mode`, with the Heavy property's disadvantage by
 // the edition's `heavyWeapon`; what a natural d20 face does, and a critical hit's damage dice.
+// ENG-46: armor worn without training gives disadvantage by the attack's stat (`training.ts`).
 
 /** The lowest d20 face a weapon attack scores a critical hit on, before any feature (§8). */
 export const CRITICAL_FACE = 20;
@@ -134,6 +136,7 @@ function weaponSteps(
   input: DeriveInput<FifthEditionCharacter, FifthEditionEntity>,
   sources: (category: string, key: string) => Source[],
   effects: readonly ActiveEffect[],
+  untrained: readonly Untrained[],
   worn: WornItem,
   key: string,
   weapon: Weapon,
@@ -157,7 +160,10 @@ function weaponSteps(
       modeOf(
         effects,
         ROLL_TARGETS.weaponAttack(weapon.kind),
-        heavySources(weapon, rulesOf(input.character).heavyWeapon, read, readKey),
+        [
+          ...heavySources(weapon, rulesOf(input.character).heavyWeapon, read, readKey),
+          ...trainingSources(untrained, statOf(weapon, read)),
+        ],
         readBy,
       ),
   };
@@ -209,6 +215,7 @@ export function attackSteps(
 
   const sources = proficiencySources(input.gathered);
   const effects = modeEffectsOf(input);
+  const untrained = untrainedOf(input);
   const warned = new Map<WeaponKind, RuleWarning[]>(WEAPON_KINDS.map((kind) => [kind, []]));
   const taken = new Map<string, ItemDef>();
   for (const worn of equipmentOf(input.character, input.find).weapons) {
@@ -230,7 +237,7 @@ export function attackSteps(
       });
     } else {
       taken.set(item.key, item);
-      Object.assign(steps, weaponSteps(input, sources, effects, worn, item.key, weapon));
+      Object.assign(steps, weaponSteps(input, sources, effects, untrained, worn, item.key, weapon));
     }
   }
 

@@ -80,18 +80,20 @@ export function phaseOf(effect: Effect): EffectPhase {
 
 /**
  * Every effect of the entities a character has that is switched on, in the entities' order. A
- * dormant entity's effect applies only when it has a `when` of its own (ENG-44).
+ * dormant entity's effect applies only when it has a `when` of its own (ENG-44); a suppressed one
+ * never does (ENG-46).
  */
 export function activeEffects<E extends GatherableEntity>(
   entities: readonly HadEntity<E>[],
   toggles: Readonly<Partial<Record<string, boolean>>>,
 ): ActiveEffect[] {
   const active: ActiveEffect[] = [];
-  for (const { entity, paths, dormant } of entities) {
+  for (const { entity, paths, dormant, suppressed } of entities) {
     for (const effect of entity.effects ?? []) {
       const part: EntityPartId = `${entity.id}#${effect.id}`;
       if (effect.situational !== undefined) continue;
       if (dormant === true && effect.when === undefined) continue;
+      if (suppressed?.includes(effect.id) === true) continue;
       if (effect.toggle !== undefined && !(toggles[part] ?? effect.toggle.default)) continue;
       const label = effect.label ?? entity.name;
       active.push({ effect, part, source: entity.id, label, ...(paths && { paths }) });

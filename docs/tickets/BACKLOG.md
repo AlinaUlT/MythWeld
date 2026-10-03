@@ -109,7 +109,7 @@ split off an old row got a new id.
 | ENG-60 | A spell's healing adds what a feature gives it | S | 🔲 |
 | ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | M | ✅ 2026-10-03 |
 | ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | ✅ 2026-10-02 |
-| ENG-46 | Armor worn without training has its edition's penalties | S | 🔲 |
+| ENG-46 | Armor worn without training has its edition's penalties | S | ✅ 2026-10-03 |
 | ENG-35 | The ability-bonus source is a choice, the rules base by default | S | ✅ 2026-10-03 |
 | ENG-56 | A mixed character's starting languages come from one place | S | 🔲 |
 | ENG-54 | The house rule's highest score caps every stat | S | ✅ 2026-10-03 |
@@ -165,16 +165,6 @@ split off an old row got a new id.
   lost unless given away (ENG-19 §8). Found by ENG-21: SRD 5.2.1's human, Resourceful, "You gain
   Heroic Inspiration whenever you finish a Long Rest" (golden B is that human); no data shape
   gives inspiration on a rest, and `longRest` (`rests.ts`) gives none.
-- **ENG-46** — found by ENG-14: armor worn without its training gives disadvantage on Strength and
-  Dexterity rolls and no spellcasting, in both editions (SRD 5.1 Armor Proficiency, SRD 5.2.1 Armor
-  Training, ENG-14 §8); in 2024 a shield gives its AC only with training, a ruleset difference.
-  Armor proficiency keys are `light`, `medium`, `heavy` and `shield` (ENG-09 §4), compared with
-  `armor.group` and `category`. ENG-34: the disadvantage is a rule source of each Strength and
-  Dexterity d20 test's mode (a step of value −1 among `modeOf`'s sources, `rolls.ts`), as the worn
-  armor's Stealth is; the shield's 2024 rule is a field it adds to the edition files (`rulesets/`,
-  ENG-19 §9). Found by ENG-44: the armor and the shield worn are `equipmentOf`'s (`equipment.ts`); a
-  shield's +2 is its own effect, so a shield without training gives none only if that function
-  leaves it out or names it dormant.
 - **ENG-56** — found by ENG-35 (ENG-35 §8): ADR 005 item 3.4's "a bonus of one kind counts once"
   for languages. SRD 5.1 gives them from the race ("Your race indicates the languages your
   character can speak by default"; the background may add more); SRD 5.2.1 from character
@@ -207,6 +197,9 @@ split off an old row got a new id.
 | RU | — | `RU` | Russian locale, glossary check, Russian overlays for SRD texts (ADR 000); placed when phase 3 closes |
 | SYS | — | `SYS` | More game systems: other D&D editions, Pathfinder, later others (ADR 004); placed when phase 2 closes |
 
+- **Phase 2** — found by ENG-46: `spell.cannotCast` is 1 while armor worn without training
+  forbids spells (ENG-46 §4), with an `untrainedArmor` or `untrainedShield` warning; `castSpell`
+  (ENG-20) does not read it. The sheet's cast button reads it, or the action refuses then.
 - **Phase 3** — found by ENG-02: 11 of 4,428 5e-database slugs do not fit the entity id's slug
   pattern; the import maps them. ENG-02 §11 lists them.
 - **Phase 3** — found by ENG-31: a core file may climb into a sibling package other than a
@@ -244,6 +237,10 @@ split off an old row got a new id.
   (SPEC §6.1 step 4), so an item whose mechanics put a score above the maximum must raise
   `abilities.<key>.max` too (SPEC §5.4's belt, `max 21`). The mechanics' §8 checks which items
   do this.
+- **Phase 3** — found by ENG-46: SPEC §5.4's targets `prof.armor`, `prof.weapon`, `prof.tool`,
+  `prof.language` are computed by no path, so an effect on one changes nothing; proficiencies
+  come only from grants (`gathered.proficiencies`, read by ENG-13, ENG-16, ENG-46). The mechanics
+  that give a proficiency by an effect, if the SRDs have any, decide: a computed list, or grants.
 - **Phase 3** — found by ENG-16, three things the weapons of the import and its mechanics meet:
   - Shillelagh (SRD 5.1, SRD 5.2.1) lets a club or a quarterstaff attack and deal damage with the
     spellcasting stat instead of Strength, and makes its die a d8; in 2024 the die grows at levels

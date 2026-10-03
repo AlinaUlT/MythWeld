@@ -27,3 +27,4 @@ export * from './size';
 export * from './spell-dice';
 export * from './spellcasting';
 export * from './system';
+export * from './training';

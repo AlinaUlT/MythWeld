@@ -62,6 +62,17 @@ function codes(result: Computed<FifthEditionEntity>) {
 
 const source = { pack: 'character' };
 
+/**
+ * ENG-46: golden B's chain mail is heavy armor; worn by a character whose class gives no armor
+ * training, it warns.
+ */
+const untrainedChainMail = {
+  code: 'stepRule',
+  path: 'armor.untrained',
+  rule: 'untrainedArmor',
+  data: { item: 'srd-2024:item/chain-mail' },
+};
+
 /** A made-up feat: two skill levels, a second source of one, a save, five bonus targets. */
 const trained: EntityInput = {
   id: 'character:feat/trained',
@@ -232,7 +243,7 @@ describe("ENG-13 fifth edition's module", () => {
       },
     });
     expect(parts(first)).toEqual(['character:class/scribe#tools', 'character:class/scribe#kit']);
-    expect(first.warnings).toEqual([]);
+    expect(codes(first)).toEqual([untrainedChainMail]);
   });
 
   it('gives no grant a feat is taken in place of, and reads no choice of it', () => {
@@ -311,7 +322,7 @@ describe("ENG-13 fifth edition's module", () => {
       'abilities.cha.save': 2,
       'abilities.str.save': 3,
     });
-    expect(scribal.warnings).toEqual([]);
+    expect(codes(scribal)).toEqual([untrainedChainMail]);
   });
 
   it('lets a base-phase formula read a class level, and no other path of the module', () => {
@@ -552,7 +563,7 @@ describe("ENG-13 fifth edition's module", () => {
     expect(
       valuesOf(result, ['level', 'prof', 'abilities.str.save', 'skills.perception.total']),
     ).toEqual({ level: 0, prof: 2, 'abilities.str.save': 3, 'skills.perception.total': 1 });
-    expect(result.warnings).toEqual([]);
+    expect(codes(result)).toEqual([untrainedChainMail]);
   });
 
   it('is pure: frozen inputs, and two runs give equal results', () => {

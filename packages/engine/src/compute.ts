@@ -1,3 +1,4 @@
+import type { EntityPartId } from '@grimoire/schema';
 import type { ContentIndex } from './content-index';
 import {
   type ComputedKey,
@@ -92,6 +93,13 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    * Each is warned as `characterRule`.
    */
   ruleWarnings?(input: DeriveInput<C, E>): readonly RuleWarning[];
+  /**
+   * ENG-46: the effects a rule of the system switches off once gathering shows what the character
+   * has (a fifth-edition shield worn without training in 2024 gives no AC), each by its part,
+   * `<entityId>#<effectId>`. None of them applies, in any phase, whatever its `when` or toggle; a
+   * part naming no effect of an entity the character has changes nothing.
+   */
+  suppressedEffects?(input: DeriveInput<C, E>): readonly EntityPartId[];
 }
 
 /** A warning a module's `ruleWarnings` gave: `rule` is the module's name for it (ENG-35). */
@@ -132,6 +140,28 @@ export interface Computed<E extends GatherableEntity> extends Omit<Gathered<E>, 
 }
 
 /**
+ * ENG-46: `gathered` with each entity marked with the ids of its effects `named` names; the same
+ * `gathered` when it names none.
+ */
+function suppressed<E extends GatherableEntity>(
+  gathered: Gathered<E>,
+  named: readonly EntityPartId[],
+): Gathered<E> {
+  const parts = new Set<string>(named);
+  if (parts.size === 0) return gathered;
+  let marked = false;
+  const entities = gathered.entities.map((had) => {
+    const ids = (had.entity.effects ?? [])
+      .map(({ id }) => id)
+      .filter((id) => parts.has(`${had.entity.id}#${id}`));
+    if (ids.length === 0) return had;
+    marked = true;
+    return { ...had, suppressed: ids };
+  });
+  return marked ? { ...gathered, entities } : gathered;
+}
+
+/**
  * Computes a character of a system: `index` holds its active packs (`loadContentIndex`), `system`
  * is its system's module. Pure and deterministic: nothing passed in is changed, and the same
  * arguments give an equal result.
@@ -144,7 +174,7 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
   const level = system.level(character);
   const grantsOf = system.grantsOf;
   const find = finderOf(character, index);
-  const gathered = gather(
+  const had = gather(
     character,
     index,
     level,
@@ -153,13 +183,18 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
     system.namedIds,
   );
   const defaults = system.statDefaults(character);
+  // The stats are the stat entities had; suppressing an effect changes none of them.
+  const stats = statsOf(had, defaults);
+  const gathered = suppressed(
+    had,
+    system.suppressedEffects?.({ character, gathered: had, stats, find }) ?? [],
+  );
   const basePhase: BasePhase = {
     read: (path) => (path === LEVEL_PATH ? level : system.basePath?.(character, path, gathered)),
     defaultMax: defaults.defaultMax,
     ...(defaults.maxRule !== undefined && { maxRule: defaults.maxRule }),
   };
   const base = computeStats(character, gathered, basePhase);
-  const stats = statsOf(gathered, defaults);
   const steps = system.derive({ character, gathered, stats, find });
   const keys = system.keys?.({ character, gathered, stats, find }) ?? {};
   const rules: CharacterRuleWarning[] = (

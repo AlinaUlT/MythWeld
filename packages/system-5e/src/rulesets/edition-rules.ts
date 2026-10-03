@@ -26,6 +26,15 @@ export type HeavyWeaponRule =
   | { readonly by: 'size'; readonly sizes: readonly string[] }
   | { readonly by: 'score'; readonly min: number };
 
+/**
+ * ENG-46: what an armor or a shield worn without its training does (ENG-46 §8): disadvantage on
+ * every d20 test of Strength or Dexterity, or no spells.
+ */
+export type UntrainedPenalty = 'disadvantage' | 'noSpells';
+
+/** What a shield worn without its training does: an armor's penalties, or none of its AC. */
+export type UntrainedShieldPenalty = UntrainedPenalty | 'noArmorClass';
+
 /** A rule that differs between the editions, each edition's value. */
 export interface EditionRules {
   /**
@@ -66,4 +75,9 @@ export interface EditionRules {
    * condition (ENG-21 §8).
    */
   readonly longRestEndsConcentration: boolean;
+  /** ENG-46: the penalties of an armor, and of a shield, worn without its training. */
+  readonly untrained: {
+    readonly armor: readonly UntrainedPenalty[];
+    readonly shield: readonly UntrainedShieldPenalty[];
+  };
 }
