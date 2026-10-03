@@ -33,3 +33,4 @@ export * from './spell-uses';
 export * from './spellcasting';
 export * from './system';
 export * from './training';
+export * from './unconscious';

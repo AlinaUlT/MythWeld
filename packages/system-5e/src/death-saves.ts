@@ -10,7 +10,6 @@ import {
   type Unchanged,
 } from './actions';
 import { DEATH_SAVES, type FifthEditionCharacter } from './character';
-import { isDead } from './hit-points';
 
 // ENG-58: fifth edition's death saves (both SRDs, one rule; ENG-58 §8), each one log entry. The
 // person rolls the d20 and the action takes the face it kept and the total with its bonuses: a 1
@@ -61,6 +60,15 @@ export interface DeathSaveOutcome {
 export type DeathSaveResult =
   | { ok: true; character: FifthEditionCharacter; entry: LogEntry; outcome: DeathSaveOutcome }
   | Extract<ActionResult<FifthEditionCharacter, DeathSaveRefusal | Unchanged>, { ok: false }>;
+
+/**
+ * The character is dead: at 0 hit points with 3 death save failures (ENG-20). ENG-62 moved it here
+ * from `hit-points.ts`, so the module reads it without an import loop.
+ */
+export function isDead(character: FifthEditionCharacter): boolean {
+  const { hp, deathSaves } = character.systemData.state;
+  return hp.current === 0 && deathSaves.failure >= DEATH_SAVES;
+}
 
 /** The character is stable: at 0 hit points, alive, and making no death saves. */
 export function isStable(character: FifthEditionCharacter): boolean {

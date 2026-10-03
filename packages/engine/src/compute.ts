@@ -23,6 +23,8 @@ import {
   type GatherWarning,
   type GrantOf,
   gather,
+  type KeyFinder,
+  keyFinderOf,
   type NamedEntity,
   ownGrants,
 } from './gather';
@@ -41,9 +43,10 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    * classes, feats; a Tales calling and talents). `level`, when given, is what that entity's
    * grants are measured against instead (a class's own level); `paths`, values its own effects read
    * first (ENG-14: a fifth-edition item's `@equipped`); `dormant`, when the character has it only
-   * in part (ENG-44). `find` looks an id up as gathering will (ENG-44: an item's category).
+   * in part (ENG-44). `find` looks an id up as gathering will (ENG-44: an item's category);
+   * `findKey`, an entry by its type and key (ENG-62: the condition a rule gives by its key).
    */
-  entities(character: C, find: EntityFinder<E>): readonly NamedEntity[];
+  entities(character: C, find: EntityFinder<E>, findKey: KeyFinder<E>): readonly NamedEntity[];
   /**
    * What a stat takes when it lacks the field, for this character (ENG-54: a fifth-edition house
    * rule gives its highest score).
@@ -178,7 +181,7 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
     character,
     index,
     level,
-    system.entities(character, find),
+    system.entities(character, find, keyFinderOf(character, index)),
     grantsOf === undefined ? ownGrants : (entity) => grantsOf(character, entity, find),
     system.namedIds,
   );

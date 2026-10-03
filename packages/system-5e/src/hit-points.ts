@@ -19,6 +19,7 @@ import {
   type Unchanged,
 } from './actions';
 import { DEATH_SAVES, type FifthEditionCharacter } from './character';
+import { isDead } from './death-saves';
 import type { FifthEditionEntity } from './entity-types';
 import { fifthEditionModule } from './module';
 import { rulesOf } from './rulesets';
@@ -74,12 +75,6 @@ export interface DamageOutcome {
 export type DamageResult =
   | { ok: true; character: FifthEditionCharacter; entry: LogEntry; outcome: DamageOutcome }
   | Extract<HitPointResult, { ok: false }>;
-
-/** The character is dead: at 0 hit points with 3 death save failures. */
-export function isDead(character: FifthEditionCharacter): boolean {
-  const { hp, deathSaves } = character.systemData.state;
-  return hp.current === 0 && deathSaves.failure >= DEATH_SAVES;
-}
 
 /**
  * The DC of the Constitution save that keeps concentration after `damage`: the higher of 10 and

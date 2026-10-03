@@ -116,7 +116,8 @@ split off an old row got a new id.
 | ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | ✅ 2026-10-03 |
 | ENG-57 | A spell a grant gives is cast through its own uses | S | ✅ 2026-10-03 |
 | ENG-58 | A death save roll changes the character by fifth-edition rules | S | ✅ 2026-10-03 |
-| ENG-62 | Dropping to 0 hit points gives the Unconscious condition | S | 🔲 |
+| ENG-62 | Dropping to 0 hit points gives the Unconscious condition | S | ✅ 2026-10-03 |
+| ENG-65 | Knocking a creature out leaves it unconscious at 1 hit point | S | 🔲 |
 | ENG-63 | Death ends attunement to magic items | XS | 🔲 |
 | ENG-59 | Inspiration is gained or spent up to its maximum | XS | ✅ 2026-10-03 |
 | ENG-21 | A rest changes the character by its edition's rules | S | ✅ 2026-10-03 |
@@ -137,16 +138,17 @@ split off an old row got a new id.
   5.2.1 (Rules Glossary, Dead) "If the creature died with any Exhaustion levels, it returns with 1
   fewer level"; `revive` (`hit-points.ts`) lowers none. No sentence of SRD 5.1's rules, spells or
   conditions ties exhaustion to a return to life (ENG-58 §11).
-- **ENG-62** — re-cut from ENG-58 (ENG-58 §4). Found by ENG-20: at 0 hit points both SRDs give
-  the Unconscious condition (SRD 5.1: "you fall unconscious … This unconsciousness ends if you
-  regain any hit points"; SRD 5.2.1: "you have the Unconscious condition until you regain any Hit
-  Points"), which `applyDamage` does not set: a condition is a pack's entry and the module names
-  no condition id, so its effects do not apply. The row decides how the module finds the entry (a
-  key, as `STEALTH_SKILL` names a skill, or a field on the condition, a stored-shape change), and
-  whether the actions store the condition or `compute()` gives it at 0 hit points. A stable
-  character keeps it (`isStable`, ENG-58 §8). SRD 5.2.1's Knocking Out a Creature leaves 1 hit
-  point and the condition until a short rest ends; SRD 5.1's leaves the creature "unconscious and
-  … stable" (`stabilize`).
+- **ENG-65** — re-cut from ENG-62 (ENG-62 §4). SRD 5.2.1 only: "When you would reduce a creature
+  to 0 Hit Points with a melee attack, you can instead reduce the creature to 1 Hit Point and give
+  it the Unconscious condition. It then starts a Short Rest, at the end of which that condition
+  ends on it. The condition ends early if the creature regains any Hit Points or if someone takes
+  an action to administer first aid to it" (chapter 1). Its Rules Glossary entry says it "remains
+  Unconscious until it regains any Hit Points or until someone uses an action to administer first
+  aid to it", with no end at the short rest: the row says which end it follows, and why.
+  `compute()` gives the condition only at 0 hit points (`unconscious.ts`), so at 1 it is stored, and
+  it must end on these events only: a stored Unconscious condition from a spell's sleep ends on
+  damage, not healing. A mark of its own is a stored-shape change (a version and its migrations).
+  SRD 5.1's knocking out is damage to 0 and `stabilize` (ENG-62 §8): nothing to add.
 - **ENG-63** — found by ENG-58 (ENG-58 §11): death ends attunement in both SRDs. SRD 5.1: "A
   creature's attunement to an item ends if … if the creature dies"; SRD 5.2.1 (Rules Glossary,
   Dead): "If the creature had Attunement to one or more magic items, it is no longer attuned to

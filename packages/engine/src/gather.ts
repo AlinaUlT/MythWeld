@@ -118,6 +118,9 @@ export interface HadEntity<E extends GatherableEntity> {
 /** An entity by its id, as a character finds it; `undefined` when none has the id (ENG-44). */
 export type EntityFinder<E> = (id: string) => E | undefined;
 
+/** ENG-62: an entry by its type and key, as a character finds it; `undefined` when it can use none. */
+export type KeyFinder<E> = (type: string, key: string) => E | undefined;
+
 /** How a character finds an entity by its id: its own entities first, then its packs'. */
 export function finderOf<E extends GatherableEntity>(
   character: CharacterCore<E>,
@@ -129,6 +132,26 @@ export function finderOf<E extends GatherableEntity>(
     if (entity !== undefined) return entity;
     const found = index.get(id);
     return found.ok ? found.entity : undefined;
+  };
+}
+
+/**
+ * ENG-62: how a character finds an entry by its type and key before gathering: among its packs'
+ * entries, then its own, the first in its rules base, else, only when it mixes rulesets, the first.
+ * `byKey`'s order, without the entry the character has, which gathering has not found yet.
+ */
+export function keyFinderOf<E extends GatherableEntity>(
+  character: CharacterCore<E>,
+  index: ContentIndex<E>,
+): KeyFinder<E> {
+  const { ruleset, allowMixedRulesets, localEntities } = character;
+  return (type, key) => {
+    const own = localEntities.filter((entity) => entity.type === type && entity.key === key);
+    const entries = [...index.withKey(type, key), ...own];
+    const inRulesBase = entries.find(
+      (entity) => entity.ruleset === ANY_RULESET || entity.ruleset === ruleset,
+    );
+    return inRulesBase ?? (allowMixedRulesets ? entries[0] : undefined);
   };
 }
 

@@ -840,8 +840,8 @@ describe('ENG-48 a key path with no key of its own', () => {
 function naming(paths: Readonly<Record<string, OwnPaths>>, more: OwnPaths[] = []): Module {
   return {
     ...talesModule,
-    entities: (character, find) => [
-      ...talesModule.entities(character, find).map((named) => {
+    entities: (character, find, findKey) => [
+      ...talesModule.entities(character, find, findKey).map((named) => {
         const own = paths[named.id];
         return own === undefined ? named : { ...named, paths: own };
       }),
@@ -1137,9 +1137,9 @@ describe('ENG-44 a dormant entity', () => {
   function emberNamed(dormant: boolean, again: boolean | undefined = undefined): Module {
     return {
       ...talesModule,
-      entities: (one, find) => [
+      entities: (one, find, findKey) => [
         ...talesModule
-          .entities(one, find)
+          .entities(one, find, findKey)
           .map((named) =>
             named.id === emberId ? { ...named, paths: { carried: 1 }, dormant } : named,
           ),

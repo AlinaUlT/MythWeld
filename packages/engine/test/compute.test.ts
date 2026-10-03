@@ -3,6 +3,7 @@ import {
   compute,
   type GatherableEntity,
   type GrantOf,
+  keyFinderOf,
   loadContentIndex,
   type SystemModule,
 } from '@grimoire/engine';
@@ -701,9 +702,9 @@ describe('ENG-44 the module looks up ids', () => {
     const found: Record<string, (string | undefined)[]> = {};
     const looking: SystemModule<TalesCharacter, TalesEntity> = {
       ...talesModule,
-      entities: (character, find) => {
+      entities: (character, find, findKey) => {
         found.entities = lookedUp.map((id) => find(id)?.name.en);
-        return talesModule.entities(character, find);
+        return talesModule.entities(character, find, findKey);
       },
       derive: (input) => {
         found.derive = lookedUp.map((id) => input.find(id)?.name.en);
@@ -777,9 +778,9 @@ describe("ENG-49 ids a module's grant names, looked up once", () => {
     expect(codes(computed(wishing([boonOf('tales-core:talent/gone', 4)])))).toEqual([brookMissing]);
     const dormant: SystemModule<TalesCharacter, TalesEntity> = {
       ...talesModule,
-      entities: (character, find) =>
+      entities: (character, find, findKey) =>
         talesModule
-          .entities(character, find)
+          .entities(character, find, findKey)
           .map((entity) =>
             entity.id === 'character:talent/wish' ? { ...entity, dormant: true } : entity,
           ),
@@ -884,5 +885,75 @@ describe("ENG-35 a module's rules see the whole character", () => {
   it('adds no warning for a module without `ruleWarnings`', () => {
     expect(talesModule.ruleWarnings).toBeUndefined();
     expect(codes(computed(brook))).toEqual([brookMissing]);
+  });
+});
+
+describe('ENG-62 an entry by its type and key', () => {
+  /** A condition of the character's own, of every age. */
+  const ownCondition = (name: string, key: string): TalesEntity => ({
+    id: `character:condition/${key}-own` as EntityId,
+    type: 'condition',
+    key,
+    ruleset: 'any',
+    name: { en: name },
+    source,
+  });
+
+  /** The id of the entry `character` finds by `type` and `key`. */
+  const foundId = (character: TalesCharacter, type: string, key: string) =>
+    keyFinderOf(character, index)(type, key)?.id;
+
+  it("finds the rules base's entry, an every-age one, and nothing for a type or key no entry has", () => {
+    expect(foundId(ash, 'skill', 'climb')).toBe('tales-core:skill/climb');
+    expect(foundId(brook, 'skill', 'climb')).toBe('tales-core:skill/climb-anew');
+    expect(foundId(ash, 'condition', 'lost')).toBe('tales-core:condition/lost');
+    expect(foundId(brook, 'condition', 'lost')).toBe('tales-core:condition/lost');
+    expect(foundId(ash, 'condition', 'gone')).toBeUndefined();
+    expect(foundId(ash, 'skill', 'lost')).toBeUndefined();
+  });
+
+  it("finds another age's entry only when the character mixes rulesets", () => {
+    // The seeker is second age only; Ash is first age.
+    expect(foundId(ash, 'calling', 'seeker')).toBeUndefined();
+    const mixing = variant(ash, { allowMixedRulesets: true });
+    expect(foundId(mixing, 'calling', 'seeker')).toBe('tales-core:calling/seeker');
+  });
+
+  it("finds the character's own entries after its packs'", () => {
+    const own = variant(ash, {
+      localEntities: [ownCondition('Lost again', 'lost'), ownCondition('Dazed', 'dazed')],
+    });
+    expect(foundId(own, 'condition', 'lost')).toBe('tales-core:condition/lost');
+    expect(foundId(own, 'condition', 'dazed')).toBe('character:condition/dazed-own');
+  });
+
+  it("gives the module's `entities` the finder: an entry it names by key is had", () => {
+    const naming: SystemModule<TalesCharacter, TalesEntity> = {
+      ...talesModule,
+      entities: (character, find, findKey) => {
+        const lost = findKey('condition', 'lost');
+        return [
+          ...talesModule.entities(character, find, findKey),
+          ...(lost === undefined ? [] : [{ id: lost.id }]),
+        ];
+      },
+    };
+    const before = computed(ash);
+    const after = computed(ash, naming);
+    const lost = after.entities.find(({ entity }) => entity.id === 'tales-core:condition/lost');
+    expect(lost?.from).toEqual(['character']);
+    expect(ids(before)).not.toContain('tales-core:condition/lost');
+    expect(after.values['conditions.lost.level']).toBe(1);
+    expect(after.breakdown['conditions.lost.level']).toEqual([
+      {
+        kind: 'condition',
+        source: 'tales-core:condition/lost',
+        label: { en: 'Lost' },
+        value: 1,
+        change: 1,
+      },
+    ]);
+    expect(after.values).toEqual({ ...before.values, 'conditions.lost.level': 1 });
+    expect(after.warnings).toEqual(before.warnings);
   });
 });

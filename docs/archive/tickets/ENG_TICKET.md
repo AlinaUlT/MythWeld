@@ -14220,3 +14220,291 @@ Found, not fixed:
   a name with no mechanics. New row ENG-64 in `BACKLOG.md`, which takes this row's note on it.
 
 Nothing for the changelog: no screen changes.
+
+---
+
+### ENG-62 The Unconscious condition at 0 hit points
+
+**Hat:** Dropping to 0 hit points gives the Unconscious condition
+**Depends on:** ENG-11 (gathering, `byKey`, `conditions.<key>.level`), ENG-13 (the module's
+`entities`), ENG-20 (`applyDamage`, `applyHealing`, `isDead`), ENG-21 (`shortRest`), ENG-58
+(`isStable`, `stabilize`, `rollDeathSave`, `revive`)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.1 steps 1–2 (what a character has); §5.3 (`ConditionDef`); §5.6
+(`@conditions.<key>.level`); §8.2 (missing is not broken); ADR 014 item 2; ENG-58 §4's re-cut
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/unconscious.ts` — new: `UNCONSCIOUS_CONDITION`, `isDown`,
+`unconsciousNamed`, `unconsciousWarnings`.
+- `packages/engine/src/gather.ts` — new: `KeyFinder`, `keyFinderOf`.
+- `packages/engine/src/compute.ts` — changes: `SystemModule.entities` gets `findKey`, the third
+  argument.
+- `packages/system-5e/src/module.ts` — changes: `entities` ends with `unconsciousNamed`;
+  `ruleWarnings` adds `unconsciousWarnings`.
+- `packages/system-5e/src/death-saves.ts` — changes: `isDead` moves here from `hit-points.ts`
+  (§4); `hit-points.ts` and `rests.ts` import it from here.
+- `packages/system-5e/src/index.ts` — exports the new file.
+- `packages/system-5e/test/unconscious.test.ts` — new. `packages/engine/test/compute.test.ts` —
+  the key finder. Test modules that pass `entities` on (`engine/test/phases.test.ts`,
+  `engine/test/compute.test.ts`, `system-5e/test/module.test.ts`) — the third argument.
+- `docs/tickets/BACKLOG.md` — the re-cut (§4).
+
+#### 2. What is missing now
+
+Measured on `main` at `19a86a5`:
+- Golden A (2014) and golden B (2024) at 0 hit points, with a condition of key `unconscious`
+  (speed set to 0) added to their pack (a test written for it, then deleted): `compute()` gives
+  `conditions.unconscious.level` 0, `speed.walk` 25 and 30, no condition among the entities, no
+  warning.
+- `fifthEditionModule.entities` names the species, the background, the classes and subclasses,
+  the feats and the equipped items: no condition. `SystemModule.entities(character, find)` finds
+  an entry by its id only; nothing before gathering finds one by its type and key.
+- `grep -rni unconscious packages/*/src` finds three comments, in `rulesets/` (ENG-21's long rest).
+- `pnpm test`: `Test Files 59 passed (59)`, `Tests 770 passed (770)`, 9.38 s.
+
+#### 3. What it should look like when done
+
+`stamp` is `action-checks.ts`'s. Golden A (2014) walks 25 feet and golden B (2024) 30; both have a
+hit point maximum of 12 (SPEC §6.7); golden A spends a d8 hit die and adds 3 (ENG-21's test: a
+roll of 5 gives 8). The Unconscious entries are written in the test, numbers only:
+`srd-2014:condition/unconscious` and `srd-2024:condition/unconscious`, key `unconscious`, each with
+one effect, `speed.all.mul` set to 0 (SRD 5.1 "can't move", SRD 5.2.1 "Your Speed is 0", §8).
+Tales is ENG-27's test system: Ash is first age, Brook second age, neither mixing. Every value is
+worked out by hand from §8 and the data.
+
+**The core: an entry by its type and key** — `keyFinderOf(character, index)(type, key)`
+1. Tales' skill `climb` has an entry per age: Ash finds `tales-core:skill/climb`, Brook
+   `tales-core:skill/climb-anew`. The condition `lost` (every age): both find
+   `tales-core:condition/lost`. `('condition', 'gone')`: `undefined`; `('skill', 'lost')`:
+   `undefined` (the type counts).
+2. Another age's entry only when mixing: the calling `seeker` is second age only; Ash finds
+   `undefined`, and Ash with `allowMixedRulesets: true` finds `tales-core:calling/seeker`.
+3. The character's own entries after its packs: Ash with an own condition of key `lost` still
+   finds the pack's; an own condition of a new key `dazed` is found.
+4. `SystemModule.entities` gets the finder as its third argument: a module that also names
+   `findKey('condition', 'lost')` gives Ash the condition `tales-core:condition/lost`, from
+   `['character']`, `conditions.lost.level` 1 with the step `{ kind: 'condition', source:
+   'tales-core:condition/lost', label: { en: 'Lost' }, value: 1, change: 1 }`; every other value
+   as without it.
+
+**The module** — golden A and golden B, the Unconscious entry in their edition's pack
+5. `UNCONSCIOUS_CONDITION` is `'unconscious'`. `isDown(character)`: true at 0 hit points dying,
+   stable, or with 5 temporary hit points; false at 0 with 3 failures (dead), at 1 and at 12.
+6. At 0 hit points: `conditions.unconscious.level` 0 → 1, its step `{ kind: 'condition', source:
+   'srd-2014:condition/unconscious', label: { en: 'Unconscious' }, value: 1, change: 1 }` (2024's
+   id for B); the condition is had, from `['character']`; `speed.walk` 25 → 0 (A), 30 → 0 (B),
+   with an effect step of `<id>#speed-0`; no warning.
+7. Stable at 0, and at 0 with 5 temporary hit points: the same, level 1 and speed 0.
+8. Dead (0 hit points, 3 failures): level 0, speed 25 and 30, not had. At 1 and at 12: the same.
+9. Nothing is stored; the hit points decide: A at 6 takes 6 damage: hit points 0, `state.conditions`
+   stays `[]`, level 0 → 1; that entry reversed: 0. Then healed 3: 0. A death save of 20 from 0:
+   0. The third failure (2 failures, natural 5): 0. A short rest from 0 spending a d8 that rolled
+   5: hit points 8, 0. Stabilized at 0 (SRD 5.1's knocking out: damage to 0, then stable): 1.
+   Revived with 1 hit point: 0.
+10. A stored Unconscious condition counts too: at 0 with it in `state.conditions`, it is had once,
+    level 1; at 12 with it stored (a spell's sleep), level 1.
+11. Another edition's entry: A with the 2014 pack and a 2024 pack holding only the Unconscious
+    entry, at 0: not mixing, no `conditions.unconscious.level` and only the warning of item 12;
+    mixing, the 2024 entry is had, level 1, and the one warning is gathering's `otherRuleset`.
+12. No entry: the golden packs as they are, at 0: the warning `{ code: 'characterRule', rule:
+    'noUnconsciousCondition', data: { key: 'unconscious' } }`, no `conditions.unconscious.level`,
+    speed 25. At 12, and dead: no warning.
+13. The goldens, above 0 hit points, keep every value: the existing tests pass as they are.
+14. The quality gate is green.
+
+#### 4. How to do it
+
+**The re-cut first** (`BACKLOG.md`). The row's note names two things beside the 0 hit points: SRD
+5.1's knocking out and SRD 5.2.1's. SRD 5.1's is damage to 0 and then stable ("The creature falls
+unconscious and is stable", §8): `applyDamage` and `stabilize` do it, and the condition follows
+the 0 hit points (item 9). SRD 5.2.1's leaves the creature at 1 hit point with the condition, which
+ends at the end of a short rest, when it regains hit points, or with first aid (§8). At 1 hit point
+nothing derives it, so it is stored, and it must end on those three events and on no other: a
+stored Unconscious condition from a spell's sleep ends on damage, not on healing. That needs a
+mark of its own (a stored-shape change) and is not "dropping to 0". It becomes **ENG-65** (S)
+"Knocking a creature out leaves it unconscious at 1 hit point", after ENG-62.
+
+Then:
+1. `gather.ts`: `KeyFinder`, `keyFinderOf`. `compute.ts`: `entities(character, find, findKey)`.
+2. `death-saves.ts`: `isDead`, moved; `hit-points.ts`, `rests.ts` import it from here.
+3. `unconscious.ts`: `UNCONSCIOUS_CONDITION`, `isDown`, `unconsciousNamed`, `unconsciousWarnings`.
+4. `module.ts`: `entities` and `ruleWarnings` use them.
+5. Tests (§7), then the gate.
+
+Technical choices (ADR 002):
+- **The entry is found by its key, `unconscious`**, as `STEALTH_SKILL` names a skill: a pack's
+  condition with that key is the Unconscious condition, as `@conditions.unconscious.level` already
+  reads it (ADR 014 item 2). No field on the condition, so no pack schema change and no version.
+- **`compute()` gives it; no action stores it.** The hit points are the one truth: "until you
+  regain any hit points" (both SRDs) is exactly "while at 0". Damage, healing, a death save's 20,
+  a short rest, reviving, a level gained and undo all keep it right without each of them writing
+  it. A stored condition would also need a migration for every character saved at 0 hit points,
+  and a migration cannot find a pack's entry. dnd5e does the same by hand: `updateDowned` adds
+  the status at 0 and deletes it above (§8). The person cannot take it away while at 0, which no
+  rule allows either.
+- **Dead is not Unconscious.** Both SRDs give it when the 0 hit points "fail to kill" (2014) or
+  "don't die instantly" (2024); dnd5e gives `dead` in its place. `isDown` is ENG-20's `down`
+  status: 0 hit points and alive.
+- **The core finds an entry by type and key before gathering** (`keyFinderOf`): among the packs'
+  entries, then the character's own, the first in its rules base, else, only when it mixes, the
+  first. That is `byKey`'s order without "the one it has", which is not known before gathering;
+  the entry named is then had, so `byKey` and `conditions.unconscious` pick the same one.
+- **No entry is a warning, never a break** (§8.2): at 0 hit points with no condition of that key
+  in reach, `characterRule` `noUnconsciousCondition`, with the key as data. Its effects (saves
+  failed, attacks against with advantage) would otherwise be missing with no word.
+- **A stored Unconscious condition stays the person's.** It is gathered as any stored condition;
+  at 0 hit points the two namings are one entry, had once.
+- **`isDead` moves to `death-saves.ts`**, as the third failure is a death save's rule: the module
+  now reads it, and `hit-points.ts` imports the module, so leaving it there would make an import
+  loop. Its export through `index.ts` is unchanged.
+
+#### 5. Stored data
+
+Nothing stored changes. No field of `CharacterDoc`, `ContentPack` or a Dexie table is new: the
+condition follows `systemData.state.hp.current`, and the entry is a pack's condition with a key.
+The change to `SystemModule.entities` is code, not data.
+
+#### 6. What a person will see
+
+Not a screen. When the sheet shows conditions (phase 2), the Unconscious condition is among
+`Computed.entities` at 0 hit points; `state.conditions` does not hold it, which tells the screen
+it is the rules', not one the person set.
+
+#### 7. Tests
+
+- `packages/engine/test/compute.test.ts` — `describe('ENG-62 an entry by its type and key')`: §3
+  items 1–4, on Tales.
+- `packages/system-5e/test/unconscious.test.ts` — `describe('ENG-62 the Unconscious condition at
+  0 hit points')`: items 5–12, on goldens A and B.
+- Control values from: the SRD texts of §8 (0 hit points alive gives the condition; it ends with
+  hit points regained; a stable creature keeps it; temporary hit points do not end it); SPEC §6.7
+  (A's and B's maximum 12); ENG-19's exhaustion test (A walks 25, B 30); ENG-21's test (golden A's
+  d8 of 5 gives 8); Tales' `content.ts` and `characters.ts`; the rest worked out by hand in §3.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-03: SRD 5.1 as 5e-bits/5e-srd-api quotes it at
+`e6edf9a51fad4b59a7e9561fad6c15232caed214` (`packages/5e-database/src/2014/en/5e-SRD-Rules.json`,
+`5e-SRD-Conditions.json`); SRD 5.2.1 as the same commit's `2024/en/5e-SRD-Conditions.json` and
+foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` quote it
+(`packs/_source/content24/chapter-1/damage-and-healing.yml`, `appendices/rules-glossary.yml`);
+dnd5e's code at the same commit (`module/documents/actor/actor.mjs`, `module/config.mjs`). The
+same commits as ENG-13 to ENG-58. All CC-BY-4.0.
+
+**At 0 hit points.** SRD 5.1 (Dropping to 0 Hit Points): "When you drop to 0 hit points, you either
+die outright or fall unconscious"; (Falling Unconscious): "If damage reduces you to 0 hit points
+and fails to kill you, you fall unconscious (see appendix PH-A). This unconsciousness ends if you
+regain any hit points." SRD 5.2.1 (Falling Unconscious): "If you reach 0 Hit Points and don't die
+instantly, you have the Unconscious condition until you regain any Hit Points, and you now face
+making Death Saving Throws". One rule in both editions: at 0 and alive, until hit points come back.
+
+**Stable keeps it.** SRD 5.1: "A stable creature doesn't make death saving throws, even though it
+has 0 hit points, but it does remain unconscious." SRD 5.2.1: "A Stable creature doesn't make
+Death Saving Throws even though it has 0 Hit Points, but it still has the Unconscious condition."
+
+**Temporary hit points do not end it.** SRD 5.1 (ENG-20 §8): "If you have 0 hit points, receiving
+temporary hit points doesn't restore you to consciousness"; SRD 5.2.1 the same, "Only true healing
+can save you."
+
+**The condition.** SRD 5.1 (`5e-SRD-Conditions.json`, Unconscious): "An unconscious creature is
+incapacitated (see the condition), can't move or speak, and is unaware of its surroundings." "The
+creature drops whatever it's holding and falls prone." "The creature automatically fails Strength
+and Dexterity saving throws." "Attack rolls against the creature have advantage." "Any attack that
+hits the creature is a critical hit if the attacker is within 5 feet of the creature." SRD 5.2.1
+(Unconscious): "Inert. You have the Incapacitated and Prone conditions, and you drop whatever
+you're holding. When this condition ends, you remain Prone. Speed 0. Your Speed is 0 and can't
+increase." and the same advantage, failed saves, critical hits and unawareness. Its effects are its
+pack's data (phase 3); the test entries hold the speed only.
+
+**Knocking out.** SRD 5.1 (Knocking a Creature Out): "When an attacker reduces a creature to 0 hit
+points with a melee attack, the attacker can knock the creature out. The attacker can make this
+choice the instant the damage is dealt. The creature falls unconscious and is stable." SRD 5.2.1
+(Knocking Out a Creature, chapter 1): "When you would reduce a creature to 0 Hit Points with a melee
+attack, you can instead reduce the creature to 1 Hit Point and give it the Unconscious condition.
+It then starts a Short Rest, at the end of which that condition ends on it. The condition ends
+early if the creature regains any Hit Points or if someone takes an action to administer first aid
+to it". The Rules Glossary's entry says it "remains Unconscious until it regains any Hit Points or
+until someone uses an action to administer first aid to it", with no end at the short rest: ENG-65
+reads both (§4).
+
+**Dead.** SRD 5.2.1 (Rules Glossary, Dead): "Unless otherwise stated, the creature returns to life
+with any conditions, magical contagions, or curses that were affecting it at death if the durations
+of those effects are still ongoing." The Unconscious condition's duration ends with hit points
+regained, and a revival gives hit points (ENG-58 §8), so a revived character does not have it.
+dnd5e (`Actor5e#updateDowned`): with hit points above 0 it deletes the statuses it added; at 0 it
+adds `dead` when the death save failures are 3 or more, else `unconscious`.
+
+No golden value is touched; no rules source disagrees with the SPEC. Nothing stops.
+
+#### 9. Not in this ticket
+
+- SRD 5.2.1's knocking out at 1 hit point: ENG-65 (re-cut, §4).
+- The Unconscious condition's own effects, its Incapacitated and Prone, and 2024's "you remain
+  Prone": the condition entries of phase 3; Prone after it ends is the person's.
+- Concentration ending at 0 hit points: ENG-20 already ends it in `applyDamage`.
+- The sheet's condition list, which tells this condition from a stored one: phase 2.
+- A monster that dies at 0 hit points: the DM tools' phase.
+
+#### 10. Rake check
+
+- **The core names no game.** `keyFinderOf` finds any type by any key; the key `unconscious` and
+  the 0 hit points are `system-5e`'s.
+- **`compute()` is pure and deterministic.** The condition is read from the stored hit points and
+  death saves; nothing is written, and the same character gives the same result.
+- **A number shown with no breakdown entry is a bug.** The condition's level has its step, and its
+  effects their effect steps, as any condition's.
+- **Missing is not broken.** No entry is a warning; the character computes.
+- **Each system's rules live in its module; no `if (ruleset === …)`.** One rule in both editions
+  (§8); the entry each edition uses is its pack's, found by key.
+- **A stored-shape change needs a migration.** None changes (§5).
+- **Licensing.** The rules are quoted from the CC-BY-4.0 SRDs in this ticket only; the test entries
+  hold a name and a number, no rules text.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- Before: `pnpm test`: `Test Files 59 passed (59)`, `Tests 770 passed (770)`, 9.38 s.
+- After: `pnpm test`: `Test Files 60 passed (60)`, `Tests 781 passed (781)`, 9.34 s. 11 are new:
+  `unconscious.test.ts` 7, `compute.test.ts` 4.
+- Lint: `Checked 190 files`, no error. Typecheck: `Scope: 6 of 7 workspace projects`, all 6
+  `Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- Rebased onto ENG-59: `pnpm test`: `Test Files 61 passed (61)`, `Tests 786 passed (786)`, 9.73 s;
+  lint `Checked 192 files`, no error; typecheck 6 of 6 `Done`.
+- Golden A at 0 hit points, the Unconscious entry in its pack: `conditions.unconscious.level` 0
+  → 1, `speed.walk` 25 → 0; golden B the same, 30 → 0. At 0 with no entry: the warning
+  `noUnconsciousCondition`, speed as it was.
+- The tests catch mistakes. Each change made alone in the code, then six test files run
+  (`unconscious`, `compute`, `hit-points`, `death-saves`, `rests`, `module`: 113 tests); every one
+  failed at least one test, and each was undone (each file compared equal to its copy after; 113
+  passed again): the dead counted as down, 4 failed; temporary hit points ending it, 2; the module
+  naming nothing, 4; no warning, 2; a warning even with the entry, 2; the rules base ignored by
+  the key finder, 3; another edition's entry without mixing, 2; own entries before the packs', 1.
+
+Differences from §3:
+- Item 11 first said "level 0" for the character that does not mix. Gathering's `byKey` names no
+  entry a character cannot use, so there is no `conditions.unconscious.level` at all; found while
+  writing the test, before it ran. §3 now says so.
+- Item 9's knocking out is golden A dropped to 0 by damage and then stabilized, as SRD 5.1 has it.
+- Three test modules that pass `entities` on to Tales' or fifth edition's take the third argument
+  (`compute.test.ts`, `phases.test.ts`, `module.test.ts`); no expected value changed.
+- Size S held.
+
+Re-cut (§4): SRD 5.2.1's knocking out at 1 hit point is ENG-65 (S), after ENG-62, with the part
+of the row's note on it. ENG-59 closed while this ticket ran and took ENG-64 for its own row, so
+this one is ENG-65.
+
+Found, not fixed:
+- `castSpell` does not read the hit points: a character at 0, who has the Unconscious condition
+  and so the Incapacitated one, casts and starts concentrating. SRD 5.1 (Incapacitated): "can't
+  take actions or reactions"; SRD 5.2.1 (Incapacitated): "You can't take any action, Bonus
+  Action, or Reaction" and "Your Concentration is broken". A warning, never a block: a phase 2
+  note, with the casting screen.
+- SRD 5.2.1 says the knocked-out creature's condition ends at the end of its short rest (chapter
+  1), and its Rules Glossary leaves that end out (§8). Written into ENG-65's note.
+
+Nothing for the changelog.

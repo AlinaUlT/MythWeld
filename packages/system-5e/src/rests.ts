@@ -24,9 +24,9 @@ import {
 } from './actions';
 import type { FifthEditionCharacter } from './character';
 import { RULE_STATS } from './combat';
+import { isDead } from './death-saves';
 import type { FifthEditionEntity } from './entity-types';
 import { hitDicePath } from './hit-dice';
-import { isDead } from './hit-points';
 import { fifthEditionModule } from './module';
 import { rulesOf } from './rulesets';
 import { HIT_DIE_SIZES, MAX_SPELL_LEVEL } from './system';

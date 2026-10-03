@@ -3,6 +3,7 @@ import {
   compute,
   evaluateNumber,
   finderOf,
+  keyFinderOf,
   loadContentIndex,
 } from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
@@ -159,7 +160,8 @@ describe("ENG-13 fifth edition's module", () => {
 
   it('names what systemData names, each class at its level, and adds the levels', () => {
     const b4 = opened(openFifthEditionCharacter(goldenB4));
-    expect(fifthEditionModule.entities(b4, finderOf(b4, index2024.index))).toEqual([
+    const { index } = index2024;
+    expect(fifthEditionModule.entities(b4, finderOf(b4, index), keyFinderOf(b4, index))).toEqual([
       { id: 'srd-2024:species/human' },
       { id: 'srd-2024:background/soldier' },
       { id: 'srd-2024:class/fighter', level: 4 },

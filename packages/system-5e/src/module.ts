@@ -30,6 +30,7 @@ import { spellDiceSteps } from './spell-dice';
 import { spellUsesGrants } from './spell-uses';
 import { spellcastingSteps } from './spellcasting';
 import { trainingSteps, untrainedEffects } from './training';
+import { unconsciousNamed, unconsciousWarnings } from './unconscious';
 
 // ENG-13: fifth edition's module (ADR 004 item 1), what the core asks of it: the character's
 // level, the entities its `systemData` names, a stat's defaults, the grants a class taken after
@@ -45,6 +46,7 @@ import { trainingSteps, untrainedEffects } from './training';
 // ENG-46 adds armor training's paths to `derive`, and suppresses a 2024 shield's AC without it.
 // ENG-56: the side of the starting languages not taken gives none; a mix that gives none warns.
 // ENG-57: a spell grant's own uses are a resource, given beside it (`spell-uses.ts`).
+// ENG-62: at 0 hit points and alive, the Unconscious condition is named by its key; none warns.
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -137,7 +139,7 @@ function classSteps({
 export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditionEntity> = {
   level: characterLevel,
 
-  entities: (character, find) => {
+  entities: (character, find, findKey) => {
     const data = character.systemData;
     return [
       ...[data.species, data.background].flatMap((entry) => (entry ? [{ id: entry.id }] : [])),
@@ -149,6 +151,8 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
       // Only an equipped item's effects and grants apply (SPEC §5.3), so only those are named,
       // and of those only what the rules let count (ENG-44).
       ...equipmentOf(character, find).named,
+      // The condition the 0 hit points give (ENG-62).
+      ...unconsciousNamed(character, findKey),
     ];
   },
 
@@ -193,8 +197,12 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
   keys: (input) => ({ ...skillKeys(input), ...sizeKeys(input) }),
 
   // Ability score increases taken from both the species and the background; a mix that gives no
-  // starting languages.
-  ruleWarnings: (input) => [...abilityBonusWarnings(input), ...languageWarnings(input)],
+  // starting languages; a character at 0 hit points with no Unconscious condition to have.
+  ruleWarnings: (input) => [
+    ...abilityBonusWarnings(input),
+    ...languageWarnings(input),
+    ...unconsciousWarnings(input),
+  ],
 
   // The AC effects of a shield worn without training, when its edition takes its AC away.
   suppressedEffects: untrainedEffects,
