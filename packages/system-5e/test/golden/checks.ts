@@ -109,6 +109,7 @@ export function formulasOf(entity: FifthEditionEntity): { formulas: string[]; ro
   }
   if (entity.type === 'spell') {
     rolls.push(...(entity.damage ?? []).map((damage) => damage.formula));
+    if (entity.healing !== undefined) rolls.push(entity.healing.formula);
     if (entity.scaling !== undefined) rolls.push(entity.scaling.formula);
   }
   return { formulas, rolls };

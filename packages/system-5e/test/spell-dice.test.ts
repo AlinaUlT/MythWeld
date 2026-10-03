@@ -1,4 +1,4 @@
-import { type Computed, compute, loadContentIndex } from '@grimoire/engine';
+import { averageOf, type Computed, compute, loadContentIndex } from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
@@ -10,6 +10,7 @@ import {
   type fifthEditionCharacterSchema,
   fifthEditionEntitySchema,
   fifthEditionModule,
+  grantCastingStat,
   openFifthEditionCharacter,
   openFifthEditionPack,
   type SpellDef,
@@ -23,6 +24,8 @@ import {
   goldenB4,
   goldenC2014,
   goldenC2024,
+  goldenE,
+  hbLocal,
   srd2014,
   srd2024,
 } from './golden/index.ts';
@@ -33,10 +36,13 @@ import {
 
 type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 type EntityInput = FifthEditionCharacter['localEntities'][number];
-type SpellInput = Pick<SpellDef, 'id' | 'level' | 'damage' | 'scaling'>;
+type SpellInput = Pick<SpellDef, 'id' | 'level' | 'damage' | 'healing' | 'scaling'>;
 
 const index2014 = loadContentIndex(FIFTH_EDITION_SYSTEM, [opened(openFifthEditionPack(srd2014))]);
-const index2024 = loadContentIndex(FIFTH_EDITION_SYSTEM, [opened(openFifthEditionPack(srd2024))]);
+const index2024 = loadContentIndex(FIFTH_EDITION_SYSTEM, [
+  opened(openFifthEditionPack(srd2024)),
+  opened(openFifthEditionPack(hbLocal)),
+]);
 
 /** A character opened as a file would be, computed on its edition's pack; its breakdowns add up. */
 function computed(character: CharacterInput): Computed<FifthEditionEntity> {
@@ -164,7 +170,7 @@ describe("ENG-50 a spell's dice", () => {
   });
 
   it("gives a spell's dice at each slot: SRD 5.1 Fireball's 8d6 at 3 to 14d6 at 9", () => {
-    const bySlot = [3, 4, 5, 6, 7, 8, 9].map((slot) => formulas(spellDice(fireball, {}, slot)));
+    const bySlot = [3, 4, 5, 6, 7, 8, 9].map((slot) => formulas(spellDice(fireball, {}, { slot })));
     expect(bySlot.flat()).toEqual(['8d6', '9d6', '10d6', '11d6', '12d6', '13d6', '14d6']);
     // Without a slot, or with one below its level, its own dice; `cantrip.upgrades` is not read.
     expect(spellDice(fireball, { 'cantrip.upgrades': 3 })).toEqual({
@@ -172,7 +178,7 @@ describe("ENG-50 a spell's dice", () => {
       damage: [{ formula: '8d6', type: 'fire' }],
       warnings: [],
     });
-    expect(spellDice(fireball, {}, 2).times).toBe(0);
+    expect(spellDice(fireball, {}, { slot: 2 }).times).toBe(0);
   });
 
   it('joins the scaling to the first damage only, the rest of its formula kept', () => {
@@ -199,14 +205,14 @@ describe("ENG-50 a spell's dice", () => {
     };
     // The cantrip: 1d8, 1d8 more each upgrade. The spell: level 2, 2d6, 1d6 more per slot above.
     expect(formulas(spellDice(own(cantrip), { 'cantrip.upgrades': 1 }))).toEqual(['2d8']);
-    expect(formulas(spellDice(own(spell), {}, 4))).toEqual(['4d6']);
+    expect(formulas(spellDice(own(spell), {}, { slot: 4 }))).toEqual(['4d6']);
   });
 
   it('counts a number of times that is not whole as the whole number below it, 0 at least', () => {
     expect(spellDice(fireBolt, { 'cantrip.upgrades': 1.5 }).times).toBe(1);
     expect(formulas(spellDice(fireBolt, { 'cantrip.upgrades': 1.5 }))).toEqual(['2d10']);
     expect(spellDice(fireBolt, { 'cantrip.upgrades': -1 }).times).toBe(0);
-    expect(formulas(spellDice(fireball, {}, 4.5))).toEqual(['9d6']);
+    expect(formulas(spellDice(fireball, {}, { slot: 4.5 }))).toEqual(['9d6']);
   });
 
   it('gives a spell with no scaling its own damage, and one with no damage nothing', () => {
@@ -215,7 +221,7 @@ describe("ENG-50 a spell's dice", () => {
       level: 1,
       damage: [{ formula: '2d4', type: 'glare' }],
     };
-    expect(spellDice(plain, {}, 5)).toEqual({
+    expect(spellDice(plain, {}, { slot: 5 })).toEqual({
       times: 0,
       damage: [{ formula: '2d4', type: 'glare' }],
       warnings: [],
@@ -244,7 +250,7 @@ describe("ENG-50 a spell's dice", () => {
       times: 1,
       damage: [],
       warnings: [
-        expect.objectContaining({ code: 'scalingWithoutDamage', spell: 'character:spell/extra' }),
+        expect.objectContaining({ code: 'scalingWithoutRoll', spell: 'character:spell/extra' }),
       ],
     });
 
@@ -278,5 +284,240 @@ describe("ENG-50 a spell's dice", () => {
     expect(spellDice(frozenSpell, values)).toEqual(first);
     expect(first).toEqual(spellDice(fireBolt, { 'cantrip.upgrades': 2 }));
     expect(frozenSpell.damage).toEqual([{ formula: '1d10', type: 'fire' }]);
+  });
+});
+
+// ENG-53: a spell's healing, and `@mod` as the casting stat's modifier. The rules and numbers are
+// ENG-53 §8's: SRD 5.1's from 5e-database (`e6edf9a`), SRD 5.2.1's from dnd5e (`7bfb3f1`), with no
+// text. Golden A: WIS 15 + 1 = 16 → +3, CHA 12 → +1. Golden C 2024: CHA 14 → +2. Golden E: SAN 14
+// → +2. Each average below was worked out by hand, never copied from a run.
+
+/** An entity of a loaded pack, found by id; the test fails when it is not there. */
+function entityIn(loaded: typeof index2014, id: string): FifthEditionEntity {
+  const found = loaded.index.get(id);
+  if (!found.ok) throw new Error(found.message);
+  return found.entity;
+}
+
+/** The stat a class of a loaded pack casts with: its `spellcasting.ability`. */
+function castingStatOf(loaded: typeof index2014, id: string): string | undefined {
+  const found = entityIn(loaded, id);
+  return found.type === 'class' ? found.spellcasting?.ability : undefined;
+}
+
+/** A roll formula's average on a computed character, with what it read and the warnings' codes. */
+function averageOn(result: Computed<FifthEditionEntity>, formula: string | undefined) {
+  const { value, reads, warnings } = averageOf(formula ?? '', (path) => result.values[path]);
+  return { value, reads, warnings: warnings.map(({ code }) => code) };
+}
+
+/** SRD 5.2.1 Cure Wounds: 2d8 + the modifier, 2d8 more per slot level above 1 (dnd5e). */
+const cureWounds2024: SpellInput = {
+  id: 'srd-2024:spell/cure-wounds',
+  level: 1,
+  healing: { formula: '2d8 + @mod', kind: 'hp' },
+  scaling: { kind: 'slot', formula: '2d8' },
+};
+
+describe("ENG-53 a spell's healing", () => {
+  const a = computed(goldenA);
+  const cure = entityIn(index2014, 'srd-2014:spell/cure-wounds');
+  if (cure.type !== 'spell') throw new Error('Cure Wounds is not a spell');
+
+  it("gives SRD 5.1 Cure Wounds cast as golden A's cleric: 1d8 + WIS, 1d8 more per slot", () => {
+    const stat = castingStatOf(index2014, 'srd-2014:class/cleric');
+    expect(stat).toBe('wis');
+    expect(spellDice(cure, a.values, { stat })).toEqual({
+      times: 0,
+      damage: [],
+      healing: { formula: '1d8 + @abilities.wis.mod', kind: 'hp' },
+      warnings: [],
+    });
+    const bySlot = [1, 2, 9].map((slot) => spellDice(cure, a.values, { slot, stat }).healing);
+    expect(bySlot.map((healing) => healing?.formula)).toEqual([
+      '1d8 + @abilities.wis.mod',
+      '2d8 + @abilities.wis.mod',
+      '9d8 + @abilities.wis.mod',
+    ]);
+    // 4.5 + 3, 9 + 3, 40.5 + 3.
+    expect(bySlot.map((healing) => averageOn(a, healing?.formula))).toEqual([
+      { value: 7.5, reads: ['abilities.wis.mod'], warnings: [] },
+      { value: 12, reads: ['abilities.wis.mod'], warnings: [] },
+      { value: 43.5, reads: ['abilities.wis.mod'], warnings: [] },
+    ]);
+  });
+
+  it('casts it with the stat a grant names: CHA on golden A, 4.5 + 1 = 5.5', () => {
+    const stat = grantCastingStat({ id: 'lore', kind: 'spell', fixed: [cure.id], ability: 'cha' });
+    const healing = spellDice(cure, a.values, { slot: 1, stat }).healing;
+    expect(healing).toEqual({ formula: '1d8 + @abilities.cha.mod', kind: 'hp' });
+    expect(averageOn(a, healing?.formula).value).toBe(5.5);
+  });
+
+  it('keeps @mod with no stat, and warns; a roll of it reads 0 for the modifier', () => {
+    const result = spellDice(cure, a.values, { slot: 1 });
+    expect(result.healing).toEqual({ formula: '1d8 + @mod', kind: 'hp' });
+    expect(codes(result)).toEqual([{ code: 'noCastingStat', spell: 'srd-2014:spell/cure-wounds' }]);
+    expect(averageOn(a, result.healing?.formula)).toEqual({
+      value: 4.5,
+      reads: ['mod'],
+      warnings: ['missingPath'],
+    });
+  });
+
+  it("gives SRD 5.2.1 Cure Wounds cast as golden C 2024's paladin: 2d8 + CHA, 2d8 per slot", () => {
+    const c = computed(goldenC2024);
+    const stat = castingStatOf(index2024, 'srd-2024:class/paladin');
+    expect(stat).toBe('cha');
+    const bySlot = [1, 2, 3].map((slot) => spellDice(cureWounds2024, c.values, { slot, stat }));
+    expect(bySlot.map(({ times, healing }) => [times, healing?.formula])).toEqual([
+      [0, '2d8 + @abilities.cha.mod'],
+      [1, '4d8 + @abilities.cha.mod'],
+      [2, '6d8 + @abilities.cha.mod'],
+    ]);
+    // 9 + 2, 18 + 2, 27 + 2.
+    expect(bySlot.map(({ healing }) => averageOn(c, healing?.formula).value)).toEqual([11, 20, 29]);
+  });
+
+  it('gives temporary hit points and healing with no dice: SRD 5.1 False Life and Heal', () => {
+    const falseLife: SpellInput = {
+      id: 'srd-2014:spell/false-life',
+      level: 1,
+      healing: { formula: '1d4 + 4', kind: 'tempHp' },
+      scaling: { kind: 'slot', formula: '5' },
+    };
+    const lives = [1, 3].map((slot) => spellDice(falseLife, {}, { slot }).healing);
+    expect(lives).toEqual([
+      { formula: '1d4 + 4', kind: 'tempHp' },
+      { formula: '1d4 + 4 + (5) + (5)', kind: 'tempHp' },
+    ]);
+    // 2.5 + 4; 2.5 + 4 + 10, as 5e-database's "1d4 + 14" at slot 3.
+    expect(lives.map((healing) => averageOn(a, healing?.formula).value)).toEqual([6.5, 16.5]);
+
+    const heal: SpellInput = {
+      id: 'srd-2014:spell/heal',
+      level: 6,
+      healing: { formula: '70', kind: 'hp' },
+      scaling: { kind: 'slot', formula: '10' },
+    };
+    const heals = [6, 9].map((slot) => spellDice(heal, {}, { slot }).healing?.formula);
+    expect(heals).toEqual(['70', '70 + (10) + (10) + (10)']);
+    expect(heals.map((formula) => averageOn(a, formula).value)).toEqual([70, 100]);
+  });
+
+  it('joins the scaling to the first damage and the healing: SRD 5.2.1 Conjure Celestial', () => {
+    const conjure: SpellInput = {
+      id: 'srd-2024:spell/conjure-celestial',
+      level: 7,
+      damage: [{ formula: '6d12', type: 'radiant' }],
+      healing: { formula: '4d12 + @mod', kind: 'hp' },
+      scaling: { kind: 'slot', formula: '1d12' },
+    };
+    expect(spellDice(conjure, {}, { slot: 9, stat: 'cha' })).toEqual({
+      times: 2,
+      damage: [{ formula: '8d12', type: 'radiant' }],
+      healing: { formula: '6d12 + @abilities.cha.mod', kind: 'hp' },
+      warnings: [],
+    });
+  });
+
+  it('writes the stat into a damage too: SRD 5.1 Spiritual Weapon on golden A, 4.5 + 3', () => {
+    const weapon: SpellInput = {
+      id: 'srd-2014:spell/spiritual-weapon',
+      level: 2,
+      damage: [{ formula: '1d8 + @mod', type: 'force' }],
+    };
+    const result = spellDice(weapon, a.values, { slot: 2, stat: 'wis' });
+    expect(result).toEqual({
+      times: 0,
+      damage: [{ formula: '1d8 + @abilities.wis.mod', type: 'force' }],
+      warnings: [],
+    });
+    expect(averageOn(a, result.damage[0]?.formula).value).toBe(7.5);
+    expect(codes(spellDice(weapon, a.values))).toEqual([
+      { code: 'noCastingStat', spell: 'srd-2014:spell/spiritual-weapon' },
+    ]);
+  });
+
+  it("reads the module's own spell shape: Lantern Ward's temporary hit points with SAN", () => {
+    const own = fifthEditionEntitySchema.parse(spell);
+    if (own.type !== 'spell') throw new Error('not a spell');
+    const e = computed(goldenE);
+    // Level 2: 2d6, and 1d6 + the modifier; one scaling, 1d6 more to each per slot level above.
+    const result = spellDice(own, e.values, { slot: 4, stat: 'san' });
+    expect(result).toEqual({
+      times: 2,
+      damage: [{ formula: '4d6', type: 'glare' }],
+      healing: { formula: '3d6 + @abilities.san.mod', kind: 'tempHp' },
+      warnings: [],
+    });
+    // 10.5 + 2.
+    expect(averageOn(e, result.healing?.formula)).toEqual({
+      value: 12.5,
+      reads: ['abilities.san.mod'],
+      warnings: [],
+    });
+  });
+
+  it('warns, never throws: a stat that is no key, a formula past the limits, a scaling that fails', () => {
+    const bad = spellDice(cure, a.values, { stat: 'Wis' });
+    expect(bad.healing).toEqual({ formula: '1d8 + @mod', kind: 'hp' });
+    expect(codes(bad)).toEqual([
+      {
+        code: 'castingStatFormula',
+        spell: 'srd-2014:spell/cure-wounds',
+        stat: 'Wis',
+        error: expect.objectContaining({ code: 'badPath', path: 'abilities.Wis.mod' }),
+      },
+    ]);
+
+    // 704 characters, 101 × `@mod`, each 14 longer as `@abilities.wis.mod`: 704 + 1414 = 2118.
+    const long: SpellInput = {
+      id: 'character:spell/long',
+      level: 1,
+      healing: { formula: `@mod${' + @mod'.repeat(100)}`, kind: 'hp' },
+    };
+    const tooLong = spellDice(long, {}, { stat: 'wis' });
+    expect(tooLong.healing?.formula).toBe(long.healing?.formula);
+    expect(codes(tooLong)).toEqual([
+      {
+        code: 'castingStatFormula',
+        spell: 'character:spell/long',
+        stat: 'wis',
+        error: expect.objectContaining({ code: 'tooLong', length: 2118 }),
+      },
+    ]);
+
+    // The healing's join fails, the damage's does not: the healing keeps its own formula.
+    const odd: SpellInput = {
+      id: 'character:spell/odd',
+      level: 1,
+      damage: [{ formula: '1d6', type: 'glare' }],
+      healing: { formula: '1d', kind: 'hp' },
+      scaling: { kind: 'slot', formula: '1d6' },
+    };
+    const joined = spellDice(odd, {}, { slot: 2 });
+    expect(joined.damage).toEqual([{ formula: '2d6', type: 'glare' }]);
+    expect(joined.healing).toEqual({ formula: '1d', kind: 'hp' });
+    expect(codes(joined)).toEqual([
+      {
+        code: 'scalingFormula',
+        spell: 'character:spell/odd',
+        error: expect.objectContaining({ code: 'unexpected' }),
+      },
+    ]);
+  });
+
+  it('is pure: frozen inputs, and two runs give equal results', () => {
+    const healing = { formula: '2d8 + @mod', kind: 'hp' as const };
+    const scaling = { kind: 'slot' as const, formula: '2d8' };
+    const frozenSpell: SpellInput = { ...cureWounds2024, healing, scaling };
+    for (const part of [frozenSpell, healing, scaling]) Object.freeze(part);
+    const values = Object.freeze({ 'abilities.cha.mod': 2 });
+    const cast = Object.freeze({ slot: 2, stat: 'cha' });
+    const first = spellDice(frozenSpell, values, cast);
+    expect(spellDice(frozenSpell, values, cast)).toEqual(first);
+    expect(first.healing).toEqual({ formula: '4d8 + @abilities.cha.mod', kind: 'hp' });
+    expect(frozenSpell.healing).toEqual({ formula: '2d8 + @mod', kind: 'hp' });
   });
 });

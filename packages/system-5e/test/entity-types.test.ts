@@ -473,3 +473,38 @@ describe('ENG-32 fifth-edition entity types', () => {
     }
   });
 });
+
+describe("ENG-53 a spell's healing", () => {
+  it('holds a roll formula and its kind, hit points or temporary hit points', () => {
+    const parsed = fifthEditionEntitySchema.parse(spell);
+    expect(parsed.type === 'spell' && parsed.healing).toEqual({
+      formula: '1d6 + @mod',
+      kind: 'tempHp',
+    });
+    const hp = { ...cantrip, healing: { formula: '1d4 + @mod', kind: 'hp' } };
+    expect(issuePaths(fifthEditionEntitySchema, hp)).toEqual([]);
+    expect(issuePaths(fifthEditionEntitySchema, without(spell, 'healing'))).toEqual([]);
+    expectTypeOf<Extract<FifthEditionEntity, { type: 'spell' }>['healing']>().toEqualTypeOf<
+      { formula: string; kind: 'hp' | 'tempHp' } | undefined
+    >();
+  });
+
+  it('refuses a kind not listed, a missing part, a field of its own and a list', () => {
+    const { healing } = spell;
+    expect(
+      issuePaths(fifthEditionEntitySchema, { ...spell, healing: { ...healing, kind: 'max' } }),
+    ).toEqual(['healing.kind']);
+    expect(
+      issuePaths(fifthEditionEntitySchema, { ...spell, healing: without(healing, 'kind') }),
+    ).toEqual(['healing.kind']);
+    expect(
+      issuePaths(fifthEditionEntitySchema, { ...spell, healing: without(healing, 'formula') }),
+    ).toEqual(['healing.formula']);
+    expect(
+      unknownFields(fifthEditionEntitySchema, { ...spell, healing: { ...healing, type: 'life' } }),
+    ).toEqual(['healing.type']);
+    expect(issuePaths(fifthEditionEntitySchema, { ...spell, healing: [healing] })).toEqual([
+      'healing',
+    ]);
+  });
+});

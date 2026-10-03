@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-03 · ENG-53 · The fifth-edition pack schema accepts a spell's `healing`: a roll formula,
+  and whether it gives hit points or temporary hit points. `@mod` in a spell's formulas is the
+  modifier of the stat it is cast with.
 - 2026-10-02 · ENG-16 · The fifth-edition pack schema accepts a `mastery` proficiency: the kinds of
   weapons whose mastery property a character uses.
 - 2026-10-02 · ENG-47 · The published fifth-edition pack JSON Schema asks for

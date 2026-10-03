@@ -90,7 +90,8 @@ describe('ENG-09 2014 fixtures', () => {
       'max(1, @abilities.cha.mod + floor(@classes.paladin.level / 2))',
       '@equipped',
     ]);
-    expect(rolls).toEqual(['1d8', '1d10']);
+    // Cure Wounds' healing and scaling (ENG-53), the warhammer's damage and versatile damage.
+    expect(rolls).toEqual(['1d8 + @mod', '1d8', '1d8', '1d10']);
     expect(formulas.filter((formula) => !parseFormula(formula).ok)).toEqual([]);
     expect(rolls.filter((roll) => !parseRoll(roll).ok)).toEqual([]);
   });

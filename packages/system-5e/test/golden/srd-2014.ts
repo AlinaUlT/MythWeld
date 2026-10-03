@@ -459,7 +459,8 @@ const paladin: Of<'class'> = {
   },
 };
 
-// --- Spells (`5e-SRD-Spells.json`). Neither has damage, so neither has `scaling`. -------------
+// --- Spells (`5e-SRD-Spells.json`). Neither has damage; Cure Wounds heals, its healing growing
+// by slot (`heal_at_slot_level`, "1d8 + MOD" at 1 to "9d8 + MOD" at 9; ENG-53 §8). -------------
 
 const spells: Of<'spell'>[] = [
   {
@@ -493,6 +494,8 @@ const spells: Of<'spell'>[] = [
     concentration: false,
     ritual: false,
     classes: ['bard', 'cleric', 'druid', 'paladin', 'ranger'],
+    healing: { formula: '1d8 + @mod', kind: 'hp' },
+    scaling: { kind: 'slot', formula: '1d8' },
   },
 ];
 

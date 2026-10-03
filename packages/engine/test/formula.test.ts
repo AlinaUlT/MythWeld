@@ -13,6 +13,7 @@ import {
   type ParsedFormula,
   parseFormula,
   parseRoll,
+  renamePaths,
 } from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 
@@ -681,6 +682,54 @@ describe('ENG-34 dice rolled more times', () => {
     expect(multiplyDice('4d6kh3', 1e9)).toEqual({
       ok: false,
       error: expect.objectContaining({ code: 'tooLong', length: 8999 }),
+    });
+  });
+});
+
+describe('ENG-53 paths renamed in a roll formula', () => {
+  /** A rename of `mod` alone, to `to`. */
+  const modAs = (to: string) => (path: string) => (path === 'mod' ? to : undefined);
+
+  /** The formula `renamePaths` writes, or its error's code. */
+  function renamed(formula: string, to = 'stats.grit.mod'): string {
+    const result = renamePaths(formula, modAs(to));
+    return result.ok ? result.formula.text : `error ${result.error.code}`;
+  }
+
+  it('writes the new name in place of each path renamed, the rest as written', () => {
+    expect(renamed('1d8 + @mod')).toBe('1d8 + @stats.grit.mod');
+    expect(renamed('max(@mod, 1) + 1к6', 'stats.wit.mod')).toBe('max(@stats.wit.mod, 1) + 1к6');
+    expect(renamed('@mod * 2 + @mod')).toBe('@stats.grit.mod * 2 + @stats.grit.mod');
+    expect(renamed('@gear.worn ? @mod : -@mod')).toBe(
+      '@gear.worn ? @stats.grit.mod : -@stats.grit.mod',
+    );
+    expect(renamed('2d4kh1+@mod')).toBe('2d4kh1+@stats.grit.mod');
+    const result = renamePaths('1d8 + @mod + @level', modAs('stats.grit.mod'));
+    expect(result.ok && result.formula.paths).toEqual(['stats.grit.mod', 'level']);
+  });
+
+  it('keeps a path it gives no name, and a formula with none renamed as it is', () => {
+    expect(renamed('@mod.bonus + @modifier + @level')).toBe('@mod.bonus + @modifier + @level');
+    expect(renamed('2d6 + 3')).toBe('2d6 + 3');
+    const same = renamePaths('1d8 + @mod', () => undefined);
+    expect(same).toEqual(parseRoll('1d8 + @mod'));
+  });
+
+  it('gives errors, never a throw: no parse, a name that is no path, past the limits', () => {
+    expect(renamed('1d + @mod')).toBe('error unexpected');
+    expect(renamePaths('1d8 + @mod', modAs('stats.Grit.mod'))).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'badPath', path: 'stats.Grit.mod', at: 6 }),
+    });
+    // A name never becomes more formula.
+    expect(renamed('1d8 + @mod', 'stats) + (1d100')).toBe('error badPath');
+    expect(renamed('1d8 + @mod', '')).toBe('error badPath');
+    // 704 characters, 101 paths each 11 longer: 704 + 1111 = 1815.
+    const long = `@mod${' + @mod'.repeat(100)}`;
+    expect(long).toHaveLength(704);
+    expect(renamePaths(long, modAs('stats.grit.mod'))).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'tooLong', length: 1815, limit: 1000 }),
     });
   });
 });

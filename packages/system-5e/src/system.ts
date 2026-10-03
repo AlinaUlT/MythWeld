@@ -44,6 +44,12 @@ export const EQUIPMENT_AC_CALC = 'equipment';
 /** The groups of armor: an armor's `group`, a character's `armor.<group>` (ENG-44). */
 export const ARMOR_GROUPS = ['light', 'medium', 'heavy'] as const;
 
+/**
+ * What a spell's healing gives (ENG-53): hit points regained, or temporary hit points. ENG-20
+ * changes each with its own action (`applyHealing`, `setTempHp`).
+ */
+export const HEALING_KINDS = ['hp', 'tempHp'] as const;
+
 /** The coins: a price's unit, a character's money. */
 export const COINS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const;
 

@@ -549,18 +549,13 @@ export function parseRoll(text: string): ParseResult<ParsedRoll> {
   return parse(text, true);
 }
 
-/**
- * ENG-16: each dice term of a parsed roll formula, in the order written, those in either branch
- * of a `?:` included. None means its value takes no roll (SRD 5.2.1's "fixed damage amount").
- */
-export function diceOf(roll: ParsedRoll): DiceNode[] {
-  const found: DiceNode[] = [];
-  const stack: RollNode[] = [roll.root];
+/** Every part of a tree, in the order written: each part before the parts inside it. */
+function partsOf(root: RollNode): RollNode[] {
+  const found: RollNode[] = [];
+  const stack: RollNode[] = [root];
   for (let node = stack.pop(); node !== undefined; node = stack.pop()) {
+    found.push(node);
     switch (node.kind) {
-      case 'dice':
-        found.push(node);
-        break;
       case 'unary':
         stack.push(node.operand);
         break;
@@ -576,6 +571,44 @@ export function diceOf(roll: ParsedRoll): DiceNode[] {
     }
   }
   return found;
+}
+
+/**
+ * ENG-16: each dice term of a parsed roll formula, in the order written, those in either branch
+ * of a `?:` included. None means its value takes no roll (SRD 5.2.1's "fixed damage amount").
+ */
+export function diceOf(roll: ParsedRoll): DiceNode[] {
+  return partsOf(roll.root).filter((node): node is DiceNode => node.kind === 'dice');
+}
+
+/**
+ * ENG-53: the roll formula `formula` with each path that `rename` gives a new name written as that
+ * name, in its place (`@mod` as `@stats.grit.mod`); a path it gives none, the dice and the
+ * spaces stay as written. Never throws: when `formula` does not parse, when a new name is not a
+ * path (`badPath`, so a name never becomes more formula), or when the formula made is past the
+ * limits, the result is that error.
+ */
+export function renamePaths(
+  formula: string,
+  rename: (path: string) => string | undefined,
+): ParseResult<ParsedRoll> {
+  const own = parseRoll(formula);
+  if (!own.ok) return own;
+  let text = formula;
+  // From the last path to the first, so each `at` still points into the text.
+  const paths = partsOf(own.formula.root)
+    .flatMap((node) => (node.kind === 'path' ? [node] : []))
+    .sort((a, b) => b.at - a.at);
+  for (const { at, path } of paths) {
+    const to = rename(path);
+    if (to === undefined) continue;
+    if (!computedPathSchema.safeParse(to).success) {
+      const message = `"@${to}" for "@${path}" at ${at} is not a path: camelCase steps joined by dots.`;
+      return { ok: false, error: { code: 'badPath', path: to, at, message } };
+    }
+    text = `${text.slice(0, at)}@${to}${text.slice(at + 1 + path.length)}`;
+  }
+  return text === formula ? own : parseRoll(text);
 }
 
 /** The parts a roll formula adds at its top: both sides of each `+`, the left side of each `-`. */

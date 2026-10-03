@@ -245,6 +245,7 @@ export const spell = {
   classes: ['lamplighter'],
   save: 'san',
   damage: [{ formula: '2d6', type: 'glare' }],
+  healing: { formula: '1d6 + @mod', kind: 'tempHp' },
   scaling: { kind: 'slot', formula: '1d6' },
 };
 

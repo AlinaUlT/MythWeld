@@ -11647,3 +11647,274 @@ Found, not fixed:
   Noted for phase 3.
 
 Nothing for the changelog: no screen changes.
+
+---
+
+### ENG-53 A spell's healing
+
+**Hat:** A spell's healing is a roll formula of its own
+**Depends on:** ENG-50 (`spellDice`, `addDice`), ENG-51 (`grantCastingStat`), ENG-32 (`SpellDef`),
+ENG-52 (`averageOf`), ENG-07 (formula paths)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.3 (`SpellDef`); §5.6 (roll formulas, context paths such as `@score`); ADR 014 item 6
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/spell-dice.ts` — changes: `spellDice` gives a spell's
+healing, joins the scaling to it, and writes the casting stat's modifier for `@mod`.
+- `packages/system-5e/src/entity-types.ts` — changes: `SpellDef.healing`.
+- `packages/system-5e/src/system.ts` — changes: `HEALING_KINDS`.
+- `packages/engine/src/formula.ts` — changes: `renamePaths(formula, rename)`; `diceOf` walks the tree
+  through a shared walker.
+- `packages/system-5e/test/golden/srd-2014.ts` — changes: SRD 5.1 Cure Wounds gains its healing and
+  scaling (5e-database's `heal_at_slot_level`).
+- `packages/system-5e/test/entities.ts` — changes: the made-up Lantern Ward gives temporary hit
+  points.
+- `apps/web/public/schema/5e/pack.schema.json` — rewritten from the module (ENG-38).
+- Tests: `spell-dice.test.ts`, `entity-types.test.ts`, `pack-json-schema.test.ts` (module);
+  `formula.test.ts` (engine).
+
+#### 2. What is missing now
+
+Measured on `main` at `613e0ed`:
+- `SpellDef` has no field for healing. SRD 5.1 Cure Wounds with
+  `healing: { formula: '1d8 + @mod', kind: 'hp' }` is refused:
+  `{"code":"unrecognized_keys","keys":["healing"],"message":"Unrecognized key: \"healing\""}`.
+- The same spell with only `scaling: { kind: 'slot', formula: '1d8' }` passes the schema, and
+  `spellDice(cure, {}, 2)` gives `damage: []`, `times: 1` and the warning `scalingWithoutDamage`:
+  the scaling has nothing to join.
+- No formula reads "your spellcasting ability modifier": a spell does not know its stat, and `@mod`
+  is no path (a roll would read it as 0 with `missingPath`).
+- `pnpm test`: `Test Files 53 passed (53)`, `Tests 637 passed (637)`.
+
+#### 3. What it should look like when done
+
+1. **`SpellDef.healing`**, optional: `{ formula, kind }`. `formula` is a roll formula; `kind` is
+   `hp` (hit points regained) or `tempHp` (temporary hit points). Both required inside it, no other
+   field. The published `pack.schema.json` says the same.
+2. **`@mod`** in a spell's roll formula (its damage, its healing, its scaling) is the modifier of the
+   stat the spell is cast with. `spellDice(spell, values, { slot?, stat? })` writes
+   `@abilities.<stat>.mod` in its place. Without a stat, `@mod` stays and the warning is
+   `noCastingStat`; a roll of it then reads 0 with `missingPath` (ENG-07).
+3. **The scaling joins the first damage and the healing**, each the spell has, the same number of
+   times (ENG-50's `times`). A scaling with neither warns `scalingWithoutRoll` (was
+   `scalingWithoutDamage`).
+4. **`spellDice` gives `healing`** (`{ formula, kind }`) when the spell has one, beside `damage`.
+5. **Control values, worked out by hand.** Golden A (2014): WIS 15 + 1 (hill dwarf) = 16 → +3;
+   CHA 12 → +1. Golden C 2024: CHA 14 → +2 (no species, no background). Averages are ENG-52's.
+
+   | Spell (source) | Cast | Formula | Average |
+   |---|---|---|---|
+   | SRD 5.1 Cure Wounds, golden A | `wis`, no slot | `1d8 + @abilities.wis.mod`, `hp` | 4.5 + 3 = 7.5 |
+   | the same | `wis`, slot 1 / 2 / 9 | `1d8` / `2d8` / `9d8` `+ @abilities.wis.mod` | 7.5 / 12 / 43.5 |
+   | the same | `cha` (a grant's stat) | `1d8 + @abilities.cha.mod` | 4.5 + 1 = 5.5 |
+   | the same | no stat | `1d8 + @mod`, `noCastingStat` | 4.5, `missingPath` `mod` |
+   | SRD 5.2.1 Cure Wounds, golden C 2024 | `cha`, slot 1 / 2 / 3 | `2d8` / `4d8` / `6d8` `+ @abilities.cha.mod` | 11 / 20 / 29 |
+   | SRD 5.1 False Life | slot 1 / 3 | `1d4 + 4` / `1d4 + 4 + (5) + (5)`, `tempHp` | 6.5 / 16.5 |
+   | SRD 5.1 Heal (level 6) | slot 6 / 9 | `70` / `70 + (10) + (10) + (10)` | 70 / 100 |
+   | SRD 5.2.1 Conjure Celestial (level 7) | `cha`, slot 9 | damage `8d12`; healing `6d12 + @abilities.cha.mod` | |
+   | SRD 5.1 Spiritual Weapon, golden A | `wis`, slot 2 | damage `1d8 + @abilities.wis.mod` | 7.5 |
+
+6. **`renamePaths(formula, rename)`** (the core, game-free; made-up paths, ADR 004 item 4) gives the
+   parsed roll formula with each path `rename` names anew written in its place; any other path, the
+   dice (`d` or `к`), the spaces stay: `1d8 + @mod` → `1d8 + @stats.grit.mod`; `max(@mod, 1) + 1к6`
+   → `max(@stats.wit.mod, 1) + 1к6`; `@mod * 2 + @mod` → both; `@mod.bonus + @modifier` stays.
+   Errors, never a throw: `1d + @mod` does not parse (`unexpected`); a new name that is not a path
+   (`stats.Grit.mod`, `stats) + (1d100`, empty) is `badPath`, never parsed as more formula; `@mod`
+   and 100 × ` + @mod` (704 characters) renamed to `stats.grit.mod` is `tooLong` at
+   704 + 101 × 11 = 1815.
+7. **Never throws.** A formula with the stat's modifier written in that fails (past the limits, a
+   stat that is not a key) keeps `@mod`, with `castingStatFormula` and the error.
+8. **Pure**: frozen inputs, equal results. No golden value changes; no computed path changes.
+9. The quality gate is green; the published schema changes, a file in `apps/web`, so `pnpm e2e` runs.
+
+#### 4. How to do it
+
+1. `formula.ts`: a walker over every part of a tree, shared by `diceOf`; `renamePaths`.
+2. `system.ts`, `entity-types.ts`: `HEALING_KINDS`, `SpellDef.healing`.
+3. `spell-dice.ts`: the cast's `{ slot, stat }`; the scaling joined to the first damage and the
+   healing; `@mod` written as the stat's modifier; the warnings.
+4. Fixtures: SRD 5.1 Cure Wounds' healing and scaling; Lantern Ward's `tempHp` healing.
+5. Tests (§7); the published schema rewritten (`--update`, RUNNING.md); the changelog line.
+6. `BACKLOG.md`: the new row ENG-60 and the phase 3 note (§9).
+
+Technical choices (ADR 002):
+- **A field of its own, not a damage of type "healing".** A damage's `type` is a damage type's
+  key; healing is none. One object, not a list: dnd5e's heal activity has one healing part, and no
+  SRD spell heals twice in one cast (§8). The SPEC §5.3 shape gains the field; nothing else in it
+  changes.
+- **`kind` is required, `hp` or `tempHp`.** False Life gives temporary hit points, Cure Wounds hit
+  points; ENG-20 changes them with two actions (`applyHealing`, `setTempHp`), so the screen needs
+  to know which. dnd5e keeps the same split (`healing`, `temphp`, §8). Required now can turn
+  optional later with no migration; the reverse needs one.
+- **`@mod`, a context path**, as SPEC §5.6's `@score` is in a modifier formula. 5e-database writes
+  `MOD`, dnd5e `@mod` (§8). The spell does not know its stat: Cure Wounds is a cleric's (WIS) and a
+  bard's (CHA). So the pack writes `@mod`, and `spellDice` writes the stat's own path, whose number
+  has a breakdown (ENG-12), so a roll's part names a computed path. It holds in every formula of a
+  spell, damage too (Spiritual Weapon, §8): one text means one thing in one entity.
+- **The stat is the caller's.** A class's spell is cast with its `spellcasting.ability` (or its
+  subclass's), a grant's with `grantCastingStat` (ENG-51); which class or grant a spell on the
+  sheet comes from is the Spells tab's (phase 2), as ENG-51 §9 says.
+- **The cast is one object** `{ slot, stat }`, not two optional parameters in a row; ENG-50's
+  `spellDice(spell, values, slot)` becomes `{ slot }`. Only tests call it.
+- **The scaling joins both** the first damage and the healing: Conjure Celestial, the one SRD spell
+  with both, says "The healing and damage increase by 1d12" (§8).
+- **Renaming paths is the core's**, beside `addDice`: text of a roll formula, game-free. It checks
+  each new name is a path before it writes it, so a name never turns into formula.
+
+#### 5. Stored data
+
+`SpellDef` gains an optional field: a widening, which no stored pack or character fails. No
+`schemaVersion` or `systemSchemaVersion` bump, no migration (ENG-16 §5, the same case). The
+published `pack.schema.json` gains `healing`.
+
+#### 6. What a person will see
+
+Not a screen. The published fifth-edition pack schema accepts a spell's `healing` (a changelog
+line).
+
+#### 7. Tests
+
+- `packages/system-5e/test/spell-dice.test.ts` — `describe("ENG-53 a spell's healing")`: §3 items
+  2–5, 7, 8. ENG-50's calls pass `{ slot }`; its `scalingWithoutDamage` check becomes
+  `scalingWithoutRoll`.
+- `packages/system-5e/test/entity-types.test.ts` — `describe("ENG-53 a spell's healing")`: §3
+  item 1, the refusals.
+- `packages/system-5e/test/pack-json-schema.test.ts` — the same in the JSON Schema.
+- `packages/engine/test/formula.test.ts` — `describe('ENG-53 paths renamed in a roll formula')`:
+  §3 item 6.
+- Control values from: 5e-database `e6edf9a` (`heal_at_slot_level`, `damage_at_slot_level`), dnd5e
+  `7bfb3f1` (SRD 5.2.1 Cure Wounds, Conjure Celestial), the goldens' scores (SPEC §6.7). Each worked
+  out by hand in §3, never copied from a run.
+
+#### 8. Checked against the source
+
+Sources: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`
+(`packages/5e-database/src/{2014,2024}/en/5e-SRD-Spells.json`, `5e-SRD-Features.json`);
+foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (`packs/_source/spells/`, SRD 5.1;
+`packs/_source/spells24/`, SRD 5.2.1; CC-BY-4.0). Read 2026-10-03.
+
+**The modifier is the spellcasting ability's.**
+- SRD 5.1 Cure Wounds: "regains a number of hit points equal to 1d8 + your spellcasting ability
+  modifier"; "the healing increases by 1d8 for each slot level above 1st". 5e-database:
+  `{"1": "1d8 + MOD", "2": "2d8 + MOD", … "9": "9d8 + MOD"}`.
+- SRD 5.2.1 Cure Wounds: "regains a number of Hit Points equal to 2d8 plus your spellcasting
+  ability modifier"; "The healing increases by 2d8 for each spell slot level above 1."
+- dnd5e writes it `bonus: '@mod'` in both packs (`healing.number` 1 and 2, `denomination` 8,
+  `scaling.number` 1 and 2). Which stat a spell is cast with: ENG-51 §8 (a class's, or the one a
+  grant names).
+- In damage too: SRD 5.1 Spiritual Weapon, "force damage equal to 1d8 + your spellcasting ability
+  modifier", 5e-database `damage_at_slot_level` `"2": "1d8 + MOD"` (the one SRD 5.1 damage table
+  with `MOD`); dnd5e's spells24 damage reads `@mod` in 3 spells (Alter Self, Flame Blade, Sorcerous
+  Burst).
+
+**Healing spells, counted with a script.**
+- 5e-database: 10 of 319 SRD 5.1 spells have `heal_at_slot_level`: Aid, Cure Wounds, False Life,
+  Heal, Healing Word, Mass Cure Wounds, Mass Heal, Mass Healing Word, Prayer of Healing,
+  Regenerate. 0 of 339 SRD 5.2.1 spells (its spells have no such field).
+- dnd5e: 16 SRD 5.1 spells and 17 SRD 5.2.1 spells have a heal activity. Its types: `healing`,
+  `temphp` (False Life, Heroism in both), `maximum` (2014 Heroes' Feast). One healing part per
+  activity; 2024 Arcane Vigor has five activities, one per hit die size.
+- The kinds: SRD 5.1 False Life, "you gain 1d4 + 4 temporary hit points", "5 additional temporary
+  hit points for each slot level above 1st" (5e-database `"3": "1d4 + 14"`). SRD 5.1 Heal: "regain
+  70 hit points", "increases by 10 for each slot level above 6th" (`"9": "100"`). Aid raises "hit
+  point maximum and current hit points" (`"2": "5"` … `"9": "40"`); SRD 5.2.1's Aid the same
+  ("Hit Point maximum and current Hit Points increase by 5"): neither kind (§9).
+- Healing over time or from another pool (dnd5e's text of both SRDs): Heroism, "Temporary Hit
+  Points equal to your spellcasting ability modifier at the start of each of its turns";
+  Regenerate, "4d8 + 15" and then 1 hit point "at the start of each of its turns"; SRD 5.2.1 Arcane
+  Vigor, "Roll one or two of your unexpended Hit Point Dice … plus your spellcasting ability
+  modifier" (§9).
+- Both damage and healing: none in SRD 5.1 (5e-database, dnd5e); in SRD 5.2.1 Conjure Celestial,
+  "The healing and damage increase by 1d12 for each spell slot level above 7", 4d12 + the modifier
+  and 6d12 Radiant.
+
+**Disciple of Life** (golden A's subclass feature) — not built here (§9), read for its row:
+SRD 5.1: "the creature regains additional hit points equal to 2 + the spell's level"; SRD 5.2.1:
+"The additional Hit Points equal 2 plus the spell slot's level."
+
+#### 9. Not in this ticket
+
+- A bonus to a spell's healing (Disciple of Life: 2 + the slot's level): SPEC §5.4 has no target
+  for it, and a formula cannot read the slot. New row ENG-60.
+- Healing `healing` cannot hold (§8): Aid and 2014 Heroes' Feast raise the hit point maximum; 2024
+  Arcane Vigor's die is the hit die spent; Regenerate's hit point each turn; Heroism's temporary
+  hit points each turn. A phase 3 note.
+- Which class or grant a sheet's spell is cast as: the Spells tab (phase 2).
+- Applying a heal to a character: ENG-20's `applyHealing` and `setTempHp`. `damage.spell.bonus`:
+  ENG-55.
+- Showing the healing: phase 2.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** No SPEC §6.7 value changes; Cure Wounds is no golden value.
+- **Measure, never estimate.** The counts in §8 come from scripts over the two sources; the averages
+  in §3 are worked out by hand.
+- **`packages/engine` is pure; the core names no game.** `renamePaths` reads and writes formula
+  text; it names no stat and no spell.
+- **Everything is data.** The stat is a key the caller passes, `san` as `wis`; `@mod` is a name in
+  the pack's text.
+- **`compute()` is pure.** Nothing in `compute()` changes; `spellDice` is tested frozen.
+- **A number with no breakdown entry is a bug.** The formula reads `abilities.<stat>.mod`, a
+  computed path with its breakdown.
+- **Formulas never run code.** `renamePaths` refuses a new name that is not a path, then parses with
+  ENG-07's limits.
+- **Missing is not broken.** No stat, a formula that fails, a scaling with nothing to join:
+  warnings, never a throw.
+- **A stored-shape change needs a migration.** An optional field added: a widening (§5).
+- **Licensing.** The numbers are SRD 5.1 and SRD 5.2.1 (CC-BY-4.0); the code holds no rules text;
+  §8 quotes the SRDs only.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-03, on `main` at `613e0ed`:
+- `pnpm lint`: `Checked 174 files`, no errors (174 before; no new file).
+- `pnpm typecheck`: 6 projects, all `Done`.
+- `pnpm test`: `Test Files 53 passed (53)`, `Tests 653 passed (653)`, 7.20 s (before: 53 files, 637
+  tests). This ticket's 16: 10 in `spell-dice.test.ts`, 3 in `formula.test.ts`, 2 in
+  `entity-types.test.ts`, 1 in `pack-json-schema.test.ts`.
+- `pnpm e2e`: `12 passed (9.5s)` on `pixel-7`, the published schema file served as before (ENG-38's
+  two tests among them). No screen changed, so no screenshot.
+- Rebased onto `2e9ba26` (ENG-54) before the push, the gate run again: lint `Checked 174 files`, no
+  errors; typecheck 6 projects `Done`; `Tests 660 passed (660)` (644 at `2e9ba26`); `pnpm e2e`
+  `12 passed (8.7s)`.
+- Every value of §3 item 5 is true: golden A's Cure Wounds `1d8 + @abilities.wis.mod`, averages
+  7.5, 12, 43.5 at slots 1, 2, 9, each reading `abilities.wis.mod` alone, no warning; with `cha`
+  5.5; with no stat `1d8 + @mod`, `noCastingStat`, average 4.5 with `missingPath` `mod`; golden C
+  2024's 2d8, 4d8, 6d8 + `@abilities.cha.mod`, 11, 20, 29; False Life 6.5 and 16.5 (`tempHp`); Heal
+  70 and 100; Conjure Celestial at 9 `8d12` and `6d12 + @abilities.cha.mod`; Spiritual Weapon
+  `1d8 + @abilities.wis.mod`, 7.5. The cleric's `wis` and the paladin's `cha` are read from the
+  fixture classes' `spellcasting.ability`, the grant's `cha` from `grantCastingStat`.
+- The tests catch a wrong rule. Each break below, made alone and undone, the `engine` and
+  `system-5e` tests run (525 tests): the scaling joined to the damage only, 8 fail; `@mod` written
+  in the healing only, 1; no `noCastingStat`, 2; a new name not checked as a path, 1.
+
+Against §3 and §4:
+- §3 item 6's examples were written with fifth-edition paths; the core's tests use the made-up
+  system's (ADR 004 item 4), so the item now says `stats.grit.mod`, and its length 1815
+  (704 + 101 × 11).
+- Lantern Ward's healing was first `1d4 + @mod`. One scaling joins both its damage and its
+  healing, so at slot 4 it gives `1d4 + @abilities.san.mod + 2d6`; the test's `3d4` was a
+  hand-worked mistake, not the code's. The made-up healing is `1d6 + @mod` now, which grows as its
+  damage does: `3d6 + @abilities.san.mod`, average 12.5 on golden E (SAN +2).
+- ENG-50's tests changed in two ways: five calls pass `{ slot }`; `scalingWithoutDamage` is
+  `scalingWithoutRoll`. ENG-09's fixture check lists Cure Wounds' two roll formulas, and
+  `formulasOf` (`golden/checks.ts`) reads a spell's healing.
+
+Against the row and its note: as the row. Its note's points are done: a field of its own; the
+growth by the same `scaling` (`addDice`); the modifier is `abilities.<stat>.mod` of the stat the
+caller names, a class's `spellcasting.ability` or `grantCastingStat`. Its count, 10 SRD 5.1 spells
+with `heal_at_slot_level`, measured the same. The `kind` field and `@mod` in damage are this
+ticket's own choices (§4).
+
+Found, not fixed:
+- Disciple of Life, golden A's feature, adds 2 + the slot's level to a spell's healing (both SRDs);
+  no target and no slot in a formula. New row ENG-60, with its note.
+- Healing the field cannot hold (Aid, 2014 Heroes' Feast, Arcane Vigor, healing each turn) and
+  2024's healing table: a phase 3 note in `BACKLOG.md`.
+
+Changelog: one line, the published pack schema accepts a spell's `healing`.

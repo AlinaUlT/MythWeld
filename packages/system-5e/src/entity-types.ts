@@ -13,6 +13,7 @@ import {
   ARMOR_GROUPS,
   COINS,
   fifthEdition,
+  HEALING_KINDS,
   HIT_DIE_SIZES,
   MAX_LEVEL,
   MAX_SPELL_LEVEL,
@@ -43,6 +44,9 @@ const costSchema = z.strictObject({
 
 /** Damage of one type: a roll formula and the damage type's key. */
 const damageSchema = z.strictObject({ formula: formulaSchema, type: entityKeySchema });
+
+/** A spell's healing: a roll formula and what it gives, hit points or temporary hit points. */
+const healingSchema = z.strictObject({ formula: formulaSchema, kind: z.enum(HEALING_KINDS) });
 
 /** Speeds in feet, by kind; at least one. */
 const speedSchema = z
@@ -238,7 +242,8 @@ function scalingKind(kind: string) {
 
 /**
  * A spell. Level 0 is a cantrip. `scaling` is how its dice grow (ADR 014 item 6): a cantrip's with
- * the character's level, another spell's with the slot it is cast with.
+ * the character's level, another spell's with the slot it is cast with. `healing` is what it heals
+ * (ENG-53). In its roll formulas, `@mod` is the modifier of the stat it is cast with.
  */
 export const spellDefSchema = base
   .safeExtend({
@@ -259,6 +264,7 @@ export const spellDefSchema = base
     attack: z.enum(['melee', 'ranged']).optional(),
     save: entityKeySchema.optional(),
     damage: z.array(damageSchema).min(1).optional(),
+    healing: healingSchema.optional(),
     scaling: z
       .strictObject({ kind: z.enum(['cantrip', 'slot']), formula: formulaSchema })
       .optional(),

@@ -104,8 +104,9 @@ split off an old row got a new id.
 | ENG-52 | A roll formula's average is computed, kept dice included | S | ✅ 2026-10-02 |
 | ENG-50 | A spell's dice are computed for the character's level | S | ✅ 2026-10-02 |
 | ENG-51 | A spell a grant gives with its own stat has its casting numbers | S | ✅ 2026-10-02 |
-| ENG-53 | A spell's healing is a roll formula of its own | S | 🔲 |
+| ENG-53 | A spell's healing is a roll formula of its own | S | ✅ 2026-10-03 |
 | ENG-55 | A spell's damage adds `damage.spell.bonus` | S | 🔲 |
+| ENG-60 | A spell's healing adds what a feature gives it | S | 🔲 |
 | ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | M | ✅ 2026-10-03 |
 | ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | ✅ 2026-10-02 |
 | ENG-46 | Armor worn without training has its edition's penalties | S | 🔲 |
@@ -133,16 +134,16 @@ split off an old row got a new id.
   Second Wind back on a rest, is this row's. Found by ENG-20: a long rest ends temporary hit
   points and gives spell slots back, and a short rest gives pact slots back, in both SRDs (ENG-20
   §8); `regainSlot` (`casting.ts`) gives slots back as one entry.
-- **ENG-53** — found by ENG-09, made a row by ENG-50 (ENG-50 §9): a spell's healing has no field;
-  `damage` and `scaling` hold damage only. Cure Wounds heals 1d8 + the spellcasting modifier, 1d8
-  more per slot level above 1st; 10 SRD 5.1 spells have 5e-database's `heal_at_slot_level`.
-  ENG-50's `spellDice` joins a `scaling` to the first damage with the core's `addDice`; healing
-  grows the same way. The modifier is `abilities.<stat>.mod` of the stat the spell is cast with:
-  its class's `spellcasting.ability`, or for a grant's spell `grantCastingStat` (ENG-51).
 - **ENG-55** — found by ENG-51: SPEC §5.4's `damage.spell.bonus` is no path, so an effect on it
   warns `noTarget`. A spell's damage is dice text (ENG-50's `spellDice`), which reads no bonus;
   a weapon's damage reads `damage.weapon.<kind>.bonus` (ENG-16). The row decides which of a
   spell's damages adds it, and checks the SRDs' "damage rolls" wording in its §8.
+- **ENG-60** — found by ENG-53 (ENG-53 §8, §9): golden A's Disciple of Life adds to a spell's
+  healing. SRD 5.1: "additional hit points equal to 2 + the spell's level", for a spell of 1st level
+  or higher; SRD 5.2.1: "2 plus the spell slot's level", for a spell cast with a slot. SPEC §5.4
+  has no target for healing, and no formula reads the slot a spell is cast with (`spellDice`'s
+  `cast.slot`, `spell-dice.ts`). The row picks the target and how its formula reads the slot. No
+  SPEC §6.7 value states golden A's healing.
 - **ENG-57** — re-cut from ENG-20 (ENG-20 §4). ADR 014 item 7: a granted spell has its own uses.
   Found by ENG-32: a `spell` grant's `uses` have no key of their own, and the core's
   `state.resources` takes only keys, so the spent count is kept by the grant's part id in a new
@@ -262,6 +263,13 @@ split off an old row got a new id.
   True Strike gains extra damage it has none of at first. 5e-database `e6edf9a` gives the 2024
   spells no table by slot (one entry each), so the import reads 2024's growth from the text or
   dnd5e's data. The import widens the field (no migration) or maps each.
+- **Phase 3** — found by ENG-53: healing a spell's `healing` (`{ formula, kind }`, `hp` or
+  `tempHp`) cannot hold (ENG-53 §8): Aid (both SRDs) and 2014 Heroes' Feast raise the hit point
+  maximum; 2024 Arcane Vigor heals by the hit die spent (dnd5e: one activity per die size);
+  Regenerate's hit point each turn and Heroism's temporary hit points each turn. 5e-database's 2024
+  spells have no `heal_at_slot_level`, so 2024's healing is read from dnd5e's data or the text. The
+  import maps or widens each. A pack writes the spellcasting modifier as `@mod` (5e-database:
+  `MOD`).
 - **Phase 3** — found by ENG-51: SRD items that cast a spell "using your spell save DC" (2014
   Staff of Fire, Staff of Healing, Staff of Power, among others) do not say which DC when a
   character has more than one: a class's (`classes.<key>.spell.dc`) and a stat's a grant names

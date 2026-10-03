@@ -935,8 +935,11 @@
             "damage": {
               "$ref": "#/$defs/__schema113"
             },
-            "scaling": {
+            "healing": {
               "$ref": "#/$defs/__schema115"
+            },
+            "scaling": {
+              "$ref": "#/$defs/__schema116"
             }
           },
           "required": [
@@ -998,7 +1001,7 @@
               "$ref": "#/$defs/__schema9"
             },
             "type": {
-              "$ref": "#/$defs/__schema116"
+              "$ref": "#/$defs/__schema117"
             },
             "key": {
               "$ref": "#/$defs/__schema68"
@@ -1037,22 +1040,22 @@
               "$ref": "#/$defs/__schema67"
             },
             "category": {
-              "$ref": "#/$defs/__schema117"
-            },
-            "weight": {
               "$ref": "#/$defs/__schema118"
             },
-            "cost": {
+            "weight": {
               "$ref": "#/$defs/__schema119"
             },
-            "weapon": {
+            "cost": {
               "$ref": "#/$defs/__schema120"
             },
+            "weapon": {
+              "$ref": "#/$defs/__schema121"
+            },
             "armor": {
-              "$ref": "#/$defs/__schema123"
+              "$ref": "#/$defs/__schema124"
             },
             "magic": {
-              "$ref": "#/$defs/__schema124"
+              "$ref": "#/$defs/__schema125"
             }
           },
           "required": [
@@ -3116,6 +3119,26 @@
     "__schema115": {
       "type": "object",
       "properties": {
+        "formula": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "hp",
+            "tempHp"
+          ]
+        }
+      },
+      "required": [
+        "formula",
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "__schema116": {
+      "type": "object",
+      "properties": {
         "kind": {
           "type": "string",
           "enum": [
@@ -3133,11 +3156,11 @@
       ],
       "additionalProperties": false
     },
-    "__schema116": {
+    "__schema117": {
       "type": "string",
       "const": "item"
     },
-    "__schema117": {
+    "__schema118": {
       "type": "string",
       "enum": [
         "weapon",
@@ -3152,14 +3175,14 @@
         "treasure"
       ]
     },
-    "__schema118": {
+    "__schema119": {
       "type": "number",
       "exclusiveMinimum": 0
     },
-    "__schema119": {
+    "__schema120": {
       "$ref": "#/$defs/__schema102"
     },
-    "__schema120": {
+    "__schema121": {
       "type": "object",
       "properties": {
         "group": {
@@ -3194,10 +3217,10 @@
           "type": "object",
           "properties": {
             "normal": {
-              "$ref": "#/$defs/__schema121"
+              "$ref": "#/$defs/__schema122"
             },
             "long": {
-              "$ref": "#/$defs/__schema122"
+              "$ref": "#/$defs/__schema123"
             }
           },
           "required": [
@@ -3215,17 +3238,17 @@
       ],
       "additionalProperties": false
     },
-    "__schema121": {
-      "type": "integer",
-      "exclusiveMinimum": 0,
-      "maximum": 9007199254740991
-    },
     "__schema122": {
       "type": "integer",
       "exclusiveMinimum": 0,
       "maximum": 9007199254740991
     },
     "__schema123": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "__schema124": {
       "type": "object",
       "properties": {
         "group": {
@@ -3269,7 +3292,7 @@
       ],
       "additionalProperties": false
     },
-    "__schema124": {
+    "__schema125": {
       "type": "object",
       "properties": {
         "rarity": {

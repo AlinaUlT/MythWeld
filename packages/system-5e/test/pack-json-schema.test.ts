@@ -156,3 +156,22 @@ describe('ENG-16 the proficiency category `mastery`', () => {
     expect(jsonValid(unlisted)).toBe(false);
   });
 });
+
+describe("ENG-53 a spell's healing", () => {
+  it('passes the schema and the JSON Schema; a kind not listed or a field of its own, neither', () => {
+    const listed = packOf(spell);
+    expect(spell.healing.kind).toBe('tempHp');
+    expect(fifthEditionPackSchema.safeParse(listed).success).toBe(true);
+    expect(jsonValid(listed), JSON.stringify(jsonValid.errors)).toBe(true);
+    const refused = [
+      ['a kind not listed', { ...spell, healing: { ...spell.healing, kind: 'max' } }],
+      ['no kind', { ...spell, healing: without(spell.healing, 'kind') }],
+      ['a field of its own', { ...spell, healing: { ...spell.healing, type: 'life' } }],
+    ] as const;
+    for (const [check, entity] of refused) {
+      const json = packOf(entity);
+      expect(fifthEditionPackSchema.safeParse(json).success, check).toBe(false);
+      expect(jsonValid(json), check).toBe(false);
+    }
+  });
+});
