@@ -16,6 +16,7 @@ export * from './combat';
 export * from './death-saves';
 export * from './entity-types';
 export * from './equipment';
+export * from './exhaustion';
 export * from './hit-dice';
 export * from './hit-points';
 export * from './inspiration';

@@ -11,6 +11,7 @@ import {
   copyOf,
   done,
   FAILURE,
+  findIn,
   frozen,
   HP,
   INVENTORY,
@@ -88,7 +89,7 @@ const unattuned = (golden: CharacterInput) => ({
 
 /** The death save that kept `natural`. */
 const save = (character: FifthEditionCharacter, natural: number) =>
-  rollDeathSave(character, { natural }, stamp);
+  rollDeathSave(character, indexOf(character), { natural }, stamp);
 
 /** The damage `amount` on `character`, from its edition's pack. */
 const damage = (character: FifthEditionCharacter, amount: number) =>
@@ -104,7 +105,7 @@ describe('ENG-63 death ends attunement', () => {
         unattuned(golden),
       ]);
       expect(third.outcome).toEqual({ successes: 0, failures: 1, hp: 0, status: 'dead' });
-      expect(isDead(third.character)).toBe(true);
+      expect(isDead(third.character, findIn(third.character))).toBe(true);
       expect(third.character.systemData.inventory).toEqual(rowsOf(golden, false));
 
       const once = carrying(golden, { current: 0, failure: 1 });
@@ -177,7 +178,9 @@ describe('ENG-63 death ends attunement', () => {
     const copy = copyOf(character);
     const ice = frozen(character);
     const frozenStamp = frozen(stamp);
-    expect(rollDeathSave(ice, frozen({ natural: 5 }), frozenStamp).ok).toBe(true);
+    expect(rollDeathSave(ice, indexOf(character), frozen({ natural: 5 }), frozenStamp).ok).toBe(
+      true,
+    );
     expect(applyDamage(ice, indexOf(character), frozen({ amount: 1 }), frozenStamp).ok).toBe(true);
     expect(ice).toEqual(copy);
   });

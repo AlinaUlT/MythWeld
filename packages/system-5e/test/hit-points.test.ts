@@ -17,6 +17,7 @@ import {
   copyOf,
   done,
   FAILURE,
+  findIn,
   frozen,
   HP,
   indexOf,
@@ -91,7 +92,7 @@ describe('ENG-20 hit points', () => {
         { path: FAILURE, before: 0, after: 3 },
       ]);
       expect(result.outcome).toEqual({ temp: 0, hp: 6, status: 'dead', failures: 3 });
-      expect(isDead(result.character)).toBe(true);
+      expect(isDead(result.character, findIn(result.character))).toBe(true);
     }
   });
 
@@ -173,7 +174,7 @@ describe('ENG-20 hit points', () => {
       });
     }
     const dead = withTrackers(goldenA, { current: 0, failure: 3 });
-    expect(isDead(dead)).toBe(true);
+    expect(isDead(dead, findIn(dead))).toBe(true);
     expect(refused(damage(dead, 1))).toEqual({ code: 'dead' });
   });
 
@@ -216,21 +217,29 @@ describe('ENG-20 hit points', () => {
 
   it('keeps the larger temporary hit points (the SRD example: 12 or 10, not 22), or the new ones', () => {
     const ten = withTrackers(goldenB, { temp: 10 });
-    const gained = done(ten, setTempHp(ten, { amount: 12 }, stamp));
+    const gained = done(ten, setTempHp(ten, indexOf(ten), { amount: 12 }, stamp));
     expect(gained.entry).toMatchObject({ action: 'setTempHp', subject: 'hp' });
     expect(gained.entry.changes).toEqual([{ path: TEMP, before: 10, after: 12 }]);
 
     const twelve = withTrackers(goldenB, { temp: 12 });
-    expect(refused(setTempHp(twelve, { amount: 10 }, stamp))).toEqual({ code: 'unchanged' });
-    const replaced = done(twelve, setTempHp(twelve, { amount: 10, replace: true }, stamp));
+    expect(refused(setTempHp(twelve, indexOf(twelve), { amount: 10 }, stamp))).toEqual({
+      code: 'unchanged',
+    });
+    const replaced = done(
+      twelve,
+      setTempHp(twelve, indexOf(twelve), { amount: 10, replace: true }, stamp),
+    );
     expect(replaced.entry.changes).toEqual([{ path: TEMP, before: 12, after: 10 }]);
-    const cleared = done(twelve, setTempHp(twelve, { amount: 0, replace: true }, stamp));
+    const cleared = done(
+      twelve,
+      setTempHp(twelve, indexOf(twelve), { amount: 0, replace: true }, stamp),
+    );
     expect(cleared.entry.changes).toEqual([{ path: TEMP, before: 12, after: 0 }]);
   });
 
   it('gives temporary hit points at 0 hit points without changing anything else', () => {
     const dying = withTrackers(goldenA, { current: 0, failure: 1 });
-    const result = done(dying, setTempHp(dying, { amount: 5 }, stamp));
+    const result = done(dying, setTempHp(dying, indexOf(dying), { amount: 5 }, stamp));
     expect(result.entry.changes).toEqual([{ path: TEMP, before: 0, after: 5 }]);
     expect(result.character.systemData.state).toMatchObject({
       hp: { current: 0, temp: 5 },
@@ -240,13 +249,14 @@ describe('ENG-20 hit points', () => {
 
   it('refuses temporary hit points that are not a whole number from 0, and a dead character', () => {
     for (const amount of [-1, 1.5]) {
-      expect(refused(setTempHp(withTrackers(goldenB, {}), { amount }, stamp))).toEqual({
+      const character = withTrackers(goldenB, {});
+      expect(refused(setTempHp(character, indexOf(character), { amount }, stamp))).toEqual({
         code: 'badAmount',
         amount,
       });
     }
     const dead = withTrackers(goldenB, { current: 0, failure: 3 });
-    expect(refused(setTempHp(dead, { amount: 5 }, stamp))).toEqual({ code: 'dead' });
+    expect(refused(setTempHp(dead, indexOf(dead), { amount: 5 }, stamp))).toEqual({ code: 'dead' });
   });
 
   it('changes nothing it is given: frozen inputs', () => {
@@ -258,7 +268,7 @@ describe('ENG-20 hit points', () => {
     const frozenStamp = frozen(stamp);
     expect(applyDamage(ice, index, ask, frozenStamp).ok).toBe(true);
     expect(applyHealing(ice, index, ask, frozenStamp).ok).toBe(true);
-    expect(setTempHp(ice, ask, frozenStamp).ok).toBe(true);
+    expect(setTempHp(ice, index, ask, frozenStamp).ok).toBe(true);
     expect(ice).toEqual(copy);
     expect(ask).toEqual({ amount: 5 });
   });
@@ -286,7 +296,7 @@ describe('ENG-58 stable and hit points', () => {
         { path: STABLE, before: true, after: false },
       ]);
       expect(hit.outcome).toEqual({ temp: 0, hp: 0, status: 'down', failures: 1 });
-      expect(isStable(hit.character)).toBe(false);
+      expect(isStable(hit.character, findIn(hit.character))).toBe(false);
       expect(done(before, damage(before, 3, true)).entry.changes).toEqual([
         { path: FAILURE, before: 0, after: 2 },
         { path: STABLE, before: true, after: false },
@@ -304,7 +314,7 @@ describe('ENG-58 stable and hit points', () => {
     const before = stable(goldenA, 5);
     const absorbed = done(before, damage(before, 3));
     expect(absorbed.entry.changes).toEqual([{ path: TEMP, before: 5, after: 2 }]);
-    expect(isStable(absorbed.character)).toBe(true);
+    expect(isStable(absorbed.character, findIn(absorbed.character))).toBe(true);
     expect(done(before, damage(before, 7)).entry.changes).toEqual([
       { path: TEMP, before: 5, after: 0 },
       { path: FAILURE, before: 0, after: 1 },
@@ -318,9 +328,9 @@ describe('ENG-58 stable and hit points', () => {
       { path: HP, before: 0, after: 3 },
       { path: STABLE, before: true, after: false },
     ]);
-    const temp = done(before, setTempHp(before, { amount: 5 }, stamp));
+    const temp = done(before, setTempHp(before, indexOf(before), { amount: 5 }, stamp));
     expect(temp.entry.changes).toEqual([{ path: TEMP, before: 0, after: 5 }]);
-    expect(isStable(temp.character)).toBe(true);
+    expect(isStable(temp.character, findIn(temp.character))).toBe(true);
   });
 
   it('brings a dead character back with the hit points its revival gives, at most the maximum', () => {
@@ -333,7 +343,7 @@ describe('ENG-58 stable and hit points', () => {
         { path: SUCCESS, before: 1, after: 0 },
         { path: FAILURE, before: 3, after: 0 },
       ]);
-      expect(isDead(one.character)).toBe(false);
+      expect(isDead(one.character, findIn(one.character))).toBe(false);
       for (const hp of ['max', 20] as const) {
         expect(done(before, back(before, hp)).entry.changes[0]).toEqual({
           path: HP,

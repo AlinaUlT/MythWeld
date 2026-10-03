@@ -3,6 +3,8 @@ import {
   type ContentIndex,
   changeTo,
   compute,
+  type EntityFinder,
+  finderOf,
   type LogStamp,
   type MadeChanges,
 } from '@grimoire/engine';
@@ -24,6 +26,7 @@ import {
 import { DEATH_SAVES, type FifthEditionCharacter } from './character';
 import { isDead } from './death-saves';
 import type { FifthEditionEntity } from './entity-types';
+import { EXHAUSTION_DEATH_LEVEL, exhaustionLevel } from './exhaustion';
 import { fifthEditionModule } from './module';
 import { rulesOf } from './rulesets';
 
@@ -39,6 +42,8 @@ import { rulesOf } from './rulesets';
 // ENG-65: damage may knock out instead (2024): it leaves the character at 1 hit point, knocked out,
 // and any other damage interrupts the short rest that knock-out started. Healing and reviving end
 // the knock-out (`knockOutEnded`).
+// ENG-67: exhaustion 6 is death too, so `isDead` reads the stored conditions' entries: every action
+// takes the index, and `revive` refuses while the exhaustion it leaves still kills.
 
 /** The lowest DC of the Constitution save that keeps concentration after damage (both SRDs). */
 export const CONCENTRATION_DC_MIN = 10;
@@ -50,6 +55,7 @@ export type HitPointRefusal = { message: string } & (
   | { code: 'notDead' }
   | { code: 'noKnockOut' }
   | { code: 'notDroppedToZero' }
+  | { code: 'exhausted'; level: number }
 );
 
 /** What healing or temporary hit points give: the changed character and its entry, or why not. */
@@ -114,6 +120,7 @@ function maxOf(character: FifthEditionCharacter, index: ContentIndex<FifthEditio
 /** The refusal of an amount that is not a whole number from `min`, or of a dead character. */
 function refusal(
   character: FifthEditionCharacter,
+  find: EntityFinder<FifthEditionEntity>,
   amount: number,
   min: number,
 ): ({ ok: false } & HitPointRefusal) | undefined {
@@ -121,7 +128,7 @@ function refusal(
     const message = `${amount} is not a whole number of hit points from ${min}.`;
     return { ok: false, code: 'badAmount', amount, message };
   }
-  if (isDead(character)) {
+  if (isDead(character, find)) {
     return { ok: false, code: 'dead', message: 'The character is dead: it has no hit points.' };
   }
   return undefined;
@@ -172,7 +179,7 @@ export function applyDamage(
   stamp: LogStamp,
 ): DamageResult {
   const { amount, critical = false, knockOut = false } = ask;
-  const refused = refusal(character, amount, 1);
+  const refused = refusal(character, finderOf(character, index), amount, 1);
   if (refused !== undefined) return refused;
   const { hp, deathSaves, concentration, knockedOut } = character.systemData.state;
   const temp = Math.min(hp.temp, amount);
@@ -236,7 +243,7 @@ export function applyHealing(
   stamp: LogStamp,
 ): HitPointResult {
   const { amount } = ask;
-  const refused = refusal(character, amount, 1);
+  const refused = refusal(character, finderOf(character, index), amount, 1);
   if (refused !== undefined) return refused;
   const { hp } = character.systemData.state;
   const max = maxOf(character, index);
@@ -258,7 +265,8 @@ export function applyHealing(
  * ENG-58: the dead character brought back to life with `ask.hp` hit points, a whole number from 1
  * or `max`, at most its maximum and at least 1, both death save counts at 0, no knock-out
  * (ENG-65); and the entry. The revival spells give 1 or all (ENG-58 §8). Refused for an amount
- * that is not a whole number from 1, and for a character that is not dead.
+ * that is not a whole number from 1, for a character that is not dead, and as `exhausted` at
+ * exhaustion 6, which the revival leaves (ENG-67), so the character would be dead again.
  */
 export function revive(
   character: FifthEditionCharacter,
@@ -271,8 +279,14 @@ export function revive(
     const message = `${hp} is not a whole number of hit points from 1.`;
     return { ok: false, code: 'badAmount', amount: hp, message };
   }
-  if (!isDead(character)) {
+  const find = finderOf(character, index);
+  if (!isDead(character, find)) {
     return { ok: false, code: 'notDead', message: 'The character is not dead.' };
+  }
+  const level = exhaustionLevel(character, find);
+  if (level >= EXHAUSTION_DEATH_LEVEL) {
+    const message = `At exhaustion ${level} the character is dead: revived, it would die again.`;
+    return { ok: false, code: 'exhausted', level, message };
   }
   const max = maxOf(character, index);
   const current = Math.max(1, hp === 'max' ? max : Math.min(max, hp));
@@ -292,15 +306,17 @@ export function revive(
  * The character with `ask.amount` temporary hit points, and the entry. They never add up: the
  * larger of the old and the new stays, unless `replace` takes the new ones, the person's choice.
  * Nothing else changes, at 0 hit points too. Refused for an amount that is not a whole number
- * from 0, for a dead character, and as `unchanged` when the count stays.
+ * from 0, for a dead character (exhaustion 6 included, which `index` gives the entry of), and as
+ * `unchanged` when the count stays.
  */
 export function setTempHp(
   character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
   ask: { readonly amount: number; readonly replace?: boolean },
   stamp: LogStamp,
 ): HitPointResult {
   const { amount, replace = false } = ask;
-  const refused = refusal(character, amount, 0);
+  const refused = refusal(character, finderOf(character, index), amount, 0);
   if (refused !== undefined) return refused;
   const { temp } = character.systemData.state.hp;
   return settled<HitPointRefusal>(

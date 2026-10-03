@@ -16,7 +16,14 @@ import {
   stabilize,
   UNCONSCIOUS_CONDITION,
 } from '../src/index.ts';
-import { type CharacterInput, done, indexOf, stamp, withTrackers } from './action-checks.ts';
+import {
+  type CharacterInput,
+  done,
+  findIn,
+  indexOf,
+  stamp,
+  withTrackers,
+} from './action-checks.ts';
 import { opened } from './golden/checks.ts';
 import { goldenA, goldenB, srd2014, srd2024 } from './golden/index.ts';
 import {
@@ -66,12 +73,16 @@ const storing = (golden: CharacterInput, current: number, id: EntityId) =>
 describe('ENG-62 the Unconscious condition at 0 hit points', () => {
   it('is down at 0 hit points and alive: dying, stable or with temporary hit points', () => {
     for (const { golden } of GOLDENS) {
-      expect(isDown(withTrackers(golden, { current: 0 }))).toBe(true);
-      expect(isDown(withTrackers(golden, { current: 0, stable: true }))).toBe(true);
-      expect(isDown(withTrackers(golden, { current: 0, temp: 5 }))).toBe(true);
-      expect(isDown(withTrackers(golden, { current: 0, failure: 3 }))).toBe(false);
-      expect(isDown(withTrackers(golden, { current: 1 }))).toBe(false);
-      expect(isDown(withTrackers(golden, { current: 12 }))).toBe(false);
+      const downAt = (trackers: Parameters<typeof withTrackers>[1]) => {
+        const character = withTrackers(golden, trackers);
+        return isDown(character, findIn(character));
+      };
+      expect(downAt({ current: 0 })).toBe(true);
+      expect(downAt({ current: 0, stable: true })).toBe(true);
+      expect(downAt({ current: 0, temp: 5 })).toBe(true);
+      expect(downAt({ current: 0, failure: 3 })).toBe(false);
+      expect(downAt({ current: 1 })).toBe(false);
+      expect(downAt({ current: 12 })).toBe(false);
     }
     expect(UNCONSCIOUS_CONDITION).toBe('unconscious');
   });
@@ -126,8 +137,10 @@ describe('ENG-62 the Unconscious condition at 0 hit points', () => {
 
     const dying = withTrackers(goldenA, { current: 0, failure: 2 });
     expect(levelOf(dying)).toBe(1);
-    expect(levelOf(done(dying, rollDeathSave(dying, { natural: 20 }, stamp)).character)).toBe(0);
-    const dead = done(dying, rollDeathSave(dying, { natural: 5 }, stamp)).character;
+    expect(
+      levelOf(done(dying, rollDeathSave(dying, indexOf(dying), { natural: 20 }, stamp)).character),
+    ).toBe(0);
+    const dead = done(dying, rollDeathSave(dying, indexOf(dying), { natural: 5 }, stamp)).character;
     expect(levelOf(dead)).toBe(0);
     const rested = done(
       dying,
@@ -136,7 +149,7 @@ describe('ENG-62 the Unconscious condition at 0 hit points', () => {
     expect(rested.character.systemData.state.hp.current).toBe(8);
     expect(levelOf(rested.character)).toBe(0);
     // SRD 5.1's knocking out: damage to 0, then stable.
-    const knockedOut = done(dropped, stabilize(dropped, stamp)).character;
+    const knockedOut = done(dropped, stabilize(dropped, indexOf(dropped), stamp)).character;
     expect(knockedOut.systemData.state.deathSaves.stable).toBe(true);
     expect(levelOf(knockedOut)).toBe(1);
     expect(levelOf(done(dead, revive(dead, with2014, { hp: 1 }, stamp)).character)).toBe(0);

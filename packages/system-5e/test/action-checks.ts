@@ -1,4 +1,4 @@
-import { type LogStamp, loadContentIndex, reverseEntry } from '@grimoire/engine';
+import { finderOf, type LogStamp, loadContentIndex, reverseEntry } from '@grimoire/engine';
 import { type LogEntry, logEntrySchema } from '@grimoire/schema';
 import { expect } from 'vitest';
 import type { z } from 'zod';
@@ -16,7 +16,8 @@ import { srd2014, srd2024 } from './golden/index.ts';
 // its trackers set, the checks every entry passes, and the made-up spells and pact class. The
 // made-up entities (`character:`) carry no text of a book. ENG-21: the hit dice and the core's
 // resources a test sets. ENG-58: whether the character is stable. ENG-59: the inspiration held.
-// ENG-63: the inventory, which death changes. ENG-65: whether the character is knocked out.
+// ENG-63: the inventory, which death changes. ENG-65: whether the character is knocked out. ENG-67:
+// how a character finds an entry, which `isDead` reads.
 
 export type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 type EntityInput = FifthEditionCharacter['localEntities'][number];
@@ -27,6 +28,9 @@ const index2024 = loadContentIndex(FIFTH_EDITION_SYSTEM, [opened(openFifthEditio
 /** The pack of the character's edition. */
 export const indexOf = (character: FifthEditionCharacter) =>
   character.ruleset === '2014' ? index2014.index : index2024.index;
+
+/** How the character finds an entity in the pack of its edition: `isDead` reads it (ENG-67). */
+export const findIn = (character: FifthEditionCharacter) => finderOf(character, indexOf(character));
 
 /** A character opened as a file would be. */
 export const open = (character: CharacterInput) => opened(openFifthEditionCharacter(character));

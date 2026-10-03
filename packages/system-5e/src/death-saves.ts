@@ -1,4 +1,11 @@
-import { type ActionResult, changeTo, type LogStamp } from '@grimoire/engine';
+import {
+  type ActionResult,
+  type ContentIndex,
+  changeTo,
+  type EntityFinder,
+  finderOf,
+  type LogStamp,
+} from '@grimoire/engine';
 import type { LogChange, LogEntry } from '@grimoire/schema';
 import {
   DEATH_FAILURE_PATH,
@@ -12,6 +19,8 @@ import {
   type Unchanged,
 } from './actions';
 import { DEATH_SAVES, type FifthEditionCharacter } from './character';
+import type { FifthEditionEntity } from './entity-types';
+import { EXHAUSTION_DEATH_LEVEL, exhaustionLevel } from './exhaustion';
 
 // ENG-58: fifth edition's death saves (both SRDs, one rule; ENG-58 §8), each one log entry. The
 // person rolls the d20 and the action takes the face it kept and the total with its bonuses: a 1
@@ -64,25 +73,36 @@ export type DeathSaveResult =
   | Extract<ActionResult<FifthEditionCharacter, DeathSaveRefusal | Unchanged>, { ok: false }>;
 
 /**
- * The character is dead: at 0 hit points with 3 death save failures (ENG-20). ENG-62 moved it here
- * from `hit-points.ts`, so the module reads it without an import loop.
+ * The character is dead: at 0 hit points with 3 death save failures (ENG-20), or at exhaustion 6
+ * (ENG-67), whose entry `find` finds. ENG-62 moved it here from `hit-points.ts`, so the module
+ * reads it without an import loop.
  */
-export function isDead(character: FifthEditionCharacter): boolean {
+export function isDead(
+  character: FifthEditionCharacter,
+  find: EntityFinder<FifthEditionEntity>,
+): boolean {
   const { hp, deathSaves } = character.systemData.state;
-  return hp.current === 0 && deathSaves.failure >= DEATH_SAVES;
+  return (
+    (hp.current === 0 && deathSaves.failure >= DEATH_SAVES) ||
+    exhaustionLevel(character, find) >= EXHAUSTION_DEATH_LEVEL
+  );
 }
 
 /** The character is stable: at 0 hit points, alive, and making no death saves. */
-export function isStable(character: FifthEditionCharacter): boolean {
+export function isStable(
+  character: FifthEditionCharacter,
+  find: EntityFinder<FifthEditionEntity>,
+): boolean {
   const { hp, deathSaves } = character.systemData.state;
-  return hp.current === 0 && deathSaves.stable && !isDead(character);
+  return hp.current === 0 && deathSaves.stable && !isDead(character, find);
 }
 
 /** The refusal of a character that makes no death saves: dead, or above 0 hit points. */
 function notDying(
   character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
 ): ({ ok: false } & DeathSaveRefusal) | undefined {
-  if (isDead(character)) {
+  if (isDead(character, finderOf(character, index))) {
     return { ok: false, code: 'dead', message: 'The character is dead.' };
   }
   const hp = character.systemData.state.hp.current;
@@ -114,11 +134,12 @@ function deathSaves(
  * point, resets both counts and ends a knock-out; a 1 is two failures; otherwise a total of 10 or more is a
  * success. The third success resets both counts and makes the character stable; the third
  * failure is death, which ends every attunement (`deathChanges`). Refused for a face that is not
- * a whole number from 1 to 20, a total that is not a whole number, a dead character, one above 0
- * hit points, and a stable one.
+ * a whole number from 1 to 20, a total that is not a whole number, a dead character (exhaustion 6
+ * included, which `index` gives the entry of), one above 0 hit points, and a stable one.
  */
 export function rollDeathSave(
   character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
   ask: DeathSaveAsk,
   stamp: LogStamp,
 ): DeathSaveResult {
@@ -130,7 +151,7 @@ export function rollDeathSave(
   if (!Number.isInteger(total)) {
     return { ok: false, code: 'badTotal', total, message: `${total} is not a whole number.` };
   }
-  const refused = notDying(character);
+  const refused = notDying(character, index);
   if (refused !== undefined) return refused;
   if (character.systemData.state.deathSaves.stable) {
     return {
@@ -180,13 +201,14 @@ export function rollDeathSave(
 /**
  * The character made stable at 0 hit points, both counts reset, and the entry: first aid's
  * Medicine check, a spell, or knocking out, whichever the screen recorded. Refused for a dead
- * character, one above 0 hit points, and as `unchanged` for a stable one.
+ * character (exhaustion 6 included), one above 0 hit points, and as `unchanged` for a stable one.
  */
 export function stabilize(
   character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
   stamp: LogStamp,
 ): ActionResult<FifthEditionCharacter, DeathSaveRefusal | Unchanged> {
-  const refused = notDying(character);
+  const refused = notDying(character, index);
   if (refused !== undefined) return refused;
   return deathSaves(
     character,

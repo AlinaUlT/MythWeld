@@ -1,6 +1,7 @@
 import {
   type Computed,
   compute,
+  finderOf,
   type LogStamp,
   loadContentIndex,
   removeCondition,
@@ -8,18 +9,44 @@ import {
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
+  applyDamage,
+  applyHealing,
+  EXHAUSTION_CONDITION,
+  EXHAUSTION_DEATH_LEVEL,
+  exhaustionLevel,
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
   type FifthEditionEntity,
   type fifthEditionCharacterSchema,
   type fifthEditionEntitySchema,
   fifthEditionModule,
+  firstAid,
+  isDead,
+  isDown,
+  isKnockedOut,
   longRest,
   openFifthEditionCharacter,
   openFifthEditionPack,
+  revive,
+  rollDeathSave,
+  setTempHp,
   shortRest,
+  stabilize,
 } from '../src/index.ts';
-import { done, refused, stamp as restStamp, withTrackers } from './action-checks.ts';
+import {
+  copyOf,
+  done,
+  FAILURE,
+  findIn,
+  frozen,
+  HP,
+  refused,
+  stamp as restStamp,
+  STABLE,
+  SUCCESS,
+  TEMP,
+  withTrackers,
+} from './action-checks.ts';
 import { opened } from './golden/checks.ts';
 import { goldenA, goldenB, srd2014, srd2024 } from './golden/index.ts';
 
@@ -348,5 +375,258 @@ describe('ENG-61 a rest lowers a condition by its entry', () => {
       min: 1,
     });
     expect(down.state.conditions).toEqual([{ id: EXHAUSTION_2024, level: 2 }]);
+  });
+});
+
+// ENG-67: exhaustion 6 is death in both SRDs (ENG-67 §8). `isDead` reads the stored exhaustion,
+// found by its key, so every action that refuses the dead refuses it. Golden A and golden B have
+// 12 hit points; golden B's d10 of 6 gives 8 (ENG-21). Every value was worked out by hand in
+// ENG-67 §3.
+
+/** Each golden with its edition's exhaustion. */
+const EDITIONS: { golden: CharacterInput; id: StoredCondition['id'] }[] = [
+  { golden: goldenA, id: EXHAUSTION_2014 },
+  { golden: goldenB, id: EXHAUSTION_2024 },
+];
+
+/** How the character finds an entry in the index of its edition, with the 2014 exhaustion. */
+const findFor = (character: FifthEditionCharacter) => finderOf(character, indexFor(character));
+
+/** The 2024 golden pack with an Unconscious entry (ENG-62's, its speed set to 0). */
+const index2024Unconscious = loadContentIndex(FIFTH_EDITION_SYSTEM, [
+  opened(
+    openFifthEditionPack({
+      ...srd2024,
+      entities: [
+        ...srd2024.entities,
+        {
+          id: 'srd-2024:condition/unconscious',
+          type: 'condition',
+          key: 'unconscious',
+          ruleset: '2024',
+          name: { en: 'Unconscious' },
+          source: { pack: 'srd-2024' },
+          effects: [{ id: 'speed-0', target: 'speed.all.mul', op: 'set', value: 0 }],
+        },
+      ],
+    }),
+  ),
+]).index;
+
+describe('ENG-67 exhaustion 6 is death', () => {
+  it('names the key and the level', () => {
+    expect(EXHAUSTION_CONDITION).toBe('exhaustion');
+    expect(EXHAUSTION_DEATH_LEVEL).toBe(6);
+  });
+
+  it('reads the stored level up to its maximum: dead at 6, as at 3 failures', () => {
+    for (const { golden, id } of EDITIONS) {
+      const levels = [0, 1, 2, 3, 4, 5, 6, 9].map((level) => {
+        const character = resting(golden, {}, level === 0 ? [] : [{ id, level }]);
+        const find = findFor(character);
+        return [level, exhaustionLevel(character, find), isDead(character, find)];
+      });
+      expect(levels, golden.ruleset).toEqual([
+        [0, 0, false],
+        [1, 1, false],
+        [2, 2, false],
+        [3, 3, false],
+        [4, 4, false],
+        [5, 5, false],
+        [6, 6, true],
+        [9, 6, true],
+      ]);
+      const down = resting(golden, { current: 0 }, [{ id, level: 6 }]);
+      expect(isDead(down, findFor(down))).toBe(true);
+      const failed = resting(golden, { current: 0, failure: 3 }, []);
+      expect(isDead(failed, findFor(failed))).toBe(true);
+    }
+  });
+
+  it('finds the condition by its key, not its id; a missing entry counts for nothing', () => {
+    const own = (slug: string, key: string, maxLevel: number): OwnEntity => ({
+      id: `character:condition/${slug}`,
+      type: 'condition',
+      key,
+      ruleset: 'any',
+      name: { en: slug },
+      maxLevel,
+      source: { pack: 'character' },
+    });
+    /** Golden A, its golden pack holding no exhaustion, with `entity` stored at 6. */
+    const atSix = (entity: OwnEntity) =>
+      resting(goldenA, {}, [{ id: entity.id, level: 6 }], [entity]);
+    const read = (character: FifthEditionCharacter) => {
+      const find = findIn(character);
+      return [exhaustionLevel(character, find), isDead(character, find)];
+    };
+    expect(read(atSix(own('tired', 'exhaustion', 6)))).toEqual([6, true]);
+    expect(read(atSix(own('weary', 'weary', 6)))).toEqual([0, false]);
+    expect(read(atSix(own('short', 'exhaustion', 4)))).toEqual([4, false]);
+    const gone = resting(goldenA, {}, [{ id: 'srd-2014:condition/gone', level: 6 }]);
+    expect(read(gone)).toEqual([0, false]);
+
+    // Stored with no level: 1. Two stored exhaustions: the higher, in either order.
+    const tired = own('tired', 'exhaustion', 6);
+    expect(read(resting(goldenA, {}, [{ id: tired.id }], [tired]))).toEqual([1, false]);
+    const worn = own('worn', 'exhaustion', 6);
+    const both = (first: number, second: number) =>
+      resting(
+        goldenA,
+        {},
+        [
+          { id: tired.id, level: first },
+          { id: worn.id, level: second },
+        ],
+        [tired, worn],
+      );
+    expect([read(both(2, 6)), read(both(6, 2))]).toEqual([
+      [6, true],
+      [6, true],
+    ]);
+    // Only a condition: a skill of the key `exhaustion`, stored by hand, counts for nothing.
+    const skill: OwnEntity = {
+      id: 'character:skill/exhaustion',
+      type: 'skill',
+      key: 'exhaustion',
+      ability: 'con',
+      ruleset: 'any',
+      name: { en: 'exhaustion' },
+      source: { pack: 'character' },
+    };
+    expect(read(resting(goldenA, {}, [{ id: skill.id, level: 6 }], [skill]))).toEqual([0, false]);
+  });
+
+  it('refuses every action that refuses the dead; the condition stays at 6', () => {
+    for (const { golden, id } of EDITIONS) {
+      const full = resting(golden, {}, [{ id, level: 6 }]);
+      const hurt = resting(golden, { current: 5 }, [{ id, level: 6 }]);
+      const down = resting(golden, { current: 0 }, [{ id, level: 6 }]);
+      const index = indexFor(full);
+      const dead = { code: 'dead' };
+      expect(refused(applyDamage(full, index, { amount: 3 }, restStamp))).toEqual(dead);
+      expect(refused(setTempHp(full, index, { amount: 5 }, restStamp))).toEqual(dead);
+      expect(refused(shortRest(full, index, {}, restStamp))).toEqual(dead);
+      expect(refused(longRest(full, index, restStamp))).toEqual(dead);
+      expect(refused(applyHealing(hurt, index, { amount: 3 }, restStamp))).toEqual(dead);
+      expect(refused(rollDeathSave(down, index, { natural: 10 }, restStamp))).toEqual(dead);
+      expect(refused(stabilize(down, index, restStamp))).toEqual(dead);
+      expect(refused(firstAid(full, index, restStamp))).toEqual(dead);
+      expect(full.state.conditions).toEqual([{ id, level: 6 }]);
+    }
+  });
+
+  it('at exhaustion 5 the same actions happen', () => {
+    const atFive = (trackers: Parameters<typeof withTrackers>[1]) =>
+      resting(goldenB, trackers, [{ id: EXHAUSTION_2024, level: 5 }]);
+    const full = atFive({});
+    const hurt = atFive({ current: 5 });
+    const low = atFive({ current: 3 });
+    const down = atFive({ current: 0 });
+    const changes = (before: FifthEditionCharacter, result: Parameters<typeof done>[1]) =>
+      done(before, result).entry.changes;
+    expect(changes(full, applyDamage(full, index2024, { amount: 3 }, restStamp))).toEqual([
+      { path: HP, before: 12, after: 9 },
+    ]);
+    expect(changes(full, setTempHp(full, index2024, { amount: 5 }, restStamp))).toEqual([
+      { path: TEMP, before: 0, after: 5 },
+    ]);
+    expect(changes(hurt, applyHealing(hurt, index2024, { amount: 3 }, restStamp))).toEqual([
+      { path: HP, before: 5, after: 8 },
+    ]);
+    const short = done(
+      low,
+      shortRest(low, index2024, { hitDice: [{ die: 10, roll: 6 }] }, restStamp),
+    );
+    expect(short.character.systemData.state.hp.current).toBe(11);
+    expect(rested(full).character.state.conditions).toEqual([{ id: EXHAUSTION_2024, level: 4 }]);
+    expect(changes(down, rollDeathSave(down, index2024, { natural: 10 }, restStamp))).toEqual([
+      { path: SUCCESS, before: 0, after: 1 },
+    ]);
+    expect(changes(down, stabilize(down, index2024, restStamp))).toEqual([
+      { path: STABLE, before: false, after: true },
+    ]);
+  });
+
+  it('refuses to revive at exhaustion 6, which the revival leaves; at 5 it revives', () => {
+    for (const { golden, id } of EDITIONS) {
+      const full = resting(golden, {}, [{ id, level: 6 }]);
+      const failed = resting(golden, { current: 0, failure: 3 }, [{ id, level: 6 }]);
+      for (const character of [full, failed]) {
+        expect(refused(revive(character, indexFor(character), { hp: 1 }, restStamp))).toEqual({
+          code: 'exhausted',
+          level: 6,
+        });
+      }
+      const five = resting(golden, { current: 0, failure: 3 }, [{ id, level: 5 }]);
+      const revived = done(five, revive(five, indexFor(five), { hp: 1 }, restStamp));
+      expect(revived.entry.changes).toEqual([
+        { path: HP, before: 0, after: 1 },
+        { path: FAILURE, before: 3, after: 0 },
+      ]);
+      expect(revived.character.state.conditions).toEqual([{ id, level: 5 }]);
+    }
+  });
+
+  it('is dead, not down, at 0 hit points and exhaustion 6: no Unconscious condition, no warning', () => {
+    const atZero = (level: number) =>
+      resting(goldenB, { current: 0 }, [{ id: EXHAUSTION_2024, level }]);
+    const six = atZero(6);
+    const five = atZero(5);
+    expect(isDown(six, findFor(six))).toBe(false);
+    expect(isDown(five, findFor(five))).toBe(true);
+
+    const deadNow = compute(six, index2024, fifthEditionModule);
+    expect(deadNow.warnings).toEqual([]);
+    expect(deadNow.values['conditions.exhaustion.level']).toBe(6);
+    const downNow = compute(five, index2024, fifthEditionModule);
+    expect(downNow.warnings).toMatchObject([
+      { code: 'characterRule', rule: 'noUnconsciousCondition', data: { key: 'unconscious' } },
+    ]);
+    expect(downNow.values['conditions.exhaustion.level']).toBe(5);
+
+    const unconscious = (character: FifthEditionCharacter) =>
+      compute(character, index2024Unconscious, fifthEditionModule).values[
+        'conditions.unconscious.level'
+      ];
+    expect([unconscious(six), unconscious(five)]).toEqual([0, 1]);
+
+    // Knocked out at 1 hit point (ENG-65): at exhaustion 6, dead, so not knocked out.
+    const out = (level: number) =>
+      resting(goldenB, { current: 1, knockedOut: 'resting' }, [{ id: EXHAUSTION_2024, level }]);
+    const [outSix, outFive] = [out(6), out(5)];
+    expect([
+      isKnockedOut(outSix, findFor(outSix)),
+      isKnockedOut(outFive, findFor(outFive)),
+    ]).toEqual([false, true]);
+    expect([unconscious(outSix), unconscious(outFive)]).toEqual([0, 1]);
+  });
+
+  it('changes nothing it is given: frozen inputs', () => {
+    const character = resting(goldenB, { current: 0 }, [{ id: EXHAUSTION_2024, level: 6 }]);
+    const copy = copyOf(character);
+    const ice = frozen(character);
+    const frozenStamp = frozen(restStamp);
+    const results = [
+      applyDamage(ice, index2024, frozen({ amount: 3 }), frozenStamp),
+      applyHealing(ice, index2024, frozen({ amount: 3 }), frozenStamp),
+      setTempHp(ice, index2024, frozen({ amount: 5 }), frozenStamp),
+      shortRest(ice, index2024, frozen({}), frozenStamp),
+      longRest(ice, index2024, frozenStamp),
+      rollDeathSave(ice, index2024, frozen({ natural: 10 }), frozenStamp),
+      stabilize(ice, index2024, frozenStamp),
+      revive(ice, index2024, frozen({ hp: 1 }), frozenStamp),
+    ];
+    expect(results.map((result) => (result.ok ? 'done' : result.code))).toEqual([
+      'dead',
+      'dead',
+      'dead',
+      'dead',
+      'dead',
+      'dead',
+      'dead',
+      'exhausted',
+    ]);
+    expect(ice).toEqual(copy);
   });
 });

@@ -123,7 +123,8 @@ split off an old row got a new id.
 | ENG-21 | A rest changes the character by its edition's rules | S | ✅ 2026-10-03 |
 | ENG-61 | A long rest lowers a condition's level as its entry says | S | ✅ 2026-10-03 |
 | ENG-66 | Coming back to life lowers a condition's level as its entry says | S | 🔲 |
-| ENG-67 | Exhaustion at level 6 makes the character dead | S | 🔲 |
+| ENG-67 | Exhaustion at level 6 makes the character dead | S | ✅ 2026-10-03 |
+| ENG-68 | A death by exhaustion ends what death ends | S | 🔲 |
 | ENG-64 | A long rest gives the inspiration a trait names | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
@@ -137,14 +138,17 @@ split off an old row got a new id.
   lowered by the core's `conditionsRecoveredOn`) can say it with an event, but fifth edition's
   recovery events (`short`, `long`, `dawn`, `turn`, `manual`) have none for coming back to life;
   adding one changes the module's shape (a version and its migrations). The 2024 exhaustion of
-  `test/golden/srd-2024.ts` then names it; ENG-19's 2014 one does not.
-- **ENG-67** — found by ENG-61 (ENG-61 §8): exhaustion 6 is death in both SRDs (SRD 5.1 "6 -
-  Death"; SRD 5.2.1 "You die if your Exhaustion level is 6"; dnd5e's exhaustion `conditions: { 6:
-  ["dead"] }`). `isDead` (`death-saves.ts`) reads only the death saves, so a long rest at
-  exhaustion 6 is not refused, and since ENG-61 it lowers the level to 5. The row decides where
-  the death is said (the condition's entry, as ENG-61's `recovery`; or the module, by the key
-  `exhaustion`, as ENG-62's `unconscious`) and makes `isDead` read it, so the actions refuse as
-  for 3 failed death saves. ENG-66 then brings such a character back at level 5.
+  `test/golden/srd-2024.ts` then names it; ENG-19's 2014 one does not. Since ENG-67, `revive`
+  refuses `exhausted` at level 6 (ENG-67 §4): ENG-66 refuses only when the lowered level is still 6.
+- **ENG-68** — found by ENG-67 (ENG-67 §11): since ENG-67 exhaustion 6 is death (`isDead`), but
+  exhaustion reaches 6 through the core's `setCondition`, which knows no death, so a death by
+  exhaustion keeps concentration and every attunement. Only `applyDamage` and `rollDeathSave` add
+  `deathChanges` (ENG-63), and only `applyDamage` ends concentration for dying. SRD 5.1
+  (Concentration): "You lose concentration on a spell if you are incapacitated or if you die.";
+  SRD 5.2.1's Concentration text is read by the row. The row decides where fifth edition sees the
+  condition's change (its own action around `setCondition`, or a module hook the core calls after
+  a condition changes, which is a core change under ADR 004), and ends both there in the same
+  entry.
 - **ENG-64** — found by ENG-21 (ENG-21 §8), taken off ENG-59 (ENG-59 §11). SRD 5.2.1's human,
   Resourceful: "You gain Heroic Inspiration whenever you finish a Long Rest." Golden B is that
   human; its Resourceful (`test/golden/srd-2024.ts`) is a name with no mechanics. No entity has a

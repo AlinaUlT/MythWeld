@@ -10,6 +10,7 @@ import {
   type CharacterInput,
   copyOf,
   done,
+  findIn,
   frozen,
   INSPIRATION,
   refused,
@@ -89,7 +90,7 @@ describe('ENG-59 inspiration', () => {
 
   it('gains and spends for a dead character as for any other', () => {
     const dead = withTrackers(goldenA, { current: 0, failure: 3, inspiration: 0 });
-    expect(isDead(dead)).toBe(true);
+    expect(isDead(dead, findIn(dead))).toBe(true);
     const gained = done(dead, gainInspiration(dead, stamp));
     expect(gained.entry.changes).toEqual(change(0, 1));
     const spent = done(gained.character, spendInspiration(gained.character, stamp));

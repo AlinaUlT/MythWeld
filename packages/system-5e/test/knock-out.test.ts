@@ -22,6 +22,7 @@ import {
   type CharacterInput,
   copyOf,
   done,
+  findIn,
   frozen,
   HP,
   indexOf,
@@ -94,7 +95,7 @@ describe('ENG-65 knocked out at 1 hit point', () => {
       const result = done(five, knock(five, amount));
       expect(result.character.systemData.state.hp).toEqual({ current: 1, temp: 0 });
       expect(markOf(result.character)).toBe('resting');
-      expect(isKnockedOut(result.character)).toBe(true);
+      expect(isKnockedOut(result.character, findIn(result.character))).toBe(true);
       expect(result.character.systemData.state.deathSaves).toEqual(
         five.systemData.state.deathSaves,
       );
@@ -191,7 +192,8 @@ describe('ENG-65 knocked out at 1 hit point', () => {
     const dead = computed(deadMarked());
     expect([level(dead), dead.values['speed.walk']]).toEqual([0, 30]);
     expect(had(dead, UNCONSCIOUS_2024)).toEqual([]);
-    expect(isKnockedOut(deadMarked())).toBe(false);
+    const deadOne = deadMarked();
+    expect(isKnockedOut(deadOne, findIn(deadOne))).toBe(false);
 
     const a = computed(knockedOut('resting', goldenA));
     expect([level(a), a.values['speed.walk']]).toEqual([1, 0]);
@@ -268,12 +270,12 @@ describe('ENG-65 knocked out at 1 hit point', () => {
 
   it('ends with the hit point of a death save of 20, and with a revival', () => {
     const down = withTrackers(goldenB, { current: 0, knockedOut: 'interrupted' });
-    const up = done(down, rollDeathSave(down, { natural: 20 }, stamp)).character;
+    const up = done(down, rollDeathSave(down, indexOf(down), { natural: 20 }, stamp)).character;
     expect(up.systemData.state.hp.current).toBe(1);
     expect(markOf(up)).toBeUndefined();
-    expect(markOf(done(down, rollDeathSave(down, { natural: 15 }, stamp)).character)).toBe(
-      'interrupted',
-    );
+    expect(
+      markOf(done(down, rollDeathSave(down, indexOf(down), { natural: 15 }, stamp)).character),
+    ).toBe('interrupted');
     const dead = deadMarked();
     const back = done(dead, revive(dead, indexOf(dead), { hp: 1 }, stamp)).character;
     expect(back.systemData.state.hp.current).toBe(1);
@@ -282,9 +284,11 @@ describe('ENG-65 knocked out at 1 hit point', () => {
 
   it('stays with temporary hit points and when stabilized', () => {
     const out = knockedOut();
-    expect(markOf(done(out, setTempHp(out, { amount: 5 }, stamp)).character)).toBe('resting');
+    expect(markOf(done(out, setTempHp(out, indexOf(out), { amount: 5 }, stamp)).character)).toBe(
+      'resting',
+    );
     const down = withTrackers(goldenB, { current: 0, knockedOut: 'interrupted' });
-    const stable = done(down, stabilize(down, stamp)).character;
+    const stable = done(down, stabilize(down, indexOf(down), stamp)).character;
     expect(stable.systemData.state.deathSaves.stable).toBe(true);
     expect(markOf(stable)).toBe('interrupted');
   });
@@ -292,7 +296,7 @@ describe('ENG-65 knocked out at 1 hit point', () => {
   it('ends with first aid', () => {
     for (const mark of MARKS) {
       const out = knockedOut(mark);
-      const aided = done(out, firstAid(out, stamp));
+      const aided = done(out, firstAid(out, indexOf(out), stamp));
       expect(aided.entry).toMatchObject({
         action: 'firstAid',
         subject: 'knockedOut',
@@ -301,16 +305,18 @@ describe('ENG-65 knocked out at 1 hit point', () => {
       expect(levelOf(aided.character)).toBe(0);
     }
     const down = withTrackers(goldenB, { current: 0, knockedOut: 'interrupted' });
-    const aided = done(down, firstAid(down, stamp)).character;
+    const aided = done(down, firstAid(down, indexOf(down), stamp)).character;
     expect(markOf(aided)).toBeUndefined();
     expect(levelOf(aided)).toBe(1);
-    expect(refused(firstAid(withTrackers(goldenB, { current: 12 }), stamp))).toEqual({
+    const aid = (character: FifthEditionCharacter) =>
+      firstAid(character, indexOf(character), stamp);
+    expect(refused(aid(withTrackers(goldenB, { current: 12 })))).toEqual({
       code: 'notKnockedOut',
     });
-    expect(refused(firstAid(withTrackers(goldenB, { current: 0 }), stamp))).toEqual({
+    expect(refused(aid(withTrackers(goldenB, { current: 0 })))).toEqual({
       code: 'notKnockedOut',
     });
-    expect(refused(firstAid(deadMarked(), stamp))).toEqual({ code: 'dead' });
+    expect(refused(aid(deadMarked()))).toEqual({ code: 'dead' });
   });
 
   it('changes no frozen input', () => {
@@ -319,7 +325,7 @@ describe('ENG-65 knocked out at 1 hit point', () => {
     const ask = frozen({ amount: 9, knockOut: true });
     const before = [copyOf(out), copyOf(five)];
     expect(applyDamage(five, indexOf(five), ask, frozen(stamp)).ok).toBe(true);
-    expect(firstAid(out, frozen(stamp)).ok).toBe(true);
+    expect(firstAid(out, indexOf(out), frozen(stamp)).ok).toBe(true);
     expect(shortRest(out, indexOf(out), frozen({}), frozen(stamp)).ok).toBe(true);
     expect(applyHealing(out, indexOf(out), frozen({ amount: 3 }), frozen(stamp)).ok).toBe(true);
     expect([out, five]).toEqual(before);
