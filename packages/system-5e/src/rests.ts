@@ -18,6 +18,7 @@ import {
   HP_TEMP_PATH,
   hitDiceSpentPath,
   isWhole,
+  knockOutEnded,
   PACT_SPENT_PATH,
   settled,
   slotSpentPath,
@@ -45,6 +46,8 @@ import { HIT_DIE_SIZES, MAX_SPELL_LEVEL } from './system';
 // (the core's `conditionsRecoveredOn`), as both SRDs' exhaustion says of a long rest. The hit
 // points come from the one `compute()` made before the rest, so 2014's halved maximum at
 // exhaustion 4 is the one a long rest fills (dnd5e's order, ENG-61 §8).
+// ENG-65: each rest ends a knock-out whose short rest damage did not interrupt (`resting`), and
+// any knock-out when it gives hit points back (`knockOutEnded`).
 
 /**
  * The recovery events each rest triggers, in order: a long rest gives back what comes back on a
@@ -109,6 +112,15 @@ function restRefusal(
   return undefined;
 }
 
+/**
+ * The changes that end a knock-out at the end of a rest: the short rest the knock-out started ends
+ * it, unless damage interrupted that rest; hit points regained end it either way.
+ */
+function knockOutRested(character: FifthEditionCharacter, current: number): LogChange[] {
+  const { hp, knockedOut } = character.systemData.state;
+  return knockedOut === 'resting' || current > hp.current ? knockOutEnded(character) : [];
+}
+
 /** A computed number, 0 when it is not one. */
 function numberAt(computed: Computed<FifthEditionEntity>, path: string): number {
   const value = computed.values[path];
@@ -139,7 +151,8 @@ function rested(
  * slots and the uses that come back on `short` come back. Refused for a die no class has, a roll
  * it cannot show, a die more than the character has left, a dead character, one below the
  * edition's `shortRestMinHp`, and as `unchanged` when nothing changes. ENG-61: the stored
- * conditions lose the levels their entries take on `short`.
+ * conditions lose the levels their entries take on `short`. ENG-65: it ends a knock-out
+ * (`knockOutRested`).
  */
 export function shortRest(
   character: FifthEditionCharacter,
@@ -199,6 +212,7 @@ export function shortRest(
       changeTo(character, PACT_SPENT_PATH, 0),
       ...recovered.changes,
       ...eased.changes,
+      ...knockOutRested(character, current),
     ],
     { hitDice: spent, warnings: [...recovered.warnings, ...eased.warnings] },
   );
@@ -210,8 +224,9 @@ export function shortRest(
  * dice back (rounded down, at least 1, the largest first), every slot and pact slot back, the uses
  * that come back on `long`, else on `short`, and no concentration where the edition's
  * `longRestEndsConcentration` says so. ENG-61: the stored conditions lose the levels their
- * entries take on `long`, else on `short` (each SRD's exhaustion: 1). Refused for a dead
- * character, one at 0 hit points, and as `unchanged` when nothing changes.
+ * entries take on `long`, else on `short` (each SRD's exhaustion: 1). ENG-65: it ends a knock-out
+ * as a short rest does (`knockOutRested`). Refused for a dead character, one at 0 hit points, and
+ * as `unchanged` when nothing changes.
  */
 export function longRest(
   character: FifthEditionCharacter,
@@ -224,6 +239,7 @@ export function longRest(
   const computed = compute(character, index, fifthEditionModule);
   const { hp, hitDiceSpent, slotsSpent, concentration } = character.systemData.state;
   const max = Math.floor(numberAt(computed, 'hp.max'));
+  const current = Math.max(hp.current, max);
 
   const total = HIT_DIE_SIZES.reduce(
     (sum, die) => sum + whole(computed.values[hitDicePath(die)]),
@@ -246,7 +262,7 @@ export function longRest(
     stamp,
     'longRest',
     [
-      changeTo(character, HP_CURRENT_PATH, Math.max(hp.current, max)),
+      changeTo(character, HP_CURRENT_PATH, current),
       changeTo(character, HP_TEMP_PATH, 0),
       ...dice,
       ...levels
@@ -258,6 +274,7 @@ export function longRest(
       ...(rules.longRestEndsConcentration && concentration !== undefined
         ? [changeTo(character, CONCENTRATION_PATH, undefined)]
         : []),
+      ...knockOutRested(character, current),
     ],
     { hitDice: [], warnings: [...recovered.warnings, ...eased.warnings] },
   );

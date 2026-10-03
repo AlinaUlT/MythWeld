@@ -19,6 +19,8 @@ import type { FifthEditionCharacter } from './character';
 // writes it through `deathSavesReset`, so `stable` is never left behind.
 // ENG-63: every action that kills (the third failure, from damage or a death save) adds
 // `deathChanges`, so no row of the inventory stays attuned (both SRDs; ENG-58 §11).
+// ENG-65: every action that gives hit points back adds `knockOutEnded`, so the knock-out's mark is
+// never left behind above 0 hit points.
 
 const STATE = ['systemData', 'state'] as const;
 
@@ -45,6 +47,9 @@ export const PACT_SPENT_PATH = [...STATE, 'pactSlotsSpent'];
 
 /** The inspiration the character holds. */
 export const INSPIRATION_PATH = [...STATE, 'inspiration'];
+
+/** ENG-65: whether the character is knocked out, and whether its short rest still ends it. */
+export const KNOCKED_OUT_PATH = [...STATE, 'knockedOut'];
 
 /**
  * ENG-63: the inventory's rows. A change writes the whole list: a log path steps only through
@@ -105,6 +110,14 @@ export function deathSavesReset(character: FifthEditionCharacter, stable = false
 export function deathChanges(character: FifthEditionCharacter): LogChange[] {
   const rows = character.systemData.inventory.map((row) => ({ ...row, attuned: false }));
   return [changeTo(character, INVENTORY_PATH, rows)];
+}
+
+/**
+ * The change that ends a knock-out: the mark removed. SRD 5.2.1: "The condition ends early if the
+ * creature regains any Hit Points" (ENG-65 §8). With no mark it changes nothing.
+ */
+export function knockOutEnded(character: FifthEditionCharacter): LogChange[] {
+  return [changeTo(character, KNOCKED_OUT_PATH, undefined)];
 }
 
 /** A whole number from `min`. */

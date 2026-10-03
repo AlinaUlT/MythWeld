@@ -7,6 +7,7 @@ import {
   deathSavesReset,
   HP_CURRENT_PATH,
   isWhole,
+  knockOutEnded,
   settled,
   type Unchanged,
 } from './actions';
@@ -17,7 +18,7 @@ import { DEATH_SAVES, type FifthEditionCharacter } from './character';
 // is two failures and a 20 one hit point back, whatever the total; otherwise 10 or more is a
 // success. The third success makes the character stable and the third failure kills; a stable
 // character makes no death saves until damage ends it (`applyDamage`). Every end of a run resets
-// both counts (`deathSavesReset`).
+// both counts (`deathSavesReset`). ENG-65: the 20's hit point ends a knock-out (`knockOutEnded`).
 
 /** The total a death save succeeds at, in both SRDs. */
 export const DEATH_SAVE_DC = 10;
@@ -110,7 +111,7 @@ function deathSaves(
 
 /**
  * The character after the death save `ask` rolled, the entry, and what it did. A 20 gives 1 hit
- * point and resets both counts; a 1 is two failures; otherwise a total of 10 or more is a
+ * point, resets both counts and ends a knock-out; a 1 is two failures; otherwise a total of 10 or more is a
  * success. The third success resets both counts and makes the character stable; the third
  * failure is death, which ends every attunement (`deathChanges`). Refused for a face that is not
  * a whole number from 1 to 20, a total that is not a whole number, a dead character, one above 0
@@ -143,7 +144,11 @@ export function rollDeathSave(
   let changes: LogChange[];
   let outcome: DeathSaveOutcome;
   if (natural === DEATH_SAVE_FACES.hitPoint) {
-    changes = [changeTo(character, HP_CURRENT_PATH, 1), ...deathSavesReset(character)];
+    changes = [
+      changeTo(character, HP_CURRENT_PATH, 1),
+      ...deathSavesReset(character),
+      ...knockOutEnded(character),
+    ];
     outcome = { successes: 0, failures: 0, hp: 1, status: 'up' };
   } else if (natural !== DEATH_SAVE_FACES.twoFailures && total >= DEATH_SAVE_DC) {
     const stable = success + 1 >= DEATH_SAVES;

@@ -1,14 +1,12 @@
 import { type Computed, compute, loadContentIndex } from '@grimoire/engine';
 import type { EntityId } from '@grimoire/schema';
 import { describe, expect, it } from 'vitest';
-import type { z } from 'zod';
 import {
   applyDamage,
   applyHealing,
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
   type FifthEditionEntity,
-  type fifthEditionEntitySchema,
   fifthEditionModule,
   isDown,
   openFifthEditionPack,
@@ -21,45 +19,17 @@ import {
 import { type CharacterInput, done, indexOf, stamp, withTrackers } from './action-checks.ts';
 import { opened } from './golden/checks.ts';
 import { goldenA, goldenB, srd2014, srd2024 } from './golden/index.ts';
+import {
+  UNCONSCIOUS_2014,
+  UNCONSCIOUS_2024,
+  unconscious,
+  with2014,
+  withEntry,
+} from './unconscious-entries.ts';
 
 // ENG-62: the Unconscious condition at 0 hit points. Golden A (2014) walks 25 feet and golden B
-// (2024) 30; both have a hit point maximum of 12 (SPEC §6.7). The Unconscious entries are written
-// here, a name and a number only: each sets `speed.all.mul` to 0 (SRD 5.1 "can't move", SRD 5.2.1
-// "Your Speed is 0", ENG-62 §8). Every expected value was worked out by hand in ENG-62 §3.
-
-type EntityInput = z.input<typeof fifthEditionEntitySchema>;
-type Edition = '2014' | '2024';
-
-const UNCONSCIOUS_2014 = 'srd-2014:condition/unconscious';
-const UNCONSCIOUS_2024 = 'srd-2024:condition/unconscious';
-
-/** An edition's Unconscious condition: its key, and its speed set to 0. */
-function unconscious(ruleset: Edition): Extract<EntityInput, { type: 'condition' }> {
-  return {
-    id: ruleset === '2014' ? UNCONSCIOUS_2014 : UNCONSCIOUS_2024,
-    type: 'condition',
-    key: UNCONSCIOUS_CONDITION,
-    ruleset,
-    name: { en: 'Unconscious' },
-    source: { pack: `srd-${ruleset}` },
-    effects: [{ id: 'speed-0', target: 'speed.all.mul', op: 'set', value: 0 }],
-  };
-}
-
-const with2014 = loadContentIndex(FIFTH_EDITION_SYSTEM, [
-  opened(
-    openFifthEditionPack({ ...srd2014, entities: [...srd2014.entities, unconscious('2014')] }),
-  ),
-]).index;
-const with2024 = loadContentIndex(FIFTH_EDITION_SYSTEM, [
-  opened(
-    openFifthEditionPack({ ...srd2024, entities: [...srd2024.entities, unconscious('2024')] }),
-  ),
-]).index;
-
-/** The pack of the character's edition, with its Unconscious entry. */
-const withEntry = (character: FifthEditionCharacter) =>
-  character.ruleset === '2014' ? with2014 : with2024;
+// (2024) 30; both have a hit point maximum of 12 (SPEC §6.7). The Unconscious entries are
+// `unconscious-entries.ts`'s. Every expected value was worked out by hand in ENG-62 §3.
 
 /** Each golden, its walking speed, and its Unconscious entry's id. */
 const GOLDENS = [

@@ -81,6 +81,12 @@ export interface EditionRules {
    * condition (ENG-21 §8).
    */
   readonly longRestEndsConcentration: boolean;
+  /**
+   * ENG-65: whether damage that would drop a creature to 0 hit points with a melee attack may
+   * leave it at 1, knocked out (`applyDamage`'s `knockOut`). Without it, knocking out is damage to
+   * 0, then `stabilize` (ENG-65 §8).
+   */
+  readonly knockOutToOneHp: boolean;
   /** ENG-46: the penalties of an armor, and of a shield, worn without its training. */
   readonly untrained: {
     readonly armor: readonly UntrainedPenalty[];

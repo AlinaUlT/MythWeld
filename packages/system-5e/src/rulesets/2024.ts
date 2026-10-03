@@ -35,6 +35,9 @@ export const RULES_2024: EditionRules = {
   // "During sleep, you have the Unconscious condition", which is Incapacitated, and "Your
   // Concentration ends if you have the Incapacitated condition" (Long Rest, ENG-21 §8).
   longRestEndsConcentration: true,
+  // "you can instead reduce the creature to 1 Hit Point and give it the Unconscious condition"
+  // (Knocking Out a Creature, ENG-65 §8).
+  knockOutToOneHp: true,
   // "If you wear Light, Medium, or Heavy armor and lack training with it, you have Disadvantage on
   // any D20 Test that involves Strength or Dexterity, and you can't cast spells"; "You gain the
   // Armor Class benefit of a Shield only if you have training with it" (Armor Training, ENG-46 §8).

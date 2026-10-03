@@ -47,6 +47,7 @@ import { unconsciousNamed, unconsciousWarnings } from './unconscious';
 // ENG-56: the side of the starting languages not taken gives none; a mix that gives none warns.
 // ENG-57: a spell grant's own uses are a resource, given beside it (`spell-uses.ts`).
 // ENG-62: at 0 hit points and alive, the Unconscious condition is named by its key; none warns.
+// ENG-65: knocked out too (`knock-out.ts`).
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -151,7 +152,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
       // Only an equipped item's effects and grants apply (SPEC §5.3), so only those are named,
       // and of those only what the rules let count (ENG-44).
       ...equipmentOf(character, find).named,
-      // The condition the 0 hit points give (ENG-62).
+      // The condition the 0 hit points, or a knock-out, give (ENG-62, ENG-65).
       ...unconsciousNamed(character, findKey),
     ];
   },
@@ -197,7 +198,8 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
   keys: (input) => ({ ...skillKeys(input), ...sizeKeys(input) }),
 
   // Ability score increases taken from both the species and the background; a mix that gives no
-  // starting languages; a character at 0 hit points with no Unconscious condition to have.
+  // starting languages; a character at 0 hit points, or knocked out, with no Unconscious
+  // condition to have.
   ruleWarnings: (input) => [
     ...abilityBonusWarnings(input),
     ...languageWarnings(input),

@@ -19,6 +19,7 @@ export * from './equipment';
 export * from './hit-dice';
 export * from './hit-points';
 export * from './inspiration';
+export * from './knock-out';
 export * from './languages';
 export * from './level-up';
 export * from './module';

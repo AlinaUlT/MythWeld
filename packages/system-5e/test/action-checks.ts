@@ -16,7 +16,7 @@ import { srd2014, srd2024 } from './golden/index.ts';
 // its trackers set, the checks every entry passes, and the made-up spells and pact class. The
 // made-up entities (`character:`) carry no text of a book. ENG-21: the hit dice and the core's
 // resources a test sets. ENG-58: whether the character is stable. ENG-59: the inspiration held.
-// ENG-63: the inventory, which death changes.
+// ENG-63: the inventory, which death changes. ENG-65: whether the character is knocked out.
 
 export type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 type EntityInput = FifthEditionCharacter['localEntities'][number];
@@ -54,6 +54,7 @@ interface Trackers {
   /** The uses spent of each resource: the core's `state.resources`. */
   resources?: Record<string, number>;
   inspiration?: number;
+  knockedOut?: 'resting' | 'interrupted';
 }
 
 /** A golden character with `trackers` set, and `more` of its fields replaced, opened. */
@@ -65,7 +66,7 @@ export function withTrackers(
   const state = golden.systemData.state;
   const { current, temp, success, failure, stable, concentration, slotsSpent } = trackers;
   const { pactSlotsSpent } = trackers;
-  const { hitDiceSpent, resources, inspiration } = trackers;
+  const { hitDiceSpent, resources, inspiration, knockedOut } = trackers;
   const core = more.state ?? golden.state;
   return open({
     ...golden,
@@ -87,6 +88,7 @@ export function withTrackers(
         ...(pactSlotsSpent !== undefined && { pactSlotsSpent }),
         ...(hitDiceSpent !== undefined && { hitDiceSpent }),
         ...(inspiration !== undefined && { inspiration }),
+        ...(knockedOut !== undefined && { knockedOut }),
       },
     },
   });
@@ -151,6 +153,7 @@ export const STABLE = [...STATE, 'deathSaves', 'stable'];
 export const CONCENTRATION = [...STATE, 'concentration'];
 export const PACT = [...STATE, 'pactSlotsSpent'];
 export const INSPIRATION = [...STATE, 'inspiration'];
+export const KNOCKED_OUT = [...STATE, 'knockedOut'];
 export const INVENTORY = ['systemData', 'inventory'];
 export const slot = (level: number) => [...STATE, 'slotsSpent', `${level}`];
 export const hitDice = (die: number) => [...STATE, 'hitDiceSpent', `d${die}`];

@@ -117,7 +117,7 @@ split off an old row got a new id.
 | ENG-57 | A spell a grant gives is cast through its own uses | S | ✅ 2026-10-03 |
 | ENG-58 | A death save roll changes the character by fifth-edition rules | S | ✅ 2026-10-03 |
 | ENG-62 | Dropping to 0 hit points gives the Unconscious condition | S | ✅ 2026-10-03 |
-| ENG-65 | Knocking a creature out leaves it unconscious at 1 hit point | S | 🔲 |
+| ENG-65 | Knocking a creature out leaves it unconscious at 1 hit point | S | ✅ 2026-10-03 |
 | ENG-63 | Death ends attunement to magic items | XS | ✅ 2026-10-03 |
 | ENG-59 | Inspiration is gained or spent up to its maximum | XS | ✅ 2026-10-03 |
 | ENG-21 | A rest changes the character by its edition's rules | S | ✅ 2026-10-03 |
@@ -145,17 +145,6 @@ split off an old row got a new id.
   the death is said (the condition's entry, as ENG-61's `recovery`; or the module, by the key
   `exhaustion`, as ENG-62's `unconscious`) and makes `isDead` read it, so the actions refuse as
   for 3 failed death saves. ENG-66 then brings such a character back at level 5.
-- **ENG-65** — re-cut from ENG-62 (ENG-62 §4). SRD 5.2.1 only: "When you would reduce a creature
-  to 0 Hit Points with a melee attack, you can instead reduce the creature to 1 Hit Point and give
-  it the Unconscious condition. It then starts a Short Rest, at the end of which that condition
-  ends on it. The condition ends early if the creature regains any Hit Points or if someone takes
-  an action to administer first aid to it" (chapter 1). Its Rules Glossary entry says it "remains
-  Unconscious until it regains any Hit Points or until someone uses an action to administer first
-  aid to it", with no end at the short rest: the row says which end it follows, and why.
-  `compute()` gives the condition only at 0 hit points (`unconscious.ts`), so at 1 it is stored, and
-  it must end on these events only: a stored Unconscious condition from a spell's sleep ends on
-  damage, not healing. A mark of its own is a stored-shape change (a version and its migrations).
-  SRD 5.1's knocking out is damage to 0 and `stabilize` (ENG-62 §8): nothing to add.
 - **ENG-64** — found by ENG-21 (ENG-21 §8), taken off ENG-59 (ENG-59 §11). SRD 5.2.1's human,
   Resourceful: "You gain Heroic Inspiration whenever you finish a Long Rest." Golden B is that
   human; its Resourceful (`test/golden/srd-2024.ts`) is a name with no mechanics. No entity has a
@@ -400,6 +389,15 @@ split off an old row got a new id.
   Dying and 2014's knocking out call `stabilize`; a revival spell calls `revive` with `1` or
   `max`. A stable character's 1 hit point after 1d4 hours is the person's `applyHealing` of 1:
   nothing keeps the time.
+- **Phase 2** — found by ENG-65: the Damage pad offers knocking out (`applyDamage`'s `knockOut`)
+  where the edition has it (`rulesOf(character).knockOutToOneHp`, 2024) and the damage would drop
+  the character to 0; the outcome's `status` `knockedOut` says it happened. While `isKnockedOut`,
+  the sheet offers first aid (`firstAid`): someone else's DC 10 Wisdom (Medicine) check, recorded
+  as a success. Rolling initiative interrupts the knock-out's short rest (SRD 5.2.1, Short Rest):
+  the row that records initiative sets `systemData.state.knockedOut` to `interrupted`; no action
+  does yet. Found by ENG-62 (§11), its note not written then: `castSpell` reads neither the hit
+  points nor a knock-out, so a character with the Unconscious condition, and so the Incapacitated
+  one, casts and starts concentrating. A warning, never a block, with the casting screen.
 - **Phase 2** — found by ENG-63: the inventory sets a row's `attuned` by hand; death clears every
   one (`deathChanges`, `actions.ts`). Nothing counts the attuned rows: both SRDs allow "no more
   than three magic items at a time" (ENG-63's ticket quotes both). A warning, never a block

@@ -16,6 +16,8 @@ import {
   HP_CURRENT_PATH,
   HP_TEMP_PATH,
   isWhole,
+  KNOCKED_OUT_PATH,
+  knockOutEnded,
   settled,
   type Unchanged,
 } from './actions';
@@ -34,6 +36,9 @@ import { rulesOf } from './rulesets';
 // from 0, resets the death saves. Temporary hit points never add up. The rules are ENG-20 §8's.
 // ENG-58: damage that gets past the temporary hit points ends stable; healing from 0 ends it too.
 // A dead character comes back only through `revive`, with the hit points its revival gives.
+// ENG-65: damage may knock out instead (2024): it leaves the character at 1 hit point, knocked out,
+// and any other damage interrupts the short rest that knock-out started. Healing and reviving end
+// the knock-out (`knockOutEnded`).
 
 /** The lowest DC of the Constitution save that keeps concentration after damage (both SRDs). */
 export const CONCENTRATION_DC_MIN = 10;
@@ -43,6 +48,8 @@ export type HitPointRefusal = { message: string } & (
   | { code: 'badAmount'; amount: number }
   | { code: 'dead' }
   | { code: 'notDead' }
+  | { code: 'noKnockOut' }
+  | { code: 'notDroppedToZero' }
 );
 
 /** What healing or temporary hit points give: the changed character and its entry, or why not. */
@@ -54,6 +61,11 @@ export interface DamageAsk {
   readonly amount: number;
   /** The damage is a critical hit's: at 0 hit points it gives two failures, not one. */
   readonly critical?: boolean;
+  /**
+   * ENG-65: the attacker knocks the character out, with a melee attack: the damage that would drop
+   * it to 0 hit points leaves it at 1, knocked out, where the edition says so (`knockOutToOneHp`).
+   */
+  readonly knockOut?: boolean;
 }
 
 /** What damage did, beside its changes: what the screen tells or asks next. */
@@ -62,8 +74,11 @@ export interface DamageOutcome {
   temp: number;
   /** The hit points it took. */
   hp: number;
-  /** Where it left the character: above 0 hit points, at 0 (dying or stable), or dead. */
-  status: 'up' | 'down' | 'dead';
+  /**
+   * Where it left the character: above 0 hit points, at 0 (dying or stable), dead, or knocked out
+   * above 0 (ENG-65).
+   */
+  status: 'up' | 'down' | 'dead' | 'knockedOut';
   /** The death save failures it gave. */
   failures: number;
   /** The DC of the Constitution save that keeps concentration, when the character still holds it. */
@@ -112,6 +127,27 @@ function refusal(
   return undefined;
 }
 
+/**
+ * The refusal of a knock-out the character's edition does not have, or that damage of `through`
+ * past the temporary hit points does not give: it must drop the character from above 0 to 0.
+ */
+function knockOutRefusal(
+  character: FifthEditionCharacter,
+  through: number,
+): ({ ok: false } & HitPointRefusal) | undefined {
+  if (!rulesOf(character).knockOutToOneHp) {
+    const message =
+      "The character's edition knocks a creature out at 0 hit points, stable: the damage, then stabilize.";
+    return { ok: false, code: 'noKnockOut', message };
+  }
+  const { current } = character.systemData.state.hp;
+  if (current === 0 || through < current) {
+    const message = `The damage does not drop the character from ${current} hit points to 0.`;
+    return { ok: false, code: 'notDroppedToZero', message };
+  }
+  return undefined;
+}
+
 /** The hit point changes an action makes, as one entry of `action`. */
 function hitPoints(action: string, changes: LogChange[]): MadeChanges {
   return { action, subject: 'hp', changes };
@@ -123,8 +159,11 @@ function hitPoints(action: string, changes: LogChange[]): MadeChanges {
  * over equal to the maximum or more, it dies; already at 0, damage past the temporary hit points
  * gives a failure, two from a critical hit, and kills when it is the maximum or more. Damage
  * past the temporary hit points ends stable. At 0 concentration ends. Death ends every attunement
- * (`deathChanges`). Refused for an amount that is not a whole number from 1, and for a dead
- * character.
+ * (`deathChanges`). ENG-65: with `knockOut`, the damage that would drop the character to 0 leaves
+ * it at 1, knocked out (`resting`), with no failure and no massive damage, and concentration ends;
+ * any other damage to a knocked-out character interrupts its rest (`interrupted`). Refused for an
+ * amount that is not a whole number from 1, for a dead character, and for a knock-out the edition
+ * does not have or the damage does not give.
  */
 export function applyDamage(
   character: FifthEditionCharacter,
@@ -132,25 +171,30 @@ export function applyDamage(
   ask: DamageAsk,
   stamp: LogStamp,
 ): DamageResult {
-  const { amount, critical = false } = ask;
+  const { amount, critical = false, knockOut = false } = ask;
   const refused = refusal(character, amount, 1);
   if (refused !== undefined) return refused;
-  const { hp, deathSaves, concentration } = character.systemData.state;
-  const max = maxOf(character, index);
-
+  const { hp, deathSaves, concentration, knockedOut } = character.systemData.state;
   const temp = Math.min(hp.temp, amount);
   const through = amount - temp;
-  const lost = Math.min(hp.current, through);
+  const knocked = knockOut ? knockOutRefusal(character, through) : undefined;
+  if (knocked !== undefined) return knocked;
+  const max = maxOf(character, index);
+
+  const lost = knockOut ? hp.current - 1 : Math.min(hp.current, through);
   const current = hp.current - lost;
   let failure = deathSaves.failure;
   if (hp.current > 0) {
     const left = through - lost;
-    if (left > 0 && left >= max) failure = DEATH_SAVES;
+    // Knocked out, the character is reduced to 1, never to 0: no massive damage (ENG-65 §8).
+    if (!knockOut && left > 0 && left >= max) failure = DEATH_SAVES;
   } else if (through > 0) {
     failure = through >= max ? DEATH_SAVES : Math.min(DEATH_SAVES, failure + (critical ? 2 : 1));
   }
-  const ends = current === 0 && concentration !== undefined;
+  const ends = (current === 0 || knockOut) && concentration !== undefined;
   const dies = current === 0 && failure >= DEATH_SAVES;
+  // A knock-out starts its short rest; any other damage interrupts the one it started.
+  const mark = knockOut ? 'resting' : knockedOut === undefined ? undefined : 'interrupted';
 
   const result = settled<HitPointRefusal>(
     character,
@@ -162,6 +206,7 @@ export function applyDamage(
       ...(through > 0 ? [changeTo(character, DEATH_STABLE_PATH, false)] : []),
       ...(ends ? [changeTo(character, CONCENTRATION_PATH, undefined)] : []),
       ...(dies ? deathChanges(character) : []),
+      changeTo(character, KNOCKED_OUT_PATH, mark),
     ]),
     'The damage changes nothing.',
   );
@@ -169,7 +214,7 @@ export function applyDamage(
   const outcome: DamageOutcome = {
     temp,
     hp: lost,
-    status: current > 0 ? 'up' : dies ? 'dead' : 'down',
+    status: current === 0 ? (dies ? 'dead' : 'down') : mark === undefined ? 'up' : 'knockedOut',
     failures: failure - deathSaves.failure,
     ...(concentration !== undefined &&
       !ends && { concentrationDc: concentrationDc(character, amount) }),
@@ -180,9 +225,9 @@ export function applyDamage(
 
 /**
  * The character after regaining `ask.amount` hit points, up to its maximum, and the entry: from 0,
- * the death saves go back to none, and stable ends. Hit points above the maximum stay as they
- * are. Refused for an amount that is not a whole number from 1, for a dead character, and as
- * `unchanged` at the maximum.
+ * the death saves go back to none, and stable ends. Any hit point regained ends a knock-out
+ * (ENG-65). Hit points above the maximum stay as they are. Refused for an amount that is not a
+ * whole number from 1, for a dead character, and as `unchanged` at the maximum.
  */
 export function applyHealing(
   character: FifthEditionCharacter,
@@ -203,6 +248,7 @@ export function applyHealing(
     hitPoints('applyHealing', [
       changeTo(character, HP_CURRENT_PATH, current),
       ...(revived ? deathSavesReset(character) : []),
+      ...(current > hp.current ? knockOutEnded(character) : []),
     ]),
     'The character is at its hit point maximum or above it.',
   );
@@ -210,9 +256,9 @@ export function applyHealing(
 
 /**
  * ENG-58: the dead character brought back to life with `ask.hp` hit points, a whole number from 1
- * or `max`, at most its maximum and at least 1, both death save counts at 0; and the entry. The
- * revival spells give 1 or all (ENG-58 §8). Refused for an amount that is not a whole number from
- * 1, and for a character that is not dead.
+ * or `max`, at most its maximum and at least 1, both death save counts at 0, no knock-out
+ * (ENG-65); and the entry. The revival spells give 1 or all (ENG-58 §8). Refused for an amount
+ * that is not a whole number from 1, and for a character that is not dead.
  */
 export function revive(
   character: FifthEditionCharacter,
@@ -236,6 +282,7 @@ export function revive(
     hitPoints('revive', [
       changeTo(character, HP_CURRENT_PATH, current),
       ...deathSavesReset(character),
+      ...knockOutEnded(character),
     ]),
     'The revival changes nothing.',
   );

@@ -64,6 +64,8 @@ export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
     file.localEntities === undefined
       ? { ...file }
       : { ...file, localEntities: keyedSpellUses(file.localEntities) },
+  // 5 → 6 (ENG-65): `state.knockedOut` is new and optional, and nothing in version 5 knocked out.
+  (file) => ({ ...file }),
 ];
 
 /** The successes, or the failures, that end a run of death saves (ENG-33 §8). */
@@ -253,6 +255,12 @@ const trackersSchema = z.strictObject({
   /** The spell the character concentrates on. */
   concentration: entityIdSchema.optional(),
   inspiration: z.int().nonnegative(),
+  /**
+   * ENG-65: knocked out at 1 hit point (2024), until the end of the short rest it started
+   * (`resting`), or, once damage interrupted that rest, until hit points or first aid
+   * (`interrupted`). Absent when it is not.
+   */
+  knockedOut: z.enum(['resting', 'interrupted']).optional(),
 });
 
 /** Fifth edition's part of a character (SPEC §5.8, ADR 014 item 8). */

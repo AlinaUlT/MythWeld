@@ -14950,3 +14950,350 @@ Found, not fixed:
 
 Changelog: the published pack JSON Schema asks for `schemaVersion` 2, with a condition's
 `recovery`.
+
+---
+
+### ENG-65 Knocked out at 1 hit point
+
+**Hat:** Knocking a creature out leaves it unconscious at 1 hit point
+**Depends on:** ENG-20 (`applyDamage`, `applyHealing`, `setTempHp`), ENG-21 (`shortRest`,
+`longRest`), ENG-58 (`rollDeathSave`, `revive`, `stabilize`), ENG-62 (`isDown`,
+`unconsciousNamed`, `unconsciousWarnings`), ENG-61 (the module's versions after it), ENG-38 (the
+published pack schema)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.8 (the character's trackers, migrations); §6.4 (the tracker actions); §8.2 (missing is
+not broken); ENG-62 §4's re-cut
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/knock-out.ts` — new: `isKnockedOut`, `firstAid`,
+`FirstAidRefusal`.
+- `packages/system-5e/src/character.ts` — changes: `state.knockedOut`; the character's step 5 → 6.
+- `packages/system-5e/src/pack.ts` — changes: the pack's step 5 → 6.
+- `packages/system-5e/src/system.ts` — changes: `FIFTH_EDITION_SCHEMA_VERSION` 5 → 6.
+- `packages/system-5e/src/actions.ts` — changes: new `KNOCKED_OUT_PATH`, `knockOutEnded`.
+- `packages/system-5e/src/rulesets/edition-rules.ts`, `2014.ts`, `2024.ts` — new field
+  `knockOutToOneHp`.
+- `packages/system-5e/src/hit-points.ts` — changes: `DamageAsk.knockOut`, two refusals, the
+  outcome's `knockedOut` status; healing and reviving end the knock-out.
+- `packages/system-5e/src/death-saves.ts` — changes: a 20 ends it.
+- `packages/system-5e/src/rests.ts` — changes: both rests end it.
+- `packages/system-5e/src/unconscious.ts` — changes: the condition is named, and its warning
+  given, for a knocked-out character too.
+- `packages/system-5e/src/index.ts` — exports the new file.
+- `packages/system-5e/test/knock-out.test.ts` — new. `test/action-checks.ts` — the tracker
+  `knockedOut` and the path `KNOCKED_OUT`. `test/character.test.ts` — the field, the versions.
+  `test/rulesets.test.ts` — the new field. Every test file that writes the module's
+  `systemSchemaVersion` as `5` — now `6`.
+- `apps/web/public/schema/5e/pack.schema.json` — rewritten by its test (`docs/RUNNING.md`).
+
+#### 2. What is missing now
+
+Measured on `main` at `0b81ebb`, with a test written for it, then deleted:
+- Golden B (2024) at 5 hit points, `applyDamage` with `{ amount: 9, knockOut: true }` (a field
+  the type does not have, passed through `as never`): hit points 5 → 0, outcome `{ temp: 0, hp:
+  5, status: 'down', failures: 0 }`. The field is ignored.
+- Golden B with `systemData.state.knockedOut: 'resting'`: `fifthEditionCharacterSchema` refuses
+  it, `unrecognized_keys` `["knockedOut"]` at `systemData.state`.
+- `grep -rni knock packages/*/src`: one line, `stabilize`'s comment in `death-saves.ts`
+  ("first aid's Medicine check, a spell, or knocking out").
+- `compute()` names the Unconscious condition only at 0 hit points (`isDown`, ENG-62).
+- `pnpm test`: `Test Files 62 passed (62)`, `Tests 810 passed (810)`, 10.40 s.
+
+#### 3. What it should look like when done
+
+`stamp` and `withTrackers` are `action-checks.ts`'s. Golden A (2014) and golden B (2024) have a hit
+point maximum of 12 (SPEC §6.7); A walks 25 feet, B 30 (ENG-19). Golden B has one d10 hit die and
+a Constitution modifier of +2 (ENG-61: a d10 of 6 gives 8). `GLIMMER` is `hit-points.test.ts`'s
+made-up concentration spell. The Unconscious entries are ENG-62's test entries: key
+`unconscious`, `speed.all.mul` set to 0. "Knocked out" is golden B at 1 hit point with
+`knockedOut: 'resting'`. Every value is worked out by hand from §8 and the data.
+
+**The stored mark** (§5)
+1. `systemData.state.knockedOut` is absent, `'resting'` or `'interrupted'`. `'out'`, `true` and
+   `''` are refused on `systemData.state.knockedOut`.
+2. `FIFTH_EDITION_SCHEMA_VERSION` is 6, with 5 steps in each list. A character of version 5 opens
+   as version 6, every field as it was, `from: { schemaVersion: 2, systemSchemaVersion: 5 }`; so
+   does a pack of version 5. Each step returns a new object equal to a frozen input, which it
+   leaves as it was. A character of version 7 is refused as `newer`, `found: 7`, `current: 6`.
+3. The published pack JSON Schema asks for `systemSchemaVersion` `6`.
+
+**The edition rule**
+4. `RULES_2024.knockOutToOneHp` is `true`; `RULES_2014.knockOutToOneHp` is `false`.
+
+**Knocking out** — `applyDamage(character, index, { amount, knockOut: true }, stamp)`
+5. Golden B at 5, 9 damage: hit points 5 → 1, `knockedOut` absent → `'resting'`, the death saves
+   as they were; outcome `{ temp: 0, hp: 4, status: 'knockedOut', failures: 0 }`. The entry
+   reversed gives the character before. 5 damage: the same.
+6. No massive damage: golden B at 6, 18 damage: without `knockOut`, dead (ENG-20's example: 12
+   left over, the maximum); with it, hit points 1, `'resting'`, status `knockedOut`, failures 0.
+7. Temporary hit points first: golden B at 5 with 3 temporary, 9 damage: temporary 3 → 0, hit
+   points 5 → 1; outcome `temp: 3`, `hp: 4`.
+8. Concentration ends: golden B at 5 concentrating on `GLIMMER`, 9 damage: no concentration;
+   outcome `concentrationEnded: GLIMMER`, no `concentrationDc`.
+9. Knocked out again: knocked out (`'resting'`), 1 damage: refused as `unchanged`. With
+   `'interrupted'`: `'resting'` again, hit points 1.
+10. Refused, the character as it was: golden B at 5, 4 damage, and at 5 with 10 temporary, 9
+    damage: `notDroppedToZero`; at 0, 3 damage: `notDroppedToZero`; dead (0 and 3 failures):
+    `dead`; 0 damage: `badAmount`. Golden A at 5, 9 damage: `noKnockOut`; without `knockOut`,
+    hit points 0, as before.
+
+**The condition** — computed from the edition's pack with its Unconscious entry
+11. Knocked out, `'resting'` and `'interrupted'`: `conditions.unconscious.level` 1, its step `{
+    kind: 'condition', source: 'srd-2024:condition/unconscious', label: { en: 'Unconscious' },
+    value: 1, change: 1 }`; the condition is had, from `['character']`; `speed.walk` 0; no
+    warning. Golden B at 1 without the mark: level 0, walk 30.
+12. At 0 with the mark, and storing the Unconscious condition too: had once, level 1. Dead with
+    the mark: level 0, walk 30, not had.
+13. Golden A at 1 with the mark: level 1, walk 0 (the stored mark decides, whatever the edition).
+14. No entry (golden B's pack as it is), knocked out: the warning `{ code: 'characterRule', rule:
+    'noUnconsciousCondition', data: { key: 'unconscious' } }`, walk 30.
+
+**The ends**
+15. Healing 3: hit points 1 → 4, the mark removed, level 0; the same from `'interrupted'`. At a
+    maximum of 1 (a manual override), healing regains no hit point: refused as `unchanged`, the
+    mark kept.
+16. A short rest: from `'resting'`, no hit die: the mark removed, the only change, hit points 1,
+    level 0. From `'interrupted'`, no hit die: refused as `unchanged`; a d10 of 6: hit points 1 →
+    9, the mark removed.
+17. A long rest, from `'resting'` and from `'interrupted'`: hit points 1 → 12, the mark removed.
+18. Damage interrupts its rest: knocked out with 5 temporary, 3 damage: temporary 5 → 2, hit
+    points 1, `'interrupted'`, status `knockedOut`, level 1. Knocked out, 1 damage: hit points 0,
+    `'interrupted'`, failures 0, status `down`, level 1.
+19. At 0 with `'interrupted'`: a death save of 20 gives hit points 1 and removes the mark; a
+    death save of 15 keeps it. Dead with the mark, revived with 1 hit point: the mark removed.
+20. Temporary hit points (`setTempHp` 5) keep the mark. `stabilize` at 0 keeps it.
+21. `firstAid(character, stamp)`: knocked out, `'resting'` or `'interrupted'`: the mark removed,
+    the entry `{ action: 'firstAid', subject: 'knockedOut' }`, level 0 after. At 0 with the mark:
+    the mark removed, level still 1 (the 0 hit points). Refused: golden B at 12, and at 0 with no
+    mark: `notKnockedOut`; dead with the mark: `dead`.
+22. Frozen inputs: nothing throws, nothing changes.
+23. Every existing test passes, with the module's version written as 6 where a file writes it.
+24. The quality gate is green, `pnpm e2e` included (the published schema changes).
+
+#### 4. How to do it
+
+1. `character.ts`: `state.knockedOut`, optional, `'resting' | 'interrupted'`; the character's
+   step 5 → 6. `pack.ts`: the pack's step. `system.ts`: version 6.
+2. `edition-rules.ts`, `2014.ts`, `2024.ts`: `knockOutToOneHp`.
+3. `actions.ts`: `KNOCKED_OUT_PATH`; `knockOutEnded(character)`, the change that removes the mark.
+4. `knock-out.ts`: `isKnockedOut`, `firstAid`.
+5. `hit-points.ts`: `knockOut` in `applyDamage`; `applyHealing` and `revive` add
+   `knockOutEnded`. `death-saves.ts`: the 20 adds it. `rests.ts`: both rests add it.
+6. `unconscious.ts`: name the condition, and warn, for `isDown` or `isKnockedOut`.
+7. Tests (§7); the fixtures' version; the published file; then the gate.
+
+**Which end it follows: chapter 1's** (the row's question, §8). Chapter 1 ends the condition at
+the end of the Short Rest the creature starts, when it regains any hit points, or with first aid;
+the Rules Glossary names the last two only, though it too says the creature "starts a Short
+Rest". Chapter 1 is followed:
+- it is the rule's full statement, in the chapter that brings it in (Damage and Healing), and
+  every end the glossary names is among its ends;
+- both texts start a Short Rest, and only chapter 1 says what that rest is for; in the glossary's
+  words the rest changes nothing a short rest would not change anyway;
+- the end of a short rest is an event the app already records (`shortRest`).
+SRD 5.2.1's Short Rest is "stopped by" "Taking any damage", and "An interrupted Short Rest confers
+no benefits" (§8): damage while knocked out turns the mark to `'interrupted'`, after which only
+hit points regained or first aid end it, as in the glossary.
+
+Technical choices (ADR 002):
+- **A mark of its own, in the module's state** (the row's "mark of its own"). The knocked-out
+  creature is at 1 hit point, so nothing derives the condition, and a stored Unconscious
+  condition in `state.conditions` cannot carry these ends: one from a spell's sleep ends on
+  damage, not healing, and is the person's. `state.knockedOut` says the character is knocked
+  out, and `compute()` names the Unconscious condition from it as ENG-62 names it at 0 hit points:
+  by its key, once, and never for the dead. dnd5e does the same by hand: the statuses it adds at 0
+  hit points carry its own flag, `autoDowned`, and only those are deleted when the hit points come
+  back (§8).
+- **Two values, not a yes or no**: `'resting'` ends with the short rest, `'interrupted'` does not.
+  Absent is not knocked out, as an absent `concentration` is no concentration, so a file of
+  version 5 is the same in version 6 and its step changes nothing.
+- **An ask of the damage**, `knockOut`, not an action of its own: the rule replaces the drop to 0
+  of one hit of damage, so the temporary hit points, concentration and the entry are damage's.
+  The attacker chooses it "with a melee attack"; the screen asks only then.
+- **Only damage that drops the character to 0 knocks out**: "when you would reduce a creature to 0
+  Hit Points". Damage that leaves it above 0, or the temporary hit points take whole, or that
+  finds it at 0 already, is refused (`notDroppedToZero`), never applied as plain damage with the
+  choice dropped.
+- **No massive damage**: the knocked-out creature is never reduced to 0, and massive damage is
+  "When damage reduces a character to 0 Hit Points and damage remains" (§8).
+- **Concentration ends**: the Unconscious condition gives the Incapacitated one, and "Your
+  Concentration ends if you have the Incapacitated condition" (ENG-20 §8).
+- **2014 refuses it** (`noKnockOut`), by the edition's `knockOutToOneHp`: SRD 5.1's knocking out
+  is damage to 0 and stable, which `applyDamage` and `stabilize` already do (ENG-62 §3 item 9).
+  `compute()` reads the mark whatever the edition: a stored mark is the truth (item 13).
+- **Every action that gives hit points back ends it** (`knockOutEnded`): healing, a death save's
+  20, reviving, a rest that regains any. The mark stays at 0 hit points, where the 0 hit points
+  name the condition anyway, so no path back above 0 can leave it behind. Temporary hit points
+  are not hit points regained (ENG-62 §8), and `stabilize` gives none: both keep it. A level-up
+  raises the hit points with the maximum: §9.
+- **Both rests end it.** A short rest is the one the knock-out started, while `'resting'`; a long
+  rest gives what a short one gives (`REST_EVENTS.long`), and its hit points back.
+- **First aid is its own action**, `firstAid`: someone else's DC 10 Wisdom (Medicine) check,
+  which the screen records as a success, as `stabilize` records first aid at 0 hit points. At 0
+  it removes the mark only; `stabilize` is the first aid of the dying.
+- **The module's version, 6**: `state` is fifth edition's `systemData`. The core's versions stay 2.
+
+#### 5. Stored data
+
+`CharacterDoc` changes: fifth edition's `systemData.state` may have `knockedOut`, `'resting'` or
+`'interrupted'`.
+- `FIFTH_EDITION_SCHEMA_VERSION` 5 → 6. Character step 5 → 6: the file as it is, a new object (no
+  version 5 character is knocked out). Pack step 5 → 6: the same; no pack field changes.
+- `PACK_SCHEMA_VERSION` and `CHARACTER_SCHEMA_VERSION` (the core's) stay 2.
+- Tests: §3 items 1–2. No Dexie table changes.
+
+#### 6. What a person will see
+
+Not a screen. The published pack JSON Schema asks for `systemSchemaVersion` 6 (§3 item 3): one
+changelog line. The sheet's damage dialog (phase 2) offers the knock-out on a 2024 character when
+the damage would drop it to 0, and a "first aid" button while it is knocked out.
+
+#### 7. Tests
+
+- `packages/system-5e/test/knock-out.test.ts` — `describe('ENG-65 knocked out at 1 hit point')`:
+  items 4–22.
+- `packages/system-5e/test/character.test.ts` — `describe('ENG-65 the knock-out is stored')`:
+  items 1, 2.
+- `apps/web/test/pack-schema.test.ts` compares the published file: item 3.
+- Control values from: SPEC §6.7 (goldens A and B, maximum 12); ENG-19 (A walks 25, B 30);
+  ENG-61 (B's d10 of 6 gives 8); ENG-20 §8 (massive damage: 6 hit points, 18 damage, 12 left);
+  the SRD texts of §8; the rest worked out by hand in §3.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-03: SRD 5.2.1 as foundryvtt/dnd5e at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` quotes it
+(`packs/_source/content24/chapter-1/damage-and-healing.yml`, `appendices/rules-glossary.yml`), and
+dnd5e's code at the same commit (`module/documents/actor/actor.mjs`); SRD 5.1 as ENG-62 §8 quotes
+it. The same commits as ENG-13 to ENG-61. All CC-BY-4.0.
+
+**Knocking out, chapter 1** (Damage and Healing, Knocking Out a Creature): "When you would reduce
+a creature to 0 Hit Points with a melee attack, you can instead reduce the creature to 1 Hit Point
+and give it the Unconscious condition. It then starts a Short Rest, at the end of which that
+condition ends on it. The condition ends early if the creature regains any Hit Points or if
+someone takes an action to administer first aid to it, making a successful
+`[[/check 10 skill=med]]` check." (dnd5e's mark for a DC 10 Wisdom (Medicine) check.)
+
+**Knocking out, Rules Glossary** (Knocking Out a Creature): "When you would reduce a creature to 0
+Hit Points with a melee attack, you can instead reduce the creature to 1 Hit Point. The creature
+then has the Unconscious condition and starts a Short Rest. The creature remains Unconscious until
+it regains any Hit Points or until someone uses an action to administer first aid to it, which
+requires a successful `[[/check dc=10 med]]` check." No end at the short rest; §4 says which is
+followed.
+
+**The Short Rest** (Rules Glossary): "To start a Short Rest, you must have at least 1 Hit Point."
+"Spend Hit Point Dice. … You regain Hit Points equal to the total (minimum of 1 Hit Point)."
+"Interrupting the Rest. A Short Rest is stopped by the following interruptions: Rolling
+Initiative; Casting a spell other than a cantrip; Taking any damage. An interrupted Short Rest
+confers no benefits." The app records no initiative yet, and an unconscious creature casts no
+spell: damage is the interruption an action sees.
+
+**The Long Rest** (Rules Glossary): "Regain All HP. You regain all lost Hit Points and all spent
+Hit Point Dice."; "If you rested at least 1 hour before the interruption, you gain the benefits of
+a Short Rest."
+
+**Massive damage** (chapter 1, Instant Death): "When damage reduces a character to 0 Hit Points and
+damage remains, the character dies if the remainder equals or exceeds their Hit Point maximum."
+The knocked-out creature is reduced to 1, not to 0.
+
+**Concentration and the condition** (ENG-20 §8, ENG-62 §8): Unconscious "You have the
+Incapacitated and Prone conditions"; Concentration "Your Concentration ends if you have the
+Incapacitated condition or you die".
+
+**SRD 5.1** (ENG-62 §8, Knocking a Creature Out): "The creature falls unconscious and is stable."
+Nothing at 1 hit point.
+
+**dnd5e.** No code knocks out (`grep -i knock` in `actor.mjs`: nothing). `Actor5e#updateDowned`:
+with hit points above 0 it deletes the effects flagged `autoDowned`, the ones it added itself; a
+status the person added stays.
+
+No golden value is touched; the SPEC says nothing of knocking out (`grep` for it, and for
+"нокаут", "без сознания", "first aid": nothing), so no rules source disagrees with it. The two
+SRD 5.2.1 texts disagree with each other; the row gives that choice to this ticket (§4). Nothing
+stops.
+
+#### 9. Not in this ticket
+
+- A level-up while knocked out: it raises the hit points with the maximum (ENG-36), which is not
+  "regains any Hit Points"; the mark stays. No rule speaks of it.
+- Rolling initiative interrupting the knock-out's rest: no action records initiative (phase 2's
+  turn tab).
+- A monster knocked out, and the attacker's side of the choice: the DM tools' phase.
+- The sheet's damage dialog and first aid button: phase 2 (§6).
+- The Unconscious condition's own effects: the condition entries of phase 3 (ENG-62 §9).
+
+#### 10. Rake check
+
+- **Each system's rules live in its module; no `if (ruleset === …)`.** The knock-out is
+  `rulesOf(character).knockOutToOneHp`; the mark and the actions are the module's; the core
+  changes nothing.
+- **`compute()` is pure and deterministic.** It reads the stored mark and hit points; the
+  condition's level has its step, as ENG-62's.
+- **Missing is not broken.** Knocked out with no Unconscious entry: a warning, and the character
+  computes.
+- **A stored-shape change needs a migration.** The module's version 6, a step in each list, their
+  tests (§5).
+- **The golden tests are the truth.** No expected value changes; only the version number a file
+  writes.
+- **The engine is pure.** The actions take the stamp; the frozen-input tests.
+- **Licensing.** The SRD 5.2.1 texts are quoted in this ticket only; the test data holds numbers
+  and names.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-03, on `main` at `0b81ebb`:
+- Before: `pnpm test` `Test Files 62 passed (62)`, `Tests 810 passed (810)`, 10.40 s.
+- After: `pnpm lint` `Checked 196 files`, no error; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`
+  `Test Files 63 passed (63)`, `Tests 827 passed (827)`, 10.03 s; `pnpm e2e` `12 passed (9.3s)`,
+  run with `PLAYWRIGHT_CHROMIUM_PATH` as `docs/RUNNING.md` says for the cloud container.
+- 17 tests are new: `knock-out.test.ts` 14, `character.test.ts` 3.
+- Golden B (2024) at 5 hit points, 9 damage with `knockOut`: hit points 1, `knockedOut`
+  `'resting'`, outcome status `knockedOut`; with the Unconscious entry, `conditions.unconscious.level`
+  0 → 1 and `speed.walk` 30 → 0. Healed 3: hit points 4, no mark, level 0. Golden A (2014): refused,
+  `noKnockOut`.
+- The published `pack.schema.json`: `git diff` shows 1 line, `"const": 5` → `"const": 6`
+  (`systemSchemaVersion`).
+- The tests catch mistakes. 26 breaks, each made alone in the code, then 9 test files run
+  (`knock-out`, `unconscious`, `hit-points`, `death-saves`, `death`, `rests`, `character`,
+  `rulesets`, `exhaustion`: 127 tests); each failed at least one test, and each file was restored
+  and compared equal (127 passed again): 2014 allowed to knock out, 1 failed; a knock-out from 0,
+  1; damage the temporary hit points take whole knocking out, 1; massive damage killing a
+  knock-out, 1; concentration kept, 1; damage not interrupting the rest, 1; a knock-out marked
+  `interrupted`, 3; a knock-out dropping to 0, 3; status `up` while knocked out, 4; healing
+  keeping the mark, 1; healing that regains nothing ending it, 1; a revival keeping it, 1; a
+  death save's 20 keeping it, 1; a short rest keeping `resting`, 2; a short rest ignoring the hit
+  points regained, 2; a short rest ending `interrupted`, 1; a long rest keeping the mark, 1; the
+  dead counted as knocked out, 1; first aid on the dead, 1; first aid with no mark, 1; the
+  condition only at 0 hit points, 3; no warning when knocked out, 1; a third mark value, 1; the
+  character's step returning its input, 1; the pack's step returning its input, 1; 2014's rule
+  set to `true`, 3.
+
+Differences from §3 and §4:
+- The damage outcome's `status` was first `knockedOut` only for the damage that knocks out.
+  Writing item 18's test showed a knocked-out character whose temporary hit points took the whole
+  damage reported as `up`, which it is not. It is now `knockedOut` whenever the character stays
+  knocked out above 0; item 18 says so.
+- Item 15 gained the maximum-of-1 case, added while listing the breaks: no test then healed a
+  knocked-out character at its maximum, where healing regains nothing and must keep the mark.
+- ENG-62's Unconscious test entries moved to `test/unconscious-entries.ts`, which both tests
+  read; ENG-62's 7 tests are otherwise as they were.
+- `character.test.ts`'s full character ("every field") gained `knockedOut: 'interrupted'`.
+- The module's version moved from 5 to 6 in 7 lines of the golden files and 16 lines of
+  `character.test.ts` (the versions written, the step counts, the newer version refused); no
+  expected value of a rule changed.
+- Size S held.
+
+Found, not fixed:
+- Rolling initiative interrupts the knock-out's short rest (SRD 5.2.1, Short Rest, §8); no action
+  records initiative. Written into a phase 2 note, with the screen's side of the knock-out.
+- ENG-62's §11 found that `castSpell` reads neither the hit points nor the Unconscious condition,
+  and named "a phase 2 note, with the casting screen"; `BACKLOG.md` has no such note (`grep
+  castSpell`: only ENG-46's and ENG-57's notes). A knocked-out character casts the same way. Written
+  into the same phase 2 note.
+
+Changelog: the published fifth-edition pack JSON Schema asks for `systemSchemaVersion` 6.
