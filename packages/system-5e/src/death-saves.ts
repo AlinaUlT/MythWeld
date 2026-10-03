@@ -3,6 +3,7 @@ import type { LogChange, LogEntry } from '@grimoire/schema';
 import {
   DEATH_FAILURE_PATH,
   DEATH_SUCCESS_PATH,
+  deathChanges,
   deathSavesReset,
   HP_CURRENT_PATH,
   isWhole,
@@ -111,8 +112,9 @@ function deathSaves(
  * The character after the death save `ask` rolled, the entry, and what it did. A 20 gives 1 hit
  * point and resets both counts; a 1 is two failures; otherwise a total of 10 or more is a
  * success. The third success resets both counts and makes the character stable; the third
- * failure is death. Refused for a face that is not a whole number from 1 to 20, a total that is
- * not a whole number, a dead character, one above 0 hit points, and a stable one.
+ * failure is death, which ends every attunement (`deathChanges`). Refused for a face that is not
+ * a whole number from 1 to 20, a total that is not a whole number, a dead character, one above 0
+ * hit points, and a stable one.
  */
 export function rollDeathSave(
   character: FifthEditionCharacter,
@@ -152,8 +154,12 @@ export function rollDeathSave(
   } else {
     const given = natural === DEATH_SAVE_FACES.twoFailures ? 2 : 1;
     const after = Math.min(DEATH_SAVES, failure + given);
-    changes = [changeTo(character, DEATH_FAILURE_PATH, after)];
-    const status = after >= DEATH_SAVES ? 'dead' : 'dying';
+    const dies = after >= DEATH_SAVES;
+    changes = [
+      changeTo(character, DEATH_FAILURE_PATH, after),
+      ...(dies ? deathChanges(character) : []),
+    ];
+    const status = dies ? 'dead' : 'dying';
     outcome = { successes: 0, failures: after - failure, hp: 0, status };
   }
   const result = deathSaves(

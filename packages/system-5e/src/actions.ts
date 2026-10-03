@@ -17,6 +17,8 @@ import type { FifthEditionCharacter } from './character';
 // ENG-30's are), and the rest are one entry, applied.
 // ENG-58: every action that ends a run of death saves (hit points regained, stable, revived)
 // writes it through `deathSavesReset`, so `stable` is never left behind.
+// ENG-63: every action that kills (the third failure, from damage or a death save) adds
+// `deathChanges`, so no row of the inventory stays attuned (both SRDs; ENG-58 §11).
 
 const STATE = ['systemData', 'state'] as const;
 
@@ -43,6 +45,12 @@ export const PACT_SPENT_PATH = [...STATE, 'pactSlotsSpent'];
 
 /** The inspiration the character holds. */
 export const INSPIRATION_PATH = [...STATE, 'inspiration'];
+
+/**
+ * ENG-63: the inventory's rows. A change writes the whole list: a log path steps only through
+ * objects, never into a list.
+ */
+export const INVENTORY_PATH = ['systemData', 'inventory'];
 
 /** ENG-21: the hit dice of one size spent: `hitDiceSpent`'s key is the die, `"d6"` to `"d12"`. */
 export function hitDiceSpentPath(die: number): string[] {
@@ -87,6 +95,16 @@ export function deathSavesReset(character: FifthEditionCharacter, stable = false
     changeTo(character, DEATH_FAILURE_PATH, 0),
     changeTo(character, DEATH_STABLE_PATH, stable),
   ];
+}
+
+/**
+ * The changes death makes beside the third failure: every row of the inventory no longer attuned
+ * (SRD 5.1 "if the creature dies"; SRD 5.2.1, Dead, "it is no longer attuned to them"), each
+ * other field and the order kept. With no attuned row it changes nothing.
+ */
+export function deathChanges(character: FifthEditionCharacter): LogChange[] {
+  const rows = character.systemData.inventory.map((row) => ({ ...row, attuned: false }));
+  return [changeTo(character, INVENTORY_PATH, rows)];
 }
 
 /** A whole number from `min`. */

@@ -11,6 +11,7 @@ import {
   CONCENTRATION_PATH,
   DEATH_FAILURE_PATH,
   DEATH_STABLE_PATH,
+  deathChanges,
   deathSavesReset,
   HP_CURRENT_PATH,
   HP_TEMP_PATH,
@@ -121,8 +122,9 @@ function hitPoints(action: string, changes: LogChange[]): MadeChanges {
  * temporary hit points first, then the hit points, never below 0. Dropped to 0 with damage left
  * over equal to the maximum or more, it dies; already at 0, damage past the temporary hit points
  * gives a failure, two from a critical hit, and kills when it is the maximum or more. Damage
- * past the temporary hit points ends stable. At 0 concentration ends. Refused for an amount that is
- * not a whole number from 1, and for a dead character.
+ * past the temporary hit points ends stable. At 0 concentration ends. Death ends every attunement
+ * (`deathChanges`). Refused for an amount that is not a whole number from 1, and for a dead
+ * character.
  */
 export function applyDamage(
   character: FifthEditionCharacter,
@@ -148,6 +150,7 @@ export function applyDamage(
     failure = through >= max ? DEATH_SAVES : Math.min(DEATH_SAVES, failure + (critical ? 2 : 1));
   }
   const ends = current === 0 && concentration !== undefined;
+  const dies = current === 0 && failure >= DEATH_SAVES;
 
   const result = settled<HitPointRefusal>(
     character,
@@ -158,6 +161,7 @@ export function applyDamage(
       changeTo(character, DEATH_FAILURE_PATH, failure),
       ...(through > 0 ? [changeTo(character, DEATH_STABLE_PATH, false)] : []),
       ...(ends ? [changeTo(character, CONCENTRATION_PATH, undefined)] : []),
+      ...(dies ? deathChanges(character) : []),
     ]),
     'The damage changes nothing.',
   );
@@ -165,7 +169,7 @@ export function applyDamage(
   const outcome: DamageOutcome = {
     temp,
     hp: lost,
-    status: current > 0 ? 'up' : failure >= DEATH_SAVES ? 'dead' : 'down',
+    status: current > 0 ? 'up' : dies ? 'dead' : 'down',
     failures: failure - deathSaves.failure,
     ...(concentration !== undefined &&
       !ends && { concentrationDc: concentrationDc(character, amount) }),

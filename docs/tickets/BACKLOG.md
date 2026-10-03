@@ -118,7 +118,7 @@ split off an old row got a new id.
 | ENG-58 | A death save roll changes the character by fifth-edition rules | S | ✅ 2026-10-03 |
 | ENG-62 | Dropping to 0 hit points gives the Unconscious condition | S | ✅ 2026-10-03 |
 | ENG-65 | Knocking a creature out leaves it unconscious at 1 hit point | S | 🔲 |
-| ENG-63 | Death ends attunement to magic items | XS | 🔲 |
+| ENG-63 | Death ends attunement to magic items | XS | ✅ 2026-10-03 |
 | ENG-59 | Inspiration is gained or spent up to its maximum | XS | ✅ 2026-10-03 |
 | ENG-21 | A rest changes the character by its edition's rules | S | ✅ 2026-10-03 |
 | ENG-61 | A long rest lowers a condition's level as its entry says | S | 🔲 |
@@ -149,12 +149,6 @@ split off an old row got a new id.
   it must end on these events only: a stored Unconscious condition from a spell's sleep ends on
   damage, not healing. A mark of its own is a stored-shape change (a version and its migrations).
   SRD 5.1's knocking out is damage to 0 and `stabilize` (ENG-62 §8): nothing to add.
-- **ENG-63** — found by ENG-58 (ENG-58 §11): death ends attunement in both SRDs. SRD 5.1: "A
-  creature's attunement to an item ends if … if the creature dies"; SRD 5.2.1 (Rules Glossary,
-  Dead): "If the creature had Attunement to one or more magic items, it is no longer attuned to
-  them." Death, 3 failures, is written by `applyDamage` (`hit-points.ts`) and `rollDeathSave`
-  (`death-saves.ts`); neither changes an inventory row's `attuned`. One list of the changes dying
-  makes, shared by both, as `deathSavesReset` (`actions.ts`) is for the end of a run of saves.
 - **ENG-64** — found by ENG-21 (ENG-21 §8), taken off ENG-59 (ENG-59 §11). SRD 5.2.1's human,
   Resourceful: "You gain Heroic Inspiration whenever you finish a Long Rest." Golden B is that
   human; its Resourceful (`test/golden/srd-2024.ts`) is a name with no mechanics. No entity has a
@@ -396,6 +390,10 @@ split off an old row got a new id.
   Dying and 2014's knocking out call `stabilize`; a revival spell calls `revive` with `1` or
   `max`. A stable character's 1 hit point after 1d4 hours is the person's `applyHealing` of 1:
   nothing keeps the time.
+- **Phase 2** — found by ENG-63: the inventory sets a row's `attuned` by hand; death clears every
+  one (`deathChanges`, `actions.ts`). Nothing counts the attuned rows: both SRDs allow "no more
+  than three magic items at a time" (ENG-63's ticket quotes both). A warning, never a block
+  (§8.2), computed by the module, not the screen.
 - **Phase 2** — found by ENG-34: each d20 test's roll mode is a number path, 1 advantage, −1
   disadvantage, 0 neither, with a step per source: `checks.<stat>.mode`,
   `abilities.<stat>.saveMode`, `skills.<key>.mode`, `init.mode`, `attacks.<key>.mode`,

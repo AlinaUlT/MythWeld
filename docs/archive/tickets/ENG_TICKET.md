@@ -14508,3 +14508,107 @@ Found, not fixed:
   1), and its Rules Glossary leaves that end out (§8). Written into ENG-65's note.
 
 Nothing for the changelog.
+
+---
+
+### ENG-63 Death ends attunement · XS
+
+**Hat:** Death ends attunement to magic items
+**Where:** `packages/system-5e/src/actions.ts` — changes: `INVENTORY_PATH`, new `deathChanges`;
+`hit-points.ts` — changes: `applyDamage` adds them when it kills; `death-saves.ts` — changes:
+`rollDeathSave` adds them on the third failure; `packages/system-5e/test/death.test.ts` — new;
+`test/action-checks.ts` — changes: the path `INVENTORY`
+**Depends on:** ENG-20 (`applyDamage`, `settled`), ENG-58 (`rollDeathSave`, `deathSavesReset`, the
+SRD text in ENG-58 §11), ENG-33 (`systemData.inventory`, a row's `attuned`), ENG-44 (`@attuned`,
+an item that needs attunement)
+**Screen:** No
+
+**What it should look like when done:**
+1. `deathChanges(character)` in `actions.ts` is the one list of what dying changes beside the
+   third failure: one change to `INVENTORY_PATH` (`systemData.inventory`) whose `after` is every
+   row with `attuned: false`, every other field and the order as they were. A character with no
+   attuned row gets a change that changes nothing, which `settled` drops, as it drops
+   `deathSavesReset`'s unchanged counts.
+2. The test character is golden A (2014) and golden B (2024), each with its own rows (none
+   attuned) and two more: a made-up charm (`character:item/charm`, `magic.attunement: true`),
+   equipped and attuned; and a custom row, "Lucky stone", attuned, not equipped. After death the
+   charm and the stone have `attuned: false`; the golden's rows, `equipped`, `qty` and `uid` stay.
+3. `rollDeathSave` on the third failure: at 0 hit points with 2 failures, a face of 5:
+   `[{ FAILURE 2 → 3 }, { INVENTORY: the rows → the rows unattuned }]`, outcome `status: 'dead'`.
+   A face of 1 with 1 failure: `[{ FAILURE 1 → 3 }, { INVENTORY … }]`, `status: 'dead'`.
+4. `applyDamage` that kills: at 6 of 12 hit points, 18 damage (SRD example, ENG-20 §8):
+   `[{ HP 6 → 0 }, { FAILURE 0 → 3 }, { INVENTORY … }]`, `status: 'dead'`. At 0 with 2 failures,
+   1 damage: `[{ FAILURE 2 → 3 }, { INVENTORY … }]`, `status: 'dead'`. Stable at 0, 12 damage:
+   `[{ FAILURE 0 → 3 }, { STABLE true → false }, { INVENTORY … }]`.
+5. What does not kill leaves every row attuned: a death save failure at 0 failures (face 5):
+   `[{ FAILURE 0 → 1 }]`; 17 damage at 6 hit points: `[{ HP 6 → 0 }]`.
+6. A death with no attuned row has the entry it had before: ENG-20's and ENG-58's tests pass
+   unchanged.
+7. `revive` gives no attunement back: the dead, unattuned character revived with 1 hit point has
+   ENG-58's three changes (`HP 0 → 1`, `SUCCESS 1 → 0`, `FAILURE 3 → 0`), and every row stays
+   `attuned: false`.
+8. Each action that happens passes the shared checks (`done`): its entry parses, its character
+   opens, and reversing the entry gives back the character before, the rows attuned again.
+9. Deep-frozen inputs: a death save and damage that kill neither throw nor change their input.
+10. The quality gate is green.
+
+**Choices (ADR 002):**
+- **The whole list is the change.** A log path steps only through objects (`readAt`, ENG-30), not
+  into a list, so the change writes `systemData.inventory` whole, as `levelUp` writes `classes`
+  (ENG-36). Undo puts back the list before, attunement included.
+- **One list, two callers.** Death is 0 hit points with 3 failures (ENG-20); only `applyDamage`
+  and `rollDeathSave` write the third failure (`grep DEATH_FAILURE_PATH`). Both add
+  `deathChanges`, so a later rule of death (ENG-61's exhaustion is a revival's, not death's) has
+  one place.
+- **Every attuned row, item or custom.** Both SRDs end attunement to the items, whatever they
+  are; the action reads no pack, so a row whose item is missing is unattuned too (§8.2).
+- **Equipped stays.** Neither SRD's sentence names wearing or carrying; only `attuned` changes.
+- **No outcome field.** The outcome's `status: 'dead'` already says it; the rows unattuned are in
+  the entry's change, which the screen reads.
+- **One rule in both editions** (ENG-58 §11), so no ruleset file is read.
+
+**Not in this ticket:**
+- Exhaustion on a revival (SRD 5.2.1, Dead): ENG-61.
+- The other ends of attunement in SRD 5.1 (the prerequisites no longer met, the item 100 feet
+  away for 24 hours, another creature attuning, ending it on a short rest): the inventory screen
+  (phase 2) sets `attuned` by hand; the app keeps no distance or time.
+- A limit on how many items are attuned: not asked by this row.
+
+**Tests:** `packages/system-5e/test/death.test.ts` — `describe('ENG-63 death ends attunement')`:
+items 2–9. Control numbers: golden A's and B's hit point maximum 12 (SPEC §6.7), the SRD
+example 12, 6, 18 (ENG-20 §8), the death save rules (ENG-58 §8); the rule itself: SRD 5.1
+(Attunement) "A creature's attunement to an item ends if the creature no longer satisfies the
+prerequisites for attunement, if the item has been more than 100 feet away for at least 24 hours,
+if the creature dies, or if another creature attunes to the item."; SRD 5.2.1 (Rules Glossary,
+Dead) "If the creature had Attunement to one or more magic items, it is no longer attuned to
+them." Both re-read on 2026-10-03 at ENG-58's commits (5e-bits/5e-srd-api
+`e6edf9a51fad4b59a7e9561fad6c15232caed214`, `packages/5e-database/src/2014/en/5e-SRD-Rules.json`;
+foundryvtt/dnd5e `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`,
+`packs/_source/content24/appendices/rules-glossary.yml`). CC-BY-4.0.
+**What came out of it:**
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- Before: `grep -rn "attuned" packages/system-5e/src packages/engine/src` found reads only (the
+  schema, `equipment.ts`, comments): no action wrote a row's `attuned`. `pnpm test`: `Test Files
+  61 passed (61)`, `Tests 786 passed (786)`, 9.16 s.
+- After: `pnpm test`: `Test Files 62 passed (62)`, `Tests 791 passed (791)`, 8.98 s. The 5 new
+  are `death.test.ts`'s. Its file with `death-saves.test.ts` and `hit-points.test.ts`: `Tests 39
+  passed (39)`, 1.17 s.
+- Lint: `Checked 193 files`, no error. Typecheck: `Scope: 6 of 7 workspace projects`, all 6
+  `Done`. Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The tests catch mistakes. Each change made alone in the code, then the three test files run (39
+  tests); every one failed at least one test, and each was undone (each file compared equal to its
+  copy after): `rollDeathSave` adding no `deathChanges`, 1 failed; `applyDamage` adding none, 1;
+  `rollDeathSave` adding them on every failure, 1; `applyDamage` adding them on every hit, 1;
+  death unequipping too, 7 (ENG-20's and ENG-58's deaths among them); custom rows kept attuned, 2.
+
+Differences from the list above: none. Every item holds as written. ENG-20's and ENG-58's tests
+pass with no line changed (item 6).
+
+Found, not fixed:
+- Nothing checks how many rows are attuned. SRD 5.1 (Attunement, `5e-SRD-Rules.json`): "a
+  creature can be attuned to no more than three magic items at a time"; SRD 5.2.1 (Rules Glossary,
+  Attunement): "A creature can have Attunement with no more than three magic items at a time."
+  Neither the inventory schema nor `compute()` counts them. A phase 2 note in `BACKLOG.md`.
+
+Nothing for the changelog: no screen changes.
