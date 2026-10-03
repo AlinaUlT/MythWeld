@@ -545,3 +545,54 @@ describe('ENG-13 the base phase reads what was gathered', () => {
     expect(codes(result)).toEqual([]);
   });
 });
+
+describe("ENG-54 a stat's highest score per character", () => {
+  // Tales' maximum is 10 for every character; a module made up here gives level + 4, by a rule
+  // it names. Ash (level 2): grit 7, wits 5; Brook (level 3): grit 6, wits 8 (ENG-27). Nerve's own
+  // maximum is 8.
+  const byLevel: SystemModule<TalesCharacter, TalesEntity> = {
+    ...talesModule,
+    statDefaults: (character) => ({
+      ...talesModule.statDefaults(character),
+      defaultMax: character.systemData.level + 4,
+      maxRule: 'tableMax',
+    }),
+  };
+
+  it.each<[string, TalesCharacter, number, Record<string, number>, string]>([
+    ['Ash', ash, 6, { grit: 6, wits: 5, nerve: 4 }, 'grit'],
+    ['Brook', brook, 7, { grit: 6, wits: 7, nerve: 8 }, 'wits'],
+  ])("%s: a stat without its own maximum takes the rule's", (_, character, max, expected, cut) => {
+    const result = computed(character, byLevel);
+    expect(scores(result)).toEqual(expected);
+    for (const key of ['grit', 'wits']) {
+      expect(result.values[`abilities.${key}.max`], key).toBe(max);
+      expect(result.breakdown[`abilities.${key}.max`], key).toEqual([
+        { kind: 'rule', rule: 'tableMax', value: max, change: max },
+      ]);
+    }
+    expect(result.breakdown[`abilities.${cut}.score`]?.at(-1)).toEqual({
+      kind: 'cap',
+      value: max,
+      change: -1,
+    });
+    expect(result.values['abilities.nerve.max']).toBe(8);
+    expect(result.breakdown['abilities.nerve.max']).toEqual([
+      { kind: 'default', of: 'stat', value: 8, change: 8 },
+    ]);
+  });
+
+  it('raises a maximum the rule gives by the effects on it, as it does a default', () => {
+    const wider = talent('wider', [
+      { id: 'max', target: 'abilities.grit.max', op: 'add', value: '2' },
+    ]);
+    // Ash's max 6 + 2 = 8, so grit 7 is not capped.
+    const result = computed(ashWith([wider]), byLevel);
+    expect(result.values['abilities.grit.max']).toBe(8);
+    expect(scores(result).grit).toBe(7);
+    expect(result.breakdown['abilities.grit.max']?.map(({ kind }) => kind)).toEqual([
+      'rule',
+      'effect',
+    ]);
+  });
+});

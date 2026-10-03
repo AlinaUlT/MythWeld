@@ -111,7 +111,7 @@ split off an old row got a new id.
 | ENG-46 | Armor worn without training has its edition's penalties | S | 🔲 |
 | ENG-35 | The ability-bonus source is a choice, the rules base by default | S | ✅ 2026-10-03 |
 | ENG-56 | A mixed character's starting languages come from one place | S | 🔲 |
-| ENG-54 | The house rule's highest score caps every stat | S | 🔲 |
+| ENG-54 | The house rule's highest score caps every stat | S | ✅ 2026-10-03 |
 | ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | ✅ 2026-10-03 |
 | ENG-57 | A spell a grant gives is cast through its own uses | S | 🔲 |
 | ENG-58 | A death save roll changes the character by fifth-edition rules | S | 🔲 |
@@ -182,9 +182,6 @@ split off an old row got a new id.
   note found by ENG-10 (dnd5e puts them on each background). ENG-35 is the model: the place
   picked, the rules base's by default, a choice only when both places give
   (`ability-bonus.ts`).
-- **ENG-54** — found by ENG-13, made a row by ENG-19 (ENG-19 §4): `statDefaults` is one value
-  for every character (`SystemModule.statDefaults`), so the house rule `abilityMax` (ENG-33) is
-  read by no code. Its default is 20 in both editions (`DEFAULT_HOUSE_RULES`, ENG-19 §8).
 - **ENG-37** — ADR 005 item 3.6; the fixture states its ability bonus source (ADR 014 item 1).
   Found by ENG-35: a source of `both`, with increases from both sides, warns `characterRule`
   `abilityBonusesFromBoth`, so a golden storing it expects that warning.

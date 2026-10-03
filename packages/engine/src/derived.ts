@@ -26,6 +26,8 @@ const CONDITIONS_PATH = 'conditions';
 export interface StatDefaults {
   /** The highest a score can be: what a stat without its own `defaultMax` takes. */
   readonly defaultMax: number;
+  /** The module's name for the rule that gives `defaultMax`, when one does; its step names it. */
+  readonly maxRule?: string;
   /** The modifier of a stat without its own `modFormula`; `@score` reads the stat's score. */
   readonly modFormula: string;
   /** Whether a stat without its own `hasSave` has a save. */

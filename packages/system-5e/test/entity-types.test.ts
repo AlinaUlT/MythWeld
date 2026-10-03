@@ -406,7 +406,7 @@ describe('ENG-32 fifth-edition entity types', () => {
     const system: SystemModule<CharacterCore<FifthEditionEntity>, FifthEditionEntity> = {
       level: () => 1,
       entities: () => [{ id: curious.id }],
-      statDefaults: { defaultMax: 1, modFormula: '0', hasSave: false },
+      statDefaults: () => ({ defaultMax: 1, modFormula: '0', hasSave: false }),
       derive: () => ({}),
     };
 

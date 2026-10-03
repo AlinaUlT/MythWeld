@@ -26,6 +26,8 @@ import {
   goldenC2014,
   goldenC2024,
   goldenD,
+  goldenE,
+  hbLocal,
   srd2014,
   srd2024,
 } from './golden/index.ts';
@@ -119,8 +121,10 @@ const scribe: EntityInput = {
 
 describe("ENG-13 fifth edition's module", () => {
   it("gives SPEC §5.3's stat defaults; the modifier of each score 1 to 30 is the SRD table's", () => {
-    expect(fifthEditionModule.statDefaults).toEqual({
+    // ENG-54: the highest score is the house rule's, golden B's 20.
+    expect(fifthEditionModule.statDefaults(opened(openFifthEditionCharacter(goldenB)))).toEqual({
       defaultMax: 20,
+      maxRule: 'abilityMax',
       modFormula: 'floor((@score - 10) / 2)',
       hasSave: true,
     });
@@ -892,5 +896,144 @@ describe('ENG-49 a spell or item a grant names that no pack has', () => {
     expect(compute(frozen, index2014.index, fifthEditionModule)).toEqual(
       compute(character, index2014.index, fifthEditionModule),
     );
+  });
+});
+
+describe("ENG-54 the house rule's highest score", () => {
+  // Golden B4's STR is SPEC §6.7's: base 15, the Soldier's 2, level 4's 2, so 19, mod 4, and
+  // Athletics 6 (mod + proficiency 2). Each cap and modifier below is worked out by hand from it.
+  const STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+
+  /** A golden with its house rule `abilityMax`, its base STR, and stats of its own. */
+  function capped(
+    golden: CharacterInput,
+    abilityMax: number,
+    change: Partial<CharacterInput> = {},
+  ): CharacterInput {
+    return {
+      ...golden,
+      ...change,
+      systemData: {
+        ...golden.systemData,
+        houseRules: { ...golden.systemData.houseRules, abilityMax },
+      },
+    };
+  }
+
+  /** Golden B4 with a base STR of `str`. */
+  const strOf = (str: number) => ({
+    abilities: { base: { ...goldenB4.abilities.base, str } },
+  });
+
+  /** A result whose every breakdown adds up to its value. */
+  function summed(result: Computed<FifthEditionEntity>): Computed<FifthEditionEntity> {
+    for (const [path, steps] of Object.entries(result.breakdown)) {
+      expect(
+        steps.reduce((sum, step) => sum + step.change, 0),
+        path,
+      ).toBe(result.values[path]);
+    }
+    return result;
+  }
+
+  it('caps every stat at a lower house rule, the step naming it', () => {
+    const result = summed(computed(capped(goldenB4, 18)));
+    expect(
+      valuesOf(result, [
+        'abilities.str.score',
+        'abilities.str.max',
+        'abilities.str.mod',
+        'skills.athletics.total',
+      ]),
+    ).toEqual({
+      'abilities.str.score': 18,
+      'abilities.str.max': 18,
+      'abilities.str.mod': 4,
+      'skills.athletics.total': 6,
+    });
+    expect(result.breakdown['abilities.str.max']).toEqual([
+      { kind: 'rule', rule: 'abilityMax', value: 18, change: 18 },
+    ]);
+    expect(result.breakdown['abilities.str.score']?.at(-1)).toEqual({
+      kind: 'cap',
+      value: 18,
+      change: -1,
+    });
+    expect(
+      valuesOf(
+        result,
+        STATS.map((key) => `abilities.${key}.max`),
+      ),
+    ).toEqual(Object.fromEntries(STATS.map((key) => [`abilities.${key}.max`, 18])));
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('lets a score rise to a higher house rule, and stops it at 20 by default', () => {
+    const paths = ['abilities.str.score', 'abilities.str.mod', 'skills.athletics.total'];
+    const raised = summed(computed(capped(goldenB4, 22, strOf(18))));
+    expect(valuesOf(raised, paths)).toEqual({
+      'abilities.str.score': 22,
+      'abilities.str.mod': 6,
+      'skills.athletics.total': 8,
+    });
+    expect(raised.breakdown['abilities.str.score']?.map(({ kind }) => kind)).not.toContain('cap');
+    expect(valuesOf(summed(computed(capped(goldenB4, 20, strOf(18)))), paths)).toEqual({
+      'abilities.str.score': 20,
+      'abilities.str.mod': 5,
+      'skills.athletics.total': 7,
+    });
+  });
+
+  it("caps a homebrew pack's stat as it caps the SRD's", () => {
+    // Golden E's SAN 14 (SPEC Appendix Д); hb-local's `san` has no maximum of its own.
+    const { index } = loadContentIndex(FIFTH_EDITION_SYSTEM, [
+      opened(openFifthEditionPack(srd2024)),
+      opened(openFifthEditionPack(hbLocal)),
+    ]);
+    const character = opened(openFifthEditionCharacter(capped(goldenE, 12)));
+    const result = summed(compute(character, index, fifthEditionModule));
+    expect(
+      valuesOf(result, [
+        'abilities.san.score',
+        'abilities.san.max',
+        'abilities.san.mod',
+        'abilities.san.save',
+      ]),
+    ).toEqual({
+      'abilities.san.score': 12,
+      'abilities.san.max': 12,
+      'abilities.san.mod': 1,
+      'abilities.san.save': 1,
+    });
+  });
+
+  it('leaves a stat with its own maximum at its own', () => {
+    const luck: EntityInput = {
+      id: 'character:ability/luck',
+      type: 'ability',
+      key: 'luck',
+      ruleset: 'any',
+      name: { en: 'Luck' },
+      abbr: { en: 'LCK' },
+      order: 7,
+      defaultMax: 30,
+      source,
+    };
+    const result = summed(
+      computed(
+        capped(goldenB4, 22, {
+          abilities: { base: { ...goldenB4.abilities.base, luck: 25 } },
+          localEntities: [luck],
+        }),
+      ),
+    );
+    expect(valuesOf(result, ['abilities.luck.score', 'abilities.luck.max'])).toEqual({
+      'abilities.luck.score': 25,
+      'abilities.luck.max': 30,
+    });
+    expect(result.breakdown['abilities.luck.max']).toEqual([
+      { kind: 'default', of: 'stat', value: 30, change: 30 },
+    ]);
+    expect(result.values['abilities.str.max']).toBe(22);
   });
 });

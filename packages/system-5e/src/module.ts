@@ -29,10 +29,10 @@ import { spellcastingSteps } from './spellcasting';
 // ENG-48 adds the size to `keys`. ENG-49: a `spell` or `item` grant's own ids are looked up.
 // ENG-35: the side of the ability score increases not taken gives none; `both` warns.
 // ENG-34 adds each d20 test's roll mode to `derive` (`rolls.ts`; a weapon's in `attacks.ts`).
+// ENG-54: a stat's highest score is the character's house rule `abilityMax`, 20 by default.
 
-/** A stat's defaults (SPEC §5.3): the modifier, a save, a highest score of 20 (ENG-13 §8). */
-export const FIFTH_EDITION_STAT_DEFAULTS: StatDefaults = {
-  defaultMax: 20,
+/** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
+export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
   modFormula: 'floor((@score - 10) / 2)',
   hasSave: true,
 };
@@ -109,7 +109,12 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     ];
   },
 
-  statDefaults: FIFTH_EDITION_STAT_DEFAULTS,
+  // A stat without its own maximum stops at the table's highest score (SPEC §8.4).
+  statDefaults: ({ systemData }) => ({
+    ...FIFTH_EDITION_STAT_DEFAULTS,
+    defaultMax: systemData.houseRules.abilityMax,
+    maxRule: 'abilityMax',
+  }),
 
   // A base-phase formula reads a class's level (SPEC §5.6).
   basePath: (character, path, gathered) =>

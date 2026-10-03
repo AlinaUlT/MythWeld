@@ -17,11 +17,11 @@ export const talesModule: SystemModule<TalesCharacter, TalesEntity> = {
   level: (character) => character.systemData.level,
   entities: (character) =>
     [character.systemData.calling, ...character.systemData.talents].map((id) => ({ id })),
-  statDefaults: {
+  statDefaults: () => ({
     defaultMax: TALES_RULES.statMax,
     modFormula: TALES_RULES.modFormula,
     hasSave: TALES_RULES.hasSave,
-  },
+  }),
   namedIds: (grant) => (grant.kind === 'boon' ? [grant.boon] : []),
   derive: ({ gathered }) => {
     const names = new Map(gathered.entities.map(({ entity }) => [entity.id, entity.name]));

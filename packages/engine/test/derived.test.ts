@@ -248,7 +248,7 @@ describe('ENG-28 derived values a system module supplies', () => {
     const seen: [string, boolean][][] = [];
     const watching = (hasSave: boolean): Module => ({
       ...talesModule,
-      statDefaults: { ...talesModule.statDefaults, hasSave },
+      statDefaults: (character) => ({ ...talesModule.statDefaults(character), hasSave }),
       derive: (input) => {
         seen.push(input.stats.map((stat: StatOf<TalesEntity>) => [stat.key, stat.hasSave]));
         expect(input.stats.map(({ entity }) => entity.id)).toEqual([

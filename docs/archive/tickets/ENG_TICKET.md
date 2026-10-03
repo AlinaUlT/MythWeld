@@ -11481,3 +11481,169 @@ Found, not fixed:
 - ENG-46's armor-without-training disadvantage is a rule source through `modeOf`. Its note says so.
 
 Nothing for the changelog: no screen shows a roll mode yet.
+
+---
+
+### ENG-54 The house rule's highest score
+
+**Hat:** The house rule's highest score caps every stat
+**Depends on:** ENG-12 (a stat's maximum caps its score), ENG-13 (fifth edition's `statDefaults`),
+ENG-33 (`houseRules.abilityMax`), ENG-19 (its default, 20)
+**Size:** S
+**Screen:** No
+**SPEC:** §8.4 (the ceiling of the stats, a house rule); §5.3 `AbilityDef.defaultMax`; §6.1 step 4
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/module.ts` — changes: `statDefaults` reads the character's
+house rule.
+- `packages/engine/src/compute.ts` — changes: `SystemModule.statDefaults` is a function of the
+  character.
+- `packages/engine/src/derived.ts` — changes: `StatDefaults` gains an optional `maxRule`.
+- `packages/engine/src/stats.ts` — changes: a maximum a rule of the module gives is a `rule` step.
+- `packages/engine/test/tales-module.ts`, `compute.test.ts`, `derived.test.ts`,
+  `packages/system-5e/test/character.test.ts`, `entity-types.test.ts` — their modules give
+  `statDefaults` as a function.
+- `packages/engine/test/stats.test.ts` — the core's part, on Tales.
+- `packages/system-5e/test/module.test.ts` — the house rule, on goldens B4 and E.
+
+#### 2. What is missing now
+
+- `grep -rn "abilityMax" packages/*/src` finds the schema field (`character.ts:48`) and its
+  default (`character.ts:67`). No code reads it.
+- `SystemModule.statDefaults` is a value (`compute.ts:47`): the same for every character, so a
+  module cannot give one character's highest score.
+- Measured on golden B4 (2024 fighter 4), base STR 15 and 18, with `abilityMax` 18, 20 and 22:
+  each of the six runs gives `abilities.str.max` 20, its breakdown
+  `[{ kind: 'default', of: 'system', value: 20, change: 20 }]`. Base 15 gives score 19, mod 4,
+  Athletics 6; base 18 gives score 20, mod 5, Athletics 7, whatever the house rule says.
+- `pnpm test`: `Test Files 53 passed (53)`, `Tests 637 passed (637)`.
+
+#### 3. What it should look like when done
+
+1. **The core.** `SystemModule.statDefaults(character)` gives a stat's defaults for that
+   character. `StatDefaults.maxRule`, optional, is the module's name for the rule that gives
+   `defaultMax`. A stat without its own `defaultMax` starts its maximum with
+   `{ kind: 'rule', rule: maxRule, value: defaultMax, change: defaultMax }`; without `maxRule`,
+   with `{ kind: 'default', of: 'system', … }` as before. A stat's own `defaultMax` still wins
+   (`{ kind: 'default', of: 'stat', … }`). Effects on the maximum apply after it, as before.
+2. **Fifth edition.** `fifthEditionModule.statDefaults(character)` is
+   `{ defaultMax: systemData.houseRules.abilityMax, maxRule: 'abilityMax',
+   modFormula: 'floor((@score - 10) / 2)', hasSave: true }`.
+3. **A lower house rule.** Golden B4 with `abilityMax: 18`: `abilities.str.max` 18, its breakdown
+   `[{ kind: 'rule', rule: 'abilityMax', value: 18, change: 18 }]`; `abilities.str.score` 18
+   (15 + 2 + 2 = 19, then `{ kind: 'cap', value: 18, change: -1 }`); `abilities.str.mod` 4;
+   `skills.athletics.total` 6. Each of the six stats has `.max` 18.
+4. **A higher house rule.** Golden B4 with base STR 18 (18 + 2 + 2 = 22): with `abilityMax: 22`,
+   `abilities.str.score` 22, mod 6, Athletics 8 (6 + proficiency 2), no cap step; with
+   `abilityMax: 20`, score 20, mod 5, Athletics 7.
+5. **A homebrew pack's stat is capped the same way.** Golden E (hb-local's `san`, no `defaultMax`
+   of its own, base 14) with `abilityMax: 12`: `abilities.san.score` 12, `abilities.san.max` 12,
+   `abilities.san.mod` 1, `abilities.san.save` 1.
+6. **A stat with its own `defaultMax` keeps it.** Golden B4 with `abilityMax: 22` and a stat of
+   its own, `luck`, `defaultMax: 30`, base 25: `abilities.luck.max` 30, its breakdown
+   `[{ kind: 'default', of: 'stat', value: 30, change: 30 }]`; `abilities.luck.score` 25.
+7. **Per character, on the made-up system.** Tales' module made to give `defaultMax` = level + 4
+   with `maxRule: 'tableMax'`: Ash (level 2) has `.max` 6 on grit and wits, grit 7 capped to 6,
+   wits 5; Brook (level 3) has `.max` 7, wits 8 capped to 7, grit 6. Nerve keeps its own 8 in
+   both. Tales' own module gives no `maxRule`: ENG-27's expected values and ENG-12's breakdowns
+   pass unchanged.
+8. Goldens A–E compute as before: `golden-values.test.ts` passes unchanged (every golden stores
+   `abilityMax: 20`).
+9. The quality gate is green.
+
+#### 4. How to do it
+
+1. **Core.** `SystemModule.statDefaults(character: C): StatDefaults`; `compute()` calls it once.
+   `StatDefaults.maxRule?: string`; `BasePhase` carries it beside `defaultMax`. In
+   `computeStats`, a maximum's first step: the stat's own → `default`/`stat`; else `maxRule` →
+   `rule`; else `default`/`system`.
+2. **Fifth edition.** `FIFTH_EDITION_STAT_DEFAULTS` keeps the modifier and the save only
+   (`Pick<StatDefaults, 'modFormula' | 'hasSave'>`). The 20 stays in one place,
+   `DEFAULT_HOUSE_RULES.abilityMax` (ENG-19), which a new character is written with.
+   `statDefaults` adds `defaultMax` from `systemData.houseRules.abilityMax` and
+   `maxRule: 'abilityMax'`.
+3. **The modules in tests** give `statDefaults: () => ({ … })`, their values unchanged.
+4. **Why a stat's own `defaultMax` wins over the house rule.** SPEC §5.3 gives a stat its own
+   ceiling, "by default 20"; SPEC §8.4's house rule is the ceiling of the stats, by default the
+   SRD's, the same 20. So the house rule replaces that default, and a stat whose pack gives its own
+   ceiling (Tales' nerve, 8) keeps the pack author's rule for that one stat. The other reading,
+   the house rule over every stat's own ceiling, would raise a stat made to stop at 8 to the
+   table's 20. To reverse: the order of two branches in `computeStats`.
+5. **Why a function, not a second member.** The module's `level` and `entities` already read the
+   character. A value plus a per-character maximum would keep 20 in two places
+   (`FIFTH_EDITION_STAT_DEFAULTS` and `DEFAULT_HOUSE_RULES`).
+6. **Why the step names the rule.** A table's 22 shown as "the system's default" would be wrong on
+   the sheet. `rule` is the step kind for "a number a rule of the system gives" (`stats.ts`); the
+   screen (phase 2) words it from the module's name.
+
+#### 5. Stored data
+
+Nothing stored changes. `houseRules.abilityMax` keeps ENG-33's shape; no `schemaVersion` bump.
+
+#### 6. What a person will see
+
+Not a screen. The house rules screen is phase 4's (SPEC §8.4); the words for the `abilityMax`
+step are phase 2's.
+
+#### 7. Tests
+
+- `packages/engine/test/stats.test.ts` — `describe("ENG-54 a stat's highest score per
+  character")`: §3 items 1 and 7.
+- `packages/system-5e/test/module.test.ts` — `describe("ENG-54 the house rule's highest score")`:
+  §3 items 2–6. ENG-13's test of the module's defaults calls `statDefaults(goldenB)`.
+- Control numbers from: golden B4's STR (SPEC §6.7: 15 + Soldier 2 + level 4's 2 = 19, mod 4,
+  Athletics 6), golden E's SAN 14 (SPEC Appendix Д), Tales' ENG-27 expected values; each cap
+  applied by hand, each modifier `floor((score − 10) / 2)` worked out by hand.
+
+#### 8. Checked against the source
+
+The default this ticket reads is ENG-19's, measured there (ENG-19 §8): SRD 5.1 "You can't
+increase an ability score above 20."; SRD 5.2.1 "None of these increases can raise a score above
+20." Both 20, `DEFAULT_HOUSE_RULES.abilityMax`. No golden changes its stored 20. No new rules fact.
+
+#### 9. Not in this ticket
+
+- The house rules screen, where a table sets its highest score: phase 4 (SPEC §8.4).
+- A creation method's own cap (ADR 010 item 12, "No stat goes above 18"): phase 4's methods.
+- The other house rules (`hitPointMethods`, `feats`, `multiclass`, `encumbrance`,
+  `skillAbilitySwap`): each is read by the ticket that builds its rule.
+- The words the sheet shows for the `abilityMax` step: phase 2.
+- An item that sets a score above the maximum: phase 3's mechanics (ENG-12 caps a score after
+  its effects, and an effect on `.max` raises the cap).
+
+#### 10. Rake check
+
+- **Everything is data.** No stat is named: the house rule caps hb-local's `san` as it caps `str`
+  (§3 item 5).
+- **The core names no game.** The core takes `maxRule` as a name it does not read; `abilityMax`
+  is written in `packages/system-5e` only.
+- **`compute()` is pure.** `statDefaults` reads only the character it is given.
+- **A number with no breakdown is a bug.** Each maximum keeps one first step, now naming the
+  rule; the tests' helper checks every breakdown adds up to its value.
+- **Golden values are the truth.** None changes; every golden stores `abilityMax: 20`.
+- **A stored-shape change needs a migration.** Nothing stored changes.
+- **No `if (ruleset === …)`.** One value for both editions, from the character.
+- **Manual overrides win.** Unchanged: they apply after the maximum, in the `final` phase.
+
+#### 11. What came out of it
+
+- `pnpm test`: `Test Files 53 passed (53)`, `Tests 644 passed (644)`, 7.9 s; 7 tests are new
+  (3 in `stats.test.ts`, 4 in `module.test.ts`). `pnpm lint`: 174 files, no errors.
+  `pnpm typecheck`: 6 of 6 projects. `pnpm build` passes.
+- Each item of §3 holds as written, with the values written there: golden B4 at 18 gives STR 18,
+  mod 4, Athletics 6 and `.max` 18 on all six stats; base STR 18 gives 22, mod 6, Athletics 8 at
+  22, and 20, mod 5, Athletics 7 at 20; golden E's SAN at 12 gives 12, mod 1, save 1; `luck`
+  keeps its own 30; Tales' made-up module gives Ash 6 and Brook 7, nerve 8 in both.
+- With `defaultMax` held at 20 in the module, the four new fifth-edition tests fail and the rest
+  pass: the tests read the house rule, not the old constant.
+- `golden-values.test.ts`, ENG-27's expected values and ENG-12's breakdowns pass unchanged.
+
+Found, not fixed:
+- A stat's own `defaultMax` wins over the house rule (§4 item 4). Phase 3's SRD import must give
+  the six SRD stats no `defaultMax` of their own, or a table's house rule does not reach them.
+  Noted for phase 3.
+
+Nothing for the changelog: no screen changes.

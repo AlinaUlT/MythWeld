@@ -592,7 +592,7 @@ describe('ENG-11 gathering a character’s entities', () => {
     const dealer: SystemModule<ReturnType<typeof player>> = {
       level: () => 1,
       entities: () => [{ id: 'cards:hand/start' }],
-      statDefaults: { defaultMax: 1, modFormula: '@score', hasSave: false },
+      statDefaults: () => ({ defaultMax: 1, modFormula: '@score', hasSave: false }),
       derive: () => ({}),
     };
 

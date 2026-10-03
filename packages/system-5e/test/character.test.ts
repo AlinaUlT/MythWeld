@@ -479,7 +479,7 @@ describe('ENG-33 fifth-edition character', () => {
         ]),
         ...data.feats.map((feat) => ({ id: feat.id })),
       ],
-      statDefaults: { defaultMax: 30, modFormula: '0', hasSave: false },
+      statDefaults: () => ({ defaultMax: 30, modFormula: '0', hasSave: false }),
       derive: () => ({}),
     };
 

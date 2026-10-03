@@ -99,6 +99,8 @@ export interface BasePhase {
   read(path: string): FormulaValue | undefined;
   /** The maximum of a stat without its own `defaultMax`: its system's. */
   defaultMax: number;
+  /** The module's name for the rule that gives `defaultMax`, when one does (ENG-54). */
+  maxRule?: string;
 }
 
 /** Each stat's score and maximum, as computed paths, with their breakdown. */
@@ -136,6 +138,15 @@ export function applyEffects(
 function ownMaxOf(stat: GatherableEntity): number | undefined {
   const max = (stat as { readonly defaultMax?: unknown }).defaultMax;
   return typeof max === 'number' ? max : undefined;
+}
+
+/** A stat's maximum before its effects: its own, else the rule that gives it, else its system's. */
+function maxStepOf(stat: GatherableEntity, base: BasePhase): BreakdownStep {
+  const own = ownMaxOf(stat);
+  if (own !== undefined) return { kind: 'default', of: 'stat', value: own, change: own };
+  const { defaultMax: value, maxRule: rule } = base;
+  if (rule !== undefined) return { kind: 'rule', rule, value, change: value };
+  return { kind: 'default', of: 'system', value, change: value };
 }
 
 /**
@@ -224,16 +235,7 @@ export function computeStats<E extends GatherableEntity>(
   const values: Record<string, number> = {};
   const breakdown: Record<string, BreakdownStep[]> = {};
   for (const [key, stat] of stats) {
-    const ownMax = ownMaxOf(stat);
-    const defaultMax = ownMax ?? base.defaultMax;
-    const maxSteps: BreakdownStep[] = [
-      {
-        kind: 'default',
-        of: ownMax === undefined ? 'system' : 'stat',
-        value: defaultMax,
-        change: defaultMax,
-      },
-    ];
+    const maxSteps: BreakdownStep[] = [maxStepOf(stat, base)];
     const max = withEffects(maxSteps, key, 'max');
 
     const baseScore = baseScores[key] ?? 0;

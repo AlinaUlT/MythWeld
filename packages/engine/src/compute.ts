@@ -43,8 +43,11 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    * in part (ENG-44). `find` looks an id up as gathering will (ENG-44: an item's category).
    */
   entities(character: C, find: EntityFinder<E>): readonly NamedEntity[];
-  /** What a stat takes when it lacks the field. */
-  readonly statDefaults: StatDefaults;
+  /**
+   * What a stat takes when it lacks the field, for this character (ENG-54: a fifth-edition house
+   * rule gives its highest score).
+   */
+  statDefaults(character: C): StatDefaults;
   /**
    * A path a base-phase formula may read besides `level`, with its value for this character:
    * SPEC §5.6 allows levels, class levels and choices (a fifth-edition class's level). Gives
@@ -149,10 +152,11 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
     grantsOf === undefined ? ownGrants : (entity) => grantsOf(character, entity, find),
     system.namedIds,
   );
-  const defaults = system.statDefaults;
+  const defaults = system.statDefaults(character);
   const basePhase: BasePhase = {
     read: (path) => (path === LEVEL_PATH ? level : system.basePath?.(character, path, gathered)),
     defaultMax: defaults.defaultMax,
+    ...(defaults.maxRule !== undefined && { maxRule: defaults.maxRule }),
   };
   const base = computeStats(character, gathered, basePhase);
   const stats = statsOf(gathered, defaults);
