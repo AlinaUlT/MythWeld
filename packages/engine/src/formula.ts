@@ -666,6 +666,25 @@ export function addDice(base: string, added: string, times: number): ParseResult
 }
 
 /**
+ * ENG-55: the roll formula `base` with the value of `path` added once at its end, `base + @path`;
+ * `base` goes in brackets when its top binds less than `+` does. A path binds tighter than `+`, so
+ * it needs none (`addDice` brackets every formula it adds). Never throws: when `base` does not
+ * parse, when `path` is not a path (`badPath`, so a name never becomes more formula), or when the
+ * formula made is past the limits, the result is that error.
+ */
+export function addPath(base: string, path: string): ParseResult<ParsedRoll> {
+  const own = parseRoll(base);
+  if (!own.ok) return own;
+  const left = beforePlus(base, own.formula.root);
+  if (!computedPathSchema.safeParse(path).success) {
+    const at = left.length + ' + '.length;
+    const message = `"@${path}" added at ${at} is not a path: camelCase steps joined by dots.`;
+    return { ok: false, error: { code: 'badPath', path, at, message } };
+  }
+  return parseRoll(`${left} + @${path}`);
+}
+
+/**
  * ENG-34: the roll formula `base` with each of its dice terms rolled `times` times, in its place:
  * a term that keeps every die has its count multiplied (`2d6` × 2 is `4d6`); a term that keeps some
  * is written `times` times in brackets (`4d6kh3` × 2 is `(4d6kh3 + 4d6kh3)`), since a term of more

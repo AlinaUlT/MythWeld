@@ -105,7 +105,7 @@ split off an old row got a new id.
 | ENG-50 | A spell's dice are computed for the character's level | S | ✅ 2026-10-02 |
 | ENG-51 | A spell a grant gives with its own stat has its casting numbers | S | ✅ 2026-10-02 |
 | ENG-53 | A spell's healing is a roll formula of its own | S | ✅ 2026-10-03 |
-| ENG-55 | A spell's damage adds `damage.spell.bonus` | S | 🔲 |
+| ENG-55 | A spell's damage adds `damage.spell.bonus` | S | ✅ 2026-10-03 |
 | ENG-60 | A spell's healing adds what a feature gives it | S | 🔲 |
 | ENG-34 | Advantage, disadvantage, critical hits apply to fifth-edition rolls | M | ✅ 2026-10-03 |
 | ENG-19 | The ruleset files hold every 2014/2024 rules difference | M | ✅ 2026-10-02 |
@@ -136,16 +136,14 @@ split off an old row got a new id.
   5.2.1 (Rules Glossary, Dead) "If the creature died with any Exhaustion levels, it returns with 1
   fewer level"; `revive` (`hit-points.ts`) lowers none. No sentence of SRD 5.1's rules, spells or
   conditions ties exhaustion to a return to life (ENG-58 §11).
-- **ENG-55** — found by ENG-51: SPEC §5.4's `damage.spell.bonus` is no path, so an effect on it
-  warns `noTarget`. A spell's damage is dice text (ENG-50's `spellDice`), which reads no bonus;
-  a weapon's damage reads `damage.weapon.<kind>.bonus` (ENG-16). The row decides which of a
-  spell's damages adds it, and checks the SRDs' "damage rolls" wording in its §8.
 - **ENG-60** — found by ENG-53 (ENG-53 §8, §9): golden A's Disciple of Life adds to a spell's
   healing. SRD 5.1: "additional hit points equal to 2 + the spell's level", for a spell of 1st level
   or higher; SRD 5.2.1: "2 plus the spell slot's level", for a spell cast with a slot. SPEC §5.4
   has no target for healing, and no formula reads the slot a spell is cast with (`spellDice`'s
   `cast.slot`, `spell-dice.ts`). The row picks the target and how its formula reads the slot. No
-  SPEC §6.7 value states golden A's healing.
+  SPEC §6.7 value states golden A's healing. ENG-55 writes `damage.spell.bonus` into a spell's
+  first damage with the core's `addPath` (`formula.ts`), only when it is not 0; a healing bonus
+  can be written in the same way.
 - **ENG-57** — re-cut from ENG-20 (ENG-20 §4). ADR 014 item 7: a granted spell has its own uses.
   Found by ENG-32: a `spell` grant's `uses` have no key of their own, and the core's
   `state.resources` takes only keys, so the spent count is kept by the grant's part id in a new
@@ -284,6 +282,13 @@ split off an old row got a new id.
   Staff of Fire, Staff of Healing, Staff of Power, among others) do not say which DC when a
   character has more than one: a class's (`classes.<key>.spell.dc`) and a stat's a grant names
   (`abilities.<stat>.spell.dc`). The mechanics of those items pick one, or let the person pick.
+- **Phase 3** — found by ENG-55: every spell's first damage adds `damage.spell.bonus`
+  (`spellDice`, `spell-dice.ts`), so an effect on it cannot be limited to some spells. Each SRD
+  bonus to a spell's damage is limited (ENG-55 §8): to a damage type (Elemental Affinity), a school
+  (Empowered Evocation), one cantrip (Agonizing Blast: 2014 Eldritch Blast, 2024 a chosen one), a
+  class's cantrips (2024 Potent Spellcasting); and "one damage roll of that spell" is one ray of a
+  spell that rolls several (Scorching Ray). The mechanics of those features add a narrower target,
+  or a condition an effect's `when` can test.
 - **Phase 3** — found by ENG-13: a half proficiency that rounds up (2014's Remarkable Athlete:
   "half your proficiency bonus (round up)") and half a proficiency on every ability check (2014's
   Jack of All Trades). `skills.<key>.prof` 0.5 rounds down (`checkSteps`), and an ability check

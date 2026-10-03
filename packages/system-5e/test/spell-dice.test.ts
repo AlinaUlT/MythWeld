@@ -1,9 +1,16 @@
-import { averageOf, type Computed, compute, loadContentIndex } from '@grimoire/engine';
+import {
+  averageOf,
+  type Computed,
+  compute,
+  type FormulaValue,
+  loadContentIndex,
+} from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
   CANTRIP_LEVELS,
   cantripUpgrades,
+  criticalDamage,
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
   type FifthEditionEntity,
@@ -81,6 +88,12 @@ const fireball: SpellInput = {
   scaling: { kind: 'slot', formula: '1d6' },
 };
 
+/**
+ * A spell damage bonus of 0, as every computed character has (ENG-55): the values written by hand
+ * below hold it, so a test checks only the warnings it names.
+ */
+const NO_BONUS = { 'damage.spell.bonus': 0 } as const;
+
 /** The formula of each damage. */
 function formulas(dice: { damage: readonly { formula: string }[] }): string[] {
   return dice.damage.map(({ formula }) => formula);
@@ -150,7 +163,8 @@ describe('ENG-50 cantrip upgrades', () => {
 
 describe("ENG-50 a spell's dice", () => {
   it("gives a cantrip's dice at each upgrade: SRD 5.1 Fire Bolt's 1d10, 2d10, 3d10, 4d10", () => {
-    const at = (upgrades: number) => spellDice(fireBolt, { 'cantrip.upgrades': upgrades });
+    const at = (upgrades: number) =>
+      spellDice(fireBolt, { ...NO_BONUS, 'cantrip.upgrades': upgrades });
     expect([0, 1, 2, 3].map((upgrades) => formulas(at(upgrades)))).toEqual([
       ['1d10'],
       ['2d10'],
@@ -173,7 +187,7 @@ describe("ENG-50 a spell's dice", () => {
     const bySlot = [3, 4, 5, 6, 7, 8, 9].map((slot) => formulas(spellDice(fireball, {}, { slot })));
     expect(bySlot.flat()).toEqual(['8d6', '9d6', '10d6', '11d6', '12d6', '13d6', '14d6']);
     // Without a slot, or with one below its level, its own dice; `cantrip.upgrades` is not read.
-    expect(spellDice(fireball, { 'cantrip.upgrades': 3 })).toEqual({
+    expect(spellDice(fireball, { ...NO_BONUS, 'cantrip.upgrades': 3 })).toEqual({
       times: 0,
       damage: [{ formula: '8d6', type: 'fire' }],
       warnings: [],
@@ -221,7 +235,7 @@ describe("ENG-50 a spell's dice", () => {
       level: 1,
       damage: [{ formula: '2d4', type: 'glare' }],
     };
-    expect(spellDice(plain, {}, { slot: 5 })).toEqual({
+    expect(spellDice(plain, NO_BONUS, { slot: 5 })).toEqual({
       times: 0,
       damage: [{ formula: '2d4', type: 'glare' }],
       warnings: [],
@@ -234,10 +248,10 @@ describe("ENG-50 a spell's dice", () => {
   });
 
   it('warns, never throws: no upgrades value, a scaling with no damage, a formula that fails', () => {
-    const missing = spellDice(fireBolt, {});
+    const missing = spellDice(fireBolt, NO_BONUS);
     expect(formulas(missing)).toEqual(['1d10']);
     expect(codes(missing)).toEqual([{ code: 'missingPath', path: 'cantrip.upgrades' }]);
-    expect(codes(spellDice(fireBolt, { 'cantrip.upgrades': 'many' }))).toEqual([
+    expect(codes(spellDice(fireBolt, { ...NO_BONUS, 'cantrip.upgrades': 'many' }))).toEqual([
       { code: 'missingPath', path: 'cantrip.upgrades' },
     ]);
 
@@ -255,7 +269,7 @@ describe("ENG-50 a spell's dice", () => {
     });
 
     const broken: SpellInput = { ...fireBolt, scaling: { kind: 'cantrip', formula: '1d' } };
-    const result = spellDice(broken, { 'cantrip.upgrades': 1 });
+    const result = spellDice(broken, { ...NO_BONUS, 'cantrip.upgrades': 1 });
     expect(formulas(result)).toEqual(['1d10']);
     expect(codes(result)).toEqual([
       {
@@ -265,7 +279,7 @@ describe("ENG-50 a spell's dice", () => {
       },
     ]);
     // A count past 999 dice in a term: 1 + 999 × 1.
-    expect(codes(spellDice(fireBolt, { 'cantrip.upgrades': 999 }))).toEqual([
+    expect(codes(spellDice(fireBolt, { ...NO_BONUS, 'cantrip.upgrades': 999 }))).toEqual([
       {
         code: 'scalingFormula',
         spell: 'srd-2014:spell/fire-bolt',
@@ -413,7 +427,7 @@ describe("ENG-53 a spell's healing", () => {
       healing: { formula: '4d12 + @mod', kind: 'hp' },
       scaling: { kind: 'slot', formula: '1d12' },
     };
-    expect(spellDice(conjure, {}, { slot: 9, stat: 'cha' })).toEqual({
+    expect(spellDice(conjure, NO_BONUS, { slot: 9, stat: 'cha' })).toEqual({
       times: 2,
       damage: [{ formula: '8d12', type: 'radiant' }],
       healing: { formula: '6d12 + @abilities.cha.mod', kind: 'hp' },
@@ -496,7 +510,7 @@ describe("ENG-53 a spell's healing", () => {
       healing: { formula: '1d', kind: 'hp' },
       scaling: { kind: 'slot', formula: '1d6' },
     };
-    const joined = spellDice(odd, {}, { slot: 2 });
+    const joined = spellDice(odd, NO_BONUS, { slot: 2 });
     expect(joined.damage).toEqual([{ formula: '2d6', type: 'glare' }]);
     expect(joined.healing).toEqual({ formula: '1d', kind: 'hp' });
     expect(codes(joined)).toEqual([
@@ -519,5 +533,254 @@ describe("ENG-53 a spell's healing", () => {
     expect(spellDice(frozenSpell, values, cast)).toEqual(first);
     expect(first.healing).toEqual({ formula: '4d8 + @abilities.cha.mod', kind: 'hp' });
     expect(frozenSpell.healing).toEqual({ formula: '2d8 + @mod', kind: 'hp' });
+  });
+});
+
+// ENG-55: a spell's damage adds `damage.spell.bonus`. The rules are ENG-55 §8's. Golden A: level 1,
+// WIS 16 → +3. Golden C 2014: level 6. SRD 5.1 Flame Strike's two damages are dnd5e's (`7bfb3f1`);
+// the feat is made up. Each average below was worked out by hand, never copied from a run.
+
+/** A made-up feat whose effect adds 1 to every spell's damage. */
+const hotter: EntityInput = {
+  id: 'character:feat/hotter-spells',
+  type: 'feat',
+  ruleset: 'any',
+  name: { en: 'Hotter Spells' },
+  source: { pack: 'character' },
+  effects: [{ id: 'more', target: 'damage.spell.bonus', op: 'add', value: 1 }],
+};
+
+/** A golden with the feat, and these overrides. */
+function withHotter(
+  golden: CharacterInput,
+  overrides: CharacterInput['overrides'] = [],
+): CharacterInput {
+  return {
+    ...golden,
+    localEntities: [hotter],
+    systemData: { ...golden.systemData, feats: [{ id: hotter.id }] },
+    overrides,
+  };
+}
+
+/** A roll formula's average on values written by hand. */
+function averageWith(values: Readonly<Record<string, FormulaValue>>, formula: string | undefined) {
+  return averageOf(formula ?? '', (path) => values[path]).value;
+}
+
+describe("ENG-55 a spell's damage bonus", () => {
+  it('gives every character damage.spell.bonus 0, which an effect changes', () => {
+    for (const golden of [goldenA, goldenB, goldenC2014, goldenC2024, goldenE]) {
+      const result = computed(golden);
+      expect(result.values['damage.spell.bonus']).toBe(0);
+      expect(result.breakdown['damage.spell.bonus']).toEqual([]);
+    }
+    const hot = computed(withHotter(goldenA));
+    expect(hot.values['damage.spell.bonus']).toBe(1);
+    expect(hot.breakdown['damage.spell.bonus']).toEqual([
+      expect.objectContaining({
+        kind: 'effect',
+        part: 'character:feat/hotter-spells#more',
+        op: 'add',
+        value: 1,
+        change: 1,
+      }),
+    ]);
+    expect(hot.warnings).toEqual([]);
+  });
+
+  it("adds it to SRD 5.1 Fire Bolt's damage: nothing at 0, the path written when it is not", () => {
+    const a = computed(goldenA);
+    expect(spellDice(fireBolt, a.values)).toEqual({
+      times: 0,
+      damage: [{ formula: '1d10', type: 'fire' }],
+      warnings: [],
+    });
+    const hot = computed(withHotter(goldenA));
+    const bolt = spellDice(fireBolt, hot.values);
+    expect(bolt).toEqual({
+      times: 0,
+      damage: [{ formula: '1d10 + @damage.spell.bonus', type: 'fire' }],
+      warnings: [],
+    });
+    // 5.5 + 1, read from the computed path.
+    expect(averageOn(hot, bolt.damage[0]?.formula)).toEqual({
+      value: 6.5,
+      reads: ['damage.spell.bonus'],
+      warnings: [],
+    });
+    // Golden C 2014, level 6: one upgrade, 11 + 1.
+    const c = computed(withHotter(goldenC2014));
+    expect(c.warnings).toEqual([]);
+    const grown = spellDice(fireBolt, c.values).damage[0]?.formula;
+    expect(grown).toBe('2d10 + @damage.spell.bonus');
+    expect(averageOn(c, grown).value).toBe(12);
+    // A penalty: 5.5 - 2.
+    const less = { 'cantrip.upgrades': 0, 'damage.spell.bonus': -2 };
+    expect(formulas(spellDice(fireBolt, less))).toEqual(['1d10 + @damage.spell.bonus']);
+    expect(averageWith(less, '1d10 + @damage.spell.bonus')).toBe(3.5);
+  });
+
+  it('lets an override win: 3 is written, 0 writes nothing', () => {
+    const three = computed({ ...goldenA, overrides: [{ path: 'damage.spell.bonus', value: 3 }] });
+    expect(three.values['damage.spell.bonus']).toBe(3);
+    expect(three.breakdown['damage.spell.bonus']?.at(-1)).toMatchObject({ kind: 'override' });
+    const bolt = spellDice(fireBolt, three.values).damage[0]?.formula;
+    expect(bolt).toBe('1d10 + @damage.spell.bonus');
+    expect(averageOn(three, bolt).value).toBe(8.5);
+    const none = computed(withHotter(goldenA, [{ path: 'damage.spell.bonus', value: 0 }]));
+    expect(none.values['damage.spell.bonus']).toBe(0);
+    expect(spellDice(fireBolt, none.values)).toEqual({
+      times: 0,
+      damage: [{ formula: '1d10', type: 'fire' }],
+      warnings: [],
+    });
+  });
+
+  it('joins after the scaling, and a critical hit doubles the dice only', () => {
+    // SRD 5.1 Fireball at slot 5: 10d6, 35 + 2.
+    const two = { 'damage.spell.bonus': 2 };
+    const ball = spellDice(fireball, two, { slot: 5 }).damage[0]?.formula;
+    expect(ball).toBe('10d6 + @damage.spell.bonus');
+    expect(averageWith(two, ball)).toBe(37);
+    // Dice of other faces follow the spell's own, then the bonus follows the whole.
+    const mixed: SpellInput = {
+      id: 'character:spell/mixed',
+      level: 1,
+      damage: [{ formula: '2d4', type: 'glare' }],
+      scaling: { kind: 'slot', formula: '1d6' },
+    };
+    expect(formulas(spellDice(mixed, two, { slot: 2 }))).toEqual([
+      '2d4 + 1d6 + @damage.spell.bonus',
+    ]);
+    // Fire Bolt's critical hit: 2d10, 11 + 1.
+    const one = { 'cantrip.upgrades': 0, 'damage.spell.bonus': 1 };
+    const critical = criticalDamage(spellDice(fireBolt, one).damage[0]?.formula ?? '');
+    expect(critical.ok && critical.formula.text).toBe('2d10 + @damage.spell.bonus');
+    expect(averageWith(one, '2d10 + @damage.spell.bonus')).toBe(12);
+  });
+
+  it('adds it to the first damage only: SRD 5.1 Flame Strike, 4d6 fire and 4d6 radiant', () => {
+    const flameStrike: SpellInput = {
+      id: 'srd-2014:spell/flame-strike',
+      level: 5,
+      damage: [
+        { formula: '4d6', type: 'fire' },
+        { formula: '4d6', type: 'radiant' },
+      ],
+    };
+    const one = { 'damage.spell.bonus': 1 };
+    const strike = spellDice(flameStrike, one, { slot: 5 });
+    expect(strike).toEqual({
+      times: 0,
+      damage: [
+        { formula: '4d6 + @damage.spell.bonus', type: 'fire' },
+        { formula: '4d6', type: 'radiant' },
+      ],
+      warnings: [],
+    });
+    // 14 + 1, and 14.
+    expect(strike.damage.map(({ formula }) => averageWith(one, formula))).toEqual([15, 14]);
+  });
+
+  it('keeps the stat and the healing as they were: Spiritual Weapon, Cure Wounds, Conjure Celestial', () => {
+    const hot = computed(withHotter(goldenA));
+    const weapon: SpellInput = {
+      id: 'srd-2014:spell/spiritual-weapon',
+      level: 2,
+      damage: [{ formula: '1d8 + @mod', type: 'force' }],
+    };
+    const struck = spellDice(weapon, hot.values, { slot: 2, stat: 'wis' }).damage[0]?.formula;
+    expect(struck).toBe('1d8 + @abilities.wis.mod + @damage.spell.bonus');
+    // 4.5 + 3 + 1.
+    expect(averageOn(hot, struck)).toEqual({
+      value: 8.5,
+      reads: ['abilities.wis.mod', 'damage.spell.bonus'],
+      warnings: [],
+    });
+    const cure = entityIn(index2014, 'srd-2014:spell/cure-wounds');
+    if (cure.type !== 'spell') throw new Error('Cure Wounds is not a spell');
+    const cured = spellDice(cure, hot.values, { slot: 1, stat: 'wis' });
+    expect(cured).toEqual({
+      times: 0,
+      damage: [],
+      healing: { formula: '1d8 + @abilities.wis.mod', kind: 'hp' },
+      warnings: [],
+    });
+    expect(averageOn(hot, cured.healing?.formula).value).toBe(7.5);
+    const conjure: SpellInput = {
+      id: 'srd-2024:spell/conjure-celestial',
+      level: 7,
+      damage: [{ formula: '6d12', type: 'radiant' }],
+      healing: { formula: '4d12 + @mod', kind: 'hp' },
+      scaling: { kind: 'slot', formula: '1d12' },
+    };
+    const one = { 'damage.spell.bonus': 1 };
+    const conjured = spellDice(conjure, one, { slot: 9, stat: 'cha' });
+    expect(conjured).toEqual({
+      times: 2,
+      damage: [{ formula: '8d12 + @damage.spell.bonus', type: 'radiant' }],
+      healing: { formula: '6d12 + @abilities.cha.mod', kind: 'hp' },
+      warnings: [],
+    });
+    // 52 + 1.
+    expect(averageWith(one, conjured.damage[0]?.formula)).toBe(53);
+  });
+
+  it('warns, never throws: no bonus value, a formula that fails, one past the limits', () => {
+    const missing = spellDice(fireball, {}, { slot: 3 });
+    expect(formulas(missing)).toEqual(['8d6']);
+    expect(codes(missing)).toEqual([{ code: 'missingPath', path: 'damage.spell.bonus' }]);
+    expect(codes(spellDice(fireball, { 'damage.spell.bonus': 'one' }))).toEqual([
+      { code: 'missingPath', path: 'damage.spell.bonus' },
+    ]);
+    // A spell with no damage reads no bonus.
+    const cure = entityIn(index2014, 'srd-2014:spell/cure-wounds');
+    if (cure.type !== 'spell') throw new Error('Cure Wounds is not a spell');
+    expect(spellDice(cure, {}, { stat: 'wis' }).warnings).toEqual([]);
+
+    const one = { 'damage.spell.bonus': 1 };
+    const broken: SpellInput = {
+      id: 'character:spell/broken',
+      level: 1,
+      damage: [{ formula: '1d', type: 'glare' }],
+    };
+    const result = spellDice(broken, one);
+    expect(formulas(result)).toEqual(['1d']);
+    expect(codes(result)).toEqual([
+      {
+        code: 'damageBonusFormula',
+        spell: 'character:spell/broken',
+        error: expect.objectContaining({ code: 'unexpected', found: 'd', at: 1 }),
+      },
+    ]);
+    // 3 + 244 × 4 = 979 characters, and " + @damage.spell.bonus" 22 more: 1001.
+    const long: SpellInput = {
+      id: 'character:spell/long',
+      level: 1,
+      damage: [{ formula: `1d6${' + 1'.repeat(244)}`, type: 'glare' }],
+    };
+    expect(long.damage?.[0]?.formula).toHaveLength(979);
+    const tooLong = spellDice(long, one);
+    expect(formulas(tooLong)).toEqual([long.damage?.[0]?.formula]);
+    expect(codes(tooLong)).toEqual([
+      {
+        code: 'damageBonusFormula',
+        spell: 'character:spell/long',
+        error: expect.objectContaining({ code: 'tooLong', length: 1001 }),
+      },
+    ]);
+  });
+
+  it('is pure: frozen inputs, and two runs give equal results', () => {
+    const damage = [{ formula: '1d10', type: 'fire' }];
+    const scaling = { kind: 'cantrip' as const, formula: '1d10' };
+    const frozenSpell: SpellInput = { ...fireBolt, damage, scaling };
+    for (const part of [frozenSpell, damage, scaling, ...damage]) Object.freeze(part);
+    const values = Object.freeze({ 'cantrip.upgrades': 1, 'damage.spell.bonus': 1 });
+    const first = spellDice(frozenSpell, values);
+    expect(spellDice(frozenSpell, values)).toEqual(first);
+    expect(formulas(first)).toEqual(['2d10 + @damage.spell.bonus']);
+    expect(frozenSpell.damage).toEqual([{ formula: '1d10', type: 'fire' }]);
   });
 });

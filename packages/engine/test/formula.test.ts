@@ -1,5 +1,6 @@
 import {
   addDice,
+  addPath,
   averageOf,
   diceOf,
   evaluateCondition,
@@ -730,6 +731,62 @@ describe('ENG-53 paths renamed in a roll formula', () => {
     expect(renamePaths(long, modAs('stats.grit.mod'))).toEqual({
       ok: false,
       error: expect.objectContaining({ code: 'tooLong', length: 1815, limit: 1000 }),
+    });
+  });
+});
+
+describe('ENG-55 a path added to a roll formula', () => {
+  /** The formula `addPath` writes, or its error's code. */
+  function plus(base: string, path = 'stats.grit.mod'): string {
+    const result = addPath(base, path);
+    return result.ok ? result.formula.text : `error ${result.error.code}`;
+  }
+
+  it('writes the path after the formula, which keeps its dice, letter and spaces', () => {
+    expect(plus('1d8')).toBe('1d8 + @stats.grit.mod');
+    expect(plus('1к6')).toBe('1к6 + @stats.grit.mod');
+    expect(plus('2d6+3')).toBe('2d6+3 + @stats.grit.mod');
+    expect(plus('5 - 1d6')).toBe('5 - 1d6 + @stats.grit.mod');
+    expect(plus('2 * 1d6')).toBe('2 * 1d6 + @stats.grit.mod');
+    expect(plus('-1d6')).toBe('-1d6 + @stats.grit.mod');
+    expect(plus('max(1d6, 2)')).toBe('max(1d6, 2) + @stats.grit.mod');
+    expect(plus('1d8 + @stats.grit.mod')).toBe('1d8 + @stats.grit.mod + @stats.grit.mod');
+  });
+
+  it('puts in brackets a formula whose top binds less than `+`', () => {
+    expect(plus('@gear.worn ? 1d6 : 1d8')).toBe('(@gear.worn ? 1d6 : 1d8) + @stats.grit.mod');
+    expect(plus('1d6 || 2')).toBe('(1d6 || 2) + @stats.grit.mod');
+  });
+
+  it('gives the parsed formula, which adds the path to the whole of it', () => {
+    const result = addPath('@level + 1d4', 'stats.grit.mod');
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.formula.text).toBe('@level + 1d4 + @stats.grit.mod');
+    expect(result.formula.paths).toEqual(['level', 'stats.grit.mod']);
+    // Gear worn: 3.5 + 2 for the whole choice, not 3.5 for its first branch. 5 - 3.5 + 2.
+    const average = (formula: string) => averageOf(formula, read).value;
+    expect(average(plus('@gear.worn ? 1d6 : 1d8'))).toBe(5.5);
+    expect(average(plus('5 - 1d6'))).toBe(3.5);
+  });
+
+  it('gives errors, never a throw: no parse, a name that is no path, past the limits', () => {
+    expect(addPath('1d', 'stats.grit.mod')).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'unexpected', found: 'd', at: 1 }),
+    });
+    expect(addPath('1d8', 'stats.Grit.mod')).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'badPath', path: 'stats.Grit.mod', at: 6 }),
+    });
+    // A name never becomes more formula.
+    expect(plus('1d8', 'stats) + (1d100')).toBe('error badPath');
+    expect(plus('1d8', '')).toBe('error badPath');
+    // 3 + 245 × 4 = 983 characters, and " + @stats.grit.mod" 18 more: 1001.
+    const long = `1d6${' + 1'.repeat(245)}`;
+    expect(long).toHaveLength(983);
+    expect(addPath(long, 'stats.grit.mod')).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: 'tooLong', length: 1001, limit: 1000 }),
     });
   });
 });

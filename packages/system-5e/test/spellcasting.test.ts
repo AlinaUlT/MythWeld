@@ -637,6 +637,7 @@ describe('ENG-15 spellcasting', () => {
       'attack.spell.bonus',
       'spell.attackMode',
       'spell.cannotCast',
+      'damage.spell.bonus',
     ]);
   });
 

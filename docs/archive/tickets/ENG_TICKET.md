@@ -12956,3 +12956,300 @@ Found, not fixed:
   after 1d4 hours): a phase 2 note.
 
 Changelog: the published pack JSON Schema asks for `systemSchemaVersion` 3.
+
+---
+
+### ENG-55 A spell's damage adds its bonus
+
+**Hat:** A spell's damage adds `damage.spell.bonus`
+**Depends on:** ENG-50 (`spellDice`, `spellDiceSteps`), ENG-53 (`@mod` written in, `renamePaths`),
+ENG-16 (`damage.weapon.<kind>.bonus`, the same family), ENG-17 (effects and overrides on any path),
+ENG-52 (`averageOf`), ENG-34 (`criticalDamage`)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.4 (`damage.<weapon.melee | weapon.ranged | spell>.bonus`); §5.3 (`SpellDef.damage`);
+§5.6 (roll formulas); §6.1 step 5
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/spell-dice.ts` — changes: `DAMAGE_SPELL_BONUS_PATH`;
+`spellDiceSteps` gives it; `spellDice` adds it to a spell's first damage; the warning
+`damageBonusFormula`.
+- `packages/engine/src/formula.ts` — changes: `addPath(base, path)`, a roll formula with a path added
+  at its end.
+- `packages/engine/test/formula.test.ts` — changes: the ENG-55 block.
+- `packages/system-5e/test/spell-dice.test.ts` — changes: the ENG-55 block; ENG-50's and ENG-53's
+  hand-written values gain `damage.spell.bonus` where their warnings are checked (§7).
+- `packages/system-5e/test/spellcasting.test.ts` — changes: the paths of a character who casts
+  nothing, filtered by `spell.`, gain `damage.spell.bonus`.
+- `docs/tickets/BACKLOG.md` — the ENG-60 note; a phase 3 note (§9).
+
+#### 2. What is missing now
+
+Measured on `main` at `b212371`:
+- `git grep -n "damage\.spell" -- packages apps` finds nothing.
+- Golden A with a made-up feat whose effect is `damage.spell.bonus` `add 1` (a throwaway test):
+  `values['damage.spell.bonus']` is `undefined`, and the one warning is `noTarget`
+  (`"character:feat/hotter#more" changes damage.spell.bonus, which the character has no value
+  for; it is not applied.`).
+- `spellDice` of SRD 5.1 Fire Bolt on that character gives
+  `{"times":0,"damage":[{"formula":"1d10","type":"fire"}],"warnings":[]}`: no bonus is read.
+- No core function adds a path to a roll formula as one more term: `addDice('1d8',
+  '@stats.grit.mod', 1)` gives `1d8 + (@stats.grit.mod)` (ENG-50's test), each copy in brackets.
+- `pnpm test`: `Test Files 56 passed (56)`, `Tests 696 passed (696)`.
+
+#### 3. What it should look like when done
+
+1. **Every character** has `damage.spell.bonus`, 0 with no steps until an effect changes it, a
+   target for effects (SPEC §5.4) and overrides (ENG-17), as `damage.weapon.<kind>.bonus`
+   (ENG-16). An effect on it warns nothing.
+2. **`spellDice` adds it to the first damage**, the one the scaling grows (ENG-50), once:
+   `@damage.spell.bonus` is written at its end, after the scaling joins, before `@mod` is
+   renamed. Its other damages and its healing do not change.
+   - When the value is 0 the formula stays as the spell's own (no term that adds 0).
+   - Dice the scaling cannot join to the spell's own term come first, then the bonus: `2d4` with
+     a scaling of `1d6`, one slot up, is `2d4 + 1d6 + @damage.spell.bonus`.
+   - When the values have no number at the path (missing, or a text), the formula stays and the
+     warning is `missingPath` `damage.spell.bonus`. A spell with no damage reads nothing.
+   - When the formula with the path added does not parse or is past the limits, it stays and the
+     warning is `damageBonusFormula` with the error. Never a throw.
+3. **`addPath(base, path)`** (the core, game-free; made-up paths, ADR 004 item 4) gives the parsed
+   roll formula `base + @path`; `base` goes in brackets when its top binds less than `+`:
+   `1d8` → `1d8 + @stats.grit.mod`; `1к6` keeps its letter; `5 - 1d6` and `2 * 1d6` stay unbracketed;
+   `@gear.worn ? 1d6 : 1d8` → `(@gear.worn ? 1d6 : 1d8) + @stats.grit.mod`; `1d6 || 2` → `(1d6 || 2) +
+   @stats.grit.mod`. Its `paths` lists the base's paths, then the new one. Errors, never a throw:
+   `1d` does not parse (`unexpected`, at 1); a name that is not a path (`stats.Grit.mod`,
+   `stats) + (1d100`, empty) is `badPath`, at 6 for `1d8`, never parsed as more formula; `1d6` and
+   245 × ` + 1` (983 characters) with `stats.grit.mod` is `tooLong` at 983 + 18 = 1001.
+4. **Control values, worked out by hand.** Golden A (2014): level 1, so `cantrip.upgrades` 0; WIS
+   15 + 1 = 16 → +3 (ENG-53). Golden C 2014: level 6, `cantrip.upgrades` 1. "The feat" is a made-up
+   feat with `damage.spell.bonus` `add 1`. Averages are ENG-52's.
+
+   | Spell | Character or values | Formulas | Average of the first |
+   |---|---|---|---|
+   | SRD 5.1 Fire Bolt | golden A | `1d10`, no warning | 5.5 |
+   | the same | golden A with the feat | `1d10 + @damage.spell.bonus` | 5.5 + 1 = 6.5 |
+   | the same | golden C 2014 with the feat | `2d10 + @damage.spell.bonus` | 11 + 1 = 12 |
+   | the same | bonus −2 | `1d10 + @damage.spell.bonus` | 5.5 − 2 = 3.5 |
+   | the same | golden A, an override of the path to 3 | `1d10 + @damage.spell.bonus` | 8.5 |
+   | the same | golden A with the feat, an override to 0 | `1d10` | 5.5 |
+   | the same, a critical hit (`criticalDamage`) | bonus 1 | `2d10 + @damage.spell.bonus` | 11 + 1 = 12 |
+   | SRD 5.1 Fireball, slot 5 | bonus 2 | `10d6 + @damage.spell.bonus` | 35 + 2 = 37 |
+   | SRD 5.1 Flame Strike (4d6 fire, 4d6 radiant) | bonus 1 | `4d6 + @damage.spell.bonus`, `4d6` | 14 + 1 = 15; the second 14 |
+   | SRD 5.1 Spiritual Weapon, `wis`, slot 2 | golden A with the feat | `1d8 + @abilities.wis.mod + @damage.spell.bonus` | 4.5 + 3 + 1 = 8.5 |
+   | SRD 5.1 Cure Wounds, `wis`, slot 1 | golden A with the feat | healing `1d8 + @abilities.wis.mod` | 7.5 |
+   | SRD 5.2.1 Conjure Celestial, slot 9, `cha` | bonus 1 | damage `8d12 + @damage.spell.bonus`; healing `6d12 + @abilities.cha.mod` | 52 + 1 = 53 |
+
+   Golden A's feat gives `damage.spell.bonus` 1 with one `effect` step naming it, and no warning.
+   The goldens' own numbers do not change, and they give no warning.
+5. **Pure**: frozen inputs, equal results.
+6. The quality gate is green. No file in `apps/web` changes, so no `pnpm e2e`.
+
+#### 4. How to do it
+
+1. `formula.ts`: `addPath`, beside `addDice`, reading the base's parsed tree for the brackets
+   (`beforePlus`) and checking the name as `renamePaths` does.
+2. `spell-dice.ts`: `DAMAGE_SPELL_BONUS_PATH`; its step in `spellDiceSteps`; the bonus joined to
+   the first damage in `spellDice`; the warning.
+3. Tests (§7). Then the backlog notes (§9).
+
+Technical choices (ADR 002):
+- **The first damage, once.** Both SRDs roll a spell's damage once for all its targets, and the
+  SRD features that add to a spell's damage say "one damage roll of that spell" (§8). dnd5e adds
+  the actor's damage bonus to the first damage part only (`index === 0`), and each of its damage
+  rules to one part (§8). The first damage is the one ENG-50's scaling grows, so one place holds
+  both. A spell whose rolls are several (rays, darts, beams) rolls its first damage once per ray
+  and adds the bonus to each roll, as a damage roll it is; a feature that adds to one ray only is
+  its own mechanics (§9).
+- **Every spell's damage, attack or save.** SPEC §5.4 has one `spell` target beside the weapon
+  kinds, and both SRDs' "Magic weapons, special abilities, and other factors can grant a bonus to
+  damage" names no kind of spell. dnd5e's per-kind bonus (`rolls.damage.msak`, `rsak`) is a spell
+  attack's only, while its general damage rules apply to every damage roll (§8); one target here
+  is the second.
+- **The path is written in, not its number**, as ENG-53 writes `@abilities.<stat>.mod`: a roll's
+  part then names a computed path with its breakdown, so the bonus shown has one. The formula is
+  text made outside `compute()` (ENG-50 §4); `spellDice` already reads `values`.
+- **Nothing written for 0.** A term that adds 0 changes no roll and no average, and the sheet
+  shows the spell's own dice. dnd5e skips a bonus of 0 the same way (`!/^0+$/.test(bonus)`, §8).
+  An override to 0 is a value like any other: nothing is written.
+- **Missing warns**, as ENG-50's `cantrip.upgrades` does: values from `compute()` always have the
+  path, so a missing one means the values are not this module's, and the formula is the spell's
+  own.
+- **After the scaling, before `@mod`.** The scaling's dice join the spell's own dice term first
+  (`3d10`), then the bonus follows the whole formula; `@mod` is renamed last, in every formula, as
+  ENG-53 does. The bonus is a modifier, so `criticalDamage` (ENG-34) doubles the dice and keeps it
+  once: both SRDs, "add any relevant modifiers as normal" (§8).
+- **`addPath` is the core's**, beside `addDice` and `renamePaths`: text of a roll formula,
+  game-free. `addDice` puts every added formula in brackets, so `1d10 + (@damage.spell.bonus)`;
+  `addPath` adds one path, which binds tighter than `+`, so it needs none. It checks the name is a
+  path before it writes it, so a name never turns into formula. ENG-60's healing bonus can use it.
+- **In `spell-dice.ts`**, beside `cantrip.upgrades`: a character who casts nothing can have a
+  damaging cantrip from a feat or a species, so the path is every character's, as ENG-50's is.
+
+#### 5. Stored data
+
+Nothing stored changes. No schema, pack or character field changes; the published
+`pack.schema.json` does not change.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/spell-dice.test.ts` — `describe("ENG-55 a spell's damage bonus")`: §3
+  items 1, 2, 4, 5. ENG-50's and ENG-53's tests that check warnings on hand-written values pass
+  `damage.spell.bonus: 0` beside them, so they keep checking what they checked; none of their
+  expected values changes.
+- `packages/engine/test/formula.test.ts` — `describe('ENG-55 a path added to a roll formula')`: §3
+  item 3.
+- `packages/system-5e/test/spellcasting.test.ts` — the paths of golden B, who casts nothing,
+  filtered by `spell.`, gain `damage.spell.bonus` (it contains `spell.`). No value changes.
+- Control values from: 5e-database `e6edf9a` (Fire Bolt, Fireball, Spiritual Weapon, Cure
+  Wounds), dnd5e `7bfb3f1` (SRD 5.1 Flame Strike's two damages, SRD 5.2.1 Conjure Celestial), the
+  goldens' scores and levels (SPEC §6.7). Each worked out by hand in §3, never copied from a run.
+
+#### 8. Checked against the source
+
+Sources: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`
+(`packages/5e-database/src/{2014,2024}/en/`); foundryvtt/dnd5e at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (`module/`; SRD 5.1 in `packs/_source/spells/`,
+`classfeatures/`; SRD 5.2.1 in `packs/_source/content24/`, `classes24/`, `spells24/`; CC-BY-4.0).
+The same commits as ENG-50 to ENG-53. Read 2026-10-03.
+
+**Damage rolls.**
+- SRD 5.1 (`5e-SRD-Rules.json`, `damage-rolls`): "Each weapon, spell, and harmful monster ability
+  specifies the damage it deals. You roll the damage die or dice, add any modifiers, and apply the
+  damage to your target. Magic weapons, special abilities, and other factors can grant a bonus to
+  damage." "A spell tells you which dice to roll for damage and whether to add any modifiers."
+  "If a spell or other effect deals damage to more than one target at the same time, roll the
+  damage once for all of them."
+- SRD 5.2.1 (`content24/chapter-1/damage-and-healing.yml`, Damage Rolls): "You roll the damage
+  dice, add any modifiers, and deal the damage to your target." "A spell tells you which dice to
+  roll for damage and whether to add any modifiers." Damage against Multiple Targets: "roll the
+  damage once for all the targets."
+- Critical hits, SRD 5.1: "Roll all of the attack's damage dice twice and add them together. Then
+  add any relevant modifiers as normal." SRD 5.2.1: "Roll the attack's damage dice twice, add them
+  together, and add any relevant modifiers as normal."
+- No edition difference: both say the same, so nothing goes to `rulesets/`.
+
+**What adds to a spell's damage in the SRDs.**
+- SRD 5.1 (`5e-SRD-Features.json`): `elemental-affinity`, "you can add your Charisma modifier to
+  one damage roll of that spell"; `empowered-evocation`, "you can add your Intelligence modifier
+  to one damage roll of any wizard evocation spell you cast"; `eldritch-invocation-agonizing-blast`,
+  "When you cast eldritch blast, add your Charisma modifier to the damage it deals on a hit."
+- SRD 5.2.1 (dnd5e `classes24/`): Elemental Affinity, "you can add your Charisma modifier to one
+  damage roll of that spell"; Empowered Evocation, "you can add your Intelligence modifier to one
+  damage roll of that spell"; Agonizing Blast, "You can add your Charisma modifier to that spell's
+  damage rolls"; the cleric's and the druid's Potent Spellcasting, "Add your Wisdom modifier to the
+  damage you deal with any Cleric cantrip" (Druid cantrip).
+- Each limits itself to some spells: a damage type, a school, one chosen cantrip, a class's
+  cantrips. None adds to every spell's damage.
+- Magic items, searched with a script over 5e-database's `5e-SRD-Magic-Items.json` (a text with a
+  bonus to damage that names spells): 6 items in 2014, 5 in 2024 (Demon Armor, Holy Avenger, Luck
+  Blade in 2014 only, Staff of Power, Staff of the Magi, Staff of the Woodlands). Each bonus is to
+  the item's own attack and damage rolls, its weapon's or its Unarmed Strikes'; none is to a
+  spell's damage.
+- So no SRD entry uses `damage.spell.bonus` as it is: a homebrew pack can, and the features above
+  need a narrower target (§9).
+
+**Which damage.**
+- SRD 5.1 Flame Strike (dnd5e `spells/5th-level/flame-strike.yml`): "4d6 fire damage and 4d6
+  radiant damage", one save; dnd5e gives one save activity with both parts. SRD 5.2.1 Ice Knife
+  (`spells24/1st-level/ice-knife.yml`): "1d10 Piercing damage" on a hit, then "2d6 Cold damage" on
+  a failed save; dnd5e gives an attack activity and a save activity.
+- dnd5e `module/data/activity/base-activity.mjs`, `_processDamagePart`: `if ( index === 0 )` it
+  adds the actor's `system.rolls.damage.<actionType>.bonus`, `if ( bonus && !/^0+$/.test(bonus) )`:
+  to the first damage part only, and not when it is 0. Its damage rules (`damage:bonus`,
+  `module/documents/applied-rules.mjs`, `filterWith` with `consumed`) are each added to one part,
+  the first whose conditions match.
+- dnd5e's per-kind keys (`module/data/actor/templates/_types.mjs`): `rolls.damage.mwak`, `rwak`,
+  `msak`, `rsak`. An attack activity's `actionType` is one of them (`attack-data.mjs`); a save or a
+  damage activity's is its own type (`base-activity.mjs`, `this.metadata.type`), which has no key.
+
+#### 9. Not in this ticket
+
+- A bonus to the damage of some spells only (§8: Elemental Affinity's damage type, Empowered
+  Evocation's school, Agonizing Blast's chosen cantrip, Potent Spellcasting's class cantrips), and
+  to one roll of a spell that rolls several (Empowered Evocation on Scorching Ray): an effect's
+  target names every spell. A phase 3 note.
+- A bonus to a spell's healing (Disciple of Life): ENG-60.
+- Damage never below 0, and how many rays, darts or beams a cast makes: phase 2's roll (ENG-16 §9).
+- A spell attack's critical range and roll mode: ENG-34.
+- Showing the damage: phase 2.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** No SPEC §6.7 value changes; the goldens' spells are not
+  golden values, and the goldens give no warning.
+- **Measure, never estimate.** §2 is measured; the counts in §8 come from a script over 5e-database;
+  the averages in §3 are worked out by hand.
+- **`packages/engine` is pure; the core names no game.** `addPath` reads and writes formula text;
+  it names no spell; its tests use the made-up system's paths.
+- **Everything is data.** The bonus is a computed path; the spell's dice are its own fields.
+- **`compute()` is pure.** The new step reads nothing; `spellDice` is tested frozen.
+- **A number with no breakdown entry is a bug.** The formula names `damage.spell.bonus`, a computed
+  path with its breakdown (each effect, a manual edit).
+- **Manual overrides always win.** Tested on `damage.spell.bonus`, to 3 and to 0.
+- **Each system's rules live in its own module.** The rule is in `packages/system-5e`; the editions
+  agree (§8), so nothing goes to `rulesets/`.
+- **Formulas never run code.** `addPath` refuses a name that is not a path, then parses with
+  ENG-07's limits.
+- **Missing is not broken.** A missing value, a formula that fails: warnings, the spell's own dice,
+  never a throw.
+- **A stored-shape change needs a migration.** Nothing stored changes.
+- **Licensing.** §8 quotes SRD 5.1 and SRD 5.2.1 (CC-BY-4.0) only; the code holds no rules text;
+  the test feat is made up.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-03, on `main` at `b212371`:
+- `pnpm lint`: `Checked 180 files`, no errors; no file is new.
+- `pnpm typecheck`: 6 projects, all `Done`.
+- `pnpm test`: `Test Files 56 passed (56)`, `Tests 708 passed (708)`, 12.41 s (before, on
+  `b212371`: 56 files, 696 tests). This ticket's 12: 8 in `spell-dice.test.ts`, 4 in
+  `formula.test.ts`. 7 tests of ENG-15, ENG-50 and ENG-53 changed their data (below).
+- `pnpm e2e` not run: no file in `apps/web` changed.
+- Rebased onto `0f32bdd` (ENG-58) before the push, the gate run again: lint `Checked 182 files`,
+  no errors; typecheck 6 projects `Done`; `Test Files 57 passed (57)`, `Tests 730 passed (730)`,
+  12.80 s (718 at `0f32bdd`, ENG-58 §11).
+- Every value of §3 item 4 is true: Fire Bolt on golden A `1d10`, no warning, 5.5; with the feat
+  `1d10 + @damage.spell.bonus`, 6.5, reading `damage.spell.bonus` alone; golden C 2014 with the
+  feat `2d10 + @damage.spell.bonus`, 12; bonus −2, 3.5; an override to 3, 8.5; the feat with an
+  override to 0, `1d10`; its critical hit `2d10 + @damage.spell.bonus`, 12; Fireball at slot 5
+  `10d6 + @damage.spell.bonus`, 37; Flame Strike `4d6 + @damage.spell.bonus` and `4d6`, 15 and 14;
+  Spiritual Weapon `1d8 + @abilities.wis.mod + @damage.spell.bonus`, 8.5; Cure Wounds' healing
+  `1d8 + @abilities.wis.mod`, 7.5, no warning; Conjure Celestial `8d12 + @damage.spell.bonus`, 53,
+  its healing `6d12 + @abilities.cha.mod`.
+- The effect of §2 on golden A: before, `noTarget` and no value; after, 1 with one `effect` step
+  (`character:feat/hotter-spells#more`, `add`), no warning. Goldens A, B, C 2014, C 2024 and E
+  have `damage.spell.bonus` 0 with no steps.
+- The tests catch a wrong rule. Each break below, made alone and undone, the `engine` (246) or
+  `system-5e` (334) tests run: the bonus on every damage, 1 fails; written for 0 too, 12; a missing
+  value not warned, 1; the healing given it too, 3; no `damage.spell.bonus` step, 7; `addPath`
+  with no brackets, 2 of the engine's; written before the scaling, 0 (below), then 1.
+
+Against §3 and §4:
+- §3 item 4 first said the feat's step is an `entity` step; an effect's step is `effect` (ENG-17),
+  and §3 says so now.
+- The bonus written before the scaling failed no test: with dice of one face the scaling joins the
+  spell's own term either way. A spell whose scaling has other faces was added, and §3 item 2 says
+  its order (`2d4 + 1d6 + @damage.spell.bonus`).
+- As §7 says, 7 older tests changed their data, none an expected value: 6 of ENG-50 and ENG-53
+  pass `NO_BONUS` (`damage.spell.bonus: 0`) beside their hand-written values, so their warnings
+  are the ones they check; ENG-15's paths of golden B filtered by `spell.` gain
+  `damage.spell.bonus`, last.
+
+Against the row and its note: as the row. The note's two points are done: the first damage adds
+the bonus, once (§4); §8 quotes both SRDs' "Damage Rolls". Size S held.
+
+Found, not fixed:
+- The SRDs' bonuses to a spell's damage are each to some spells only, a damage type, a school, one
+  chosen cantrip, a class's cantrips, or to "one damage roll" of a spell that rolls several (§8);
+  `damage.spell.bonus` is every spell's. A phase 3 note in `BACKLOG.md`.
+- ENG-60's healing bonus can be written in with `addPath`; its note says so now.
+
+Nothing for the changelog: no screen and no published file changes.

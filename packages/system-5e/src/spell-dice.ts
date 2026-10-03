@@ -1,5 +1,6 @@
 import {
   addDice,
+  addPath,
   type DerivedStep,
   type FormulaError,
   type FormulaValue,
@@ -7,6 +8,7 @@ import {
   parseRoll,
   renamePaths,
 } from '@grimoire/engine';
+import { zeroStep } from './checks';
 import type { SpellDef } from './entity-types';
 import type { HEALING_KINDS } from './system';
 
@@ -19,6 +21,10 @@ import type { HEALING_KINDS } from './system';
 // roll formulas `@mod` is the modifier of the stat it is cast with: the cast names the stat, and
 // `@abilities.<stat>.mod` is written in its place (`renamePaths`), a path with its breakdown. The
 // rules are ENG-53 §8's, one in both editions.
+// ENG-55: a spell's damage adds `damage.spell.bonus`, a target for effects every character has
+// (SPEC §5.4, beside ENG-16's weapon kinds): its first damage, the one the scaling grows, once,
+// with `@damage.spell.bonus` written at its end (`addPath`) when the bonus is not 0. The rules are
+// ENG-55 §8's, one in both editions.
 
 /** The character levels at which a cantrip's dice grow, one step each (§8: both SRDs). */
 export const CANTRIP_LEVELS: readonly number[] = [5, 11, 17];
@@ -31,7 +37,13 @@ export function cantripUpgrades(level: number): number {
   return CANTRIP_LEVELS.filter((at) => level >= at).length;
 }
 
-/** `cantrip.upgrades`: one step, the character's level and what it gives. */
+/** What a spell's damage adds (SPEC §5.4's `damage.<…>.bonus`, beside the weapon kinds). */
+export const DAMAGE_SPELL_BONUS_PATH = 'damage.spell.bonus';
+
+/**
+ * `cantrip.upgrades`: one step, the character's level and what it gives. `damage.spell.bonus`: 0
+ * until an effect changes it.
+ */
 export function spellDiceSteps(): Record<string, DerivedStep> {
   return {
     [CANTRIP_UPGRADES_PATH]: (read) => {
@@ -39,6 +51,7 @@ export function spellDiceSteps(): Record<string, DerivedStep> {
       const value = cantripUpgrades(level);
       return { value, steps: [{ kind: 'path', path: LEVEL_PATH, value: level, change: value }] };
     },
+    [DAMAGE_SPELL_BONUS_PATH]: zeroStep,
   };
 }
 
@@ -68,17 +81,19 @@ export interface SpellCast {
 
 /**
  * Something working out a spell's dice met. `code` and its data are for the screen; `message` is
- * for logs. `missingPath`: the values have no number at `path`, so 0 steps are used.
- * `scalingFormula`: a formula, the scaling's, or the two joined do not parse, so that formula is
- * used as it is. `scalingWithoutRoll`: the spell has no damage and no healing for its scaling to
- * join. `noCastingStat`: a formula reads `@mod` and the cast names no stat, so `@mod` stays (a roll
- * reads it as 0). `castingStatFormula`: a formula with the stat's modifier written in does not
- * parse, so it keeps `@mod`.
+ * for logs. `missingPath`: the values have no number at `path`, so 0 steps are used, or the
+ * damage adds no bonus. `scalingFormula`: a formula, the scaling's, or the two joined do not parse,
+ * so that formula is used as it is. `scalingWithoutRoll`: the spell has no damage and no healing
+ * for its scaling to join. `damageBonusFormula`: the first damage with `@damage.spell.bonus` added
+ * does not parse, so it is used without it. `noCastingStat`: a formula reads `@mod` and the cast
+ * names no stat, so `@mod` stays (a roll reads it as 0). `castingStatFormula`: a formula with the
+ * stat's modifier written in does not parse, so it keeps `@mod`.
  */
 export type SpellDiceWarning = { message: string } & (
   | { code: 'missingPath'; path: string }
   | { code: 'scalingFormula'; spell: string; error: FormulaError }
   | { code: 'scalingWithoutRoll'; spell: string }
+  | { code: 'damageBonusFormula'; spell: string; error: FormulaError }
   | { code: 'noCastingStat'; spell: string }
   | { code: 'castingStatFormula'; spell: string; stat: string; error: FormulaError }
 );
@@ -91,7 +106,7 @@ export interface SpellDice {
    * levels above its own; 0 without a scaling.
    */
   times: number;
-  /** Each damage in order, the first with the scaling joined. */
+  /** Each damage in order, the first with the scaling joined and `damage.spell.bonus` added. */
   damage: SpellDamage[];
   /** Its healing, with the scaling joined; none when the spell heals nothing. */
   healing?: SpellHealing;
@@ -165,6 +180,8 @@ export function spellDice(
     }
   }
 
+  addDamageBonus(spell, damage[0], values, warnings);
+
   // `@mod`: the modifier of the stat the spell is cast with, in every formula.
   const { stat } = cast;
   let unnamed = false;
@@ -196,6 +213,40 @@ export function spellDice(
     });
   }
   return healing === undefined ? { times, damage, warnings } : { times, damage, healing, warnings };
+}
+
+/**
+ * `@damage.spell.bonus` added to a spell's first damage, in place, when its value is a number that
+ * is not 0 (ENG-55 §4: one damage roll, nothing written for 0); a spell with no damage reads none.
+ */
+function addDamageBonus(
+  spell: Pick<SpellDef, 'id'>,
+  first: SpellDamage | undefined,
+  values: Readonly<Record<string, FormulaValue>>,
+  warnings: SpellDiceWarning[],
+): void {
+  if (first === undefined) return;
+  const bonus = values[DAMAGE_SPELL_BONUS_PATH];
+  if (typeof bonus !== 'number') {
+    warnings.push({
+      code: 'missingPath',
+      path: DAMAGE_SPELL_BONUS_PATH,
+      message: `Missing: @${DAMAGE_SPELL_BONUS_PATH}; "${spell.id}" adds no bonus to its damage.`,
+    });
+    return;
+  }
+  if (bonus === 0) return;
+  const added = addPath(first.formula, DAMAGE_SPELL_BONUS_PATH);
+  if (added.ok) {
+    first.formula = added.formula.text;
+    return;
+  }
+  warnings.push({
+    code: 'damageBonusFormula',
+    spell: spell.id,
+    error: added.error,
+    message: `${added.error.message} ("${spell.id}": "${first.formula}" with @${DAMAGE_SPELL_BONUS_PATH}; "${first.formula}" is used).`,
+  });
 }
 
 /** Whether a roll formula names `@mod`; a formula that does not parse names nothing. */
