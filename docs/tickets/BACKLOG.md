@@ -112,7 +112,10 @@ split off an old row got a new id.
 | ENG-35 | The ability-bonus source is a choice, the rules base by default | S | ✅ 2026-10-03 |
 | ENG-56 | A mixed character's starting languages come from one place | S | 🔲 |
 | ENG-54 | The house rule's highest score caps every stat | S | 🔲 |
-| ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | 🔲 |
+| ENG-20 | Damage, healing, slots, concentration change by fifth-edition rules | M | ✅ 2026-10-03 |
+| ENG-57 | A spell a grant gives is cast through its own uses | S | 🔲 |
+| ENG-58 | A death save roll changes the character by fifth-edition rules | S | 🔲 |
+| ENG-59 | Inspiration is gained or spent up to its maximum | XS | 🔲 |
 | ENG-21 | A rest changes the character by its edition's rules | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
@@ -127,7 +130,9 @@ split off an old row got a new id.
   one hit die spent gives: 0 in 2014, 1 in 2024); ENG-19 §8 quotes both SRDs. SRD 5.2.1's long
   rest also returns a reduced hit point maximum and reduced ability scores to normal, SRD 5.1's
   says neither, and no tracker stores either reduction yet (ENG-19 §8). Golden B's last line,
-  Second Wind back on a rest, is this row's.
+  Second Wind back on a rest, is this row's. Found by ENG-20: a long rest ends temporary hit
+  points and gives spell slots back, and a short rest gives pact slots back, in both SRDs (ENG-20
+  §8); `regainSlot` (`casting.ts`) gives slots back as one entry.
 - **ENG-34** — turns on the golden-test lines it makes true, in
   `test/golden/golden-values.test.ts` (ENG-13). After ENG-19 the goldens A–D lack only B4's two
   "with advantage" lines (this row) and Second Wind back on a rest (ENG-21). ENG-16 removed the
@@ -163,11 +168,26 @@ split off an old row got a new id.
   warns `noTarget`. A spell's damage is dice text (ENG-50's `spellDice`), which reads no bonus;
   a weapon's damage reads `damage.weapon.<kind>.bonus` (ENG-16). The row decides which of a
   spell's damages adds it, and checks the SRDs' "damage rolls" wording in its §8.
-- **ENG-20** — ADR 014 item 7: casting with "use a slot: no". Found by ENG-32: a `spell`
-  grant's `uses` have no key of their own; the cast action keeps their spent count, by the
-  grant's part id or a key it gives them. Found by ENG-33: the trackers it changes are
-  `systemData.state`; the schema refuses a death save count above 3 and inspiration above
-  `houseRules.inspirationMax`, so the actions stop there.
+- **ENG-57** — re-cut from ENG-20 (ENG-20 §4). ADR 014 item 7: a granted spell has its own uses.
+  Found by ENG-32: a `spell` grant's `uses` have no key of their own, and the core's
+  `state.resources` takes only keys, so the spent count is kept by the grant's part id in a new
+  `systemData.state` field (a stored-shape change: version 3, a step in each list of migrations)
+  or by a key the grant gives them. The uses' maximum is shown, so it is a computed path with a
+  breakdown. ENG-20's `castSpell` (`casting.ts`) takes `slot` or none; this row adds casting
+  through the uses. ENG-21's rests give them back by their `recovery`.
+- **ENG-58** — re-cut from ENG-20 (ENG-20 §4). Found by ENG-33: the schema refuses a death save
+  count above 3 (`DEATH_SAVES`), so the action stops there. ENG-20 writes failures from damage
+  and resets both counts on healing (`hit-points.ts`); death is 0 hit points with 3 failures
+  (`isDead`). Both SRDs: 10 or higher a success, a 1 two failures, a 20 one hit point back; the
+  third success makes the character stable, and both counts reset to 0 (ENG-20 §8). Stable has
+  no field, and a stable character that takes damage stops being stable; dnd5e keeps a status of
+  its own. Found by ENG-20: at 0 hit points both SRDs give the Unconscious condition, which
+  `applyDamage` does not set (a pack's entry; the module names no id), so its effects do not
+  apply. Bringing a dead character back (`isDead` refuses damage and healing) is this row's too.
+- **ENG-59** — re-cut from ENG-20 (ENG-20 §4). Found by ENG-33: the schema refuses inspiration
+  above `houseRules.inspirationMax`, so the action stops there. Found by ENG-19: both SRDs allow
+  1 (`rulesOf(character).inspiration.max`); SRD 5.2.1 says Heroic Inspiration gained while had is
+  lost unless given away (ENG-19 §8).
 - **ENG-46** — found by ENG-14: armor worn without its training gives disadvantage on Strength
   and Dexterity rolls and no spellcasting, in both editions (SRD 5.1 Armor Proficiency, SRD 5.2.1
   Armor Training, ENG-14 §8); in 2024 a shield gives its AC only with training, a ruleset
@@ -353,6 +373,12 @@ split off an old row got a new id.
   item 5); spending one does `inspiration.use` (advantage in 2014, a reroll of one die in 2024).
   A new character is written with `DEFAULT_HOUSE_RULES` and its edition's `abilityBonusSource`.
   Exhaustion 6 is death in both editions and gives no number; the sheet says so.
+- **Phase 2** — found by ENG-20: `applyDamage` takes the damage the person types, resistance,
+  immunity and vulnerability already applied; no code computes `defenses.*` (SPEC §5.4). The row
+  that shows the defenses computes them, and the Damage pad (ADR 010 item 6) applies them in the
+  engine. SRD 5.2.1's Bloodied (half the hit points or fewer, "no game effect on its own but which
+  might trigger other game effects") has no path. Damage returns the concentration save's DC
+  (`outcome.concentrationDc`); the screen rolls it and calls `endConcentration` on a failure.
 - **Phase 2** — found by ENG-25: a character's active pack that is not installed on the device
   never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
   on each of its entries.

@@ -54,4 +54,9 @@ export interface EditionRules {
   readonly hitDieMinimum: number;
   /** Who has disadvantage with a Heavy weapon. */
   readonly heavyWeapon: HeavyWeaponRule;
+  /**
+   * ENG-20: the highest DC of the Constitution save that keeps concentration after damage (the
+   * higher of 10 and half the damage); `null` when the edition sets none (ENG-20 §8).
+   */
+  readonly concentrationDcMax: number | null;
 }

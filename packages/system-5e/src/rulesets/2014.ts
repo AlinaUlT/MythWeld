@@ -24,4 +24,7 @@ export const RULES_2014: EditionRules = {
   hitDieMinimum: 0,
   // "Small creatures have disadvantage on attack rolls with heavy weapons" (Heavy, ENG-19 §8).
   heavyWeapon: { by: 'size', sizes: ['small'] },
+  // "The DC equals 10 or half the damage you take, whichever number is higher", with no maximum
+  // (Concentration, ENG-20 §8).
+  concentrationDcMax: null,
 };

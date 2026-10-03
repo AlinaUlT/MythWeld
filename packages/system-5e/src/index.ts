@@ -6,13 +6,16 @@
 // engine refuses, `Math.random`, and any import but its own files, the core and `zod`.
 
 export * from './ability-bonus';
+export * from './actions';
 export * from './attacks';
+export * from './casting';
 export * from './character';
 export * from './checks';
 export * from './classes';
 export * from './combat';
 export * from './entity-types';
 export * from './equipment';
+export * from './hit-points';
 export * from './level-up';
 export * from './module';
 export * from './pack';

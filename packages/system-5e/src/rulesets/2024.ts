@@ -24,4 +24,7 @@ export const RULES_2024: EditionRules = {
   // "if it's a Melee weapon and your Strength score isn't at least 13 or if it's a Ranged weapon
   // and your Dexterity score isn't at least 13" (Heavy, ENG-19 §8).
   heavyWeapon: { by: 'score', min: 13 },
+  // "The DC equals 10 or half the damage taken (round down), whichever number is higher, up to a
+  // maximum DC of 30" (Concentration, ENG-20 §8).
+  concentrationDcMax: 30,
 };

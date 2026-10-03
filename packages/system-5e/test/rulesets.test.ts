@@ -11,7 +11,8 @@ import {
 import { goldenA, goldenB } from './golden/index.ts';
 
 // ENG-19: the edition files hold every 2014/2024 difference. Each expected value is the SRD's,
-// quoted in ENG-19 §8, never copied from a run.
+// quoted in ENG-19 §8, never copied from a run. ENG-20 adds the concentration DC's maximum (ENG-20
+// §8).
 
 describe('ENG-19 the edition files', () => {
   it('give the 2014 rules: SRD 5.1', () => {
@@ -24,6 +25,7 @@ describe('ENG-19 the edition files', () => {
       longRestHitDice: 0.5,
       hitDieMinimum: 0,
       heavyWeapon: { by: 'size', sizes: ['small'] },
+      concentrationDcMax: null,
     });
   });
 
@@ -37,6 +39,7 @@ describe('ENG-19 the edition files', () => {
       longRestHitDice: 1,
       hitDieMinimum: 1,
       heavyWeapon: { by: 'score', min: 13 },
+      concentrationDcMax: 30,
     });
   });
 

@@ -10689,3 +10689,383 @@ Found, not fixed:
   it now has `ruleWarnings`. The note says so.
 
 Nothing for the changelog: no screen changes.
+
+---
+
+### ENG-20 Damage, healing, slots, concentration
+
+**Hat:** Damage, healing, slots, concentration change by fifth-edition rules
+**Depends on:** ENG-30 (`entryOf`, `changeTo`, `applyEntry`, `ActionResult`, `LogStamp`), ENG-33
+(`systemData.state`, `DEATH_SAVES`), ENG-14 (`hp.max`), ENG-15 (`spell.slots.level<N>`,
+`spell.pact.level`, `spell.pact.slots`), ENG-19 (`rulesOf`), ENG-36 (a module action's shape)
+**Size:** M
+**Screen:** No
+**SPEC:** §6.4 (`applyDamage`, `applyHealing`, `setTempHp`, `spendSlot`, `setConcentration`);
+§6.3 (the concentration DC, a ruleset's own formula); ADR 014 item 7 ("use a slot: no")
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/hit-points.ts` — new: `applyDamage`, `applyHealing`,
+`setTempHp`, `concentrationDc`, `isDead`.
+- `packages/system-5e/src/casting.ts` — new: `castSpell`, `spendSlot`, `regainSlot`,
+  `endConcentration`.
+- `packages/system-5e/src/actions.ts` — new: the paths of `systemData.state` and the one way a
+  fifth-edition tracker action ends (its entry built, then applied).
+- `packages/system-5e/src/rulesets/edition-rules.ts`, `2014.ts`, `2024.ts` — change: the field
+  `concentrationDcMax`.
+- `packages/system-5e/src/index.ts` — exports the new files.
+- `packages/system-5e/test/hit-points.test.ts`, `test/casting.test.ts` — new;
+  `test/rulesets.test.ts` — the new field.
+- `docs/tickets/BACKLOG.md` — the re-cut (§4) and the rows found (§11).
+
+#### 2. What is missing now
+
+- `grep -rn "applyDamage\|applyHealing\|setTempHp\|spendSlot\|castSpell" packages --include=*.ts`
+  finds nothing.
+- `systemData.state` (`hp`, `slotsSpent`, `pactSlotsSpent`, `deathSaves`, `concentration`) is
+  only read: by `compute()` for nothing yet, and by the schema. ENG-30's actions change the
+  core's trackers only (resources, conditions, toggles); ENG-36's level-up changes
+  `hp.current` alone.
+- `EditionRules` has no concentration field: `grep -n concentration
+  packages/system-5e/src/rulesets/*.ts` finds nothing.
+- `pnpm test`: `Test Files 48 passed (48)`, `Tests 560 passed (560)`, 7.97 s.
+
+#### 3. What it should look like when done
+
+`stamp` is `{ id, at, by: { role: 'player', name: 'Wren' } }`. Golden A (2014): hit point
+maximum 12, two level 1 slots, Bless (concentration) and Cure Wounds always prepared. Golden B
+(2024): maximum 12. Golden C: wizard 3 and paladin 3, caster level 4 in 2014 (slots 4, 3) and 5
+in 2024 (4, 3, 2) (ENG-15). The character's own spells and the pact class `hexer` (pact level 2,
+2 slots at hexer 3, as ENG-15's test) are made up. Every value below is worked out by hand.
+
+**The edition files**
+1. `rulesOf(character).concentrationDcMax` is `null` in 2014 and `30` in 2024 (§8).
+2. `concentrationDc(character, damage)` is the higher of 10 and half the damage rounded down,
+   at most `concentrationDcMax`: 7 → 10; 21 → 10; 22 → 11; 25 → 12; 70 → 35 in 2014 and 30 in
+   2024.
+
+**Damage** — `applyDamage(character, index, { amount, critical? }, stamp)`
+3. Temporary hit points go first (both SRDs' example): B with 5 temporary, 12 of 12, takes 7:
+   temporary 0, hit points 10. The entry's `action` is `applyDamage`, `subject` `hp`, and its
+   changes are `hp.current` 12 → 10 and `hp.temp` 5 → 0. The outcome: `{ temp: 5, hp: 2,
+   status: 'up', failures: 0 }`.
+4. Hit points stop at 0: A at 6 takes 17: 0, 11 left over, below the maximum 12: `status:
+   'down'`, no death save changes.
+5. Massive damage (both SRDs' own example: maximum 12, 6 hit points, 18 damage): A and B at 6
+   take 18: 0 hit points, 12 left over, equal to the maximum: `status: 'dead'`, death save
+   failures 3.
+6. Damage at 0 hit points: A at 0 takes 3: failures 0 → 1, `status: 'down'`, `failures: 1`.
+   With `critical: true`: 0 → 2. At 2 failures, 1 more: 3, `dead`. At 2, a critical: 3 (never
+   above 3). 12 damage at 0: `dead` (equal to the maximum); 11: one failure.
+7. Temporary hit points at 0 hit points take the damage first: A at 0 with 5 temporary takes 3:
+   temporary 2, no failure. Takes 7: temporary 0, one failure (2 got through).
+8. Concentration: B concentrating, 12 of 12, takes 7: the outcome's `concentrationDc` is 10, and
+   `state.concentration` stays. With 100 of 100 (an override of `hp.max`) and 70 damage:
+   `concentrationDc` 35 for A (2014), 30 for B (2024). A concentrating takes 12 at 12: 0 hit
+   points, concentration ends (a change `state.concentration` → none), no `concentrationDc`,
+   `concentrationEnded` names the spell.
+9. Refusals: an amount of 0, -1 or 1.5: `badAmount`. A dead character (0 hit points, 3
+   failures): `dead`.
+
+**Healing** — `applyHealing(character, index, { amount }, stamp)`
+10. The SRD 5.1 example: A with an override `hp.max` 20, at 14, healed 8: 20 (6 regained, not 8).
+    A at 5 healed 4: 9. Healed at its maximum: `unchanged`.
+11. Above the maximum (an override `hp.max` 6, at 12): healing changes nothing (`unchanged`), and
+    never lowers the hit points.
+12. From 0: A at 0 with 1 success and 2 failures, healed 3: 3 hit points, death saves 0 and 0.
+13. Refusals: `badAmount` as item 9; a dead character: `dead`.
+
+**Temporary hit points** — `setTempHp(character, { amount, replace? }, stamp)`
+14. They do not add up; the larger stays (both SRDs' example, 12 or 10, not 22): with 10,
+    receiving 12 gives 12; with 12, receiving 10 is `unchanged`. With `replace: true`, 12 → 10,
+    and 12 → 0 clears them.
+15. At 0 hit points they change nothing else: A at 0 with 1 failure receives 5: temporary 5,
+    hit points 0, failures 1.
+16. Refusals: an amount of -1 or 1.5: `badAmount`; a dead character: `dead`.
+
+**Slots and casting** — `castSpell(character, index, { spell, slot? }, stamp)`; a slot is
+`{ level }` or `'pact'`; without `slot`, no slot is used ("use a slot: no")
+17. A casts Bless with a level 1 slot: `slotsSpent` `{ 1: 1 }` and `concentration` Bless; the
+    entry's `action` `castSpell`, `subject` the spell's id, `label` `{ en: 'Bless' }`. Then Cure
+    Wounds with a level 1 slot: `{ 1: 2 }`, concentration still Bless. A third: `noSlotLeft`,
+    `max: 2`, `spent: 2`.
+18. A higher slot: C (2014) casts a level 1 spell with a level 2 slot: `{ 2: 1 }`. A level 3 slot:
+    `noSlotLeft`, `max: 0`. C (2024) has one: `{ 3: 1 }`.
+19. A level 2 spell with a level 1 slot: `slotTooLow`. Slot level 0, 10 or 1.5: `badLevel`.
+20. Pact magic: B as hexer 3 casts a level 1 spell with `'pact'`: `pactSlotsSpent` 1, then 2,
+    then `noSlotLeft` (`max: 2`, `spent: 2`). A level 3 spell with `'pact'`: `slotTooLow` (pact
+    level 2). A with `'pact'`: `noSlotLeft`, `max: 0`.
+21. No slot: A casts Bless without one: only `concentration` Bless. Again, while concentrating
+    on it: `unchanged`. Cure Wounds without one: `unchanged` (nothing to change).
+22. A new concentration spell ends the old one: A concentrating on Bless casts its own
+    concentration spell: `concentration` before Bless, after the new one.
+23. A cantrip with a slot: `cantripSlot`. A spell no pack has: `missing`; a class's id:
+    `notASpell`.
+
+**Slots without a spell, and concentration ended**
+24. `spendSlot(character, index, { slot }, stamp)`: A, level 1: `{ 1: 1 }`; a third: `noSlotLeft`.
+    Pact as item 20.
+25. `regainSlot(character, { slot, amount }, stamp)`, `amount` a whole number from 1 or `all`: A
+    with `{ 1: 2 }` regains 1: `{ 1: 1 }`; `all`: `{ 1: 0 }`; 5: `{ 1: 0 }`. None spent:
+    `unchanged`. Pact: `pactSlotsSpent` 2 → 0 with `all`. An amount of 0: `badCount`.
+26. `endConcentration(character, index, stamp)`: A on Bless: `concentration` removed, `label`
+    `{ en: 'Bless' }`. Not concentrating: `unchanged`. On an id no pack has: removed, no label.
+
+**Every action**
+27. A refusal changes nothing and carries a `code`, its data and an English `message`.
+28. Each entry parses with `logEntrySchema`; each character an action gives opens with
+    `openFifthEditionCharacter` unchanged; `reverseEntry` with the entry gives back the character
+    before.
+29. Deep-frozen inputs: no action throws, and each input equals its copy after the call.
+30. The quality gate is green.
+
+#### 4. How to do it
+
+**The re-cut first** (`BACKLOG.md`). ENG-33 §9 gave "damage, slots, death saves, concentration,
+inspiration" to ENG-20 and ENG-21, and ENG-32 §11 the spent uses of a `spell` grant. Together
+they are more than M, and three are outside the hat. New rows, after ENG-20:
+- **ENG-57** (S) "A spell a grant gives is cast through its own uses": the spent count by part id
+  (a stored-shape change: version 3 and its migrations), the uses' maximum with a breakdown, and
+  `castSpell`'s third way to cast. ENG-32's note moves there.
+- **ENG-58** (S) "A death save roll changes the character by fifth-edition rules": 10 or higher a
+  success, 1 two failures, 20 one hit point; three successes stable; who is stable; reviving.
+- **ENG-59** (XS) "Inspiration is gained or spent up to its maximum": `houseRules.inspirationMax`.
+
+Then:
+1. `rulesets/`: `concentrationDcMax`, quoted in §8.
+2. `actions.ts`: the state paths; `settled(character, stamp, made)`, which drops the changes
+   whose value does not change, refuses `unchanged` when none is left, and applies the entry.
+3. `hit-points.ts`: `isDead`, `concentrationDc`, then the three actions. Damage: temporary hit
+   points first; the rest from the hit points, down to 0; what is left over is measured against
+   the maximum; at 0 hit points before the damage, the damage past the temporary hit points
+   gives failures; at 0 after it, concentration ends.
+4. `casting.ts`: the slot a cast or a spend uses, checked against the computed slots and the
+   spent count; `castSpell` adds concentration; `regainSlot`, `endConcentration`.
+5. Tests, then the gate.
+
+Technical choices (ADR 002):
+- **Fifth edition's actions are the module's.** They change `systemData.state`, which only the
+  module knows; they build their entries with the core's `entryOf` and `changeTo`, as ENG-36.
+- **The action computes the character itself** (`index`, as `levelUp`): the hit point maximum
+  and the slots are read from `compute()`, never from a number the screen passes.
+- **The damage given is the damage taken.** Resistance, vulnerability and immunity are applied
+  before; no row computes `defenses.*` yet (§11).
+- **Death is three failures.** The schema has no "dead" field; SRD 5.1 and 5.2.1 both say the
+  third failure kills, so instant death writes failures 3, and `isDead` is 0 hit points with 3
+  failures. Nothing is added to the stored shape.
+- **What the screen must ask is an outcome, not a change.** The concentration save's DC is
+  returned (`concentrationDc`); the screen rolls it and, on a failure, calls `endConcentration`.
+  Dropping to 0 changes concentration itself, since that needs no roll.
+- **Each field is its own change.** `hp.current` and `hp.temp` are two changes, so a pending
+  entry from a heal and one from temporary hit points never refuse each other.
+- **A cast that changes nothing is refused,** as ENG-30 refuses any action that would leave an
+  empty entry. The screen rolls a cantrip's attack without casting it as an action.
+- **The person picks the slot.** Any slot of the spell's level or higher, or a pact slot of a
+  level at least the spell's, whichever class the spell is from (both SRDs' multiclass rule,
+  §8). Whether the spell is prepared or a ritual is not checked: "use a slot: no" is the
+  person's, as ADR 014 item 7 says.
+- **Recasting the concentration spell already held keeps it.** The slot is spent; the field does
+  not change.
+- **Healing above the maximum never lowers the hit points.** The maximum may have dropped (2014
+  exhaustion 4, an override); healing only raises.
+
+#### 5. Stored data
+
+Nothing stored changes. Every field the actions write is ENG-33's. The spent uses of a `spell`
+grant would be a new field: ENG-57.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/hit-points.test.ts` — `describe('ENG-20 hit points')`: §3 items 2–16,
+  27–29 for these actions.
+- `packages/system-5e/test/casting.test.ts` — `describe('ENG-20 slots and concentration')`: §3
+  items 17–29.
+- `packages/system-5e/test/rulesets.test.ts` — `describe('ENG-19 the edition files')`: item 1.
+- Control numbers from: the SRD examples quoted in §8 (temporary hit points 5 and 7; massive
+  damage 12, 6, 18; healing 20, 14, 8; temporary 12 or 10); SPEC §6.7 (A's and B's maximum 12);
+  ENG-15's slots; the rest worked out by hand in §3.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-02: 5e-bits/5e-srd-api at `e6edf9a51fad4b59a7e9561fad6c15232caed214`,
+`packages/5e-database/src/{2014,2024}/en/` (SRD 5.1 `5e-SRD-Rules.json`; both editions'
+`5e-SRD-Conditions.json`, `5e-SRD-Classes.json`, `5e-SRD-Features.json`); foundryvtt/dnd5e at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`: `packs/_source/content24` (SRD 5.2.1:
+`chapter-1/damage-and-healing.yml`, `appendices/appendix-d-rule-references.yml`,
+`appendices/rules-glossary.yml`, `chapter-7/spells.yml`, `chapter-2/character-creation.yml`),
+`packs/_source/rules/chapter-6-customization-options.yml` (SRD 5.1), and `module/`. The same
+commits as ENG-13 to ENG-19.
+
+**Hit points stop at 0.** SRD 5.1 (Hit Points): "can be any number from the creature's hit point
+maximum down to 0". SRD 5.2.1 (Hit Points): "which is the lowest Hit Points can go".
+
+**Temporary hit points first.** SRD 5.1: "When you have temporary hit points and take damage, the
+temporary hit points are lost first, and any leftover damage carries over to your normal hit
+points. For example, if you have 5 temporary hit points and take 7 damage, you lose the temporary
+hit points and then take 2 damage." SRD 5.2.1 says the same with the same numbers.
+
+**They do not add up.** SRD 5.1: "Healing can't restore temporary hit points, and they can't be
+added together. If you have temporary hit points and receive more of them, you decide whether to
+keep the ones you have or to gain the new ones. For example, if a spell grants you 12 temporary
+hit points when you already have 10, you can have 12 or 10, not 22." SRD 5.2.1 the same. Both:
+"If you have 0 hit points, receiving temporary hit points doesn't restore you to consciousness".
+SPEC §6.4 makes the larger the default, the person confirming; `replace` is the other choice.
+dnd5e `applyTempHP` keeps the larger only. How long they last, for ENG-21: SRD 5.1 "Unless a
+feature that grants you temporary hit points has a duration, they last until they're depleted or
+you finish a long rest"; SRD 5.2.1 "Temporary Hit Points last until they're depleted or you finish
+a Long Rest."
+
+**Healing.** SRD 5.1: "A creature's hit points can't exceed its hit point maximum, so any hit
+points regained in excess of this number are lost. For example, a druid grants a ranger 8 hit
+points of healing. If the ranger has 14 current hit points and has a hit point maximum of 20, the
+ranger regains 6 hit points". "A creature that has died can't regain hit points until magic such
+as the revivify spell has restored it to life." SRD 5.2.1 (Healing) the same example, 6 not 8;
+(Dead) "A dead creature has no Hit Points and can't regain them unless it is first revived".
+
+**Death saves reset by healing.** Both: "The number of both is reset to zero when you regain any
+hit points or become stable." dnd5e `preUpdateHP`: from 0 to above 0, success and failure 0.
+
+**Massive damage.** SRD 5.1 (Instant Death): "When damage reduces you to 0 hit points and there
+is damage remaining, you die if the remaining damage equals or exceeds your hit point maximum.
+For example, a cleric with a maximum of 12 hit points currently has 6 hit points. If she takes 18
+damage from an attack, she is reduced to 0 hit points, but 12 damage remains. Because the
+remaining damage equals her hit point maximum, the cleric dies." SRD 5.2.1 (Massive Damage): the
+same rule and example.
+
+**Damage at 0 hit points.** Both: "If you take any damage while you have 0 hit points, you suffer
+a death saving throw failure. If the damage is from a critical hit, you suffer two failures
+instead. If the damage equals or exceeds your hit point maximum, you suffer instant death"
+(2024: "you die"). Temporary hit points at 0: SRD 5.1 "They can still absorb damage directed at
+you while you're in that state, but only true healing can save you." Read: damage they absorb
+whole gives no failure, since absorbing it would otherwise not protect; the failure and the
+maximum are measured on the damage that gets past them. SRD 5.2.1 says the same as 5.1 without
+the sentence on absorbing; one reading for both. "On your third failure, you die" (both).
+
+**Concentration** (SPEC §6.3 names the DC a ruleset's formula). SRD 5.1 (Duration,
+Concentration): "Whenever you take damage while you are concentrating on a spell, you must make a
+Constitution saving throw to maintain your concentration. The DC equals 10 or half the damage you
+take, whichever number is higher." SRD 5.2.1 (Concentration): "The DC equals 10 or half the damage
+taken (round down), whichever number is higher, up to a maximum DC of 30." So 2014 has no
+maximum and 2024 has 30: a difference SPEC §6.3's table does not list, added as ENG-19 added
+`hitDieMinimum`. 2014 states no rounding; dnd5e `getConcentrationDC`: `Math.clamp(Math.floor(
+damage / 2), 10, rulesVersion === "modern" ? 30 : Infinity)`, so both round down. Both end it at 0
+hit points: SRD 5.1 "You lose concentration on a spell if you are incapacitated or if you die",
+and Unconscious (`5e-SRD-Conditions.json`) "An unconscious creature is incapacitated"; SRD 5.2.1
+"Your Concentration ends if you have the Incapacitated condition or you die", Unconscious "You
+have the Incapacitated and Prone conditions", and Falling Unconscious "If you reach 0 Hit Points
+and don't die instantly, you have the Unconscious condition". A new concentration spell: SRD 5.1
+"You lose concentration on a spell if you cast another spell that requires concentration";
+SRD 5.2.1 "You lose Concentration on an effect the moment you start casting a spell that requires
+Concentration". Both: "You can end concentration at any time (no action required)."
+
+**Slots.** SRD 5.1 (Spell Slots): "When a character casts a spell, he or she expends a slot of
+that spell's level or higher". SRD 5.2.1 (Spell Level): "When you cast a spell, you expend a slot
+of that spell's level or higher". Cantrips: SRD 5.1 "A cantrip is a spell that can be cast at
+will, without using a spell slot"; SRD 5.2.1 "A cantrip is cast without a spell slot". Without a
+slot: SRD 5.1 "Some characters and monsters have special abilities that let them cast spells
+without using spell slots"; SRD 5.2.1 (Casting without Slots) cantrips, rituals, special
+abilities, magic items. Rituals: both "doesn't expend a spell slot". Back on a rest, for ENG-21:
+SRD 5.1 "Finishing a long rest restores any expended spell slots"; SRD 5.2.1 the same words.
+
+**Pact magic.** SRD 5.1 (warlock, `5e-SRD-Classes.json`): "all of your spell slots are the same
+level. To cast one of your warlock spells of 1st level or higher, you must expend a spell slot";
+"To cast the 1st-level spell thunderwave, you must spend one of those slots, and you cast it as a
+3rd-level spell." SRD 5.2.1 (Pact Magic): the same, with Charm Person. Multiclass, SRD 5.1: "you
+can use the spell slots you gain from the Pact Magic feature to cast spells you know or have
+prepared from classes with the Spellcasting class feature, and you can use the spell slots you
+gain from the Spellcasting class feature to cast warlock spells you know." SRD 5.2.1 the same
+with "prepared". So any slot casts any spell. Back on a rest, for ENG-21: SRD 5.1 "You regain
+all expended spell slots when you finish a short or long rest"; SRD 5.2.1 "You regain all expended
+Pact Magic spell slots when you finish a Short or Long Rest".
+
+No golden value is touched; no rules source disagrees with the SPEC. Nothing stops.
+
+#### 9. Not in this ticket
+
+- A spell a grant gives, cast through the grant's own uses: ENG-57.
+- Death save rolls, stable, reviving: ENG-58. Inspiration: ENG-59.
+- Slots, hit dice and temporary hit points back on a rest: ENG-21.
+- Resistance, vulnerability and immunity: §11.
+- The Unconscious condition at 0 hit points, and knocking a creature out: ENG-58's note.
+- Rolling the concentration save, advantage on it: the screen (phase 2) with ENG-34's roll modes.
+- One slot per turn (SRD 5.2.1), and whether a spell is prepared: the screen's warning.
+- A reduced hit point maximum, and 2024's death at a maximum of 0: no tracker stores one (ENG-19
+  §8).
+
+#### 10. Rake check
+
+- **Each system's rules live in its module.** The actions are `system-5e`'s; the core is not
+  changed. The concentration DC's edition difference is one field read through `rulesOf`; no code
+  tests the edition.
+- **Measure, never estimate.** Every expected value is the SRD's example or worked out in §3.
+- **Missing is not broken.** A missing spell is a refusal with a code; concentration on an id no
+  pack has can still end; a missing slot path reads as no slots.
+- **Ids are stable.** Concentration and entries name spells by id.
+- **The engine is pure.** No clock, no random id: the caller gives the stamp; nothing given is
+  changed (the frozen-input test).
+- **No user-facing string in the module.** Messages are English for logs; the screen uses `code`.
+- **A stored-shape change needs a migration.** None changes (§5).
+- **Licensing.** The rules are quoted from the CC-BY-4.0 SRDs in this ticket only; the test
+  entities are made up, with no text.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- Before: `grep -rn "applyDamage\|applyHealing\|setTempHp\|spendSlot\|castSpell" packages
+  --include=*.ts` found nothing. `pnpm test`: `Test Files 48 passed (48)`, `Tests 560 passed
+  (560)`, 7.97 s.
+- After: `pnpm test`: `Test Files 50 passed (50)`, `Tests 588 passed (588)`, 7.27 s. Rebased onto
+  ENG-51 and ENG-35: `Test Files 52 passed (52)`, `Tests 605 passed (605)`, 7.22 s; lint `Checked
+  172 files`, no error; typecheck 6 of 6 `Done`.
+- The two new files alone: `Tests 28 passed (28)`, 770 ms: `hit-points.test.ts` 17,
+  `casting.test.ts` 11. `rulesets.test.ts` keeps its 5 tests, each edition's object with the new
+  field.
+- Lint: `Checked 169 files`, no error. Typecheck: `Scope: 6 of 7 workspace projects`, all 6
+  `Done`. Build: `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- The tests catch mistakes. Each change made alone in the code, then the three test files run (33
+  tests); every one failed at least one test, and each was undone: temporary hit points not taken
+  first, 2 failed; hit points below 0, 4; no massive damage, 1; massive damage only above the
+  maximum, 1; a critical hit gives one failure, 1; failures above 3, 1; damage the temporary hit
+  points absorb gives a failure, 1; concentration kept at 0 hit points, 1; the DC rounded up, 1;
+  2024 with no DC maximum, 3; healing past the maximum, 2; healing lowers hit points above the
+  maximum, 1; no death save reset, 1; temporary hit points added up, 1; a dead character allowed,
+  3; no slot count check, 4; no slot level check, 2; a cantrip with a slot allowed, 1; no
+  concentration on a cast, 3; slots regained below 0, 1; the pact level ignored, 1.
+
+Differences from §3:
+- `regainSlot` first wrote a 0 where no count was stored, an entry that changed "nothing" to 0.
+  Found while working out §3 item 25, before any test ran: it now refuses `unchanged` when none is
+  spent.
+- When a slot has none left and is also below the spell's level, the refusal is `noSlotLeft`:
+  the count is checked first, so a character with no pact magic gets `noSlotLeft` with `max: 0`
+  (§3 item 20), never `slotTooLow` against a pact level of 0.
+- §3 item 2 gained 59 → 29 (2024, below the maximum); item 21 a cantrip cast with no slot
+  (`unchanged`); item 25 a slot level of 10 (`badLevel`).
+- The module's tests see the language only (ENG-42), so `structuredClone` is not declared there;
+  the frozen copies are JSON copies (`test/action-checks.ts`).
+
+Re-cut (§4): ENG-57, ENG-58 and ENG-59 are new rows after ENG-20, in `BACKLOG.md`, with their
+notes. ENG-32's note on a `spell` grant's uses moved to ENG-57; ENG-33's bounds of death saves and
+inspiration to ENG-58 and ENG-59. Rebased onto ENG-51 and ENG-35, which closed while this ticket
+ran and took ENG-55 and ENG-56 for their own rows, so these three are ENG-57 to ENG-59.
+
+Found, not fixed:
+- Nothing computes `defenses.*` (SPEC §5.4: resistance, immunity, vulnerability), so
+  `applyDamage` takes the damage after them, typed by the person. SRD 5.2.1 also has Bloodied
+  (half the hit points or fewer: "no game effect on its own but which might trigger other game
+  effects"), which no path gives. New note for phase 2.
+- At 0 hit points both SRDs give the Unconscious condition; `applyDamage` does not set it, since
+  a condition is a pack's entry and the module names no id. Its effects (Strength and Dexterity
+  saves failed) do not apply until it is set. Stable has no field: both SRDs reset both counts
+  to 0 when the character becomes stable, and dnd5e keeps a status of its own. Noted on ENG-58.
+- A long rest ends temporary hit points, gives spell slots back, and a short rest gives pact
+  slots back (§8). Noted on ENG-21.
+
+Nothing for the changelog.
