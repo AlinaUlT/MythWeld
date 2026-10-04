@@ -132,7 +132,7 @@ describe('ENG-32 fifth-edition entity types', () => {
     expect(
       issuePaths(fifthEditionEntitySchema, { ...feat, grants: [{ ...proficiency, level: 3 }] }),
     ).toEqual(['grants.0.level']);
-    for (const on of ['short', 'long', 'dawn', 'turn', 'manual']) {
+    for (const on of ['short', 'long', 'dawn', 'turn', 'manual', 'revive']) {
       const uses = { max: '1', recovery: [{ on, amount: 'all' }] };
       expect(issuePaths(fifthEditionEntitySchema, withGrant(feat, 0, { uses })), on).toEqual([]);
     }

@@ -15,7 +15,7 @@ import { goldenB, goldenB4, goldenC2024, goldenD, srd2024 } from './index.ts';
 // ENG-10: the 2024 golden data is whole, agrees with itself, and gives what SPEC §6.7 says goldens
 // B, B4 and D have. Expected counts are ENG-10 §8's; scores, sources and numbers are SPEC §6.7's.
 
-const FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 6 };
+const FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 7 };
 
 const pack: FifthEditionPack = opened(openFifthEditionPack(srd2024));
 const entities: readonly FifthEditionEntity[] = pack.entities;

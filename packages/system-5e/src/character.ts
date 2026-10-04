@@ -66,6 +66,8 @@ export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
       : { ...file, localEntities: keyedSpellUses(file.localEntities) },
   // 5 → 6 (ENG-65): `state.knockedOut` is new and optional, and nothing in version 5 knocked out.
   (file) => ({ ...file }),
+  // 6 → 7 (ENG-66): a recovery may be on `revive`, which no entity of version 6 names.
+  (file) => ({ ...file }),
 ];
 
 /** The successes, or the failures, that end a run of death saves (ENG-33 §8). */

@@ -21,7 +21,7 @@ export const FIFTH_EDITION_SYSTEM = '5e';
  * The stored shape of the module's part of a file: a pack's entities, a character's own entities
  * and its `systemData` (ENG-39). A change to it needs a step in each list of migrations.
  */
-export const FIFTH_EDITION_SCHEMA_VERSION = 6;
+export const FIFTH_EDITION_SCHEMA_VERSION = 7;
 
 /** The highest level a class or a character reaches, in both editions. */
 export const MAX_LEVEL = 20;
@@ -56,12 +56,13 @@ export const COINS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const;
 /**
  * Fifth edition's editions, proficiencies and recovery events. ENG-16: a `mastery` proficiency's
  * keys are kinds of weapons (a weapon's `key`) whose mastery property the character uses (2024).
+ * ENG-66: `revive` is coming back to life, which `revive` (`hit-points.ts`) triggers.
  */
 export const fifthEditionLists = systemListsOf({
   editions: ['2014', '2024'],
   proficiencyCategories: ['skill', 'save', 'armor', 'weapon', 'tool', 'language', 'mastery'],
   proficiencyLevels: [0.5, 1, 2],
-  recoveryEvents: ['short', 'long', 'dawn', 'turn', 'manual'],
+  recoveryEvents: ['short', 'long', 'dawn', 'turn', 'manual', 'revive'],
 });
 
 /**

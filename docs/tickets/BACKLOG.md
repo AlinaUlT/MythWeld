@@ -122,7 +122,7 @@ split off an old row got a new id.
 | ENG-59 | Inspiration is gained or spent up to its maximum | XS | ✅ 2026-10-03 |
 | ENG-21 | A rest changes the character by its edition's rules | S | ✅ 2026-10-03 |
 | ENG-61 | A long rest lowers a condition's level as its entry says | S | ✅ 2026-10-03 |
-| ENG-66 | Coming back to life lowers a condition's level as its entry says | S | 🔲 |
+| ENG-66 | Coming back to life lowers a condition's level as its entry says | S | ✅ 2026-10-04 |
 | ENG-67 | Exhaustion at level 6 makes the character dead | S | 🔲 |
 | ENG-64 | A long rest gives the inspiration a trait names | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
@@ -130,14 +130,6 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
-- **ENG-66** — re-cut from ENG-61 (ENG-61 §4), found by ENG-58: SRD 5.2.1 (Rules Glossary,
-  Dead) "If the creature died with any Exhaustion levels, it returns with 1 fewer level"; `revive`
-  (`hit-points.ts`) lowers none. No sentence of SRD 5.1's rules, spells or conditions ties
-  exhaustion to a return to life (ENG-58 §11). ENG-61's condition `recovery` (`{ on, amount }`,
-  lowered by the core's `conditionsRecoveredOn`) can say it with an event, but fifth edition's
-  recovery events (`short`, `long`, `dawn`, `turn`, `manual`) have none for coming back to life;
-  adding one changes the module's shape (a version and its migrations). The 2024 exhaustion of
-  `test/golden/srd-2024.ts` then names it; ENG-19's 2014 one does not.
 - **ENG-67** — found by ENG-61 (ENG-61 §8): exhaustion 6 is death in both SRDs (SRD 5.1 "6 -
   Death"; SRD 5.2.1 "You die if your Exhaustion level is 6"; dnd5e's exhaustion `conditions: { 6:
   ["dead"] }`). `isDead` (`death-saves.ts`) reads only the death saves, so a long rest at

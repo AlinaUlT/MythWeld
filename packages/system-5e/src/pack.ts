@@ -25,6 +25,8 @@ export const FIFTH_EDITION_PACK_MIGRATIONS: readonly Migration[] = [
       : { ...file, entities: keyedSpellUses(file.entities) },
   // 5 → 6: ENG-65 changed a character's `systemData` only.
   (file) => ({ ...file }),
+  // 6 → 7: ENG-66: a recovery may be on `revive`, which no entity of version 6 names.
+  (file) => ({ ...file }),
 ];
 
 /** A fifth-edition content pack: its entities are fifth edition's union (ENG-32). */
