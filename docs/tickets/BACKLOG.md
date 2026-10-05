@@ -132,6 +132,7 @@ split off an old row got a new id.
 | ENG-64 | A long rest gives the inspiration a trait names | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
+| ENG-68 | A mixed character's ability increases may come from neither side | S | 🔲 |
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🚧 |
 | ENG-23 | The phase 1 gate runs in `pnpm test`: coverage, speed, every golden | S | ✅ 2026-10-05 |
 
@@ -157,6 +158,13 @@ split off an old row got a new id.
   decides the shape (a computed path an effect adds to and the rest reads, as `spellDice` reads
   ENG-55's `damage.spell.bonus`; or a field on the entity, a stored-shape change). The rest gains
   it in its one entry, up to ENG-59's bound, `houseRules.inspirationMax`.
+- **ENG-68** — found by ENG-37: the owner's answer (ADR 017). The person ticks the race's
+  ability increases, the background's, both or neither, and always goes on.
+  `abilities.bonusSource` (ENG-35, `ability-bonus.ts`) takes `species`, `background` or `both`:
+  neither is new, a change to the stored shape (a version and its migration). The row decides the
+  shape (a fourth value, or one tick per side). ADR 017 item 4: the warning stays for every such
+  mix, whatever is ticked; today only `both` warns (`abilityBonusesFromBoth`). The screen reads
+  that warning to show its sign (the Phase 2 note found by ENG-37).
 - **ENG-37** — ADR 005 item 3.6; the fixture states its ability bonus source (ADR 014 item 1).
   Found by ENG-35: a source of `both`, with increases from both sides, warns `characterRule`
   `abilityBonusesFromBoth`, so a golden storing it expects that warning. Found by ENG-56: the
@@ -165,6 +173,9 @@ split off an old row got a new id.
   The ticket stops to show the character and its hand-computed values to the owner (golden
   values are hers); the test is written only after her yes. No golden F value is written before
   that.
+  The owner answered on 2026-10-05 (ADR 017): a player ticks either side, both or neither. So
+  golden F is computed for each of the four, after ENG-68; the four sets of numbers are in
+  ENG-37 §3, waiting for her yes.
 
 ---
 
@@ -423,6 +434,10 @@ split off an old row got a new id.
   `fixed` ids, and its chosen ones) is looked up, not gathered, so one of the other edition gets
   no `otherRuleset` warning, which a gathered entity gets. The Spells tab and the starting
   inventory, which list them, show each one's edition (ADR 005 item 3.5) or warn there.
+- **Phase 2** — found by ENG-37 (ADR 017): when the race or species and the background come from
+  different editions and both raise ability scores, the manual form (BRIEF P3 step 6) shows a
+  warning and a popup, or a sign that opens it: a checkbox for each, either, both or neither,
+  and "Create" stays on. ENG-68's warning says when. Phase 4's creation wizard shows the same.
 - **Phase 2** — found by OPS-08: ADR 008 replaces the SETUP-04 bottom bar with a start page, a
   player page and My characters. The phase 2 rows build that navigation instead of the bar.
 - **Phases 2–5** — added by OPS-22: each screen is built from its mockup in

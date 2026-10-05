@@ -190,8 +190,9 @@ On screen: one scrolling form, in this order:
 3. Content packs: checkboxes "SRD 2014", "SRD 2024", "My packs". A switch "Mix editions".
 4. Name, and a portrait picker.
 5. Race (2014) or Species (2024); Background.
-6. When a race and a background from different editions both raise abilities: a window with
-   a checkbox for each; either or both, with a warning; in a campaign the DM decides (ADR 013).
+6. When a race and a background from different editions both raise abilities: a warning, and
+   a popup or a sign that opens it, with a checkbox for each; either, both or neither, and
+   "Create" stays on (ADR 017); in a campaign the DM decides (ADR 013).
 7. Classes and levels (add a class with a level).
 8. Ability scores: six number fields, any numbers.
 9. Equipment: add items.
