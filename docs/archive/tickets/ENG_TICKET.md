@@ -15594,3 +15594,169 @@ Found, not fixed:
 - Nothing.
 
 Nothing for the changelog: no person sees a change.
+
+---
+
+### ENG-68 A mixed character's ability increases may come from neither side
+
+**Hat:** A mixed character's ability increases may come from neither side
+**Depends on:** ENG-35 (the ability bonus source), ENG-56 (`origin.ts`'s sides), ENG-65 (the
+module's version 6)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.8; ADR 017; ADR 014 item 1; ADR 013 item 10
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/ability-bonus.ts` — changes: the sides left out, a list;
+the warning for every conflict.
+- `packages/system-5e/src/character.ts` — changes: `bonusSource` takes `neither`; the step 6 → 7.
+- `packages/system-5e/src/pack.ts` — changes: the step 6 → 7.
+- `packages/system-5e/src/system.ts` — changes: `FIFTH_EDITION_SCHEMA_VERSION` 6 → 7.
+- `packages/system-5e/src/module.ts` — changes: reads the list; passes its grants to the warning.
+- `packages/system-5e/src/rulesets/edition-rules.ts` — changes: an edition's default is a side,
+  never `both` or `neither`.
+- Tests: `ability-bonus.test.ts`, `character.test.ts`, `languages.test.ts`; the golden files'
+  version.
+- `apps/web/public/schema/5e/pack.schema.json` — rewritten by its test (`docs/RUNNING.md`).
+
+#### 2. What is missing now
+
+Measured on `main` at `a0274c1`, with a scratch test (deleted):
+- Golden B storing `bonusSource: 'neither'` is refused: `✖ Invalid option: expected one of
+  "species"|"background"|"both" → at systemData.abilities.bonusSource`.
+- Golden B with the 2014 dwarf (`ability-bonus.test.ts`'s `soldierDwarf`) warns
+  `abilityBonusesFromBoth` only when `both` is stored. With `species` or `background` it gives no
+  `characterRule` warning, though both sides give increases. ADR 017 item 4 asks for one whatever
+  is ticked.
+- `pnpm test`: `Test Files 63 passed (63)`, `Tests 827 passed (827)`.
+
+#### 3. What it should look like when done
+
+1. `systemData.abilities.bonusSource` takes `species`, `background`, `both` or `neither`
+   (ADR 017 item 2: one, both or neither ticked).
+2. **Neither.** When both sides give increases, `neither` leaves out both: golden B with the
+   dwarf scores STR 15, CON 14, WIS 12 (its base scores), and no `abilityScore` grant applies.
+   The Soldier's unplaced increases are no pending choice.
+3. **One side giving.** When only one side gives increases, that side applies whatever is
+   stored, `neither` included (ENG-35's rule): golden A with `neither` keeps CON 16, WIS 16.
+4. **The warning.** When both sides give increases, one `characterRule` warning
+   `abilityBonusConflict`, whatever is stored. Its `data`: `species` and `background`, the first
+   entity of each side that gives; `source`, the stored value. Its message: `"<species>" and
+   "<background>" both give ability score increases; the bonus source is "<source>".` No warning
+   when one side or none gives. It replaces `abilityBonusesFromBoth`.
+5. **The version.** `FIFTH_EDITION_SCHEMA_VERSION` is 7, with 6 steps in each list. A character
+   of version 6 opens as version 7, every field as it was; so does a pack. A file of version 8 is
+   refused as `newer`. The published pack JSON Schema asks for `systemSchemaVersion` 7.
+6. An edition's default source (`rulesOf(...).abilityBonusSource`) stays a side: 2014 `species`,
+   2024 `background`.
+7. Goldens A–E keep every value; ENG-35's and ENG-56's tests pass, with the warning expected
+   where both sides give.
+8. The quality gate is green, `pnpm e2e` included (`apps/web/public` changes).
+
+#### 4. How to do it
+
+1. `character.ts`: `bonusSource: z.enum(['species', 'background', 'both', 'neither'])`; the
+   step 6 → 7 returns the file as it is (no version 6 file stores `neither`). `pack.ts`: its step
+   6 → 7, the same. `system.ts`: version 7.
+2. `ability-bonus.ts`: `leftOutSide` becomes `leftOutSides`, a list: none for `both`, the other
+   side for a side, both sides for `neither`; none when a side gives no increase. `module.ts`'s
+   `sidedGrants` asks whether the entity's side is in it.
+3. `abilityBonusWarnings` reads the sides as `leftOutSides` does (`bonusGivers`, before
+   gathering drops a side's grants), with the module's grants passed in, and warns
+   `abilityBonusConflict` when both give. The condition is the sides, not the editions: a
+   homebrew species of the rules base that gives increases beside its background is the same
+   choice, as ENG-35's `leftOutSide` already treats it.
+4. `edition-rules.ts`: the default's type is a side (`BonusSide`), never `both` or `neither`.
+5. Tests (§7); every fixture and golden file writes version 7; the published file rewritten
+   with `--update`; then the gate and `pnpm e2e`.
+
+Why a fourth value and not one tick per side: the smallest change to the stored shape, and the
+easiest to change later (ADR 002 item 2). The screen's two checkboxes map to the four values.
+
+#### 5. Stored data
+
+The character's `systemData` changes: `abilities.bonusSource` takes `neither`.
+`FIFTH_EDITION_SCHEMA_VERSION` 6 → 7. Character step 6 → 7: the file as it is, a new object (no
+version 6 file stores `neither`). Pack step 6 → 7: the same; no pack field changes. Each has its
+test in `character.test.ts`. The core's versions stay 2.
+
+#### 6. What a person will see
+
+Not a screen. The published pack JSON Schema asks for `systemSchemaVersion` 7. The popup or sign
+is phase 2's (the note found by ENG-37).
+
+#### 7. Tests
+
+- `packages/system-5e/test/ability-bonus.test.ts` — the `ENG-68` block: §3 items 2–4, 6; ENG-35's
+  block expects the warning where both sides give.
+- `packages/system-5e/test/character.test.ts` — §3 items 1 and 5.
+- `packages/system-5e/test/languages.test.ts` — its mixes of golden B with the dwarf now also
+  have the bonus warning; its checks keep to the language warnings.
+- Control numbers from: golden B's base scores and the fixtures' increases (the 2014 dwarf `con
+  +2`, the hill dwarf `wis +1`, the 2024 Soldier `+2/+1` on the two chosen), as ENG-35 added them;
+  ADR 018's "neither" row (STR 15, CON 14, WIS 12).
+
+#### 8. Checked against the source
+
+Nothing to check against the SRDs: neither SRD has a character that takes increases from two
+places (ENG-35 §8), so "neither" is the owner's rule (ADR 017), not a rules text.
+
+#### 9. Not in this ticket
+
+- The popup or sign with the two checkboxes: phase 2's manual form, phase 4's wizard (the
+  Phase 2 note found by ENG-37).
+- The DM's setting in a campaign (ADR 013 item 10): the table link's phase.
+- Golden F: ENG-37, after this ticket.
+
+#### 10. Rake check
+
+- **A stored-shape change needs a migration.** Version 7, a step in each list, each tested.
+- **The golden tests are the truth.** No expected value of A–E changes; only the version a file
+  writes.
+- **Each system's rules live in its module.** The choice stays in `ability-bonus.ts`; no
+  `if (ruleset === …)`.
+- **Missing is not broken; prerequisites warn.** Every value warns and never blocks.
+
+#### 11. What came out of it
+
+The gate, measured:
+- `pnpm lint`: `Checked 198 files in 294ms. No fixes applied.`
+- `pnpm typecheck`: the 6 projects pass.
+- `pnpm test`: `Test Files 63 passed (63)`, `Tests 833 passed (833)`, 14.23 s; coverage `Lines
+  99.92% ( 2740/2742 )`; the speed pass `Tests 2 passed (2)`. Before: 827. The 6 new are the two
+  `ENG-68` blocks: 3 in `character.test.ts`, 3 in `ability-bonus.test.ts`.
+- `pnpm e2e`: `12 passed (22.4s)`, run as `docs/RUNNING.md` says for the cloud container
+  (`PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`). Without it,
+  every browser test stops before its body: Playwright looks for `chromium_headless_shell-1243`,
+  which the container does not have.
+
+The values, from the tests:
+- Golden B with the dwarf, `neither`: STR 15, CON 14, WIS 12; no `abilityScore` grant applies;
+  CON's breakdown is its base alone. Dwarven Toughness and the Soldier's two skills are still
+  given.
+- Golden A with the Soldier, `neither`, the Soldier's increases unplaced: STR 13, DEX 10, CON 14,
+  WIS 15; no pending choice.
+- One side giving: golden A with `neither` keeps CON 16, WIS 16; golden B keeps STR 17, CON 15;
+  no warning in either.
+- The warning, for each of the four sources stored: `abilityBonusConflict`, `data` `{ species:
+  "srd-2014:species/dwarf", background: "srd-2024:background/soldier", source }`.
+- Version 7: a version 6 character and pack open as they were; each step returns a new object
+  equal to a frozen input; version 8 is refused as `newer`. The published file's
+  `systemSchemaVersion` `const` changed from 6 to 7, its only change.
+
+The tests were checked to fail, each change undone after:
+- `neither` leaving out no side: 1 fails.
+- The warning only for `both`: 2 fail.
+- No rule for a side that gives none: 3 fail.
+
+Differences from §3: none. Against the code: ENG-35's first test expected no warning for
+`species` and `background`; ADR 017 item 4 makes both warn, so it now expects
+`abilityBonusConflict`, and its name says so. ENG-56's test helper now keeps only language
+warnings, so its mixes of golden B with the dwarf check languages alone.
+
+Found, not fixed: nothing.
+
+Changelog: the published fifth-edition pack JSON Schema asks for `systemSchemaVersion` 7.

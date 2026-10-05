@@ -21,7 +21,7 @@ export const FIFTH_EDITION_SYSTEM = '5e';
  * The stored shape of the module's part of a file: a pack's entities, a character's own entities
  * and its `systemData` (ENG-39). A change to it needs a step in each list of migrations.
  */
-export const FIFTH_EDITION_SCHEMA_VERSION = 6;
+export const FIFTH_EDITION_SCHEMA_VERSION = 7;
 
 /** The highest level a class or a character reaches, in both editions. */
 export const MAX_LEVEL = 20;

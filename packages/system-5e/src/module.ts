@@ -8,7 +8,7 @@ import {
   type StatDefaults,
   type SystemModule,
 } from '@grimoire/engine';
-import { abilityBonusWarnings, leftOutSide } from './ability-bonus';
+import { abilityBonusWarnings, leftOutSides } from './ability-bonus';
 import { attackSteps } from './attacks';
 import type { FifthEditionCharacter } from './character';
 import { checkSteps, skillKeys } from './checks';
@@ -39,7 +39,8 @@ import { unconsciousNamed, unconsciousWarnings } from './unconscious';
 // ENG-16 the attack steps. ENG-50 adds `cantrip.upgrades`.
 // ENG-14: each equipped item is named, with its own paths. ENG-44: as `equipmentOf` counts it.
 // ENG-48 adds the size to `keys`. ENG-49: a `spell` or `item` grant's own ids are looked up.
-// ENG-35: the side of the ability score increases not taken gives none; `both` warns.
+// ENG-35: the side of the ability score increases not taken gives none; ENG-68: both sides, with
+// `neither`, and every such mix warns.
 // ENG-34 adds each d20 test's roll mode to `derive` (`rolls.ts`; a weapon's in `attacks.ts`).
 // ENG-54: a stat's highest score is the character's house rule `abilityMax`, 20 by default.
 // ENG-21 adds the hit dice by size (`hit-dice.ts`).
@@ -81,7 +82,7 @@ function ruledGrants(
 }
 
 /**
- * The grants of `ruledGrants`, but a species, lineage or background on the side of the ability
+ * The grants of `ruledGrants`, but a species, lineage or background on a side of the ability
  * score increases not taken gives none of them (ENG-35), and one on the side of the starting
  * languages not taken gives none of those (ENG-56).
  */
@@ -96,7 +97,7 @@ function sidedGrants(
   const ruled = (each: FifthEditionEntity) => ruledGrants(character, each);
   const increases =
     grants.some((grant) => grant.kind === 'abilityScore') &&
-    leftOutSide(character, find, ruled) === side;
+    leftOutSides(character, find, ruled).includes(side);
   const languages =
     startingLanguageSideOf(character, entity) === side &&
     grants.some(isLanguageGrant) &&
@@ -197,11 +198,11 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
   // Each skill's stat, which an effect may set; the character's size.
   keys: (input) => ({ ...skillKeys(input), ...sizeKeys(input) }),
 
-  // Ability score increases taken from both the species and the background; a mix that gives no
+  // Ability score increases given by both the species and the background; a mix that gives no
   // starting languages; a character at 0 hit points, or knocked out, with no Unconscious
   // condition to have.
   ruleWarnings: (input) => [
-    ...abilityBonusWarnings(input),
+    ...abilityBonusWarnings(input, (entity) => ruledGrants(input.character, entity)),
     ...languageWarnings(input),
     ...unconsciousWarnings(input),
   ],

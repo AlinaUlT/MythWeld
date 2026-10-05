@@ -149,10 +149,13 @@ function pending(result: Computed<FifthEditionEntity>): string[] {
   return result.pendingChoices.map(({ part }) => part);
 }
 
-/** The `characterRule` warnings, without their log message. */
+/**
+ * The `characterRule` warnings about languages, without their log message. Since ENG-68 a mix whose
+ * two sides both give ability increases warns too (`ability-bonus.test.ts`).
+ */
 function ruleWarnings(result: Computed<FifthEditionEntity>) {
   return result.warnings.flatMap(({ message: _, ...warning }) =>
-    warning.code === 'characterRule' ? [warning] : [],
+    warning.code === 'characterRule' && warning.rule === 'noStartingLanguages' ? [warning] : [],
   );
 }
 

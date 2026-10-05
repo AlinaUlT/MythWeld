@@ -14,7 +14,7 @@ export const hbLocal = {
   version: '1.0.0',
   schemaVersion: 2,
   system: '5e',
-  systemSchemaVersion: 6,
+  systemSchemaVersion: 7,
   title: { ru: 'Мой хоумбрю', en: 'My homebrew' },
   ruleset: 'any',
   license: { name: 'Personal', redistributable: false },

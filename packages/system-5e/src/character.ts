@@ -66,6 +66,8 @@ export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
       : { ...file, localEntities: keyedSpellUses(file.localEntities) },
   // 5 → 6 (ENG-65): `state.knockedOut` is new and optional, and nothing in version 5 knocked out.
   (file) => ({ ...file }),
+  // 6 → 7 (ENG-68): `abilities.bonusSource` takes `neither`, which no version 6 file stores.
+  (file) => ({ ...file }),
 ];
 
 /** The successes, or the failures, that end a run of death saves (ENG-33 §8). */
@@ -107,8 +109,11 @@ export const DEFAULT_HOUSE_RULES: HouseRules = {
 const abilitiesSchema = z.strictObject({
   method: entityKeySchema,
   rolls: z.array(rollRecordSchema).min(1).optional(),
-  /** Whose ability score increases apply (ADR 014 item 1). `both` warns; it never blocks. */
-  bonusSource: z.enum(['species', 'background', 'both']),
+  /**
+   * Whose ability score increases apply when both sides give some (ADR 014 item 1, ADR 017): one
+   * side, both or neither. Such a mix warns whatever is stored; it never blocks.
+   */
+  bonusSource: z.enum(['species', 'background', 'both', 'neither']),
 });
 
 /** The most a hit die rolls: the largest one's faces. */

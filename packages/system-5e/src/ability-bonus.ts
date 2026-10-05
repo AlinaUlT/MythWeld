@@ -1,17 +1,19 @@
 import type { DeriveInput, EntityFinder, RuleWarning } from '@grimoire/engine';
-import type { FifthEditionCharacter } from './character';
+import type { FifthEditionCharacter, FifthEditionData } from './character';
 import { characterLevel } from './classes';
 import type { FifthEditionEntity } from './entity-types';
-import { type GrantsBy, originEntities, originSideOf, reached } from './origin';
+import { type GrantsBy, originEntities, reached } from './origin';
 import type { EditionRules } from './rulesets';
 
 // ENG-35: whose ability score increases a character takes (ADR 014 item 1, from ADR 013 item 10).
 // The species' and its lineages' `abilityScore` grants are one side, the background's the other.
 // When both sides give some (a 2014 race with a 2024 background), `abilities.bonusSource` picks:
-// the side it names applies and the other gives none, or with `both` all apply and a warning says
-// so, never a block. When one side gives none, there is nothing to pick: the other applies,
-// whatever is stored. A new character stores its rules base's source,
-// `rulesOf(character).abilityBonusSource` (ENG-19). ENG-56 moved the sides to `origin.ts`.
+// the side it names applies and the other gives none, or with `both` all apply. When one side
+// gives none, there is nothing to pick: the other applies, whatever is stored. A new character
+// stores its rules base's source, `rulesOf(character).abilityBonusSource` (ENG-19). ENG-56 moved
+// the sides to `origin.ts`.
+// ENG-68: `neither` leaves out both sides (ADR 017). Every such mix warns, whatever is stored, so
+// the screen shows its sign; it never blocks.
 
 /** A side ability score increases come from: the species, with its lineages, or the background. */
 export type BonusSide = EditionRules['abilityBonusSource'];
@@ -32,45 +34,46 @@ function bonusGivers(
   return { species: sides.species.filter(gives), background: sides.background.filter(gives) };
 }
 
+/** The sides `bonusSource` leaves out when both give: none, one, or both for `neither`. */
+const LEFT_OUT: Record<FifthEditionData['abilities']['bonusSource'], readonly BonusSide[]> = {
+  species: ['background'],
+  background: ['species'],
+  both: [],
+  neither: ['species', 'background'],
+};
+
 /**
- * The side whose increases the character does not take: the one `bonusSource` does not name, when
- * both sides give some. None with `both`, or when a side gives none.
+ * The sides whose increases the character does not take, when both sides give some: those
+ * `bonusSource` leaves out. None when a side gives none.
  */
-export function leftOutSide(
+export function leftOutSides(
   character: FifthEditionCharacter,
   find: EntityFinder<FifthEditionEntity>,
   grantsBy: GrantsBy,
-): BonusSide | undefined {
-  const source = character.systemData.abilities.bonusSource;
-  if (source === 'both') return undefined;
+): readonly BonusSide[] {
   const givers = bonusGivers(character, find, grantsBy);
-  if (givers.species.length === 0 || givers.background.length === 0) return undefined;
-  return source === 'species' ? 'background' : 'species';
+  if (givers.species.length === 0 || givers.background.length === 0) return [];
+  return LEFT_OUT[character.systemData.abilities.bonusSource];
 }
 
 /**
- * The warning that increases apply from both sides: with `both` stored, when an entity of each
- * side gave one. `data` names the first of each.
+ * The warning that both sides give increases, whatever `bonusSource` takes (ADR 017 item 4).
+ * `data` names the first entity of each side that gives, and the source stored.
  */
-export function abilityBonusWarnings({
-  character,
-  gathered,
-}: DeriveInput<FifthEditionCharacter, FifthEditionEntity>): RuleWarning[] {
-  if (character.systemData.abilities.bonusSource !== 'both') return [];
-  const had = new Map(gathered.entities.map(({ entity }) => [entity.id as string, entity]));
-  const first: Partial<Record<BonusSide, string>> = {};
-  for (const { grant, source } of gathered.grants) {
-    const entity = had.get(source);
-    const side = entity === undefined ? undefined : originSideOf(entity);
-    if (grant.kind === 'abilityScore' && side !== undefined) first[side] ??= source;
-  }
-  const { species, background } = first;
+export function abilityBonusWarnings(
+  { character, find }: DeriveInput<FifthEditionCharacter, FifthEditionEntity>,
+  grantsBy: GrantsBy,
+): RuleWarning[] {
+  const givers = bonusGivers(character, find, grantsBy);
+  const species = givers.species[0]?.id;
+  const background = givers.background[0]?.id;
   if (species === undefined || background === undefined) return [];
+  const source = character.systemData.abilities.bonusSource;
   return [
     {
-      rule: 'abilityBonusesFromBoth',
-      data: { species, background },
-      message: `Ability score increases apply from both "${species}" and "${background}": the bonus source is "both".`,
+      rule: 'abilityBonusConflict',
+      data: { species, background, source },
+      message: `"${species}" and "${background}" both give ability score increases; the bonus source is "${source}".`,
     },
   ];
 }

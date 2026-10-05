@@ -50,7 +50,10 @@ export interface EditionRules {
   /** The words for a species, a lineage and inspiration. */
   readonly terms: EditionTerms;
   /** Whose ability score increases a new character takes: its species' or its background's. */
-  readonly abilityBonusSource: Exclude<FifthEditionData['abilities']['bonusSource'], 'both'>;
+  readonly abilityBonusSource: Exclude<
+    FifthEditionData['abilities']['bonusSource'],
+    'both' | 'neither'
+  >;
   /**
    * ENG-56: the side of the origin whose `language` grants are the edition's starting languages:
    * the species with its lineages, or the background. Also the place a new character takes them

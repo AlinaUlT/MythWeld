@@ -28,7 +28,8 @@ import {
 // ENG-35: whose ability score increases a character takes. Every expected score is a golden's
 // stored base plus the increases its fixtures give, added by hand: the 2014 dwarf `con +2` and hill
 // dwarf `wis +1` (`srd-2014.ts`), the 2024 Soldier `[2, 1]` over the two stats chosen
-// (`srd-2024.ts`). The mixed characters are test data built on goldens A and B.
+// (`srd-2024.ts`). The mixed characters are test data built on goldens A and B. ENG-68 adds
+// `neither` and the warning for every such mix (ADR 017).
 
 type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 type BonusSource = CharacterInput['systemData']['abilities']['bonusSource'];
@@ -116,14 +117,17 @@ function ruleWarnings(result: Computed<FifthEditionEntity>) {
   );
 }
 
-const FROM_BOTH = {
-  code: 'characterRule',
-  rule: 'abilityBonusesFromBoth',
-  data: { species: DWARF, background: SOLDIER },
-};
+/** The warning that the dwarf and the Soldier both give increases, `source` stored (ENG-68). */
+function conflict(source: BonusSource) {
+  return {
+    code: 'characterRule',
+    rule: 'abilityBonusConflict',
+    data: { species: DWARF, background: SOLDIER, source },
+  };
+}
 
 describe('ENG-35 the ability-bonus source', () => {
-  it('takes the side stored when both sides give, or both with a warning', () => {
+  it('takes the side stored when both sides give, or both; each warns', () => {
     const stats = ['str', 'dex', 'con', 'wis'];
     const species = computed(dwarfSoldier('species'));
     expect(scores(species, stats)).toEqual({ str: 13, dex: 10, con: 16, wis: 16 });
@@ -131,12 +135,12 @@ describe('ENG-35 the ability-bonus source', () => {
       `${DWARF}#ability-scores`,
       `${HILL_DWARF}#ability-scores`,
     ]);
-    expect(ruleWarnings(species)).toEqual([]);
+    expect(ruleWarnings(species)).toEqual([conflict('species')]);
 
     const background = computed(dwarfSoldier('background'));
     expect(scores(background, stats)).toEqual({ str: 15, dex: 11, con: 14, wis: 15 });
     expect(increaseParts(background)).toEqual([SOLDIER_INCREASES]);
-    expect(ruleWarnings(background)).toEqual([]);
+    expect(ruleWarnings(background)).toEqual([conflict('background')]);
 
     const both = computed(dwarfSoldier('both'));
     expect(scores(both, stats)).toEqual({ str: 15, dex: 11, con: 16, wis: 16 });
@@ -145,10 +149,10 @@ describe('ENG-35 the ability-bonus source', () => {
       `${HILL_DWARF}#ability-scores`,
       SOLDIER_INCREASES,
     ]);
-    expect(ruleWarnings(both)).toEqual([FROM_BOTH]);
+    expect(ruleWarnings(both)).toEqual([conflict('both')]);
     const warning = both.warnings.find(({ code }) => code === 'characterRule');
     expect(warning?.message).toBe(
-      `Ability score increases apply from both "${DWARF}" and "${SOLDIER}": the bonus source is "both".`,
+      `"${DWARF}" and "${SOLDIER}" both give ability score increases; the bonus source is "both".`,
     );
     // Each score's breakdown still adds up to it, an increase a step of its own.
     expect(both.breakdown['abilities.str.score']).toEqual([
@@ -339,6 +343,55 @@ describe('ENG-35 the ability-bonus source', () => {
       wis: 12,
     });
     expect(scores(computed(soldierDwarf('species')), stats)).toEqual({ str: 15, con: 16, wis: 13 });
-    expect(ruleWarnings(computed(soldierDwarf('both')))).toEqual([FROM_BOTH]);
+    expect(ruleWarnings(computed(soldierDwarf('both')))).toEqual([conflict('both')]);
+  });
+});
+
+describe('ENG-68 neither side of the ability increases', () => {
+  it('leaves out both sides when both give: the base scores, no increase, no pending choice', () => {
+    // Golden B's bases `str 15, con 14, wis 12`: neither the Soldier's nor the dwarf's apply.
+    const neither = computed(soldierDwarf('neither'));
+    expect(scores(neither, ['str', 'con', 'wis'])).toEqual({ str: 15, con: 14, wis: 12 });
+    expect(increaseParts(neither)).toEqual([]);
+    expect(neither.breakdown['abilities.con.score']).toEqual([
+      { kind: 'base', value: 14, change: 14 },
+    ]);
+    // Golden A's bases `str 13, dex 10, con 14, wis 15`; the Soldier's increases unplaced.
+    const unplaced = computed(dwarfSoldier('neither', []));
+    expect(scores(unplaced, ['str', 'dex', 'con', 'wis'])).toEqual({
+      str: 13,
+      dex: 10,
+      con: 14,
+      wis: 15,
+    });
+    expect(unplaced.pendingChoices.map(({ part }) => part)).toEqual([]);
+    // The rest of each side is still given.
+    expect(neither.entities.map(({ entity }) => entity.id)).toContain(
+      'srd-2014:feature/dwarven-toughness',
+    );
+    const skills = neither.proficiencies.filter(({ from }) => from === `${SOLDIER}#skills`);
+    expect(skills.map(({ key }) => key)).toEqual(['athletics', 'intimidation']);
+  });
+
+  it('applies the one side that gives, and warns for nothing', () => {
+    // Golden A: the 2014 Acolyte gives none; golden B: the 2024 human gives none.
+    const a = computed(storing(goldenA, 'neither'));
+    expect(scores(a, ['con', 'wis'])).toEqual({ con: 16, wis: 16 });
+    expect(a.warnings).toEqual([]);
+    const b = computed(storing(goldenB, 'neither'));
+    expect(scores(b, ['str', 'con'])).toEqual({ str: 17, con: 15 });
+    expect(b.warnings).toEqual([]);
+  });
+
+  it('warns whenever both sides give, whatever is stored, naming the first of each side', () => {
+    for (const source of ['species', 'background', 'both', 'neither'] as const) {
+      expect(ruleWarnings(computed(soldierDwarf(source)))).toEqual([conflict(source)]);
+    }
+    const warning = computed(soldierDwarf('neither')).warnings.find(
+      ({ code }) => code === 'characterRule',
+    );
+    expect(warning?.message).toBe(
+      `"${DWARF}" and "${SOLDIER}" both give ability score increases; the bonus source is "neither".`,
+    );
   });
 });
