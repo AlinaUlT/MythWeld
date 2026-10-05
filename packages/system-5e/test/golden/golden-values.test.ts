@@ -31,6 +31,7 @@ import {
   goldenC2024,
   goldenD,
   goldenE,
+  goldenF,
   hbLocal,
   srd2014,
   srd2024,
@@ -39,7 +40,8 @@ import {
 // The golden tests (SPEC §6.7): each value below is SPEC §6.7's, computed by hand there, never
 // copied from a run. Each ticket from ENG-13 on adds the lines it makes true; the fixture
 // tests hold the scores and Second Wind's uses (ENG-09, ENG-10). ENG-21 adds the last open line
-// of goldens A to E: Second Wind back on a rest.
+// of goldens A to E: Second Wind back on a rest. ENG-37 adds golden F, whose values are ADR 018's,
+// approved by the owner.
 
 /** The packs the goldens may name, each opened once, by id. */
 const PACKS = new Map(
@@ -68,6 +70,11 @@ function computed(
 /** The result has no warning, and each path's breakdown adds up to its value (ENG-13). */
 function expectWhole(result: Computed<FifthEditionEntity>) {
   expect(result.warnings).toEqual([]);
+  expectSums(result);
+}
+
+/** Each path's breakdown adds up to its value (ENG-13). */
+function expectSums(result: Computed<FifthEditionEntity>) {
   for (const [path, steps] of Object.entries(result.breakdown)) {
     const sum = steps.reduce((total, step) => total + step.change, 0);
     expect([path, sum]).toEqual([path, result.values[path]]);
@@ -576,5 +583,228 @@ describe('ENG-21 goldens: golden B', () => {
     const long = longRest(used.character, index, stamp);
     if (!long.ok) throw new Error(long.message);
     expect(left(long.character)).toBe(2);
+  });
+});
+
+describe('ENG-37 golden F: a character mixing both editions', () => {
+  type BonusSource = FifthEditionCharacter['systemData']['abilities']['bonusSource'];
+
+  /** Golden F with the option ticked (ADR 017); the fixture stores the background's. */
+  const ticking = (bonusSource: BonusSource) => ({
+    ...goldenF,
+    systemData: {
+      ...goldenF.systemData,
+      abilities: { ...goldenF.systemData.abilities, bonusSource },
+    },
+  });
+  const OPTIONS: readonly BonusSource[] = ['background', 'species', 'both', 'neither'];
+  const results = OPTIONS.map((option) => [option, computed(ticking(option))] as const);
+
+  it('opens on both SRD packs, the 2014 one first; they load with nothing refused', () => {
+    const character = opened(openFifthEditionCharacter(goldenF));
+    const loaded = loadedFor(character);
+    expect([loaded.loaded, loaded.refused, loaded.warnings]).toEqual([
+      ['srd-2014', 'srd-2024'],
+      [],
+      [],
+    ]);
+  });
+
+  it('what each option changes: STR, CON, WIS, two saves, Athletics, hit points, greatsword', () => {
+    const changed = [
+      'abilities.str.score',
+      'abilities.str.mod',
+      'abilities.con.score',
+      'abilities.con.mod',
+      'abilities.wis.score',
+      'abilities.wis.mod',
+      'abilities.str.save',
+      'abilities.con.save',
+      'skills.athletics.total',
+      'hp.max',
+      'attacks.greatsword.hit',
+      'attacks.greatsword.damage',
+    ];
+    /**
+     * ADR 018's row, in `changed`'s order: the scores with their modifiers; then the two saves,
+     * Athletics, hit points, the greatsword's hit and its damage bonus.
+     */
+    const row = (scores: number[], rest: number[]) =>
+      Object.fromEntries(changed.map((path, at) => [path, [...scores, ...rest][at]]));
+    expect(
+      Object.fromEntries(results.map(([option, f]) => [option, valuesOf(f, changed)])),
+    ).toEqual({
+      background: row([17, 3, 15, 2, 12, 1], [5, 4, 5, 13, 5, 3]),
+      species: row([15, 2, 16, 3, 13, 1], [4, 5, 4, 14, 4, 2]),
+      both: row([17, 3, 17, 3, 13, 1], [5, 5, 5, 14, 5, 3]),
+      neither: row([15, 2, 14, 2, 12, 1], [4, 4, 4, 13, 4, 2]),
+    });
+  });
+
+  it('the same with every option: the other scores and saves, skills, AC, speed, size', () => {
+    for (const [option, f] of results) {
+      expect([option, byKey(f, (key) => `abilities.${key}.score`, ['dex', 'int', 'cha'])]).toEqual([
+        option,
+        { dex: 13, int: 8, cha: 10 },
+      ]);
+      expect([option, byKey(f, (key) => `abilities.${key}.mod`, ['dex', 'int', 'cha'])]).toEqual([
+        option,
+        { dex: 1, int: -1, cha: 0 },
+      ]);
+      expect([
+        option,
+        byKey(f, (key) => `abilities.${key}.save`, ['dex', 'int', 'wis', 'cha']),
+      ]).toEqual([option, { dex: 1, int: -1, wis: 1, cha: 0 }]);
+      expect([
+        option,
+        valuesOf(f, [
+          'prof',
+          'skills.intimidation.total',
+          'skills.perception.total',
+          'skills.survival.total',
+          'skills.insight.total',
+          'skills.perception.passive',
+          'ac.total',
+          'init.total',
+          'speed.walk',
+          'crit.range',
+          'attacks.greatsword.mastery',
+        ]),
+      ]).toEqual([
+        option,
+        {
+          prof: 2,
+          'skills.intimidation.total': 2,
+          'skills.perception.total': 3,
+          'skills.survival.total': 3,
+          'skills.insight.total': 1,
+          'skills.perception.passive': 13,
+          'ac.total': 17,
+          'init.total': 1,
+          'speed.walk': 25,
+          'crit.range': 20,
+          'attacks.greatsword.mastery': 1,
+        },
+      ]);
+      expect([option, f.keys.size?.key]).toEqual([option, 'medium']);
+      expect([option, f.pendingChoices]).toEqual([option, []]);
+    }
+  });
+
+  it('the greatsword is 2d6 slashing with Graze; the stats and skills are the 2024 entries', () => {
+    const [, f] = results[0] ?? [];
+    const greatsword = f?.entities.find(
+      ({ entity }) => entity.id === 'srd-2024:item/greatsword',
+    )?.entity;
+    expect(greatsword?.type === 'item' && greatsword.weapon).toMatchObject({
+      damage: { formula: '2d6', type: 'slashing' },
+      mastery: 'graze',
+    });
+    const ids = (type: string, keys: readonly string[]) =>
+      keys.map((key) => f?.byKey[type]?.[key]?.id);
+    expect(ids('ability', STATS)).toEqual(STATS.map((key) => `srd-2024:ability/${key}`));
+    expect(ids('skill', ['athletics', 'perception'])).toEqual([
+      'srd-2024:skill/athletics',
+      'srd-2024:skill/perception',
+    ]);
+    expect(ids('language', ['common', 'dwarvish'])).toEqual([
+      'srd-2014:language/common',
+      'srd-2014:language/dwarvish',
+    ]);
+  });
+
+  it("the proficiencies: the fighter's, the dwarf's, the Soldier's; Common and Dwarvish", () => {
+    for (const [option, f] of results) {
+      const keys = (category: string) =>
+        f.proficiencies.filter((each) => each.category === category).map(({ key }) => key);
+      expect([
+        option,
+        Object.fromEntries(
+          ['language', 'weapon', 'armor', 'tool', 'skill', 'mastery'].map((category) => [
+            category,
+            keys(category).sort(),
+          ]),
+        ),
+      ]).toEqual([
+        option,
+        {
+          language: ['common', 'dwarvish'],
+          weapon: ['battleaxe', 'handaxe', 'lightHammer', 'martial', 'simple', 'warhammer'],
+          armor: ['heavy', 'light', 'medium', 'shield'],
+          tool: ['masonsTools', 'playingCards'],
+          skill: ['athletics', 'intimidation', 'perception', 'survival'],
+          mastery: ['glaive', 'greataxe', 'greatsword'],
+        },
+      ]);
+      const languagesFrom = f.proficiencies
+        .filter(({ category }) => category === 'language')
+        .map(({ from }) => from);
+      expect(languagesFrom).toEqual([
+        'srd-2014:species/dwarf#languages',
+        'srd-2014:species/dwarf#languages',
+      ]);
+    }
+  });
+
+  it('warnings: one per 2014 entry, and the bonus conflict naming the option; no other', () => {
+    const OLDER = [
+      'srd-2014:species/dwarf',
+      'srd-2014:feature/darkvision',
+      'srd-2014:feature/dwarven-resilience',
+      'srd-2014:feature/stonecunning',
+      'srd-2014:feature/dwarven-combat-training',
+      'srd-2014:feature/tool-proficiency',
+      'srd-2014:lineage/hill-dwarf',
+      'srd-2014:feature/dwarven-toughness',
+    ];
+    for (const [option, f] of results) {
+      expect([option, f.warnings.map(({ message: _, ...warning }) => warning)]).toEqual([
+        option,
+        [
+          ...OLDER.map((entity) => ({
+            code: 'otherRuleset',
+            entity,
+            ruleset: '2014',
+            mixingAllowed: true,
+          })),
+          {
+            code: 'characterRule',
+            rule: 'abilityBonusConflict',
+            data: {
+              species: 'srd-2014:species/dwarf',
+              background: 'srd-2024:background/soldier',
+              source: option,
+            },
+          },
+        ],
+      ]);
+    }
+  });
+
+  it('Second Wind has 2 uses; a short rest gives back 1, a long rest all', () => {
+    const stamp: LogStamp = {
+      id: '5d4c3b2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a',
+      at: '2026-10-05T08:00:00.000Z',
+      by: { role: 'player', name: 'Test' },
+    };
+    const character = opened(openFifthEditionCharacter(goldenF));
+    const { index } = loadedFor(character);
+    const left = (each: FifthEditionCharacter) =>
+      resourceUses(each, compute(each, index, fifthEditionModule), 'secondWind')?.left;
+    expect(left(character)).toBe(2);
+    const ask = { key: 'secondWind', count: 2 };
+    const used = useResource(character, compute(character, index, fifthEditionModule), ask, stamp);
+    if (!used.ok) throw new Error(used.message);
+    expect(left(used.character)).toBe(0);
+    const short = shortRest(used.character, index, {}, stamp);
+    if (!short.ok) throw new Error(short.message);
+    expect(left(short.character)).toBe(1);
+    const long = longRest(used.character, index, stamp);
+    if (!long.ok) throw new Error(long.message);
+    expect(left(long.character)).toBe(2);
+  });
+
+  it('each breakdown adds up to its value, with every option', () => {
+    for (const [, f] of results) expectSums(f);
   });
 });

@@ -20,6 +20,7 @@ import {
   goldenC2024,
   goldenD,
   goldenE,
+  goldenF,
   hbLocal,
   srd2014,
   srd2024,
@@ -299,6 +300,7 @@ describe("ENG-56 the starting languages' place", () => {
       goldenC2024,
       goldenD,
       goldenE,
+      goldenF,
     ];
     const stored = goldens.map((golden) => {
       const character: FifthEditionCharacter = opened(openFifthEditionCharacter(golden));
@@ -316,6 +318,7 @@ describe("ENG-56 the starting languages' place", () => {
       ['Golden C (2024)', 'background', 'background'],
       ['Golden D', 'background', 'background'],
       ['Golden E', 'background', 'background'],
+      ['Golden F', 'background', 'background'],
     ]);
 
     // Golden B, a 2024 character, with the 2014 dwarf and the Wayfarer: its default takes the

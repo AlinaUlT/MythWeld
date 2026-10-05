@@ -133,7 +133,7 @@ split off an old row got a new id.
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
 | ENG-68 | A mixed character's ability increases may come from neither side | S | ✅ 2026-10-05 |
-| ENG-37 | Golden F: a character mixing both editions passes | M | 🚧 |
+| ENG-37 | Golden F: a character mixing both editions passes | M | ✅ 2026-10-05 |
 | ENG-23 | The phase 1 gate runs in `pnpm test`: coverage, speed, every golden | S | ✅ 2026-10-05 |
 
 - **ENG-66** — re-cut from ENG-61 (ENG-61 §4), found by ENG-58: SRD 5.2.1 (Rules Glossary,
@@ -158,18 +158,6 @@ split off an old row got a new id.
   decides the shape (a computed path an effect adds to and the rest reads, as `spellDice` reads
   ENG-55's `damage.spell.bonus`; or a field on the entity, a stored-shape change). The rest gains
   it in its one entry, up to ENG-59's bound, `houseRules.inspirationMax`.
-- **ENG-37** — ADR 005 item 3.6; the fixture states its ability bonus source (ADR 014 item 1).
-  Found by ENG-35, changed by ENG-68: a mix whose two sides both give increases warns
-  `characterRule` `abilityBonusConflict` whatever is stored, so golden F expects it with each
-  option. Found by ENG-56: the
-  fixture states its languages' place too (`languageSource`); a mix whose species and background
-  give no starting languages warns `characterRule` `noStartingLanguages`.
-  The ticket stops to show the character and its hand-computed values to the owner (golden
-  values are hers); the test is written only after her yes. No golden F value is written before
-  that.
-  The owner answered on 2026-10-05 (ADR 017): a player ticks either side, both or neither. So
-  golden F is computed for each of the four, after ENG-68. She approved its numbers on
-  2026-10-05 (ADR 018).
 
 ---
 
