@@ -174,8 +174,8 @@ split off an old row got a new id.
   values are hers); the test is written only after her yes. No golden F value is written before
   that.
   The owner answered on 2026-10-05 (ADR 017): a player ticks either side, both or neither. So
-  golden F is computed for each of the four, after ENG-68; the four sets of numbers are in
-  ENG-37 §3, waiting for her yes.
+  golden F is computed for each of the four, after ENG-68. She approved its numbers on
+  2026-10-05 (ADR 018).
 
 ---
 
