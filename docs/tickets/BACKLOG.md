@@ -127,7 +127,7 @@ split off an old row got a new id.
 | ENG-64 | A long rest gives the inspiration a trait names | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
-| ENG-37 | Golden F: a character mixing both editions passes | M | 🔲 |
+| ENG-37 | Golden F: a character mixing both editions passes | M | 🚧 |
 | ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
 
 - **ENG-66** — re-cut from ENG-61 (ENG-61 §4), found by ENG-58: SRD 5.2.1 (Rules Glossary,
