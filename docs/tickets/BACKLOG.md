@@ -50,6 +50,11 @@ the made-up test system passes through the core; CI fails if the core imports a 
 coverage of `engine` and of the fifth-edition module ≥ 90 %; the benchmark is within 10 ms; a
 formula cycle stops with a readable message. No UI, no SRD import.
 
+**The gate's proof.** Since ENG-23 the quality gate runs the gate's checks: the goldens, the
+made-up system, the cycle message, coverage and speed in `pnpm test`; the core's imports in `pnpm
+lint`. ENG-23 §11 names each check, with its measurement on 2026-10-05. The phase's last row to
+close puts that run in its §11, with golden F, and measures "no UI, no SRD import" again.
+
 **Re-cut on 2026-09-30 by OPS-05** (ADR 003, ADR 004, ADR 005), approved by the owner before it was
 written. The game-free core comes first, and its compute rows are tested on the made-up test
 system. The fifth-edition module follows, as its own package. The table is in work order, which
@@ -128,7 +133,7 @@ split off an old row got a new id.
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
 | ENG-37 | Golden F: a character mixing both editions passes | M | 🚧 |
-| ENG-23 | The phase 1 gate is shown true: coverage, speed, every golden | S | 🔲 |
+| ENG-23 | The phase 1 gate runs in `pnpm test`: coverage, speed, every golden | S | ✅ 2026-10-05 |
 
 - **ENG-66** — re-cut from ENG-61 (ENG-61 §4), found by ENG-58: SRD 5.2.1 (Rules Glossary,
   Dead) "If the creature died with any Exhaustion levels, it returns with 1 fewer level"; `revive`
@@ -160,7 +165,6 @@ split off an old row got a new id.
   The ticket stops to show the character and its hand-computed values to the owner (golden
   values are hers); the test is written only after her yes. No golden F value is written before
   that.
-- **ENG-23** — the phase's last ticket. Its §11 carries the proof of the stage 1 gate.
 
 ---
 

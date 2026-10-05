@@ -15297,3 +15297,300 @@ Found, not fixed:
   into the same phase 2 note.
 
 Changelog: the published fifth-edition pack JSON Schema asks for `systemSchemaVersion` 6.
+
+---
+
+### ENG-23 The phase 1 gate in every test run
+
+**Hat:** The phase 1 gate runs in `pnpm test`: coverage, speed, every golden
+**Depends on:** every phase 1 row before it; ENG-18 (the cycle message), ENG-27 (the made-up test
+system), ENG-31 (the lint rule on the core's imports). ENG-37 (golden F) is in work in another
+chat (§4).
+**Size:** S
+**Screen:** No
+**SPEC:** §6.6 (the engine's speed and coverage); §6.7 (the goldens); §12 stage 1, widened by
+ADR 004 and ADR 005 as `BACKLOG.md`'s phase 1 gate says
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `vitest.config.ts` — changes: two projects, `unit` and `speed`; the coverage of
+`packages/engine/src` and `packages/system-5e/src`, with a 90 % lines threshold each.
+- `package.json` — changes: `pnpm test` runs `unit` with coverage, then `speed`; the dev
+  dependency `@vitest/coverage-v8`, the version of `vitest` (5.0.2).
+- `packages/system-5e/test/speed/level-twenty.ts` — new: the speed character and its pack.
+- `packages/system-5e/test/speed/compute.speed.ts` — new: the timed `compute()`.
+- `packages/system-5e/test/tsconfig.json`, `packages/system-5e/package.json` — Node's types for
+  the tests (`performance`), as `packages/engine/test` has them.
+- `docs/RUNNING.md` — the two passes of `pnpm test`.
+- `docs/tickets/BACKLOG.md` — the phase 1 gate's proof: where it goes now (§4).
+- `pnpm-lock.yaml` — the two dev dependencies.
+
+#### 2. What is missing now
+
+Measured on `main` at `075a514`:
+- No coverage: `package.json` and `vitest.config.ts` name none (`grep -c coverage`: 0 and 0).
+  With the provider added for the measurement, the whole suite gives `packages/engine/src` 99.86 %
+  of lines (1,466 of 1,468) and `packages/system-5e/src` 100 % (1,276 of 1,276). Nothing fails if
+  either falls.
+- No speed test: `grep -rln "performance\.now\|bench"` over `packages/*/test` and
+  `apps/web/test`: nothing.
+- No level-20 character: the goldens' highest level is golden C's 6 (wizard 3, paladin 3).
+- Golden F: no character (`grep -rn goldenF packages`: nothing). ENG-37 is 🚧: its ticket waits
+  for the owner's yes on the values.
+- `pnpm test`: `Test Files 63 passed (63)`, `Tests 827 passed (827)`, 12.53 s.
+
+#### 3. What it should look like when done
+
+**Coverage**
+1. `pnpm test` runs Vitest's `unit` project with coverage and prints its summary: statements,
+   branches, functions, lines.
+2. It fails when the lines of `packages/engine/src/**` or of `packages/system-5e/src/**` are below
+   90 %, each counted on its own. With the engine's threshold raised to 99.9 for a run, it fails
+   with Vitest's message naming the engine's glob, its 99.86 % and the 99.9 %.
+3. `pnpm vitest run <file>` still runs one file with no coverage and no threshold.
+
+**Speed** (SPEC §6.6: "no longer than 10 ms for a level-20 character with multiclassing on an
+average phone (a Vitest benchmark with the CPU slowed ×4)")
+4. After `unit`, `pnpm test` runs the `speed` project alone, without coverage: one file,
+   `compute.speed.ts`.
+5. Its character is level 20 in three classes of the 2024 fixture pack: fighter 10 (Champion),
+   wizard 5, paladin 5. Its pack `speed-load` adds 56 features, each with one effect and every
+   fourth with a resource; one feat gives them all. It computes with no warning, `level` 20,
+   `prof` 6, the class levels 10, 5 and 5, and has every one of the 56 features.
+6. `compute()` runs 200 times unmeasured, then 500 times measured. The median × 4 is at most
+   10 ms. The test prints one line: the median, the median × 4, the slowest run and the budget.
+7. With the budget lowered to 1 ms for a run, it fails.
+
+**Every golden**
+8. Every line of SPEC §6.7's goldens A, B, B4, C, D and E has a passing assertion; §11 names the
+   test of each.
+9. Golden F joins `pnpm test` with ENG-37, which adds its test to `golden-values.test.ts`. No
+   golden F value is written here.
+
+**The rest of the gate**, shown in §11 with the test or command that holds it
+10. A formula cycle stops with a message naming its paths (ENG-18).
+11. The made-up test system passes through the core (ENG-27).
+12. CI fails if the core imports a system module: an import of `@grimoire/system-5e` written
+    into `packages/engine/src` for a run makes `pnpm lint` fail with ENG-31's message.
+13. No UI and no SRD import in phase 1: `packages/content/src` exports nothing, and no phase 1
+    commit changes `apps/web/src`.
+14. CI runs `pnpm test` (`.github/workflows/ci.yml`, unchanged), so a push that breaks items 2
+    or 6 fails there.
+15. The quality gate is green.
+
+#### 4. How to do it
+
+1. Add `@vitest/coverage-v8` 5.0.2 at the root.
+2. `vitest.config.ts`: the projects `unit` (today's `include`) and `speed`
+   (`packages/*/test/**/*.speed.ts`); `coverage` with the provider `v8`, `include` the two
+   packages' `src`, the reporter `text-summary`, and one lines threshold per package glob.
+3. `package.json`: `"test": "vitest run --project unit --coverage && vitest run --project speed"`.
+4. `level-twenty.ts`, then `compute.speed.ts` (§3 items 5–6).
+5. `docs/RUNNING.md`; `BACKLOG.md`.
+
+Technical choices (ADR 002):
+- **The CPU slowed ×4 is the measured time × 4.** Node has no CPU throttle; Chrome's ×4 throttle
+  makes the same work take 4 times as long, which the factor reproduces. ADR 002 item 3: SPEC
+  §6.6's letter is a throttled CPU, its intent is "10 ms on an average phone", which the factor
+  keeps. Running the engine in Playwright's Chromium with its throttle would need the engine and
+  the fixtures bundled into a page; the factor needs nothing.
+- **The median of 500 runs, after 200 unmeasured.** The first runs are slower while V8 compiles
+  the code; a phone's sheet computes the same character again and again. The median is what a
+  person sees on most edits; one slow run (a garbage collection, another process) does not fail
+  it. The slowest run is printed, not asserted.
+- **Speed is its own pass, without coverage.** Coverage counters slow the code they count:
+  measured on the speed character, the median is 1.44 to 1.52 ms without coverage and 2.24 to
+  2.39 ms with it, which × 4 is 8.95 to 9.57 ms, at the edge of the budget (§11). The second pass
+  also runs alone, so no other test file shares the CPU while it measures.
+- **Coverage runs in `pnpm test`, not in a script of its own,** so the quality gate in
+  `CLAUDE.md` and CI check it with no change to either. `pnpm test` takes 5.4 seconds longer
+  (§11).
+- **Lines, per package.** SPEC §6.6 counts lines; the gate names the engine and the module, so each
+  has its own threshold, and a well-covered module cannot hide a falling engine. The count is the
+  whole suite's, as SPEC §6.6 words it ("coverage of the package by tests"). The engine's own
+  tests alone give 99.80 % (§11): the core is covered without the module's tests today.
+- **The speed character's load is the most a level-20 character gets.** The fixtures give a
+  level-20 character only the features the goldens need (the fighter's to level 4). The pack
+  `speed-load` stands in for the rest: 56 features, the most class features any split of 20 levels
+  gets in SRD 5.2.1 (§8). Each has one effect, a formula reading a computed path; in the 2024
+  fixtures, 9 class features carry 3 effects. Every fourth gives a resource whose maximum is a
+  formula: 14. Its features are made up, named `Load feature 1` to `56`, with no rules text.
+- **The pack is the character's own test data**, `redistributable: false`, in a test folder: no
+  build reads it.
+
+**Golden F and the phase's proof** (a re-cut, ADR 007 item 4). The row's note made ENG-23 the
+phase's last ticket, with the gate's proof in its §11. Golden F is not written yet: ENG-37 waits
+for the owner's yes on its values, and ENG-64, ENG-66 and ENG-67 are open. Waiting for them would
+leave coverage and speed unchecked in the meantime. So this ticket makes every number of the gate
+a check that the quality gate runs, shows each true today, and closes. The phase still closes only
+when its last row closes; that row's §11 carries the run of `pnpm test` that proves the gate,
+golden F included. `BACKLOG.md`'s phase 1 gate says so. No feature is added or dropped; nothing
+stops.
+
+#### 5. Stored data
+
+Nothing stored changes. The speed character is test data in a test folder.
+
+#### 6. What a person will see
+
+Not a screen. Nothing for the changelog.
+
+#### 7. Tests
+
+- `packages/system-5e/test/speed/compute.speed.ts` — `describe('ENG-23 compute() on a phone')`:
+  items 5–6.
+- Items 2, 7, 12: a change made for one run and undone, its output in §11.
+- Control numbers from: SPEC §6.6 (10 ms, ×4, 90 % of lines); §8 (56 features); the level-20
+  character's `prof` 6 from SRD 5.2.1's proficiency bonus at level 20 (§8).
+
+#### 8. Checked against the source
+
+- **SPEC §6.6** (read 2026-10-05): "`compute` детерминирован и без побочных эффектов; не дольше
+  10 мс для персонажа 20 уровня с мультиклассом на среднем телефоне (бенчмарк в Vitest с
+  замедлением CPU ×4)"; "Покрытие пакета `engine` тестами — не меньше 90 % строк."
+- **SPEC §12 stage 1** names goldens A to E; `BACKLOG.md`'s phase 1 gate widens it (ADR 004:
+  the made-up system, the import check, the module's coverage; ADR 005: golden F).
+- **56 features.** 5e-bits/5e-srd-api at `e6edf9a` (the commit of ENG-02 to ENG-10),
+  `packages/5e-database/src/2024/en/5e-SRD-Levels.json`, read 2026-10-05: 287 rows, 240 of a class
+  and 47 of its SRD subclass. For a class at level `n`, the features are the `features` of its rows
+  and its subclass's rows of levels 1 to `n`. The most over any split of 20 levels: 56 (barbarian
+  1, druid 3, fighter 3, monk 3, paladin 3, ranger 3, rogue 3, wizard 1); over three classes, 45;
+  in one class, 33 (fighter). Fighter 10 with the Champion, wizard 5 and paladin 5: 40.
+- **Proficiency bonus +6 at level 20**: the same file, the `prof_bonus` of every class's level-20
+  row is 6.
+
+No `[ПРОВЕРИТЬ]` touches this ticket. No golden value is read or written.
+
+#### 9. Not in this ticket
+
+- Golden F's character, values and test: ENG-37.
+- ENG-64, ENG-66, ENG-67: their own rows.
+- The speed of a screen (the sheet's first paint, a tab's switch): phase 7 (`POL`).
+- Coverage of `schema`, `content`, `pdf` and `apps/web`: the gate names the engine and the module
+  only.
+
+#### 10. Rake check
+
+- **The golden tests are the truth.** No expected value is read from a run or changed; the speed
+  character asserts only its levels, its `prof` (§8), its load features and that it has no
+  warning.
+- **Measure, never estimate.** Every number in §3, §4 and §11 is from a run or a source file.
+- **`packages/engine` is pure.** No source file changes. `performance` is read in a test folder,
+  whose tsconfig has Node's types, as the engine's tests have.
+- **Each system's rules live in its module.** The speed test lives in the module's test folder and
+  reaches the core through the module.
+- **Only openly licensed content.** The speed pack's features are made up and carry no rules
+  text; the count 56 is a number read from 5e-database, no text is copied.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-05, on `main` at `075a514`:
+- Before: `pnpm test` `Test Files 63 passed (63)`, `Tests 827 passed (827)`, 12.53 s (13.7 s
+  wall clock).
+- After: `pnpm lint` `Checked 198 files`, no error; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`
+  pass `unit` `Test Files 63 passed (63)`, `Tests 827 passed (827)`, 14.87 s, then pass `speed`
+  `Test Files 1 passed (1)`, `Tests 2 passed (2)`, 2.48 s; 19.1 s wall clock. `pnpm e2e` `12
+  passed (11.9s)`, run though no `apps/web` file changed, with `PLAYWRIGHT_CHROMIUM_PATH` as
+  `docs/RUNNING.md` says.
+- 2 tests are new, both in `compute.speed.ts`.
+
+**The gate, item by item** (`BACKLOG.md`'s phase 1 gate)
+
+| Item | Held by | Measured |
+|---|---|---|
+| Goldens A, B, B4, C, D, E pass | `golden-values.test.ts`, `fixtures-2014.test.ts`, `fixtures-2024.test.ts` in `pnpm test` | passed; each line in the next table |
+| Golden F passes | ENG-37, 🚧 | not written yet (§4) |
+| The made-up system passes through the core | `packages/engine/test/test-system.test.ts`, `describe('ENG-27 made-up test system')`; 8 of the engine's 16 test files import its module (`tales-module.ts`) | passed |
+| CI fails if the core imports a system module | `pnpm lint`, ENG-31's rule in `biome.json` | `export { fifthEditionModule } from '@grimoire/system-5e';` written into `packages/engine/src/probe.ts`: `lint/style/noRestrictedImports`, "ENG-31: the core knows no game (ADR 004 item 2). …", `Found 2 errors.`; the file deleted |
+| Coverage of `engine` ≥ 90 % | the `unit` pass's threshold | 99.86 % of lines (1,466 of 1,468) |
+| Coverage of the module ≥ 90 % | the same | 100 % of lines (1,276 of 1,276) |
+| The benchmark within 10 ms | the `speed` pass | median 1.50 ms × 4 = 6.01 ms |
+| A formula cycle stops with a readable message | `packages/engine/test/cycle.test.ts`, `describe('ENG-18 a formula loop names its paths')`, 5 tests | passed; the message, word for word: "@abilities.fate.mod is read for skills.climb.bonus while it is being computed; 0 is used. The loop: @abilities.fate.mod → @resources.charm.max → @skills.climb.total (read by "character:talent/knot#charm") → @skills.climb.bonus → @abilities.fate.mod (read by "character:talent/knot#pull")." |
+| No UI | `git diff --stat b2b700b^..HEAD -- apps/web` (ENG-01, the phase's first commit, to now) | 7 files: `e2e/` (3), `public/schema/5e/pack.schema.json`, `test/pack-schema.test.ts`, `package.json`, `vite.config.ts`; no file in `apps/web/src` |
+| No SRD import | `git diff --stat b2b700b^..HEAD -- packages/content` | nothing; `packages/content/src/index.ts` is `export {};` |
+
+**Every line of goldens A to E** (SPEC §6.7), and the test that asserts it. `values` is
+`golden-values.test.ts`; `fx14` and `fx24` are `fixtures-2014.test.ts` and `fixtures-2024.test.ts`.
+
+| Golden | Line | Test |
+|---|---|---|
+| A | Scores | `fx14` "gives golden A's scores: SPEC §6.7"; `values` ENG-13 "golden A: modifiers, …" |
+| A | Hit points 12; AC 18; speed 25, initiative +0 | `values` ENG-14 "golden A: hit points 12, AC 18, speed 25, initiative +0" |
+| A | Saves; skills; passive Perception 13 | `values` ENG-13 "golden A: modifiers, saves, skills, passive Perception" |
+| A | Spell DC 13, attack +5; 4 prepared and Bless, Cure Wounds; 2 slots; 3 cantrips | `values` ENG-15 "golden A: spell save DC 13, attack +5; …" |
+| A | Warhammer +3 (the species' proficiency), 1d8+1 bludgeoning | `values` ENG-16 "golden A: warhammer +3 to hit, …" |
+| B | Scores | `fx24` "gives golden B's scores: SPEC §6.7"; `values` ENG-13 "golden B: …" |
+| B | Hit points 12; initiative +3; AC 17; speed 30 | `values` ENG-14 "golden B: hit points 12, initiative +3, AC 17, speed 30" |
+| B | Saves STR +5, CON +4; skills; passive Perception 13 | `values` ENG-13 "golden B: modifiers, saves, skills, passive Perception" |
+| B | Greatsword +5, 2d6+3 slashing, Graze | `values` ENG-16 "golden B: greatsword +5, 2d6+3 slashing, mastery Graze" |
+| B | Second Wind: 2 uses; a short rest gives back 1, a long rest all | `values` ENG-21 "golden B: Second Wind has 2 uses; …" |
+| B4 | STR 19 (+4) | `values` ENG-13 "golden B4: STR 19 (+4), Athletics +6" |
+| B4 | Hit points 36 | `values` ENG-14 "golden B4: hit points 36 = 12 + 3 × (6 + 2), initiative +3" |
+| B4 | Athletics +6, with advantage; initiative +3, with advantage | `values` ENG-34 "golden B4: Athletics +6, …", "golden B4: initiative +3, with advantage" |
+| B4 | Greatsword +6, 2d6+4, a critical hit on 19–20; 4 kinds of weapons | `values` ENG-16 "golden B4: greatsword +6, 2d6+4; …" |
+| B4 | Second Wind: 3 uses | `fx24` "gives golden B4's mechanics their numbers: SPEC §6.7" |
+| C | Caster level 4 and 5; the slots of each edition | `values` ENG-15 "golden C: caster level 4 and slots 4, 3 in 2014; …" |
+| C | Proficiency bonus +3 in both | `values` ENG-13 "golden C: proficiency bonus +3, in both editions" |
+| D | Athletics +1, STR save +1 | `values` ENG-13 "golden D: Athletics +1, STR save +1; …" |
+| D | Greatsword +1, damage unchanged | `values` ENG-16 "golden D: greatsword +1, damage unchanged; …" |
+| D | Initiative −1, speed 20 | `values` ENG-14 "golden D: initiative −1, speed 20; …" |
+| D | Every d20 test −4 | `values` ENG-19 "golden D: every d20 test is golden B's − 4" |
+| D | The condition removed gives golden B's values | `values` ENG-19 "golden D: exhaustion 2 given to golden B is golden D; …" |
+| E | SAN 14: modifier +2, in the stats and the saves | `values` ENG-22 "SAN 14: modifier +2, and a save; a stat after the six" |
+| E | Composure +2 | `values` ENG-22 "Composure: from SAN, no proficiency, +2" |
+| E | Occultism +1 | `values` ENG-22 "Occultism: INT 8 → 9 (−1) + proficiency 2 from Arcane Scholar = +1" |
+| E | SAN 16: Composure +3 | `values` ENG-22 "SAN changed to 16: Composure +3 at once" |
+| E | The feat removed: Occultism −1, INT 8 | `values` ENG-22 "the feat removed: Occultism −1, INT 8" |
+| E | The pack off: `Missing: hb-local:…`, no crash | `values` ENG-22 "the pack off: the character opens; …" |
+
+**Coverage** (the `unit` pass, the whole suite)
+
+| Package | Lines | Statements | Branches | Functions |
+|---|---|---|---|---|
+| `engine` | 99.86 % (1,466 / 1,468) | 99.41 % (1,674 / 1,684) | 97.21 % (1,082 / 1,113) | 99.05 % (313 / 316) |
+| `system-5e` | 100 % (1,276 / 1,276) | 99.66 % (1,450 / 1,455) | 96.61 % (940 / 973) | 100 % (346 / 346) |
+
+- The engine's own tests alone (`pnpm vitest run --project unit --coverage packages/engine/test`,
+  16 files, 261 tests): 99.80 % of the engine's lines (1,465 of 1,468). The module's own tests
+  alone (the same with `packages/system-5e/test`, 31 files, 433 tests): 100 % of its lines.
+- The check bites. The engine's threshold set to 99.9 for one run: `ERROR: Coverage for lines
+  (99.86%) does not meet "packages/engine/src/**" threshold (99.9%)`, `pnpm test` exit 1, and the
+  `speed` pass does not start. The engine's tests alone, with coverage: `ERROR: Coverage for lines
+  (0%) does not meet "packages/system-5e/src/**" threshold (90%)`: each package is counted on its
+  own. One file alone (`pnpm vitest run packages/engine/test/cycle.test.ts`): 8 passed, no
+  coverage, no threshold.
+
+**Speed** (the `speed` pass; the character of `level-twenty.ts`, measured once with a test written
+for it, then deleted: 83 entities had, 56 of them the load features; 246 computed paths; 15
+resources, 14 of them the load's; 1 pending choice, the fighter's fifth kind of weapon)
+- Six runs: medians 1.44, 1.47, 1.52, 1.45, 1.46 and 1.50 ms; × 4: 5.78 to 6.07 ms, against 10.
+  The slowest single run of each: 4.11 to 25.22 ms, printed, not asserted (§4).
+- With coverage on, three runs: medians 2.24, 2.32 and 2.39 ms; × 4: 8.95 to 9.57 ms.
+- The check bites. The budget set to 1 ms for one run: `AssertionError: expected
+  5.896963999999571 to be less than or equal to 1`, `Tests 1 failed | 1 passed (2)`.
+- Vitest's `minimal` reporter, which it picks in some environments, hides the printed line of a
+  passing test; the default reporter, CI's, shows it. `docs/RUNNING.md` says so.
+
+Differences from §3 and §4:
+- The row's hat was "The phase 1 gate is shown true: coverage, speed, every golden". Golden F
+  cannot be shown yet (§4), so the hat is now "The phase 1 gate runs in `pnpm test`: coverage,
+  speed, every golden", and `BACKLOG.md`'s phase 1 gate says where the proof goes. The row's note
+  is deleted.
+- §3 item 5 gained the class levels: the test name says "three classes", so the test checks them.
+- §4's speed figures were first a probe's, measured before `level-twenty.ts` was written (1.28 ms
+  without coverage on 56 features, 1.82 ms with it on 45); they are now the file's own.
+- The module's tests got Node's types (`types: ["node"]`, `@types/node`) for `performance`, as
+  `packages/engine/test` has them. `packages/system-5e/tsconfig.json`, the source's, is unchanged
+  (ENG-42).
+- The speed character and pack write the current versions through the constants
+  (`CHARACTER_SCHEMA_VERSION`, `PACK_SCHEMA_VERSION`, `FIFTH_EDITION_SCHEMA_VERSION`), not as
+  numbers: a later version bump does not need to edit them, and no migration is tested here.
+- Size S held.
+
+Found, not fixed:
+- Nothing.
+
+Nothing for the changelog: no person sees a change.

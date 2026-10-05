@@ -10,12 +10,13 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "vitest run",
+    "test": "vitest run --project unit --coverage && vitest run --project speed",
     "build": "pnpm -r --if-present build",
     "e2e": "pnpm --filter @grimoire/web e2e"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",
+    "@vitest/coverage-v8": "^5.0.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.2"
   }

@@ -41,7 +41,18 @@ A change to `apps/web` also runs:
 pnpm e2e
 ```
 
-- `pnpm test` runs Vitest once over every project's `test/` folder.
+- `pnpm test` runs Vitest twice, one project after the other (`vitest.config.ts`):
+  1. `unit`: every `*.test.ts` in each project's `test/` folder, with coverage of
+     `packages/engine/src` and `packages/system-5e/src`. It prints a four-line summary
+     (statements, branches, functions, lines) and fails when either package has less than 90 % of
+     its lines covered, each counted on its own.
+  2. `speed`: `packages/system-5e/test/speed/compute.speed.ts`, alone and without coverage. It
+     times `compute()` on a level-20 character and fails when the median × 4 is over 10 ms
+     (SPEC §6.6). It prints one line: `compute(), level 20: median … ms × 4 = … ms (budget 10
+     ms); slowest of 500 … ms`. Where Vitest picks its `minimal` reporter, the line is shown only
+     on a failure; `--reporter=default` shows it always.
+- One pass alone: `pnpm vitest run --project unit` or `pnpm vitest run --project speed`. One file:
+  `pnpm vitest run <path>`, with no coverage and no threshold.
 - `pnpm e2e` builds the app, serves it with `vite preview` under `/MythWeld/`, and runs Playwright
   on one project, `pixel-7`, at 360×800.
 - Screenshots land in `apps/web/test-results/`. That folder is git-ignored; screenshots are shown
