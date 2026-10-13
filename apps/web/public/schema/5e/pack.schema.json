@@ -20,7 +20,7 @@
     },
     "systemSchemaVersion": {
       "type": "number",
-      "const": 7
+      "const": 8
     },
     "title": {
       "$ref": "#/$defs/__schema2"
@@ -2395,7 +2395,8 @@
         "long",
         "dawn",
         "turn",
-        "manual"
+        "manual",
+        "revive"
       ]
     },
     "__schema56": {

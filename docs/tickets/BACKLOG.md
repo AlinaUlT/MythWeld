@@ -127,7 +127,7 @@ split off an old row got a new id.
 | ENG-59 | Inspiration is gained or spent up to its maximum | XS | ✅ 2026-10-03 |
 | ENG-21 | A rest changes the character by its edition's rules | S | ✅ 2026-10-03 |
 | ENG-61 | A long rest lowers a condition's level as its entry says | S | ✅ 2026-10-03 |
-| ENG-66 | Coming back to life lowers a condition's level as its entry says | S | 🔲 |
+| ENG-66 | Coming back to life lowers a condition's level as its entry says | S | ✅ 2026-10-13 |
 | ENG-67 | Exhaustion at level 6 makes the character dead | S | 🔲 |
 | ENG-64 | A long rest gives the inspiration a trait names | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
@@ -136,21 +136,15 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | ✅ 2026-10-05 |
 | ENG-23 | The phase 1 gate runs in `pnpm test`: coverage, speed, every golden | S | ✅ 2026-10-05 |
 
-- **ENG-66** — re-cut from ENG-61 (ENG-61 §4), found by ENG-58: SRD 5.2.1 (Rules Glossary,
-  Dead) "If the creature died with any Exhaustion levels, it returns with 1 fewer level"; `revive`
-  (`hit-points.ts`) lowers none. No sentence of SRD 5.1's rules, spells or conditions ties
-  exhaustion to a return to life (ENG-58 §11). ENG-61's condition `recovery` (`{ on, amount }`,
-  lowered by the core's `conditionsRecoveredOn`) can say it with an event, but fifth edition's
-  recovery events (`short`, `long`, `dawn`, `turn`, `manual`) have none for coming back to life;
-  adding one changes the module's shape (a version and its migrations). The 2024 exhaustion of
-  `test/golden/srd-2024.ts` then names it; ENG-19's 2014 one does not.
 - **ENG-67** — found by ENG-61 (ENG-61 §8): exhaustion 6 is death in both SRDs (SRD 5.1 "6 -
   Death"; SRD 5.2.1 "You die if your Exhaustion level is 6"; dnd5e's exhaustion `conditions: { 6:
   ["dead"] }`). `isDead` (`death-saves.ts`) reads only the death saves, so a long rest at
   exhaustion 6 is not refused, and since ENG-61 it lowers the level to 5. The row decides where
   the death is said (the condition's entry, as ENG-61's `recovery`; or the module, by the key
   `exhaustion`, as ENG-62's `unconscious`) and makes `isDead` read it, so the actions refuse as
-  for 3 failed death saves. ENG-66 then brings such a character back at level 5.
+  for 3 failed death saves. ENG-66's `revive` then brings a 2024 character back at level 5. Found
+  by ENG-66: the 2014 exhaustion has no `revive` recovery (SRD 5.1 states none, ENG-66 §8), so a
+  2014 character dead from exhaustion 6 comes back still at 6, so still dead.
 - **ENG-64** — found by ENG-21 (ENG-21 §8), taken off ENG-59 (ENG-59 §11). SRD 5.2.1's human,
   Resourceful: "You gain Heroic Inspiration whenever you finish a Long Rest." Golden B is that
   human; its Resourceful (`test/golden/srd-2024.ts`) is a name with no mechanics. No entity has a
@@ -540,3 +534,10 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-25 | Every ticket that builds a screen names its mockup boards | XS | ✅ 2026-10-01 |
 | OPS-26 | ADR 015 makes every look a skin's data | XS | ✅ 2026-10-01 |
 | OPS-27 | Closed tickets leave the files a new chat reads | XS | ✅ 2026-10-01 |
+| OPS-28 | The `compute()` speed check gives one verdict for one commit | S | 🔲 |
+
+- **OPS-28** — found by ENG-66 (ENG-66 §11): ENG-23's speed pass (`compute.speed.ts`, the median
+  × 4 at most 10 ms) fails on some runs in the cloud container with no code changed. On `05f3430`,
+  8 runs gave a median × 4 of 6.53 to 11.20 ms, 2 of them above 10; ENG-23 measured 5.78 to
+  6.07 ms. A gate that fails by the machine's load stops a commit that has no fault. The row
+  decides how the check reads the same on every run of one commit.

@@ -15970,3 +15970,258 @@ test ticks each of the four (ADR 017).
 Found, not fixed: nothing.
 
 Nothing for the changelog: no person sees a change.
+
+---
+
+### ENG-66 Coming back to life lowers a condition's level
+
+**Hat:** Coming back to life lowers a condition's level as its entry says
+**Depends on:** ENG-58 (`revive`), ENG-61 (a condition's `recovery`, `conditionsRecoveredOn`),
+ENG-24 (a system's recovery events), ENG-39 (the module's version, shared by packs and
+characters), ENG-38 (the published pack schema)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.3 (`ConditionDef`); §6.3 ("Истощение"); §6.4 (the actions); §5.8 (migrations);
+ADR 004 item 1
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/hit-points.ts` — changes: `revive` lowers the stored
+conditions on `REVIVE_EVENTS` and returns their warnings in an outcome (`ReviveResult`).
+- `packages/system-5e/src/system.ts` — changes: the recovery event `revive`;
+  `FIFTH_EDITION_SCHEMA_VERSION` 7 → 8.
+- `packages/system-5e/src/character.ts`, `pack.ts` — changes: the step 7 → 8 in each list.
+- `packages/system-5e/test/golden/srd-2024.ts` — the 2024 exhaustion's `revive` recovery (§8).
+- `packages/system-5e/test/exhaustion.test.ts` — the module's tests (§7).
+- `packages/system-5e/test/character.test.ts` — the version tests.
+- `packages/system-5e/test/entity-types.test.ts` — ENG-32's list of the module's events.
+- Every test file and fixture that writes the module's `systemSchemaVersion` as `7` — now `8`.
+- `apps/web/public/schema/5e/pack.schema.json` — rewritten by its test (`docs/RUNNING.md`).
+
+#### 2. What is missing now
+
+Measured on `main` at `05f3430`:
+- The 2024 golden pack with its exhaustion's `recovery` given `{ on: 'revive', amount: '1' }`
+  beside `long`: `openFifthEditionPack` refuses it, `entities.45.recovery.1.on`, `Invalid option:
+  expected one of "short"|"long"|"dawn"|"turn"|"manual"`. Fifth edition has no recovery event for
+  coming back to life (`system.ts`, `recoveryEvents`).
+- Golden B dead (0 hit points, 1 success, 3 failures) at exhaustion 2, `revive` with `hp: 1`: the
+  entry's changes are hit points 0 → 1, success 1 → 0, failure 3 → 0; `state.conditions` stays
+  `[{ id: 'srd-2024:condition/exhaustion', level: 2 }]`. `revive` reads no condition.
+- `FIFTH_EDITION_SCHEMA_VERSION` is 7; the published pack JSON Schema asks for 7.
+- `pnpm test`: `Test Files 63 passed (63)`, `Tests 841 passed (841)`, 17.65 s; the speed pass
+  `Tests 2 passed (2)`.
+
+#### 3. What it should look like when done
+
+`stamp` is `action-checks.ts`'s. Golden A (2014): 12 hit points, walks 25 feet. Golden B (2024):
+12 hit points, walks 30 feet. "Dead" is 0 hit points with 1 success and 3 failures (ENG-58's
+test). The exhaustion tables are ENG-19's (§3 of ENG-61): 2014's speed halved from level 2, hit
+points halved from 4; 2024's −2 on every d20 test and −5 feet per level. Every value is worked
+out by hand from §8 and the data.
+
+**The schema**
+1. Fifth edition's recovery events are `short`, `long`, `dawn`, `turn`, `manual`, `revive`: a
+   resource's `uses.recovery` and a condition's `recovery` each take `revive`; `scene` is still
+   refused.
+2. The 2024 golden pack's exhaustion has `recovery: [{ on: 'long', amount: '1' }, { on: 'revive',
+   amount: '1' }]` and opens; the 2014 exhaustion keeps `long` alone.
+
+**The versions** (§5)
+3. `FIFTH_EDITION_SCHEMA_VERSION` is 8, with 7 steps in each list. A character and a pack of
+   version 7 open as they are, at version 8, `from: { schemaVersion: 2, systemSchemaVersion: 7 }`.
+   Each step returns a new object equal to a frozen input, which it leaves as it was. A file of
+   version 9 is refused as `newer`, `found: 9`, `current: 8`.
+4. The published pack JSON Schema asks for `systemSchemaVersion` 8, and its recovery events
+   include `revive`.
+
+**The revival** — `revive(character, index, { hp }, stamp)`
+5. Golden B dead at exhaustion 1 to 6, revived with `hp: 1`: levels 0 (removed), 1, 2, 3, 4, 5.
+   The entry's changes, in order: hit points 0 → 1, success 1 → 0, failure 3 → 0,
+   `state.conditions`. After it `speed.walk` and `d20.all.bonus` are 30 and 0, 25 and −2, 20 and
+   −4, 15 and −6, 10 and −8, 5 and −10. `outcome.warnings` is `[]`. Reversing the entry gives the
+   character before.
+6. 2014 has no such rule: golden A dead at exhaustion 4, revived with `max`: hit points 0 → 6
+   (the maximum, halved by level 4), exhaustion stays 4, no change to `state.conditions`.
+7. The hit points come from the maximum before the revival, then the level goes down: golden A
+   dead at a 2014 exhaustion that a test gives `revive` 1 (as a house rule would) at level 4,
+   revived with `max`: hit points 0 → 6, exhaustion 4 → 3; after it the maximum is 12.
+8. Other conditions stay as their entries say: golden B dead at exhaustion 2, with three
+   conditions of its own: `winded` (levels 1 to 2, `long` 1) at 2, `faded` (levels 1 to 3,
+   `revive` `all`) at 3, `odd` (no levels, `revive` `@nope`). Revived: `state.conditions` is
+   `[exhaustion 1, winded 2, odd]`, in that order; `outcome.warnings` is `[{ code:
+   'conditionRecoveryFormula', condition: 'character:condition/odd', warning: { code:
+   'missingPath', path: 'nope' } }]`, with a message.
+9. Refusals lower nothing: golden B at 0 hit points with 2 failures and exhaustion 2: `notDead`;
+   golden B dead at exhaustion 2 with `hp: 0`: `badAmount`; the conditions as they were.
+10. Frozen inputs (golden B dead at exhaustion 2, the ask, the stamp): nothing throws, nothing
+    changes.
+11. ENG-58's, ENG-62's, ENG-63's and ENG-65's tests of `revive`, and ENG-61's, pass as they are.
+12. The quality gate is green, `pnpm e2e` included (the published schema changes).
+
+#### 4. How to do it
+
+1. `system.ts`: `revive` joins `recoveryEvents`; version 8.
+2. `character.ts`, `pack.ts`: the step 7 → 8, the file as it is.
+3. `hit-points.ts`: `REVIVE_EVENTS`; `revive` computes once, takes the maximum from it, adds
+   `conditionsRecoveredOn`'s changes after the death saves' reset, and returns its warnings as
+   `outcome.warnings`.
+4. `srd-2024.ts`: the exhaustion's `revive` recovery.
+5. The tests of §7; the fixtures' `systemSchemaVersion`; the published file; then the gate.
+
+Technical choices (ADR 002):
+- **The condition says it, as ENG-61's long rest does.** SRD 5.2.1 states the reduction for
+  exhaustion only (§8), so it is the 2024 exhaustion's data: `recovery` on a new event, `revive`.
+  No condition is named in code; a homebrew condition that eases when its bearer comes back works
+  the same, and a condition without a `revive` recovery stays, as SRD 5.2.1 says conditions do.
+- **An event of the module's list**, not a new field: one shape (`{ on, amount }`), one check,
+  one evaluation (the core's `conditionsRecoveredOn`, unchanged). The event is the action's name.
+- **`revive` names its events**, `REVIVE_EVENTS = ['revive']`, as the rests name theirs
+  (`REST_EVENTS`).
+- **One `compute()` before the revival** gives the maximum and the levels, as the rests do
+  (ENG-61): the hit points the revival gives are measured against the maximum the character died
+  with, then the level goes down. No SRD exhaustion changes the maximum on revival (2024's does
+  not touch it; 2014's is not lowered), so only a homebrew entry sees the order.
+- **The warnings go in an outcome**, `ReviveResult`'s `outcome.warnings`, as a rest's do: a
+  missing path in an amount is a warning, never a throw, and never dropped.
+- **One entry**, so one undo takes the whole revival back.
+- **The module's version, not the core's.** The event list is the module's (ENG-24), in its
+  packs and in a character's own entities, so `FIFTH_EDITION_SCHEMA_VERSION` goes to 8 with a
+  step in each list that returns the file as it is, as ENG-68 did for a widened value. The core's
+  versions stay 2.
+
+#### 5. Stored data
+
+`ContentPack` and `CharacterDoc` change: a fifth-edition recovery may name `revive`, in a pack's
+entities and in a character's own entities. No stored value changes.
+- `FIFTH_EDITION_SCHEMA_VERSION` 7 → 8. Packs, step 7 → 8: the pack as it is, a new object.
+  Characters, step 7 → 8: the same (no version 7 file names `revive`).
+- The core's `PACK_SCHEMA_VERSION` and `CHARACTER_SCHEMA_VERSION` stay 2.
+- Tests: §3 item 3. No Dexie table changes.
+
+#### 6. What a person will see
+
+Not a screen. The published pack JSON Schema changes (§3 item 4): one changelog line.
+
+#### 7. Tests
+
+- `packages/system-5e/test/exhaustion.test.ts` — `describe('ENG-66 coming back to life lowers a
+  condition by its entry')`: items 1 (a condition), 2, 5–10.
+- `packages/system-5e/test/entity-types.test.ts` — ENG-32's recovery events test lists `revive`:
+  item 1 (a resource).
+- `packages/system-5e/test/character.test.ts` — `describe('ENG-66 the revival event is
+  stored')`: item 3.
+- `apps/web/test/pack-schema.test.ts` compares the published file: item 4.
+- Control values from: SPEC §6.7 (goldens A, B, D); ENG-19's exhaustion tables; ENG-58's dead
+  character; the SRD text of §8; the rest worked out by hand in §3.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-13: SRD 5.2.1 as foundryvtt/dnd5e quotes it at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`
+(`packs/_source/content24/appendices/rules-glossary.yml`); SRD 5.1 and SRD 5.2.1 as
+5e-bits/5e-srd-api quotes them at `e6edf9a51fad4b59a7e9561fad6c15232caed214`
+(`packages/5e-database/src/2014/en/5e-SRD-Rules.json`, `5e-SRD-Spells.json`,
+`5e-SRD-Conditions.json`; `2024/en/5e-SRD-Spells.json`, `5e-SRD-Conditions.json`); dnd5e's
+`module/documents/actor/actor.mjs` at the same commit. The same commits as ENG-58 and ENG-61. All
+CC-BY-4.0.
+
+**SRD 5.2.1, Rules Glossary, Dead:** "If the creature returns to life, the revival effect
+determines the creature's current Hit Points. Unless otherwise stated, the creature returns to
+life with any conditions, magical contagions, or curses that were affecting it at death if the
+durations of those effects are still ongoing. If the creature died with any Exhaustion levels, it
+returns with 1 fewer level." So the 2024 exhaustion gets `{ on: 'revive', amount: '1' }`, and
+every other condition stays.
+
+**SRD 5.1:** no sentence ties exhaustion to a return to life. Every sentence of the five
+5e-database files above that names exhaustion beside a word of dying, death, life, reviving or
+returning, searched with python3: 2014 rules 0, spells 0, conditions 0; 2024 spells 0;
+2024 conditions 1, "You die if your Exhaustion level is 6." (ENG-67's). So the 2014 exhaustion
+gets none, as ENG-58 §11 found.
+
+**dnd5e:** `actor.mjs` names exhaustion in its rest (`exhaustionDelta`) and in its condition sync
+only; no revival lowers it.
+
+No golden value is touched; no rules source disagrees with the SPEC. Nothing stops.
+
+#### 9. Not in this ticket
+
+- Death at exhaustion 6, and `isDead` reading it: ENG-67.
+- A resource's uses on `revive`: the schema takes the event (one list per system, ENG-24), no SRD
+  entry names it, and `revive` gives no uses back, as no action triggers `dawn`, `turn` or
+  `manual` yet (ENG-21 §11).
+- What a revival spell does beside hit points (Raise Dead's −4, Resurrection's): phase 3, with
+  the spells' mechanics (ENG-58 §9).
+- The screen's revival and its word on the level lost: phase 2.
+
+#### 10. Rake check
+
+- **Everything is data; each system's rules live in its module.** The reduction is the 2024
+  exhaustion's `recovery`; `revive` names no condition; no code tests an edition.
+- **Formulas never run code; a missing path is 0 and a warning.** An amount goes through the
+  core's `conditionsRecoveredOn`; its warning is returned in the outcome, never thrown.
+- **Missing is not broken.** A stored condition no entry matches is kept; a condition without a
+  `revive` recovery is never lowered.
+- **A stored-shape change needs a migration.** Version 8, a pure step in each list, each tested on
+  a frozen file (§5).
+- **The golden tests are the truth.** No expected value changes; the 2024 fixture gains data the
+  SRD states (§8).
+- **The engine is pure.** The caller gives the stamp; the frozen-input test.
+- **Licensing.** The SRDs are quoted in this ticket only; the test data holds numbers and names.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-13, on `main` at `05f3430`:
+- Before: `pnpm test` `Test Files 63 passed (63)`, `Tests 841 passed (841)`, 17.65 s; the speed
+  pass `Tests 2 passed (2)`.
+- After: `pnpm lint` `Checked 199 files`, no error; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`
+  `Test Files 63 passed (63)`, `Tests 850 passed (850)`, 16.82 s, coverage lines 99.92 %
+  (2747/2749), branches 96.91 % (2012/2076); the speed pass `Tests 2 passed (2)`, 3.06 s;
+  `pnpm e2e` `12 passed (14.7s)`, run with `PLAYWRIGHT_CHROMIUM_PATH` as `docs/RUNNING.md` says.
+- 9 tests are new: `exhaustion.test.ts` 7, `character.test.ts` 2. ENG-32's recovery events test in
+  `entity-types.test.ts` lists `revive`.
+- Golden B dead at exhaustion 2, revived with 1 hit point: exhaustion 1, `speed.walk` 20 → 25,
+  `d20.all.bonus` −4 → −2. At exhaustion 6: 5, walking 5 feet, −10.
+- The published `pack.schema.json`: `git diff` shows 3 lines added and 2 removed:
+  `systemSchemaVersion`'s `const` 7 → 8, and `revive` at the end of the one list of recovery
+  events (`__schema55`), which a resource's uses and a condition's `recovery` both reference.
+- The tests catch mistakes. 8 breaks, each made alone, then 4 test files run (`exhaustion`,
+  `character`, `entity-types`, `hit-points`: 94 tests); each failed at least one test, and each
+  file was restored and compared equal: the conditions not lowered, 4 failed; the warnings
+  dropped, 1; `long` among the revival's events, 2; the maximum measured after the level goes
+  down, 1; `revive` not one of the module's events, 1, and `exhaustion.test.ts` and
+  `hit-points.test.ts` do not load (the 2024 golden pack is refused); the 2024 exhaustion without
+  its `revive` recovery, 4; the character's step returning its input, 1; the pack's step returning
+  its input, 1.
+
+Differences from §3 and §4:
+- Item 1, a condition: the 2024 golden pack and the test's 2014 pack open with `revive` in their
+  exhaustion's `recovery`, and the test reads it back from each index; `scene` stays refused in
+  ENG-61's test.
+- Item 3: the file of version 9 is refused in ENG-33's tests, moved from version 8 to 9.
+- 15 places that write the module's `systemSchemaVersion` moved from 7 to 8: the 6 golden files
+  (both SRD packs, `hb-local`, the 2014, 2024 and mixed characters), the 2 fixture tests'
+  `FROM_CURRENT`, and 7 in `character.test.ts` (ENG-33's character, pack and 2 `from`; ENG-47's,
+  ENG-56's and ENG-65's). ENG-33's version check says 8, its step counts 7. No expected value of a
+  rule changed.
+- One branch is not run by any test: `revive` returning `settled`'s refusal. A revival always
+  raises the hit points from 0, so its entry is never empty.
+- Size S held.
+
+Found, not fixed:
+- The 2014 exhaustion has no `revive` recovery (§8). Once ENG-67 makes exhaustion 6 death, a 2014
+  character dead from it comes back still at 6, so still dead. Added to ENG-67's note.
+- ENG-23's speed pass fails on some runs in this container, with or without this ticket's change
+  (`compute()` is not touched). One full `pnpm test` failed there, and 1 of 5 runs of the speed
+  pass alone after it (median 2.76 ms × 4 = 11.05 ms). Then 8 runs of the speed pass on this
+  ticket's code: × 4 from 6.44 to 10.58 ms, 2 above 10; and 8 runs on `05f3430` with the change
+  stashed: 6.53 to 11.20 ms, 2 above 10. ENG-23 measured 5.78 to 6.07 ms. The last full
+  `pnpm test` before the commit passed: `Tests 850 passed (850)`, 17.65 s; speed `Tests 2 passed
+  (2)`. New row OPS-28 (S).
+
+Changelog: the published fifth-edition pack JSON Schema asks for `systemSchemaVersion` 8, with
+the recovery event `revive`.
+

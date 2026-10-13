@@ -570,8 +570,12 @@ const exhaustion: Of<'condition'> = {
       value: '-5 * @conditions.exhaustion.level',
     },
   ],
-  // "Finishing a Long Rest removes 1 of your Exhaustion levels" (ENG-61 §8).
-  recovery: [{ on: 'long', amount: '1' }],
+  // "Finishing a Long Rest removes 1 of your Exhaustion levels" (ENG-61 §8). ENG-66: a creature
+  // that died with any levels comes back to life with 1 fewer (ENG-66 §8).
+  recovery: [
+    { on: 'long', amount: '1' },
+    { on: 'revive', amount: '1' },
+  ],
 };
 
 // --- Equipment (`5e-SRD-Equipment.json`, `-Damage-Types.json`, `-Weapon-Properties.json`,
@@ -711,7 +715,7 @@ export const srd2024 = {
   version: '0.1.0',
   schemaVersion: 2,
   system: '5e',
-  systemSchemaVersion: 7,
+  systemSchemaVersion: 8,
   title: { en: 'SRD 5.2.1' },
   ruleset,
   // The attribution text is checked against the SRD's legal page by the import (ENG-09 §4).

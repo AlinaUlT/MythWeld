@@ -68,6 +68,8 @@ export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
   (file) => ({ ...file }),
   // 6 → 7 (ENG-68): `abilities.bonusSource` takes `neither`, which no version 6 file stores.
   (file) => ({ ...file }),
+  // 7 → 8 (ENG-66): an own entity's recovery may name `revive`, which no version 7 file names.
+  (file) => ({ ...file }),
 ];
 
 /** The successes, or the failures, that end a run of death saves (ENG-33 §8). */

@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-13 · ENG-66 · The published fifth-edition pack JSON Schema asks for
+  `systemSchemaVersion` 8, and a recovery may name `revive`, coming back to life; a pack of
+  version 7 still opens in the app.
 - 2026-10-05 · ENG-68 · The published fifth-edition pack JSON Schema asks for
   `systemSchemaVersion` 7; a pack of version 6 still opens in the app.
 - 2026-10-03 · ENG-65 · The published fifth-edition pack JSON Schema asks for

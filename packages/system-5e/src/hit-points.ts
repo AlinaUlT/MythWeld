@@ -1,8 +1,11 @@
 import {
   type ActionResult,
+  type Computed,
+  type ConditionRecoveryWarning,
   type ContentIndex,
   changeTo,
   compute,
+  conditionsRecoveredOn,
   type LogStamp,
   type MadeChanges,
 } from '@grimoire/engine';
@@ -39,6 +42,9 @@ import { rulesOf } from './rulesets';
 // ENG-65: damage may knock out instead (2024): it leaves the character at 1 hit point, knocked out,
 // and any other damage interrupts the short rest that knock-out started. Healing and reviving end
 // the knock-out (`knockOutEnded`).
+// ENG-66: reviving lowers the stored conditions by their entries' `recovery` on `revive` (the
+// core's `conditionsRecoveredOn`), as SRD 5.2.1's exhaustion says. The hit points come from the one
+// `compute()` made before the revival, as a rest's do (ENG-61).
 
 /** The lowest DC of the Constitution save that keeps concentration after damage (both SRDs). */
 export const CONCENTRATION_DC_MIN = 10;
@@ -54,6 +60,20 @@ export type HitPointRefusal = { message: string } & (
 
 /** What healing or temporary hit points give: the changed character and its entry, or why not. */
 export type HitPointResult = ActionResult<FifthEditionCharacter, HitPointRefusal | Unchanged>;
+
+/** The recovery events coming back to life triggers (ENG-66). */
+export const REVIVE_EVENTS = ['revive'] as const satisfies readonly string[];
+
+/** What a revival did, beside its changes (ENG-66). */
+export interface ReviveOutcome {
+  /** What the formulas of the condition levels it lowered met. */
+  warnings: ConditionRecoveryWarning[];
+}
+
+/** What a revival gives: the changed character, its entry and the outcome, or why not. */
+export type ReviveResult =
+  | { ok: true; character: FifthEditionCharacter; entry: LogEntry; outcome: ReviveOutcome }
+  | Extract<HitPointResult, { ok: false }>;
 
 /** What damage asks for. */
 export interface DamageAsk {
@@ -105,10 +125,15 @@ export function concentrationDc(
   return max === null ? dc : Math.min(max, dc);
 }
 
+/** The hit point maximum computed, rounded down; 0 when it is not a number. */
+function maxIn(computed: Computed<FifthEditionEntity>): number {
+  const value = computed.values['hp.max'];
+  return typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : 0;
+}
+
 /** The hit point maximum the character computes, rounded down; 0 when it is not a number. */
 function maxOf(character: FifthEditionCharacter, index: ContentIndex<FifthEditionEntity>): number {
-  const value = compute(character, index, fifthEditionModule).values['hp.max'];
-  return typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : 0;
+  return maxIn(compute(character, index, fifthEditionModule));
 }
 
 /** The refusal of an amount that is not a whole number from `min`, or of a dead character. */
@@ -257,15 +282,17 @@ export function applyHealing(
 /**
  * ENG-58: the dead character brought back to life with `ask.hp` hit points, a whole number from 1
  * or `max`, at most its maximum and at least 1, both death save counts at 0, no knock-out
- * (ENG-65); and the entry. The revival spells give 1 or all (ENG-58 §8). Refused for an amount
- * that is not a whole number from 1, and for a character that is not dead.
+ * (ENG-65); and the entry. The revival spells give 1 or all (ENG-58 §8). ENG-66: the stored
+ * conditions lose the levels their entries take on `revive` (SRD 5.2.1's exhaustion: 1), after the
+ * hit points are measured on the maximum before; the outcome holds what their formulas met.
+ * Refused for an amount that is not a whole number from 1, and for a character that is not dead.
  */
 export function revive(
   character: FifthEditionCharacter,
   index: ContentIndex<FifthEditionEntity>,
   ask: { readonly hp: number | 'max' },
   stamp: LogStamp,
-): HitPointResult {
+): ReviveResult {
   const { hp } = ask;
   if (hp !== 'max' && !isWhole(hp, 1)) {
     const message = `${hp} is not a whole number of hit points from 1.`;
@@ -274,18 +301,22 @@ export function revive(
   if (!isDead(character)) {
     return { ok: false, code: 'notDead', message: 'The character is not dead.' };
   }
-  const max = maxOf(character, index);
+  const computed = compute(character, index, fifthEditionModule);
+  const max = maxIn(computed);
   const current = Math.max(1, hp === 'max' ? max : Math.min(max, hp));
-  return settled<HitPointRefusal>(
+  const eased = conditionsRecoveredOn(character, computed, REVIVE_EVENTS);
+  const result = settled<HitPointRefusal>(
     character,
     stamp,
     hitPoints('revive', [
       changeTo(character, HP_CURRENT_PATH, current),
       ...deathSavesReset(character),
+      ...eased.changes,
       ...knockOutEnded(character),
     ]),
     'The revival changes nothing.',
   );
+  return result.ok ? { ...result, outcome: { warnings: eased.warnings } } : result;
 }
 
 /**
