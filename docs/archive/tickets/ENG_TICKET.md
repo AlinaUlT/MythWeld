@@ -16225,3 +16225,276 @@ Found, not fixed:
 Changelog: the published fifth-edition pack JSON Schema asks for `systemSchemaVersion` 8, with
 the recovery event `revive`.
 
+---
+
+### ENG-67 Exhaustion at level 6 is death
+
+**Hat:** Exhaustion at level 6 makes the character dead
+**Depends on:** ENG-20 (`isDead`, the actions that refuse the dead), ENG-58 (`rollDeathSave`,
+`stabilize`, `revive`), ENG-61 (the long rest lowers exhaustion), ENG-62 (`isDown`, the Unconscious
+condition by its key), ENG-65 (`isKnockedOut`, `firstAid`), ENG-66 (`revive` lowers exhaustion)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.3 ("Истощение"); §5.3 (`ConditionDef`); §6.4 (the actions);
+§8.2 (missing is not broken); ADR 004 item 1
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/exhaustion.ts` — new: `EXHAUSTION_CONDITION`,
+`EXHAUSTION_DEATH_LEVEL`, `fatalExhaustion`.
+- `packages/system-5e/src/death-saves.ts` — changes: `isDead` and `isStable` take a finder and read
+  `fatalExhaustion`; `rollDeathSave` and `stabilize` take the index.
+- `packages/system-5e/src/hit-points.ts` — changes: `setTempHp` takes the index; `revive` revives
+  a character dead of exhaustion, and refuses one it would leave dead (`staysDead`).
+- `packages/system-5e/src/knock-out.ts` — changes: `isKnockedOut` takes a finder; `firstAid` takes
+  the index.
+- `packages/system-5e/src/unconscious.ts`, `module.ts` — changes: `isDown` and the Unconscious
+  condition's naming and warning take the finder.
+- `packages/system-5e/src/rests.ts` — changes: the refusal reads the finder.
+- `packages/system-5e/src/index.ts` — exports the new file.
+- `packages/system-5e/test/exhaustion.test.ts` — the module's tests (§7).
+- `packages/system-5e/test/action-checks.ts` — a finder of the character's pack, for the tests.
+- The tests that call the eight changed functions (`death-saves`, `death`, `hit-points`,
+  `inspiration`, `knock-out`, `unconscious`) — the new argument.
+
+#### 2. What is missing now
+
+Measured on `main` at `fd646a2`, with a test written for it and then deleted. Golden B (2024),
+`srd-2024:condition/exhaustion` stored at level 6:
+- At 12 hit points: `isDead` is `false`.
+- Every action that refuses the dead happens: `applyDamage` 5 (hit points 12 → 7); at 3 hit points
+  `applyHealing` 3 (3 → 6) and `longRest` (3 → 12, and exhaustion 6 → 5, ENG-61's found); `setTempHp`
+  5 (0 → 5); at 0 hit points `rollDeathSave` with a 12 (success 0 → 1) and `stabilize` (stable
+  false → true); knocked out at 1 hit point, `firstAid` (the knock-out ends). `revive` with 1 hit
+  point is refused, `notDead`.
+- At 0 hit points, with the pack's Unconscious entry (`unconscious-entries.ts`): the condition is
+  had once, `conditions.unconscious.level` 1; with the golden pack as it is, the warning
+  `noUnconsciousCondition`. `isDown`, `isStable` (stable) and `isKnockedOut` (1 hit point,
+  `resting`) are each `true`.
+- `isDead(character)` reads `systemData.state` only (`death-saves.ts`): 0 hit points with 3
+  failures.
+- `pnpm test`: `Test Files 63 passed (63)`, `Tests 850 passed (850)`, 18.30 s; the speed pass
+  `Tests 2 passed (2)`.
+
+#### 3. What it should look like when done
+
+`stamp` is `action-checks.ts`'s. Golden A (2014): 12 hit points, walks 25 feet. Golden B (2024):
+12 hit points, walks 30 feet, one d10, CON +2. The 2014 exhaustion is `exhaustion.test.ts`'s
+(ENG-19: the maximum halved from level 4); the 2024 one is the golden pack's (−2 on every d20 test
+and −5 feet a level). "Dead" is 0 hit points with 1 success and 3 failures (ENG-58's test). Every
+value is worked out by hand from §8 and the data.
+
+**The rule** — `isDead(character, find)`, `find` the character's finder (`finderOf`)
+1. `EXHAUSTION_CONDITION` is `'exhaustion'`; `EXHAUSTION_DEATH_LEVEL` is 6. Golden B at 12 hit
+   points with the 2024 exhaustion stored at levels 1 to 6: dead only at 6. Golden A with the 2014
+   exhaustion at 5: alive; at 6: dead. Stored at 7, above its highest level of 6: dead (gathering
+   reads 6). Stored with no level: alive (level 1).
+2. The death saves still kill: golden B at 0 hit points with 3 failures and no condition: dead.
+3. The key decides, and the entry's highest level: conditions of golden B's own, each stored at
+   6: key `weariness`, levels 1 to 6: alive; key `exhaustion`, levels 1 to 10: dead (at 5: alive);
+   key `exhaustion`, levels 1 to 4: alive (its level is 4).
+4. Missing is not broken: golden A with the golden 2014 pack, which has no exhaustion, storing
+   `srd-2014:condition/exhaustion` at 6: alive.
+5. Nothing is stored: golden B at exhaustion 5, the core's `setCondition` to level 6: dead;
+   reversing that entry: alive.
+
+**The actions refuse as for 3 failures**
+6. Golden B at exhaustion 6, each refused `dead`: `applyDamage` 5 at 12 hit points;
+   `applyHealing` 3 at 3; `setTempHp` 5 at 12; `shortRest` at 3 spending a d10 that rolled 6;
+   `longRest` at 3 (the level stays 6); `rollDeathSave` with a 12 at 0; `stabilize` at 0;
+   `firstAid` at 1, knocked out (`resting`). The same eight at exhaustion 5 happen.
+7. Dead is not unconscious: golden B at 0 hit points, exhaustion 6, with its pack's Unconscious
+   entry: `conditions.unconscious.level` 0, the entry not had, no warning; with the golden pack as
+   it is, no warning. `isDown` (at 0), `isStable` (at 0, stable) and `isKnockedOut` (at 1,
+   `resting`) are each `false`. At exhaustion 5: level 1, had once, and each `true`.
+
+**Coming back** — `revive(character, index, { hp }, stamp)`
+8. 2024: golden B dead of exhaustion 6 alone, at 12 hit points with no failure, revived with 1: the
+   entry's changes are hit points 12 → 1 and `state.conditions` level 6 → 5; then alive,
+   `speed.walk` 5, `d20.all.bonus` −10; `outcome.warnings` is `[]`. Revived with `max`: the
+   conditions are the one change.
+9. 2014: golden A dead of exhaustion 6, at 12 hit points, and dead both ways (also 0 hit points, 3
+   failures): each refused `staysDead`, `condition: 'srd-2014:condition/exhaustion'`; the
+   character as it was. With the test's 2014 exhaustion given `revive` 1 (ENG-66's house rule),
+   golden A dead of exhaustion 6 at 3 hit points, revived with `max`: hit points 3 → 6 (the
+   maximum, halved), exhaustion 6 → 5, alive.
+10. The order of refusals stays: alive at exhaustion 5, `notDead`; dead of exhaustion with `hp: 0`,
+    `badAmount`.
+11. Frozen inputs (golden B dead of exhaustion 6, the ask, the stamp): `isDead` and `revive` throw
+    nothing and change nothing.
+12. Every test before passes with the new argument only; no expected value changes. ENG-66's
+    revival at level 6 (dead both ways, 6 → 5) passes as it is.
+13. The quality gate is green.
+
+#### 4. How to do it
+
+1. `exhaustion.ts`: the key, the level, `fatalExhaustion(character, find)`.
+2. `death-saves.ts`: `isDead`, `isStable`, the refusal and both actions read the finder.
+3. `knock-out.ts`, `unconscious.ts`, `module.ts`, `rests.ts`, `hit-points.ts`: the finder passed on;
+   `setTempHp`, `firstAid`, `rollDeathSave`, `stabilize` take the index; `revive`'s `staysDead`.
+4. The tests of §7; the callers in the tests; then the gate.
+
+Technical choices (ADR 002):
+- **The module says it, by the key `exhaustion`**, as ENG-62 names the Unconscious condition, and
+  as dnd5e does: the rule is its system code's condition config (`conditionTypes.exhaustion`,
+  `conditions: { 6: ["dead"] }`, kept in both rules versions, §8), not its compendium's entry. One
+  rule in both SRDs, with one number, so a module constant beside `DEATH_SAVE_DC`, and no field in
+  the rulesets. No new field on a condition: the condition's schema is the core's, which names no
+  death, and a field would change the stored shape of every pack (a core version, as ENG-61's
+  `recovery`). Moving it to data later is adding a field and deleting a constant.
+- **The level is the stored one up to the entry's highest**, as gathering reads
+  `@conditions.exhaustion.level` (ENG-11): a level stored without a number is 1; one above
+  `maxLevel` counts as `maxLevel`. So an entry whose highest level is below 6 never kills.
+- **Found by id among the stored conditions**, through the character's finder (`finderOf`: its own
+  entities, then its packs), which `compute()` passes the module both before gathering
+  (`entities`) and after (`DeriveInput.find`). So the Unconscious condition, named before gathering,
+  and the actions, outside `compute()`, read one rule. A stored id no entry has is not exhaustion
+  (missing is not broken).
+- **`isDead` reads it, nothing is stored.** Death stays derived, as since ENG-20: the hit points and
+  death saves, and now the stored exhaustion. Raising the level with the core's `setCondition`
+  kills, and undo brings the character back, with no fifth-edition code in the core.
+- **Every predicate and action that reads `isDead` takes what it needs**: the predicates (`isDead`,
+  `isStable`, `isDown`, `isKnockedOut`) a finder, as `compute()` has one; the actions an index,
+  as `applyDamage` takes one. `rollDeathSave`, `stabilize`, `firstAid` and `setTempHp` gain it in
+  the second place, `applyDamage`'s order.
+- **Dead is not unconscious** (ENG-62 §4): a character at 0 hit points dead of exhaustion has no
+  Unconscious condition and no warning for it.
+- **A revival that leaves the character dead is refused** (`staysDead`, naming the condition), as a
+  rest the rules give nothing is refused. Only SRD 5.2.1's exhaustion loses a level on `revive`
+  (ENG-66); SRD 5.1 states none (ENG-66 §8), so a 2014 character dead of exhaustion stays dead
+  after any revival: the entry would change the hit points of a dead character. Whoever rules
+  otherwise lowers the level with `setCondition` first.
+- **A revival sets the hit points it gives, from above 0 too**: a character dead of exhaustion may
+  have hit points left, and SRD 5.2.1 says "the revival effect determines the creature's current
+  Hit Points" (§8).
+
+#### 5. Stored data
+
+Nothing stored changes. No field of `CharacterDoc`, `ContentPack` or a Dexie table is new: death is
+read from `systemData.state` and `state.conditions`, and the rule is the module's code. The
+changed signatures are code, not data.
+
+#### 6. What a person will see
+
+Not a screen. When the sheet shows death (phase 2), it calls `isDead` with the character's finder;
+the refusal `staysDead` names the condition the screen points at.
+
+#### 7. Tests
+
+- `packages/system-5e/test/exhaustion.test.ts` — `describe('ENG-67 exhaustion at level 6 is
+  death')`: items 1–11.
+- The tests of ENG-20, ENG-58, ENG-62, ENG-63, ENG-65 and ENG-59 that call the changed functions,
+  with the new argument: item 12.
+- Control values from: SPEC §6.7 (goldens A and B); ENG-19's exhaustion tables; ENG-58's dead
+  character; ENG-21's d10; the SRD text and dnd5e code of §8; the rest worked out by hand in §3.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-21: SRD 5.1 and SRD 5.2.1 as 5e-bits/5e-srd-api quotes them at
+`e6edf9a51fad4b59a7e9561fad6c15232caed214` (`packages/5e-database/src/2014/en/5e-SRD-Conditions.json`,
+`2024/en/5e-SRD-Conditions.json`); SRD 5.2.1 as foundryvtt/dnd5e quotes it at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (`packs/_source/content24/appendices/rules-glossary.yml`),
+and dnd5e's code at the same commit (`module/config.mjs`, `module/data/active-effect/condition.mjs`,
+`module/settings.mjs`). The same commits as ENG-58 to ENG-66. All CC-BY-4.0.
+
+**SRD 5.1, Exhaustion:** "Exhaustion is measured in six levels."; the table's last row, "6 -
+Death"; "A creature suffers the effect of its current level of exhaustion as well as all lower
+levels."
+
+**SRD 5.2.1, Exhaustion:** "Exhaustion Levels. This condition is cumulative. Each time you receive
+it, you gain 1 Exhaustion level. You die if your Exhaustion level is 6."
+
+So: one rule in both editions, death at level 6. The SPEC §6.3 exhaustion row says the same.
+
+**SRD 5.2.1, Rules Glossary, Dead:** "If the creature returns to life, the revival effect
+determines the creature's current Hit Points." and "If the creature died with any Exhaustion
+levels, it returns with 1 fewer level." (ENG-66 §8.)
+
+**dnd5e.** `config.mjs` `conditionTypes.exhaustion`: `levels: 6`, `conditions: { 6: ["dead"] }`.
+`condition.mjs` `prepareDerivedData`: the level clamped to `[1, maxLevel]`, then each level's
+`conditions` up to it are added to the effect's statuses. `settings.mjs`: the legacy (2014) rules
+delete the exhaustion's `reduction` only; `disableExhaustionAutomation` deletes its `conditions`,
+"death at maximum level". So dnd5e kills at 6 in both rules versions, by its own code.
+
+No golden value is touched; no rules source disagrees with the SPEC. Nothing stops.
+
+#### 9. Not in this ticket
+
+- What dying of exhaustion changes beside death: attunement ends (ENG-63) and concentration ends
+  (§11). The core's `setCondition` raises the level and makes no fifth-edition change: §11.
+- The sheet's word for death, and its cause: phase 2.
+- An action other than ENG-20's to ENG-65's refusing the dead (`castSpell`, `useResource`): none
+  refuses 3 failures either; phase 2, with the screens.
+- A revival spell's own effects: phase 3 (ENG-58 §9).
+
+#### 10. Rake check
+
+- **Everything is data; each system's rules live in its module.** The key and the level are the
+  fifth-edition module's, one rule in both SRDs; no code tests an edition, and the core names no
+  death.
+- **The core names no game.** The core is not touched: `finderOf`, `maxLevelOf` and
+  `setCondition` are used as they are.
+- **`compute()` is pure.** The rule reads the stored character through the finder `compute()`
+  already passes; nothing is written.
+- **Missing is not broken.** A stored id no entry has is not exhaustion; the character computes.
+- **A stored-shape change needs a migration.** None changes (§5).
+- **The golden tests are the truth.** No expected value changes.
+- **The engine is pure.** The caller gives the stamp; the frozen-input test.
+- **Licensing.** The SRDs are quoted in this ticket only; the test data holds numbers and names.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-21, on `main` at `fd646a2`:
+- Before: `pnpm test` `Test Files 63 passed (63)`, `Tests 850 passed (850)`, 18.30 s, coverage
+  lines 99.92 % (2747/2749), branches 96.91 % (2012/2076); the speed pass `Tests 2 passed (2)`.
+- After: `pnpm lint` `Checked 200 files`, no error; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`
+  `Test Files 63 passed (63)`, `Tests 859 passed (859)`, 17.24 s, coverage lines 99.92 %
+  (2760/2762), branches 96.93 % (2024/2088); the speed pass `Tests 2 passed (2)`, 2.62 s. No file in
+  `apps/web` changed, so no `pnpm e2e`.
+- 9 tests are new, all in `exhaustion.test.ts`. The 6 test files that call the 8 changed functions
+  (`death-saves`, `death`, `hit-points`, `inspiration`, `knock-out`, `unconscious`) gained the new
+  argument only: their 285 expectations, compared before and after with whitespace collapsed, are
+  the same but for 4 line breaks the formatter moved.
+- Golden B at 12 hit points and exhaustion 6: dead; the 8 actions of §3 item 6 refused `dead`;
+  revived with 1 hit point: hit points 12 → 1, exhaustion 5, walking 5 feet, −10 on every d20 test.
+  Golden A (2014) at exhaustion 6: every revival refused `staysDead`.
+- Branches no test reaches: 64 before and 64 after. The one in this ticket's code is `revive`'s
+  `unchanged` refusal (ENG-66 §11's), still never reached: a revival that changes nothing leaves the
+  character as it was, dead of exhaustion, so it is refused `staysDead` first.
+- The tests catch mistakes. 17 breaks, each made alone in the code, then 9 test files run
+  (`exhaustion`, `death-saves`, `death`, `hit-points`, `knock-out`, `unconscious`, `rests`,
+  `inspiration`, `module`: 135 tests); each failed at least one test, and each file was restored
+  and compared equal (135 passed again): the key ignored, 1 failed; the level not capped at its
+  highest, 1; death at 7, 8; a stored condition with no level read as 6, 1; `isDead` not reading
+  exhaustion, 8; `isDead` not reading the death saves, 28; the Unconscious condition named for the
+  dead of exhaustion, 1; its warning given for them, 1; `isKnockedOut` not reading `isDead`, 2; the
+  rests not refusing exhaustion, 1; the hit point actions not refusing it, 1; the death saves not
+  refusing it, 1; `firstAid` not refusing it, 1; `revive` not reviving the dead of exhaustion, 3;
+  `revive` without `staysDead`, 1; `staysDead` read on the character before the revival, 4;
+  `staysDead` only when the revival changes something, 1.
+
+Differences from §3 and §4:
+- Item 9 has a third 2014 case: golden A dead of exhaustion 6 at 6 hit points, its halved maximum,
+  revived with `max`. The entry would be empty, and the first build refused it `unchanged`; it is
+  refused `staysDead` now, as `revive` reads the character as it was when nothing changes. Found by
+  reading the diff before the gate's first full run.
+- Item 1 gained "stored with no level: alive", while writing the breaks: no test read the default
+  level of 1.
+- The hit point actions' message for the dead was "it has no hit points"; a character dead of
+  exhaustion may have some, so it says "its hit points stay". No test reads a message's words.
+- Size S held.
+
+Found, not fixed:
+- Dying of exhaustion makes none of death's other changes. The core's `setCondition` raises the
+  level, and no fifth-edition code runs: the attuned rows stay attuned (ENG-63's `deathChanges`:
+  SRD 5.1 "if the creature dies"; SRD 5.2.1 Dead "it is no longer attuned to them"), and the
+  concentration stays (SRD 5.1 "You lose concentration on a spell if you are incapacitated or if you
+  die."; SRD 5.2.1, dnd5e `appendix-d-rule-references.yml`, "Your Concentration ends if you have
+  the Incapacitated condition or you die."). New row ENG-69 (S).
+- ENG-23's speed pass passed in each of the 3 full `pnpm test` runs here (OPS-28 unchanged).
+
+Nothing for the changelog: no screen changes, and the published pack JSON Schema does not change.
+

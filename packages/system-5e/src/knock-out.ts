@@ -1,7 +1,14 @@
-import type { ActionResult, LogStamp } from '@grimoire/engine';
+import {
+  type ActionResult,
+  type ContentIndex,
+  type EntityFinder,
+  finderOf,
+  type LogStamp,
+} from '@grimoire/engine';
 import { knockOutEnded, settled, type Unchanged } from './actions';
 import type { FifthEditionCharacter } from './character';
 import { isDead } from './death-saves';
+import type { FifthEditionEntity } from './entity-types';
 
 // ENG-65: SRD 5.2.1's knocking out (ENG-65 §8). Damage that would drop a creature to 0 hit points
 // with a melee attack may leave it at 1 instead, with the Unconscious condition (`applyDamage`'s
@@ -14,8 +21,11 @@ import { isDead } from './death-saves';
 export type FirstAidRefusal = { message: string } & ({ code: 'dead' } | { code: 'notKnockedOut' });
 
 /** The character is knocked out, and alive: the dead have no condition (ENG-62). */
-export function isKnockedOut(character: FifthEditionCharacter): boolean {
-  return character.systemData.state.knockedOut !== undefined && !isDead(character);
+export function isKnockedOut(
+  character: FifthEditionCharacter,
+  find: EntityFinder<FifthEditionEntity>,
+): boolean {
+  return character.systemData.state.knockedOut !== undefined && !isDead(character, find);
 }
 
 /**
@@ -26,12 +36,14 @@ export function isKnockedOut(character: FifthEditionCharacter): boolean {
  */
 export function firstAid(
   character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
   stamp: LogStamp,
 ): ActionResult<FifthEditionCharacter, FirstAidRefusal | Unchanged> {
-  if (isDead(character)) {
+  const find = finderOf(character, index);
+  if (isDead(character, find)) {
     return { ok: false, code: 'dead', message: 'The character is dead.' };
   }
-  if (!isKnockedOut(character)) {
+  if (!isKnockedOut(character, find)) {
     return { ok: false, code: 'notKnockedOut', message: 'The character is not knocked out.' };
   }
   return settled<FirstAidRefusal>(

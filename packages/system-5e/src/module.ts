@@ -154,7 +154,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
       // and of those only what the rules let count (ENG-44).
       ...equipmentOf(character, find).named,
       // The condition the 0 hit points, or a knock-out, give (ENG-62, ENG-65).
-      ...unconsciousNamed(character, findKey),
+      ...unconsciousNamed(character, find, findKey),
     ];
   },
 
