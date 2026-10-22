@@ -930,3 +930,64 @@ Found, not fixed: `docs/design/BRIEF.md` still holds screen text that later ADRs
 example ADR 013 replaces "pick one" in P3), so a screen ticket reads BRIEF and the ADRs together.
 It is left until phase 2 opens, when the first screen ticket reads them.
 Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-29 The phase 2 cut, in waves · S
+
+**Hat:** Phase 2 is cut into rows that run in waves
+**Where:** `docs/tickets/BACKLOG.md` — the phase 2 section (new), the later phases' table and
+notes, the ENG-64 and OPS-28 notes, the Order section; `docs/tickets/SHEET_TICKET.md`,
+`docs/archive/tickets/SHEET_TICKET.md` — new, the theme header only
+**Depends on:** ENG-69, which made ENG-64 phase 1's last open row
+
+**What it should look like when done:**
+1. Phase 2 has rows of size XS, S or M, each with a hat of one phrase without "and", in work
+   order, under the gate of SPEC §12 stage 2 as ADR 000 changes it. Its last row carries the
+   gate's proof.
+2. Every line of SPEC §12 stage 2's list, and every item ADRs 008, 009, 010, 011, 013 and 015
+   place in phase 2, has a row. No row adds or drops a feature (ADR 007 item 4).
+3. Every phase 1 note that named phase 2 is the note of the row that takes it, and is gone from
+   the later phases' notes; a note that also names a later phase keeps that part there.
+4. A wave table says which rows can run in parallel chats: in one wave, no two rows own one file,
+   and at most one row may change a stored shape.
+5. The SHEET theme files exist with the header only, so two first rows of wave 1 never both
+   create them.
+6. No code changes. The quality gate stays green.
+
+**Tests:** none new. Control numbers: a script over `BACKLOG.md` counts the rows, the hats that
+hold "and", the sizes, each row's place in the waves and each row's note; the gate's counts.
+
+**What came out of it:** the owner asked on 2026-10-22, while ENG-69 ran, for the next tickets she
+can start at the same time once it lands. ENG-69 landed as `c6e3395`. Phase 1's only open row is
+then ENG-64, whose work is done, with the gate green, on its own branch and not on `main`; the
+rows after it were not cut. Phase 2 now has 60 rows, SHEET-01 to SHEET-60: 7 XS, 38 S, 15 M. No
+hat holds "and"; each row has a note; each row sits in exactly one of nine waves (counted by a
+script). Every phase 2 item of SPEC §12 stage 2 and of ADRs 008–015 has a row. Placed in a later
+phase, with the reason in the row's note: Link for the DM and Transfer (the table link), Level up
+and Rules options in "⋯" (phase 4), score methods and the roll calculator (phase 4), a companion
+with a sheet of its own (ADR 014 item 9). 23 notes moved from the later phases' notes to the
+rows; the ADR 009, 010, 011, 013 and 015 notes now name the rows for their phase 2 part.
+Decided here (ADR 002, ADR 007 item 4):
+- the area `SHEET` also holds the rules rows the screens need, since they are phase 2 work;
+- the row numbers follow the work order;
+- one Dexie version holds all of phase 2's tables (SHEET-07), departing from SETUP-06 so that
+  parallel rows never claim one version number;
+- SHEET-11 and SHEET-30 create empty files for the pieces later rows fill, so the rows of a wave
+  own different files;
+- SHEET-08 gives names to the keys ENG-32 found, before the wave 6 tabs show them;
+- the start page shows on every start until the owner decides (ADR 008 "Still open", ADR 007
+  item 7).
+
+Two rows may change a stored shape, SHEET-53 (alignment) and SHEET-57 (custom sections), and
+they sit in different waves. OPS-28 belongs to no phase; its note now says it can run at once.
+`pnpm test` ran four times on this documents-only change. Two runs passed; in two, ENG-52's
+seeded-formula test passed its 5,000 ms limit (5,096 ms, 5,117 ms), and nothing else failed;
+alone it took 2,157 ms. The gate's last run is green: lint checked 201 files; typecheck passed in
+all 6 packages; 63 test files, 871 tests passed, 0 failed, 19.48 s; the speed pass, 2 passed,
+3.88 s.
+Found, not fixed: ENG-64's work waits on the branch `claude/eng-64-efz2ya`. It lands on `main`
+with phase 1's gate run in its §11, as its note says. ENG-52's test fails by the machine's load,
+as ENG-23's speed pass does: OPS-28's hat is widened to the whole gate, and its note holds the
+measurements.
+Nothing for the changelog; a person sees no change.

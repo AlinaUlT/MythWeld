@@ -144,14 +144,368 @@ split off an old row got a new id.
   decides the shape (a computed path an effect adds to and the rest reads, as `spellDice` reads
   ENG-55's `damage.spell.bonus`; or a field on the entity, a stored-shape change). The rest gains
   it in its one entry, up to ENG-59's bound, `houseRules.inspirationMax`.
+  Since ENG-69 closed, ENG-64 is the phase's last open row, so its §11 carries the gate's run
+  (above). Its work is done, with the gate green, on the branch `claude/eng-64-efz2ya` (`3a5a74f`,
+  870 tests), and is not on `main` yet.
 
 ---
 
-## Phases 2–7 — cut when the phase before closes
+## Phase 2 — The character sheet, made by hand (SPEC stage 2)
+
+Gate: SPEC §12 stage 2, as ADR 000 changes it — characters A and B are made in the interface in
+at most 5 minutes each and show their SPEC §6.7 values; the e2e scenario "damage while
+concentrating → save → undo" passes; every tab has a screenshot at 360×800, in English. No
+creation wizard, no homebrew editor. SHEET-60 is the phase's last row: its §11 carries the proof.
+
+**Cut on 2026-10-22 by OPS-29**, before phase 1 closed: ENG-64 is phase 1's last open row, and the
+owner asked for rows she can start in parallel chats once it lands. No phase 2 row starts before
+phase 1's gate is proved. The rows come from SPEC §12 stage 2 and from the ADRs that put work in
+phase 2: ADR 008 (navigation), ADR 009, 010, 011 and 013 (the sheet, dice, descriptions, the home
+page) and ADR 015 (the skin layer comes first). Each phase 1 note that named phase 2 is now the
+note of the row that takes it. A screen row builds from its boards in `docs/design/mockups/` and
+its row in BRIEF Part 5 (OPS-22). BRIEF's prompts still hold text that later ADRs replaced, so a
+screen row reads its prompt with the ADRs, and the ADRs win (OPS-27 §11).
+
+**Running rows at the same time.** The table is in work order. The rows of one wave run in
+parallel chats once every row of the waves before it is closed: each row owns files no other row
+of its wave touches. Two rows make that possible. SHEET-11 gives every phase 2 screen its route,
+an empty page and its own i18n namespace file, and creates empty the shared pieces later rows
+fill. SHEET-30 gives each tab of the sheet one empty file per section, and one empty file for each
+panel the sheet opens. Every chat still edits `BACKLOG.md`, `SHEET_TICKET.md` and the archive, so
+the second chat to push rebases, keeps both sides and runs the gate again (`CLAUDE.md`, the
+steps). A wave holds at most one row that may change a stored shape (SHEET-53, SHEET-57), so two
+chats never claim one version number.
+
+| Wave | Rows | Starts when |
+|---|---|---|
+| 1 | SHEET-01, 02, 07, 14, 15, 17, 19 | Phase 1 is closed |
+| 2 | SHEET-03, 04, 05, 06, 08, 10, 16, 18, 20, 21 | Wave 1 is closed |
+| 3 | SHEET-09, 11, 22 | Wave 2 is closed |
+| 4 | SHEET-12, 13, 23, 24, 37 | Wave 3 is closed |
+| 5 | SHEET-25, 27, 30, 31, 38 | Wave 4 is closed |
+| 6 | SHEET-26, 28, 32, 33, 36, 39, 46, 48, 50, 53, 54, 55, 56 | Wave 5 is closed |
+| 7 | SHEET-29, 34, 40, 41, 42, 43, 44, 45, 47, 49, 51, 52, 57, 58 | Wave 6 is closed |
+| 8 | SHEET-35, 59 | Wave 7 is closed |
+| 9 | SHEET-60 | Every other row is closed |
+
+| ID | Hat | Size | Status |
+|---|---|---|---|
+| **Skin layer** | **before the first screen (ADR 015 item 13)** | | |
+| SHEET-01 | The base theme's tokens cover every token the mockups use | S | 🔲 |
+| SHEET-02 | Lint fails on a colour, font or animation written in a component | S | 🔲 |
+| SHEET-03 | Screens draw named slots the base theme fills | S | 🔲 |
+| SHEET-04 | Each part takes its style from a fixed menu | M | 🔲 |
+| SHEET-05 | Animations are presets that stop for reduced motion | S | 🔲 |
+| SHEET-06 | The app's fonts ship inside it, each licence read | S | 🔲 |
+| **On the device** | **tables, the mini-pack, saved characters** | | |
+| SHEET-07 | Phase 2's device tables arrive in one database version | XS | 🔲 |
+| SHEET-08 | The phase 1 fixtures ship as the built-in mini-pack | M | 🔲 |
+| SHEET-09 | Built-in packs load into the content index at start | S | 🔲 |
+| SHEET-10 | Characters are saved on the device, migrated as they open | S | 🔲 |
+| **Navigation** | **ADR 008, ADR 013** | | |
+| SHEET-11 | The start page replaces the bottom bar | M | 🔲 |
+| SHEET-12 | The player page shows its six sections | S | 🔲 |
+| SHEET-13 | Settings keep the person's display choices | S | 🔲 |
+| **Rules the screens need** | **engine and module, no screen** | | |
+| SHEET-14 | An unmet prerequisite gives a warning | S | 🔲 |
+| SHEET-15 | Resistances, immunities, vulnerabilities are computed from effects | S | 🔲 |
+| SHEET-16 | Damage applies the character's defenses by its type | S | 🔲 |
+| SHEET-17 | Casting warns of what forbids it | S | 🔲 |
+| SHEET-18 | Attunement past the limit gives a warning | XS | 🔲 |
+| SHEET-19 | Rolling initiative interrupts a knock-out's rest | XS | 🔲 |
+| SHEET-20 | A use's recovery amount is computed with a breakdown | S | 🔲 |
+| SHEET-21 | Every base AC calculation is computed for the pin | S | 🔲 |
+| SHEET-22 | Removing an entity drops what was stored for it | S | 🔲 |
+| **Characters** | **the list, the file, the manual form** | | |
+| SHEET-23 | An undo toast reverses the last change | S | 🔲 |
+| SHEET-24 | My characters lists the saved characters | S | 🔲 |
+| SHEET-25 | A character's Actions copy, export or delete it | S | 🔲 |
+| SHEET-26 | A character file imports through its checks | S | 🔲 |
+| SHEET-27 | The manual form makes a character | M | 🔲 |
+| SHEET-28 | The manual form's equipment step adds items | S | 🔲 |
+| SHEET-29 | The manual form shows the ability bonus window | S | 🔲 |
+| **The sheet** | **the frame, the tabs, trackers, rolls** | | |
+| SHEET-30 | The sheet's frame pins the header above the dock | M | 🔲 |
+| SHEET-31 | An entry's description opens in place | S | 🔲 |
+| SHEET-32 | The Main tab shows every check bonus | S | 🔲 |
+| SHEET-33 | A long press opens a number's breakdown | S | 🔲 |
+| SHEET-34 | A manual edit overrides a number | S | 🔲 |
+| SHEET-35 | The AC breakdown pins its base calculation | XS | 🔲 |
+| SHEET-36 | The choices badge opens every pending choice | M | 🔲 |
+| SHEET-37 | Rolls are kept in the roll log | S | 🔲 |
+| SHEET-38 | The dice panel rolls any formula fairly | M | 🔲 |
+| SHEET-39 | Tapping a number rolls it in the roll dialog | M | 🔲 |
+| SHEET-40 | The number pad changes the hit points | M | 🔲 |
+| SHEET-41 | Concentration shows until it ends | XS | 🔲 |
+| SHEET-42 | Conditions are set from the sheet | S | 🔲 |
+| SHEET-43 | The death saves tracker follows a dying character | S | 🔲 |
+| SHEET-44 | The Combat tab lists the attacks | S | 🔲 |
+| SHEET-45 | The Rest frames show what comes back | M | 🔲 |
+| SHEET-46 | The Spells tab shows the slot grid | M | 🔲 |
+| SHEET-47 | The cast panel casts a spell | M | 🔲 |
+| SHEET-48 | The Features tab groups features by source | M | 🔲 |
+| SHEET-49 | The Turn tab lists actions by timing | S | 🔲 |
+| SHEET-50 | The Gear tab equips items | M | 🔲 |
+| SHEET-51 | Coins change by quick steps | XS | 🔲 |
+| SHEET-52 | Custom entries are added as free text | S | 🔲 |
+| SHEET-53 | The About tab shows the origin details | S | 🔲 |
+| SHEET-54 | The Notes tab keeps free text | XS | 🔲 |
+| SHEET-55 | Inspiration is tracked as stars | S | 🔲 |
+| SHEET-56 | The portrait makes a round token | S | 🔲 |
+| SHEET-57 | Custom sections hold the person's own lists | S | 🔲 |
+| SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | 🔲 |
+| SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
+| SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
+
+- **SHEET-01** — ADR 015 item 13. Every token `docs/design/mockups/README.md` lists ("The tokens
+  these mockups use"), in light and dark, as data the base theme fills. Their values stay
+  placeholders until the owner picks the base colours and the heading font (BRIEF Part 5, still
+  open); dark stays the default (SPEC §7.2). The row lays the theme out one file per concern, each
+  imported once, so SHEET-03 to SHEET-06 each fill their own file. The web-app manifest's
+  background stays a fixed value (ADR 015 item 13).
+- **SHEET-02** — ADR 015 item 4, `CLAUDE.md` "No look is written in a component". The check works
+  as SETUP-05's visible-text check does (`biome/no-visible-literals.grit`).
+- **SHEET-03** — ADR 015 item 6: the app background, each page background, the token frame, the
+  portrait, the header, the dock, cards, buttons, the dice.
+- **SHEET-04** — ADR 015 item 7: the parts phase 2 draws (button, icon button, card, panel, chip,
+  bottom sheet, toast), each with its fixed menu of styles; the base theme picks one each.
+- **SHEET-05** — ADR 015 items 8 and 9: the phone's "reduce motion" and an app switch (shown by
+  SHEET-13) turn the presets into still pictures; animations stop off screen.
+- **SHEET-06** — ADR 005 item 7.5, ADR 015 item 10: Inter for text, and EB Garamond as the
+  heading placeholder of the mockups until the owner picks (BRIEF X1). No font service.
+- **SHEET-07** — SPEC §11's tables that phase 2 stores into (characters, packs, settings, roll
+  log, history, blobs), in one Dexie version, so parallel rows never each claim the next version.
+  This departs from SETUP-06's "each table arrives with the ticket that first stores into it", for
+  that reason.
+- **SHEET-08** — SPEC §12 stage 2: "a mini-pack of the stage 1 fixtures". The goldens' SRD
+  fixtures (`packages/system-5e/test/golden/srd-2014.ts`, `srd-2024.ts`) become the app's
+  built-in packs, with their CC-BY-4.0 metadata; the tests keep reading the same data. If the row
+  makes `content` import the module, the ENG-31 note under phase 3 applies to it.
+  Found by ENG-32: some fifth-edition keys have no entity type to give their name on screen: a
+  spell's `school`, a species' `size` and `creatureType`, an item's `rarity`, a spell area's
+  `shape`, a feat's `category`, a rule's `topic` and `icon`. This row gives them names (a simple
+  entity type each, or the module's i18n keys), so the wave 6 tabs only show them. Found by
+  ENG-48: the key path `size` takes only the species' own sizes, so an effect or an override
+  naming another warns and is not applied (SRD 5.2.1's goliath, Large Form: "you can change your
+  size to Large"). A size type would give every size as its keys.
+- **SHEET-09** — found by ENG-25: a character's active pack that is not installed on the device
+  never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
+  on each of its entries. The row starts the load from `apps/web/src/main.tsx`, which SHEET-11, in
+  the same wave, leaves alone.
+- **SHEET-10** — SPEC §5.8: an older stored character migrates as it opens.
+- **SHEET-11** — found by OPS-08: ADR 008 replaces the SETUP-04 bottom bar with a start page, a
+  player page and My characters. Player and DM are two squares (ADR 013 item 16, board
+  `V3-Start`); the DM square shows as coming later (ADR 008 item 2). Every page has a back arrow
+  and, where it needs one, the gear (ADR 008 item 1). ADR 008 leaves open whether the start page
+  shows on every start; until the owner says, it does (ADR 007 item 7). For the waves, the row
+  gives every phase 2 screen its route, an empty page and its own i18n namespace file, and creates
+  empty the shared pieces later rows fill: the toast host, the dice panel, the roll dialog, the
+  breakdown sheet, the description.
+- **SHEET-12** — ADR 013 item 17, board `V3-Player`: Characters works; Sources, Library, Quick
+  rules and Bookmarks open with phase 3, and Dice roll with SHEET-38; until then each shows as
+  coming later. No "2 of 3": no limit applies before the payment phase (ADR 005 item 2).
+- **SHEET-13** — SPEC §7.5, BRIEF P10 (not drawn yet; the row draws it from SHEET-04's parts). The
+  theme (dark by default, light), the motion switch (SHEET-05), the units (feet or metres, pounds
+  or kilograms; stored units stay feet and pounds), "I roll myself" (SPEC §6.5). Language, backup,
+  packs, AI and purchases come with their phases.
+- **SHEET-14** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
+  §8.2: a warning, never a block). Found by ENG-11: Tales' `unmetPrerequisites` (ENG-27) are its
+  test data; `Computed.entities` gives the entities to check. The manual form lets a person pick a
+  class that has multiclass prerequisites; phase 4's wizard shows the same warnings.
+- **SHEET-15** — found by ENG-20: no code computes `defenses.*` (SPEC §5.4: `defenses.resist`,
+  `immune`, `vuln`, `conditionImmune`, each by `append`). SRD 5.2.1's Bloodied (half the hit
+  points or fewer, "no game effect on its own but which might trigger other game effects") has no
+  path; the row decides whether it gets one.
+- **SHEET-16** — found by ENG-20: `applyDamage` takes the damage the person types, resistance,
+  immunity and vulnerability already applied. It takes the damage's type and applies SHEET-15's
+  defenses in the engine, for the number pad (SHEET-40).
+- **SHEET-17** — found by ENG-46: `spell.cannotCast` is 1 while armor worn without training
+  forbids spells (ENG-46 §4), with an `untrainedArmor` or `untrainedShield` warning; `castSpell`
+  (ENG-20) does not read it. Found by ENG-62 (§11): `castSpell` reads neither the hit points nor a
+  knock-out, so a character with the Unconscious condition, and so the Incapacitated one, casts
+  and starts concentrating. The row decides, from each SRD's text, which refuses and which warns;
+  a warning never blocks.
+- **SHEET-18** — found by ENG-63: nothing counts the attuned rows; both SRDs allow "no more than
+  three magic items at a time" (ENG-63's ticket quotes both). A warning, never a block (§8.2),
+  computed by the module, not the screen.
+- **SHEET-19** — found by ENG-65: rolling initiative interrupts the knock-out's short rest (SRD
+  5.2.1, Short Rest): the action that records an initiative roll sets
+  `systemData.state.knockedOut` to `interrupted`; no action does yet. The roll dialog (SHEET-39)
+  calls it.
+- **SHEET-20** — found by ENG-21: a use's label ("1 back on a short rest, all on a long rest")
+  reads `Computed.resources[].uses.recovery`; an amount that is a formula has no computed value
+  with a breakdown, so this row computes it. Game-free: tested on the made-up system.
+- **SHEET-21** — found by ENG-47: the pinned base AC calculation is `systemData.acCalc`:
+  `equipment` (the armor worn, else 10 + DEX) or an `ac.formulas` effect's part id; without it the
+  highest counts. The control that pins one (SHEET-35) needs each candidate's key, name and value,
+  and `Computed` gives only the chosen one's breakdown (`acCalcChosen` first when pinned).
+- **SHEET-22** — found by ENG-17: a stored switch (`state.toggles`) stays after its entity is
+  removed and warns `toggleGone` on every compute. Found by ENG-47: a pin that does not apply
+  warns `stepRule` `acCalcNotApplying` on every compute. Removing an entity drops both.
+- **SHEET-23** — SPEC §7.2: an "Undo" toast after every change, and the last 50 states kept in
+  the history table; an entry is ENG-30's log entry.
+- **SHEET-24** — ADR 008 item 4, BRIEF P2, board `V3-Characters`; an empty state with "+" and
+  "Import file". No counter and no limit before the payment phase (ADR 005 item 2).
+- **SHEET-25** — ADR 008 item 4: a swipe or "⋯" opens Actions. Copy, Export (a JSON file, SPEC
+  §12 stage 2) and Delete (with Undo) work; Link for DM and Transfer wait for the table link's
+  phase and show as coming later.
+- **SHEET-26** — SPEC §5.8, §12 stage 2: an older file migrates; a file that fails its checks is
+  refused with the reason, and nothing of it is saved.
+- **SHEET-27** — SPEC §7.4 (manual mode), BRIEF P3 steps 1–8, board `V3-Create`: one scrolling
+  form, a pinned bar with the live AC, hit points and initiative; warnings never block "Create".
+  Found by ENG-19: where the editions use different words, the screens read
+  `rulesOf(character).terms` (race or species, subrace or lineage, inspiration or heroic
+  inspiration), each an i18n key's last part; a new character is written with
+  `DEFAULT_HOUSE_RULES` and its edition's `abilityBonusSource` and `languageSource` (ENG-56).
+  Score methods, steps that open and close, and the roll calculator are phase 4's (ADR 010 items
+  11 and 12, ADR 013 items 7 and 8). The row gives each step its own empty file.
+- **SHEET-28** — BRIEF P3 step 9. Found by ENG-49: a spell or item a grant names (a `spell` or
+  `item` grant's `fixed` ids, and its chosen ones) is looked up, not gathered, so one of the other
+  edition gets no `otherRuleset` warning, which a gathered entity gets. The starting inventory
+  shows each one's edition (ADR 005 item 3.5) or warns there; the Spells tab does the same
+  (SHEET-46).
+- **SHEET-29** — found by ENG-37 (ADR 017): when the race or species and the background come from
+  different editions and both raise ability scores, the manual form (BRIEF P3 step 6) shows a
+  warning and a popup, or a sign that opens it: a checkbox for each, either, both or neither,
+  and "Create" stays on. ENG-68's warning `abilityBonusConflict` says when, its `source` what is
+  ticked. Board `V3-Conflict`. Phase 4's creation wizard shows the same.
+- **SHEET-30** — BRIEF P4 V3, board `V3-Sheet`, ADR 013 items 1 and 2: the header (the name, the
+  class line as the level, the edition badge, the choices badge, AC · initiative · speed ·
+  proficiency, and for a caster the spellcasting line of ADR 009 item 4); the dock (the hit point
+  bar with temporary hit points in their own colour, Damage, Heal, the tabs: the six of SPEC §7.2,
+  About and Turn); play mode locked by default, with the Edit switch (SPEC §7.2). Every number
+  comes from `Computed`. For the waves, the row gives each tab one empty file per section, an
+  empty file for each panel the sheet opens (the number pad, the Rest frames, the "⋯" menu, the
+  choices list), and one number component whose tap rolls (SHEET-39) and whose long press opens
+  the breakdown (SHEET-33).
+- **SHEET-31** — ADR 011, ADR 013 item 7: every entry opens and closes its description in place
+  with the turning chevron; "See full description" shows the exact text with its source, or says
+  the source has none. Phase 2's texts are the fixtures' and the person's free text.
+- **SHEET-32** — board `V3-Sheet`: the stats, the saves, the skills with their proficiency, the
+  passives. Found by ENG-43: a skill's stat is `Computed.keys['skills.<key>.ability']`, with steps
+  naming the skill, each effect and a manual edit; the sheet shows that key, never the skill's own
+  `ability`.
+- **SHEET-33** — SPEC §7.2, BRIEF P5 sheet 2, board `V3-Roll`. Found by ENG-17: the breakdown's
+  kind `override` is shown as "Manual edit" (SPEC §6.1 step 7). Found by ENG-40: an override's
+  path or an effect's target may be one step such as `toString` (`computedPathSchema`).
+  `compute()` handles it (`overrideNoPath`), but `Computed.values` and `Computed.breakdown` are
+  plain objects, so `values['toString']` gives a function, not `undefined`. The screen reads only
+  own fields, or the path schema refuses ENG-40's `RESERVED_KEYS` as a step.
+- **SHEET-34** — found by ENG-17: an override applies only when its value is a number on a number
+  path (`overrideNotANumber` otherwise), so the override editor stores a number there. Found by
+  ENG-43: an override of a skill's stat applies only when its value is one of its keys (a stat's
+  key, `overrideNotAKey` otherwise), so the editor stores a stat's key there. An override of a
+  roll mode is a manual edit of it (ENG-34).
+- **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates.
+- **SHEET-36** — SPEC §7.2, "What needs choosing": the grants' `pendingChoices` and
+  `Computed.pendingKeys`, each answered from the list. Found by ENG-48: a size not chosen is in
+  `Computed.pendingKeys` (`{ path, options }`); the answer is written to
+  `systemData.species.size`, not to `choices`. A stored size the species does not offer warns
+  `stepRule` `sizeNotOffered`.
+- **SHEET-37** — SPEC §6.5: the last 100 rolls of a character. Found by ENG-26: the roll log
+  keeps `RollRecord`s, built with `recordRoll`. `rollRecordSchema` refuses an unknown field and
+  carries no version of its own, so the table that keeps the log gives each record one; the table
+  link does the same for what it sends.
+- **SHEET-38** — ADR 009 item 1, ADR 010 items 4 and 5, boards `V3-SheetDice` and `V3-Dice`: the
+  half-screen panel on the sheet, and the dice page; any count of dice; custom dice. Found by
+  ENG-08: the engine has no random source of its own (lint refuses `Math.random` in it). The panel
+  passes `fairDie(randomSourceOf((a) => crypto.getRandomValues(a)))` to `rollFormula`; "I roll
+  myself" (SPEC §6.5) passes the faces the person typed as the die. The throw that looks real and
+  dice skins are the dice phase's.
+- **SHEET-39** — BRIEF P5 sheet 1, board `V3-Roll`. Found by ENG-34: each d20 test's roll mode is
+  a number path, 1 advantage, −1 disadvantage, 0 neither, with a step per source:
+  `checks.<stat>.mode`, `abilities.<stat>.saveMode`, `skills.<key>.mode`, `init.mode`,
+  `attacks.<key>.mode`, `spell.attackMode`, `deathSave.mode` (`rolls.ts`, `attacks.ts`). Every
+  step's `value` is its source's sign, so the roll dialog adds its own sources to those values
+  with `rollModeOf` (2014 inspiration's advantage, a situational effect switched on, matched to
+  the test by `ROLL_TARGETS`), rolls `d20Formula(mode)`, reads the kept d20 face with
+  `attackOutcome(face, range)` (a weapon's `crit.range`, a spell's 20) and, on a critical hit,
+  rolls `criticalDamage` of the damage dice. ENG-20's concentration save is the Constitution save:
+  its mode is `abilities.con.saveMode`. "Send to DM" waits for the table link.
+- **SHEET-40** — ADR 010 item 6, ADR 013 item 1, boards `V3-Keypad` and `V3-TempHP`. Found by
+  ENG-20: damage returns the concentration save's DC (`outcome.concentrationDc`); the screen rolls
+  it and calls `endConcentration` on a failure. Found by ENG-65: the pad offers knocking out
+  (`applyDamage`'s `knockOut`) where the edition has it (`rulesOf(character).knockOutToOneHp`,
+  2024) and the damage would drop the character to 0; the outcome's `status` `knockedOut` says it
+  happened.
+- **SHEET-41** — SPEC §6.4, §7.2: the spell held, and ending it by hand.
+- **SHEET-42** — found by ENG-69: the sheet sets a fifth-edition character's condition through
+  the module's `setConditionLevel` (`conditions.ts`), not the core's `setCondition`: only the
+  module's ends every attunement when the level kills (exhaustion at its highest, ENG-67). Below
+  that it gives the core's result. Found by ENG-19: exhaustion 6 is death in both editions and
+  gives no number; the sheet says so.
+- **SHEET-43** — found by ENG-58: the death save tracker calls `rollDeathSave` (`death-saves.ts`)
+  with the kept d20 face and the total the dice panel gives (`d20Formula(deathSave.mode)`, with
+  the person's bonuses); its outcome's `status` (`dying`, `stable`, `dead`, `up`) says what to
+  show, and `isStable`, `isDead` give the state at any time. First aid's Medicine check, Spare the
+  Dying and 2014's knocking out call `stabilize`; a revival spell calls `revive` with `1` or
+  `max`. A stable character's 1 hit point after 1d4 hours is the person's `applyHealing` of 1:
+  nothing keeps the time. Found by ENG-65: while `isKnockedOut`, the sheet offers first aid
+  (`firstAid`): someone else's DC 10 Wisdom (Medicine) check, recorded as a success.
+- **SHEET-44** — the P4 prompt's Combat tab, board `V3-Sheet`: each attack with its mastery
+  (ENG-16); tapping it rolls through SHEET-39.
+- **SHEET-45** — board `V3-Rest`. Found by ENG-21: a rest is one action and one entry, `shortRest`
+  or `longRest` (`rests.ts`), pure, so the Rest frames (BRIEF P6) call it to show what comes back
+  and keep its result on "Confirm"; the short rest takes every die spent, `{ die, roll }`, the face
+  from the dice panel or the person's own throw, and its `outcome.hitDice` gives each die's hit
+  points. The hit dice are `hitDice.d<N>.max` (with a breakdown) less
+  `systemData.state.hitDiceSpent`. The recovery events `dawn`, `turn` and `manual` are triggered
+  by no action (a magic item's charges at dawn); the row decides whether a frame offers them.
+  Found by ENG-61: a long rest lowers exhaustion in both editions, but SRD 5.1's only "provided
+  that the creature has also ingested some food and drink"; the 2014 Rest frame says so, and a
+  person whose character did not eat sets the level back (SHEET-42).
+- **SHEET-46** — ADR 010 item 9, ADR 009 item 4, board `V3-Spells`. Found by ENG-57: a granted
+  spell's own uses are the resource of its `spell` grant's `key` (`resources.<key>.max`, spent in
+  `state.resources`); `castSpell` takes the grant's part as `grant`. The sheet shows them on the
+  spell's row ("1/LR, no spell slot", ADR 010 item 10). The resource's label is its entity's name,
+  so two spell grants of one entity (a trait's spells at levels 3 and 5) give two resources with
+  one label: the sheet pairs each with its spell through the grant's `key`. Found by ENG-49 (see
+  SHEET-28): the tab shows each spell's edition or warns.
+- **SHEET-47** — ADR 010 item 10, ADR 011 item 2, board `V3-Cast`: the summary, "See full
+  description", "Cast", "Don't use a spell slot"; the dice at a higher slot (ENG-50); a new
+  concentration ends the old one with a confirmation (SPEC §6.4). It reads SHEET-17.
+- **SHEET-48** — ADR 009 item 2, board `V3-Features`: grouped under the species, the class (its
+  subclass on the line below), the background, the feats; each with its uses, their recovery label
+  (SHEET-20) and its switches (`state.toggles`, ENG-17).
+- **SHEET-49** — ADR 010 item 8, board `V3-Turn`: built from each feature's `activation`; nothing
+  is typed twice. It fills out as phase 3 adds content.
+- **SHEET-50** — SPEC §7.2: worn and attuned change AC and attacks at once (ENG-44); weight;
+  containers. Found by ENG-63: the inventory sets a row's `attuned` by hand; death clears every one
+  (`deathChanges`, `actions.ts`); SHEET-18 warns past the limit.
+- **SHEET-51** — SPEC §7.2: cp, sp, ep, gp, pp with + and −.
+- **SHEET-52** — SPEC §12 stage 2 ("custom item", "custom feature" with text), ADR 009 item 7
+  (free text now; with effects in phase 5), board `V3-Add`. The stored shape has both already: an
+  inventory row's `custom`, and the character's own entities (`localEntities`).
+- **SHEET-53** — ADR 009 item 3, board `V3-About`: background, alignment, languages, armor, weapon
+  and tool proficiencies. Found by ENG-48: the size shown is `Computed.keys.size`, with steps
+  naming the species or lineage, each effect and a manual edit. The stored character has no
+  alignment field: the row adds one (a migration, SPEC §5.8) or keeps it in `notes`.
+- **SHEET-54** — SPEC §5.8 `notes`.
+- **SHEET-55** — ADR 009 item 5. Found by ENG-19: the inspiration stars hold the house rule's
+  `inspirationMax` and show the edition's `inspiration.max` (1 in both SRDs) next to it; spending
+  one does `inspiration.use` (advantage in 2014, a reroll of one die in 2024).
+- **SHEET-56** — ADR 009 item 6, ADR 015 item 2, board `V3-Token`: the person's image, an animated
+  picture or a short video included, kept in the blobs table on the device (ADR 005 item 10); the
+  token is the image in a round frame (SHEET-03's slot).
+- **SHEET-57** — ADR 009 items 7 and 8, board `V3-Add`: Mounts, Pets, Familiars, Notes or any
+  named list, each entry free text; a companion is such an entry with its small stat block as text.
+  A companion with a sheet of its own waits for the table link (ADR 014 item 9). A stored-shape
+  change: `schemaVersion` and a migration (SPEC §5.8).
+- **SHEET-58** — ADR 013 item 2 and the P4 prompt's list, board `V3-Actions`: Level up first, then
+  Link for the DM, Export, Copy, Transfer, Rules options, Change history, Delete. Level up (phase
+  4), Link for the DM and Transfer (the table link) and Rules options (phase 4's house rules) show
+  as coming later. Rest and Edit stay header buttons.
+- **SHEET-59** — SPEC §7.2's 50 states, opened from "⋯" (ADR 013 item 2: "undo any change").
+  Undoing a change that later changes touched is decided in the row.
+- **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
+  empty form to its values, and carries every tab's screenshot in the chat.
+
+---
+
+## Phases 3–7 — cut when the phase before closes
 
 | Phase | SPEC stage | Area | What it delivers |
 |---|---|---|---|
-| 2 | 2 | `SHEET` | Character list, manual creation, the sheet with every tab, trackers, rolls, rests, undo, JSON export; screens built on design tokens (ADR 005) |
 | 3 | 3 | `CONT` | SRD 2014 and 2024 import, mechanics for levels 1–5, the library, search, attribution |
 | 4 | 4 | `WIZ` | The creation wizard, the level-up wizard, house rules |
 | 5 | 5 | `HB` | The homebrew editor, the effect builder, before/after preview, several personal packs, `.gmpack` import and export with the import checks (ADR 003) |
@@ -160,15 +514,6 @@ split off an old row got a new id.
 | RU | — | `RU` | Russian locale, glossary check, Russian overlays for SRD texts (ADR 000); placed when phase 3 closes |
 | SYS | — | `SYS` | More game systems: other D&D editions, Pathfinder, later others (ADR 004); placed when phase 2 closes |
 
-- **Phase 2** — found by ENG-46: `spell.cannotCast` is 1 while armor worn without training
-  forbids spells (ENG-46 §4), with an `untrainedArmor` or `untrainedShield` warning; `castSpell`
-  (ENG-20) does not read it. The sheet's cast button reads it, or the action refuses then.
-- **Phase 2** — found by ENG-57: a granted spell's own uses are the resource of its `spell` grant's
-  `key` (`resources.<key>.max`, spent in `state.resources`); `castSpell` takes the grant's part as
-  `grant`. The sheet shows them on the spell's row ("1/LR, no spell slot", ADR 010 item 10). The
-  resource's label is its entity's name, so two spell grants of one entity (a trait's spells at
-  levels 3 and 5) give two resources with one label: the sheet pairs each with its spell through
-  the grant's `key`.
 - **Phase 3** — found by ENG-57: the SRD traits that cast a spell with no slot (SRD 5.1 Infernal
   Legacy; SRD 5.2.1 Elven Lineage, Fiendish Legacy, Gnomish Lineage, Magic Initiate; ENG-57 §8)
   are one `spell` grant per spell, each with its `atLevel`, its `uses` and a `key`.
@@ -295,131 +640,11 @@ split off an old row got a new id.
   `san`) warns nowhere, as an `append` on a list no step reads (ENG-14). The targets each test
   reads are `ROLL_TARGETS` (`rolls.ts`); the effect builder and the import checks compare a target
   with them.
-- **Phases 2, 3** — found by ENG-32: some fifth-edition keys have no entity type to give their
-  name on screen: a spell's `school`, a species' `size` and `creatureType`, an item's `rarity`,
-  a spell area's `shape`, a feat's `category`, a rule's `topic` and `icon`. The first screen
-  that shows one gives them names: a simple entity type each, or the module's i18n keys. Found by
-  ENG-48: the key path `size` takes only the species' own sizes, so an effect or an override
-  naming another warns and is not applied (SRD 5.2.1's goliath, Large Form: "you can change your
-  size to Large"). A size type would give every size as its keys.
-- **Phases 2, 4** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
-  §8.2: a warning, never a block). The row is cut with the first phase that lets a person pick an
-  entity with prerequisites. Found by ENG-11: Tales' `unmetPrerequisites` (ENG-27) are its test
-  data; `Computed.entities` gives the entities to check.
-- **Phase 2** — found by ENG-40: an override's path or an effect's target may be one step such
-  as `toString` (`computedPathSchema`). `compute()` handles it (`overrideNoPath`), but
-  `Computed.values` and `Computed.breakdown` are plain objects, so `values['toString']` gives a
-  function, not `undefined`. The first screen that reads `Computed` by a stored path reads only
-  own fields, or the path schema refuses ENG-40's `RESERVED_KEYS` as a step.
-- **Phase 2** — found by ENG-08: the engine has no random source of its own (lint refuses
-  `Math.random` in it). The dice panel passes `fairDie(randomSourceOf((a) =>
-  crypto.getRandomValues(a)))` to `rollFormula`; "I roll myself" (SPEC §6.5) passes the faces
-  the person typed as the die.
-- **Phase 2** — found by ENG-26: the roll log (SPEC §6.5) keeps `RollRecord`s, built with
-  `recordRoll`. `rollRecordSchema` refuses an unknown field and carries no version of its own, so
-  the table that keeps the log gives each record one; the table link does the same for what it
-  sends.
-- **Phase 2** — found by ENG-17: a stored switch (`state.toggles`) stays after its entity is
-  removed and warns `toggleGone` on every compute, so removing an entity drops its switches. An
-  override applies only when its value is a number on a number path (`overrideNotANumber`
-  otherwise), so the override editor stores a number there. The breakdown's kind `override` is
-  shown as "Manual edit" (SPEC §6.1 step 7).
-- **Phase 2** — found by ENG-48: the size shown is `Computed.keys.size`, with steps naming the
-  species or lineage, each effect and a manual edit. A size not chosen is in
-  `Computed.pendingKeys` (`{ path, options }`), beside the grants' `pendingChoices`; the answer is
-  written to `systemData.species.size`, not to `choices`. A stored size the species does not offer
-  warns `stepRule` `sizeNotOffered`.
-- **Phase 2** — found by ENG-47: the pinned base AC calculation is `systemData.acCalc`:
-  `equipment` (the armor worn, else 10 + DEX) or an `ac.formulas` effect's part id; without it the
-  highest counts. The control that pins one needs each candidate's key, name and value, and
-  `Computed` gives only the chosen one's breakdown (`acCalcChosen` first when pinned); the row
-  that builds it gives `Computed` the candidates. A pin that does not apply warns `stepRule`
-  `acCalcNotApplying` on every compute, so removing its entity clears it, as a switch is cleared.
-- **Phase 2** — found by ENG-43: a skill's stat is `Computed.keys['skills.<key>.ability']`, with
-  steps naming the skill, each effect and a manual edit; the sheet shows that key, never the
-  skill's own `ability`. An override of it applies only when its value is one of its keys (a
-  stat's key, `overrideNotAKey` otherwise), so the override editor stores a stat's key there.
-- **Phase 2** — found by ENG-19: where the editions use different words, the sheet reads
-  `rulesOf(character).terms` (race or species, subrace or lineage, inspiration or heroic
-  inspiration), each an i18n key's last part. The inspiration stars hold the house rule's
-  `inspirationMax` and show the edition's `inspiration.max` (1 in both SRDs) next to it (ADR 009
-  item 5); spending one does `inspiration.use` (advantage in 2014, a reroll of one die in 2024).
-  A new character is written with `DEFAULT_HOUSE_RULES` and its edition's `abilityBonusSource`
-  and `languageSource` (ENG-56).
-  Exhaustion 6 is death in both editions and gives no number; the sheet says so.
-- **Phase 2** — found by ENG-20: `applyDamage` takes the damage the person types, resistance,
-  immunity and vulnerability already applied; no code computes `defenses.*` (SPEC §5.4). The row
-  that shows the defenses computes them, and the Damage pad (ADR 010 item 6) applies them in the
-  engine. SRD 5.2.1's Bloodied (half the hit points or fewer, "no game effect on its own but which
-  might trigger other game effects") has no path. Damage returns the concentration save's DC
-  (`outcome.concentrationDc`); the screen rolls it and calls `endConcentration` on a failure.
-- **Phase 2** — found by ENG-21: a rest is one action and one entry, `shortRest` or `longRest`
-  (`rests.ts`), pure, so the Rest frames (BRIEF P6) call it to show what comes back and keep its
-  result on "Confirm"; the short rest takes every die spent, `{ die, roll }`, the face from the
-  dice panel or the person's own throw, and its `outcome.hitDice` gives each die's hit points.
-  The hit dice are `hitDice.d<N>.max` (with a breakdown) less `systemData.state.hitDiceSpent`.
-  The uses' label ("1 back on a short rest, all on a long rest") reads
-  `Computed.resources[].uses.recovery`; an amount that is a formula has no computed value with a
-  breakdown, so the row that shows one computes it. The recovery events `dawn`, `turn` and
-  `manual` are triggered by no action (a magic item's charges at dawn). Found by ENG-61: a long
-  rest lowers exhaustion in both editions, but SRD 5.1's only "provided that the creature has also
-  ingested some food and drink"; the 2014 Rest frame says so, and a person whose character did not
-  eat sets the level back with `setCondition` (ENG-61 §4).
-- **Phase 2** — found by ENG-58: the death save tracker calls `rollDeathSave` (`death-saves.ts`)
-  with the kept d20 face and the total the dice panel gives (`d20Formula(deathSave.mode)`, with
-  the person's bonuses); its outcome's `status` (`dying`, `stable`, `dead`, `up`) says what to
-  show, and `isStable`, `isDead` give the state at any time. First aid's Medicine check, Spare the
-  Dying and 2014's knocking out call `stabilize`; a revival spell calls `revive` with `1` or
-  `max`. A stable character's 1 hit point after 1d4 hours is the person's `applyHealing` of 1:
-  nothing keeps the time.
-- **Phase 2** — found by ENG-65: the Damage pad offers knocking out (`applyDamage`'s `knockOut`)
-  where the edition has it (`rulesOf(character).knockOutToOneHp`, 2024) and the damage would drop
-  the character to 0; the outcome's `status` `knockedOut` says it happened. While `isKnockedOut`,
-  the sheet offers first aid (`firstAid`): someone else's DC 10 Wisdom (Medicine) check, recorded
-  as a success. Rolling initiative interrupts the knock-out's short rest (SRD 5.2.1, Short Rest):
-  the row that records initiative sets `systemData.state.knockedOut` to `interrupted`; no action
-  does yet. Found by ENG-62 (§11), its note not written then: `castSpell` reads neither the hit
-  points nor a knock-out, so a character with the Unconscious condition, and so the Incapacitated
-  one, casts and starts concentrating. A warning, never a block, with the casting screen.
-- **Phase 2** — found by ENG-63: the inventory sets a row's `attuned` by hand; death clears every
-  one (`deathChanges`, `actions.ts`). Nothing counts the attuned rows: both SRDs allow "no more
-  than three magic items at a time" (ENG-63's ticket quotes both). A warning, never a block
-  (§8.2), computed by the module, not the screen.
-- **Phase 2** — found by ENG-69: the sheet sets a fifth-edition character's condition through the
-  module's `setConditionLevel` (`conditions.ts`), not the core's `setCondition`: only the
-  module's ends every attunement when the level kills (exhaustion at its highest, ENG-67). Below
-  that it gives the core's result.
-- **Phase 2** — found by ENG-34: each d20 test's roll mode is a number path, 1 advantage, −1
-  disadvantage, 0 neither, with a step per source: `checks.<stat>.mode`,
-  `abilities.<stat>.saveMode`, `skills.<key>.mode`, `init.mode`, `attacks.<key>.mode`,
-  `spell.attackMode`, `deathSave.mode` (`rolls.ts`, `attacks.ts`). Every step's `value` is its
-  source's sign, so the roll dialog adds its own sources to those values with `rollModeOf` (2014
-  inspiration's advantage, a situational effect switched on, matched to the test by `ROLL_TARGETS`),
-  rolls `d20Formula(mode)`, reads the kept d20 face with `attackOutcome(face, range)` (a weapon's
-  `crit.range`, a spell's 20) and, on a critical hit, rolls `criticalDamage` of the damage dice. An
-  override of a mode is a manual edit of it. ENG-20's concentration save is the Constitution save:
-  its mode is `abilities.con.saveMode`.
-- **Phase 2** — found by ENG-25: a character's active pack that is not installed on the device
-  never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
-  on each of its entries.
-- **Phase 2** — found by ENG-49: a spell or item a grant names (a `spell` or `item` grant's
-  `fixed` ids, and its chosen ones) is looked up, not gathered, so one of the other edition gets
-  no `otherRuleset` warning, which a gathered entity gets. The Spells tab and the starting
-  inventory, which list them, show each one's edition (ADR 005 item 3.5) or warn there.
-- **Phase 2** — found by ENG-37 (ADR 017): when the race or species and the background come from
-  different editions and both raise ability scores, the manual form (BRIEF P3 step 6) shows a
-  warning and a popup, or a sign that opens it: a checkbox for each, either, both or neither,
-  and "Create" stays on. ENG-68's warning `abilityBonusConflict` says when, its `source` what is
-  ticked. Phase 4's creation wizard shows the same.
-- **Phase 2** — found by OPS-08: ADR 008 replaces the SETUP-04 bottom bar with a start page, a
-  player page and My characters. The phase 2 rows build that navigation instead of the bar.
 - **Phases 2–5** — added by OPS-22: each screen is built from its mockup in
   `docs/design/mockups/` and its row in BRIEF Part 5; a design change made during a phase is
   made in the mockup and the canvas too.
-- **ADR 009, by phase** — added by OPS-09. Phase 2: the dice panel on the sheet, features by
-  source, the About tab, the spellcasting line, Inspiration, portrait and token, custom items,
-  companions and sections. Phase 3: several rulebooks at once, the source on every entry.
-  Phase 5: custom stats, the person's packs next to the books, custom entries with effects. The
+- **ADR 009, by phase** — added by OPS-09. Phase 2: rows (SHEET-30, 38, 46, 48, 52, 53, 55, 56,
+  57). Phase 3: several rulebooks at once, the source on every entry. Phase 5: custom stats, the person's packs next to the books, custom entries with effects. The
   dice phase (with ADR 005 item 11): the honest animated roll, custom roll modifiers. The table
   link's phase: the campaign copy, the DM's changes, approval of important changes.
 - **Phase 4** — found by ENG-33: SPEC §8.4's point-buy budget is the point-buy method's (ADR 010
@@ -452,31 +677,27 @@ split off an old row got a new id.
   `encumbrance: 'variant'`, which no code reads; ENG-45's `speed.armorReduction` (`combat.ts`)
   reads no house rule. The row that makes the encumbrance house rule work gives it 0 under the
   variant.
-- **ADR 010, by phase** — added by OPS-10. Phase 2: custom dice and any count of dice, the
-  Damage and Heal number pad, the Turn tab, the spell slot grid, casting without a slot. Phase
+- **ADR 010, by phase** — added by OPS-10. Phase 2: rows (SHEET-38, 40, 46, 47, 49). Phase
   3: the one-page library with topics and full entries, the All sources list. Phase 4: steps
   that open and close, ability score methods, level-up by XP or milestone. Phase 5: adding
   packs from "Books in use". DM tools: encounter templates. The table link's phase: the DM's
   level-up control, changes reviewed together.
 - **ADR 012** — added by OPS-14. Phase 3: the library's list page and its floating entry window.
-- **ADR 013, by phase** — added by OPS-15 to OPS-19. Phase 2: temporary hit points in their
-  own colour, the class line as the level with Level up in "⋯", the Player and DM squares, the
-  home page's sections. Phase 3: classes and subclasses per ruleset, one entry per ruleset, the spell's description
+- **ADR 013, by phase** — added by OPS-15 to OPS-19. Phase 2: rows (SHEET-11, 12, 30, 31, 40,
+  58). Phase 3: classes and subclasses per ruleset, one entry per ruleset, the spell's description
   layout, Sources with the SRDs built in, Quick rules with every SRD rule and linked terms,
   Bookmarks. Phase 4: the turning arrow on creation steps, the roll calculator, optional feats, the ability
   bonus conflict window. The dice phase: the roll that looks like a real throw. The table link's
   phase: level-up approval in a campaign, the DM's edit before approving, the approvals tab, the
   DM's setting for the conflict window. The DM tools' phase: actors with types. A second system:
   the system preview.
-- **ADR 015** — added by OPS-26. Phase 2 opens with the skin layer, before the first screen:
-  the full token set, the slots, the part styles, the motion settings, the lint check; the
-  portrait takes animated pictures and video. The theme editor's phase: the skin schema, import,
-  export. The dice phase: dice skins and their effects. The purchases phase: frames, backgrounds,
-  seasons.
+- **ADR 015** — added by OPS-26. Phase 2: rows (SHEET-01 to SHEET-06, SHEET-56). The theme
+  editor's phase: the skin schema, import, export. The dice phase: dice skins and their effects.
+  The purchases phase: frames, backgrounds, seasons.
 - **ADR 014** — added by OPS-20. Phase 3: the import brings in both SRDs' rules chapters as
   `rule` entries with topics, for Quick rules; bookmarks are a table on the device.
-- **ADR 011, by phase** — added by OPS-12. Phase 2: descriptions open and close, from fixtures
-  and free text. Phase 3: the SRD texts. Phase 5: the person's packs.
+- **ADR 011, by phase** — added by OPS-12. Phase 2: SHEET-31. Phase 3: the SRD texts. Phase 5:
+  the person's packs.
 
 Phases L1–L6 (Foundry, game master tools, assistant, accounts, shared room) are in SPEC §12 and
 get rows only when the owner opens them. ADR 003 adds two more of that kind: the Fantasy Grounds
@@ -491,6 +712,7 @@ person's own AI key, free; L5's campaign sync becomes the table link. It adds th
 
 **Phase 0 → phase 1 → phase 2 → phase 3 → phase 4 → phase 5 → phase 6 → phase 7.** Inside a
 phase, rows go in the order of its table unless a row's "Depends on" allows otherwise.
+Phase 2's waves (its section) say which of its rows can run in parallel chats.
 
 Three things can change this order, and all are the owner's decision (SPEC §14):
 - if she plays in Foundry now, L1 can move ahead of phase 6;
@@ -530,10 +752,17 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-25 | Every ticket that builds a screen names its mockup boards | XS | ✅ 2026-10-01 |
 | OPS-26 | ADR 015 makes every look a skin's data | XS | ✅ 2026-10-01 |
 | OPS-27 | Closed tickets leave the files a new chat reads | XS | ✅ 2026-10-01 |
-| OPS-28 | The `compute()` speed check gives one verdict for one commit | S | 🔲 |
+| OPS-28 | The quality gate gives one verdict for one commit, whatever the load | S | 🔲 |
+| OPS-29 | Phase 2 is cut into rows that run in waves | S | ✅ 2026-10-22 |
 
 - **OPS-28** — found by ENG-66 (ENG-66 §11): ENG-23's speed pass (`compute.speed.ts`, the median
   × 4 at most 10 ms) fails on some runs in the cloud container with no code changed. On `05f3430`,
   8 runs gave a median × 4 of 6.53 to 11.20 ms, 2 of them above 10; ENG-23 measured 5.78 to
   6.07 ms. A gate that fails by the machine's load stops a commit that has no fault. The row
-  decides how the check reads the same on every run of one commit.
+  decides how the check reads the same on every run of one commit. Found by OPS-29, and the row's
+  hat widened for it: ENG-52's seeded-formula test (`packages/engine/test/average.test.ts`, its
+  limit 5,000 ms) took 5,096 ms and 5,117 ms in two of four full `pnpm test` runs of one
+  documents-only change on `c6e3395`, and passed in the other two; alone it took 2,157 ms.
+  It belongs to no phase, so it can run now, beside any other row: it owns
+  `packages/system-5e/test/speed/`, `packages/engine/test/average.test.ts` and `vitest.config.ts`,
+  which no phase 2 row touches.
