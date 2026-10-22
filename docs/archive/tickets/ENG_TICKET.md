@@ -11,8 +11,8 @@ are its proof.
 (SPEC §12 stage 1, widened by ADR 004 and ADR 005) is proved.
 **Read before starting:** `CLAUDE.md`, `docs/tickets/README.md`, the SPEC sections above,
 ADR 004.
-**This file:** the theme's closed tickets, moved here as each one closed. Open tickets are in
-[`docs/tickets/ENG_TICKET.md`](../../tickets/ENG_TICKET.md).
+**This file:** the theme's tickets, moved here as each one closed. The theme closed on
+2026-10-23 with phase 1; the gate's proof is in ENG-64 §11, at the end.
 
 ---
 
@@ -16736,4 +16736,284 @@ Differences from §3 and §4:
 Found, not fixed: nothing.
 
 Nothing for the changelog: no screen changes.
+
+---
+
+### ENG-64 A long rest gives the inspiration a trait names
+
+**Hat:** A long rest gives the inspiration a trait names
+**Depends on:** ENG-59 (`INSPIRATION_PATH`, `houseRules.inspirationMax` as the bound), ENG-21
+(`longRest`, `RestOutcome`, `whole`), ENG-55 (a computed path every character has at 0, which an
+effect adds to), ENG-33 (`state.inspiration`, its check against the maximum), ENG-60 (a test
+index whose SRD feature carries its effects)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.4 (the targets' catalogue); §6.4 (`longRest`); §6.3 ("Вдохновение"); ADR 009 item 5
+(the house rules' maximum); ADR 004 item 1
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/inspiration.ts` — changes: new `INSPIRATION_LONG_REST_PATH`,
+`inspirationSteps`, `inspirationGiven`.
+- `packages/system-5e/src/module.ts` — changes: `derive` gains `inspirationSteps`.
+- `packages/system-5e/src/rests.ts` — changes: `longRest` adds `inspirationGiven`'s change;
+  `RestOutcome` gains `inspirationOver`.
+- `packages/system-5e/test/inspiration.test.ts` — the tests of §7.
+- `docs/tickets/BACKLOG.md` — the phase 3 note (§11).
+
+#### 2. What is missing now
+
+Measured on `main` at `15bd9f4`, with a test written for it, then deleted. Golden B (2024) is the
+human; its stored `inspiration` is 0 and `houseRules.inspirationMax` 1:
+- The golden pack's Resourceful is `{"id":"srd-2024:feature/resourceful","type":"feature",
+  "ruleset":"2024","name":{"en":"Resourceful"},"source":{"pack":"srd-2024"}}`: a name, no effect.
+- `compute()` on golden B gives no path starting `inspiration`.
+- Golden B at 12 hit points, `longRest`: refused `unchanged`.
+- The golden pack with Resourceful given an effect `add 1` on `inspiration.longRest`: `compute()`
+  warns `noTarget`, "changes inspiration.longRest, which the character has no value for; it is
+  not applied", and the path has no value. `longRest` at 12 hit points: `unchanged`; at 3 hit
+  points: one change, hit points 3 → 12.
+- `longRest` (`rests.ts`) never writes `state.inspiration`.
+- `pnpm test`: `Test Files 63 passed (63)`, `Tests 862 passed (862)`, 16.57 s; coverage lines
+  99.92 % (2760/2762), branches 96.93 % (2027/2091); the speed pass `Tests 2 passed (2)`.
+
+#### 3. What it should look like when done
+
+`stamp` is `action-checks.ts`'s; `INSPIRATION` its path of `state.inspiration`. Golden A (2014):
+cleric 1, 12 hit points. Golden B (2024): the human fighter 1, 12 hit points, one d10, CON +2.
+Both are stored with `inspirationMax` 1 and `inspiration` 0; the owner's house rule
+(`DEFAULT_HOUSE_RULES.inspirationMax`) is 3. "The test index" is golden B's pack with Resourceful
+carrying SRD 5.2.1's rule as one effect, `{ id: 'heroic-inspiration', target:
+'inspiration.longRest', op: 'add', value: 1 }` (§8). "Cheer" is a made-up feat,
+`character:feat/cheer`, with one effect of the same target, op and value. Every value is worked
+out by hand from §8.
+
+**The path**
+1. `INSPIRATION_LONG_REST_PATH` is `'inspiration.longRest'`. Golden A and golden B on their golden
+   packs compute it as 0, with no breakdown step.
+2. Golden B on the test index: 1, one step `{ kind: 'effect', part:
+   'srd-2024:feature/resourceful#heroic-inspiration', op: 'add', value: 1, change: 1 }`, and no
+   warning (§2: `noTarget`). With Cheer beside it: 2, two steps.
+
+**The long rest**, golden B on the test index
+3. At 12 hit points, holding 0: `longRest` happens (§2: `unchanged`): `action` `longRest`,
+   `subject` `rest`, changes `[{ path: INSPIRATION, before: 0, after: 1 }]`; `outcome` `{ hitDice:
+   [], warnings: [] }`.
+4. At 3 hit points, holding 0: changes hit points 3 → 12, then inspiration 0 → 1. With exhaustion
+   2 and concentration on a made-up spell (ENG-21's): hit points 3 → 12, exhaustion 2 → 1,
+   inspiration 0 → 1, concentration ended, in that order.
+5. At the maximum: at 3 hit points holding 1, the changes are hit points 3 → 12 only, and
+   `outcome` is `{ hitDice: [], warnings: [], inspirationOver: 1 }`. At 12 hit points holding 1:
+   refused `unchanged`.
+6. With the owner's 3, at 3 hit points: holding 0 gives 1, 1 gives 2, 2 gives 3, none with
+   `inspirationOver`; holding 3 gives no inspiration change and `inspirationOver` 1.
+7. Two sources add up: with Cheer, at 3 hit points. The owner's 3: 0 → 2; 2 → 3 with
+   `inspirationOver` 1. The golden's 1: 0 → 1 with `inspirationOver` 1.
+8. Rounded down, never below 0, an override standing in for any number a formula gives. With the
+   owner's 3, at 3 hit points: the path overridden to 1.5 gives 0 → 1; overridden to −1, holding
+   1, the changes are hit points 3 → 12 only, with no `inspirationOver`.
+9. The edition plays no part: golden A (2014) on its golden pack, the path overridden to 2, the
+   owner's 3, at 3 hit points: hit points 3 → 12, inspiration 0 → 2.
+
+**What gives none**
+10. Without the effect: golden B on its golden pack at 3 hit points, `longRest`: hit points 3 → 12
+    only, no `inspirationOver`.
+11. A short rest: golden B on the test index at 3 hit points, a d10 rolling 6 (6 + 2 = 8): hit
+    points 3 → 11 and `hitDiceSpent.d10` → 1, no inspiration change, `outcome` with no
+    `inspirationOver`.
+12. The refusals stay: golden B on the test index at 0 hit points: `tooFewHitPoints`, `{ hp: 0,
+    min: 1 }`; at 0 with 3 failures: `dead`.
+
+**Every action**
+13. Each entry passes the shared checks (`done`): it parses, it carries the stamp, the character
+    opens unchanged, and reversing it gives the character before. Frozen inputs: nothing throws,
+    nothing changes.
+14. ENG-21's, ENG-59's, ENG-61's and every other test pass as they are; no expected value changes.
+15. The quality gate is green.
+
+#### 4. How to do it
+
+1. `inspiration.ts`: `INSPIRATION_LONG_REST_PATH`; `inspirationSteps()` gives it `zeroStep`;
+   `inspirationGiven(character, value)` gives the change to `state.inspiration` and the count past
+   the maximum.
+2. `module.ts`: `derive` adds `inspirationSteps()`.
+3. `rests.ts`: `longRest` reads the path from its one `compute()`, adds the change after the
+   conditions', and `inspirationOver` to the outcome when it is above 0.
+4. The tests of §7; then the gate.
+
+Technical choices (ADR 002):
+- **A computed path, not a field on the entity** (the row's two shapes). `inspiration.longRest` is
+  ENG-55's road: every character has it at 0, an effect adds to it, the rest reads it. It gets a
+  breakdown (which trait gives it), an override wins over it, and a homebrew trait gives it with
+  an effect, which packs already write. A field would be a stored-shape change, with a migration,
+  for one SRD trait. dnd5e automates nothing here (§8), so no shape is copied.
+- **The name.** SPEC §5.4's catalogue has no inspiration target; this adds one, as ENG-21 added
+  `hitDice.d<N>.max`. `inspiration` beside the stored `state.inspiration`, `longRest` as the
+  action is named.
+- **Only a long rest.** The one SRD trait says a Long Rest; no SRD feature gives inspiration on a
+  short rest (§8). A short rest's path is the row that first needs it (§9).
+- **Effects add up.** Each trait that says "You gain Heroic Inspiration" gives one, so `add`
+  sums them, and the maximum caps the sum. At the SRD's maximum of 1, two give what one gives.
+- **Up to the house rules' maximum**, `houseRules.inspirationMax`: the bound the stored shape
+  checks, as ENG-59's `gainInspiration` reads it.
+- **Rounded down, never below 0** (`whole`), as the rests read the hit dice: a path holds any
+  number an effect or an override gives, the inspiration held is whole (ENG-33), and a rest
+  never takes inspiration away.
+- **What goes past the maximum is the outcome's `inspirationOver`.** SRD 5.2.1: "If you gain
+  Heroic Inspiration but already have it, it's lost unless you give it to a player character who
+  lacks it." The app keeps no party (ENG-59), so the rest gives it to no one, and the screen says
+  the rule's words. The field is there only when above 0, so a rest's outcome stays `{ hitDice,
+  warnings }` everywhere else. Not a refusal: the rest still gives everything else.
+- **In the rest's one entry**, after the conditions and before concentration: one undo. A long rest
+  that gives only inspiration is an entry (§2: `unchanged`).
+- **The test index carries the effect, not the golden fixture**, as ENG-60 wrote Disciple of Life.
+  The fixture's features are names wherever no golden value reads their mechanics (its header).
+  With the effect in the fixture, every older test in which golden B finishes a long rest would
+  gain a change; their expected values stay as written. The SRD pack's Resourceful gets the effect
+  in the import (phase 3 note, §11).
+
+#### 5. Stored data
+
+Nothing stored changes. `inspiration.longRest` is a computed path; `inspirationOver` is part of an
+action's result, never stored. An effect's `target` is any path in the pack's schema already, so
+the published pack JSON Schema does not change.
+
+#### 6. What a person will see
+
+Not a screen. The rest summary (phase 2) shows the inspiration gained from the entry's change, and
+SRD 5.2.1's words when `inspirationOver` is there.
+
+#### 7. Tests
+
+- `packages/system-5e/test/inspiration.test.ts` — `describe('ENG-64 a long rest gives the
+  inspiration a trait names')`: items 1–13.
+- Every other test file, unchanged: item 14.
+- Control values from: SPEC §6.7 (goldens A and B); ENG-21's d10 of 6 giving 8; ENG-59's stored
+  maximum 1 and the house rule's 3; the SRD texts of §8; the rest worked out by hand in §3.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-22: SRD 5.1 and SRD 5.2.1 as 5e-bits/5e-srd-api quotes them at
+`e6edf9a51fad4b59a7e9561fad6c15232caed214` (`packages/5e-database/src/2014/en/` and `2024/en/`);
+foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`
+(`packs/_source/origins24/species/traits/human/resourceful.yml`,
+`packs/_source/content24/appendices/rules-glossary.yml`, `module/config.mjs`,
+`module/documents/actor/actor.mjs`). The same commits as ENG-21 to ENG-67. All CC-BY-4.0.
+
+**SRD 5.2.1, Resourceful** (`5e-SRD-Traits.json`, `resourceful`, species `human`): "You gain
+Heroic Inspiration whenever you finish a Long Rest." dnd5e's `human.yml` has the same sentence.
+
+**SRD 5.2.1, Heroic Inspiration** (`rules-glossary.yml`): "If you (a player character) have
+Heroic Inspiration, you can expend it to reroll any die immediately after rolling it, and you must
+use the new roll." "If you gain Heroic Inspiration but already have it, it's lost unless you give
+it to a player character who lacks it." So one per trait, up to the maximum (1 in both SRDs,
+ENG-19 §8), and what goes past it is lost or given away.
+
+**dnd5e.** `resourceful.yml`: `effects: []`, `activities: {}`, `uses.recovery: []`; the
+description is its only content. `config.mjs` `restTypes.long` has no inspiration key
+(`exhaustionDelta`, `recoverHitDice`, `recoverHitPoints`, `recoverPeriods`,
+`recoverSpellSlotTypes`, `recoverTemp`, `recoverTempMax`, and the dialog's fields).
+`actor.mjs` names `system.attributes.inspiration` once, keeping it through a transformation. So
+dnd5e leaves the gain to the person.
+
+**Every SRD feature that gives the inspiration tracker.** Searched for "Heroic Inspiration" in
+5e-database's 2024 `Traits`, `Features`, `Feats`, `Backgrounds`, `Species`, `Subclasses`,
+`Classes`, `Magic-Items`, `Spells`: Resourceful, and the Champion's Heroic Warrior (level 10:
+"During combat, you can give yourself Heroic Inspiration whenever you start your turn without
+it."), a turn, not a rest. Searched for "inspiration" in the 2014 `Features`, `Feats`, `Races`,
+`Subraces`, `Traits`, `Backgrounds`: only Bardic Inspiration (`bardic-inspiration-d6` to `-d12`,
+`font-of-inspiration`, `superior-inspiration`), a class resource, not the tracker. So SRD 5.1
+gives the tracker on no rest, and no SRD feature gives it on a short rest.
+
+No golden value is touched; no rules source disagrees with the SPEC. Nothing stops.
+
+#### 9. Not in this ticket
+
+- Heroic Warrior's inspiration at the start of a turn: no action tracks turns; the person's
+  `gainInspiration` (ENG-59). Its mechanics are phase 3's.
+- Inspiration on a short rest: no SRD feature gives it (§8); its path is the row that needs it.
+- Giving inspiration past the maximum to another character: the app keeps no party (ENG-59).
+- Resourceful's effect in the SRD pack: the import's mechanics (phase 3 note, §11); the golden
+  fixture keeps a name (§4).
+- The rest summary's words: phase 2.
+
+#### 10. Rake check
+
+- **Everything is data; the core names no game.** The gain is a trait's effect on a path; the
+  module names no trait, and the core is not touched.
+- **Each system's rules live in its module; no `if (ruleset === …)`.** The path is fifth
+  edition's, in both editions; 2014's packs simply give no effect on it (§3 item 9).
+- **A number shown has a breakdown.** `inspiration.longRest` has a step per effect, and an
+  override wins in the `final` phase as any other.
+- **Missing is not broken.** A character with no such trait has the path at 0 (§2's `noTarget` is
+  gone), and its rest gives nothing.
+- **A stored-shape change needs a migration.** None changes (§5).
+- **The golden tests are the truth.** No expected value changes; the fixture stays as it is.
+- **The engine is pure.** The caller gives the stamp; the frozen-input tests.
+- **Licensing.** The SRDs are quoted in this ticket only; the test data holds numbers and names.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-22, on `main` at `15bd9f4`:
+- Before: `pnpm test` `Test Files 63 passed (63)`, `Tests 862 passed (862)`, 16.57 s; coverage
+  lines 99.92 % (2760/2762), branches 96.93 % (2027/2091); the speed pass `Tests 2 passed (2)`.
+- After: `pnpm lint` `Checked 200 files`, no error; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`
+  `Test Files 63 passed (63)`, `Tests 870 passed (870)`, 15.21 s, coverage lines 99.92 %
+  (2767/2769), branches 96.94 % (2029/2093); the speed pass `Tests 2 passed (2)`, 2.43 s;
+  `pnpm build` `apps/web build: Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- 8 tests are new, all in `inspiration.test.ts`. Every expected value was written in §3 before the
+  first run, and each passed on it. No other test changed (item 14): 862 + 8 = 870.
+- Golden B with Resourceful's effect: `inspiration.longRest` 1, one `effect` step, no warning (§2:
+  `noTarget`). Its long rest at 12 hit points: inspiration 0 → 1 (§2: `unchanged`); holding 1 at
+  3 hit points: hit points 3 → 12 only, `inspirationOver` 1.
+- The tests catch mistakes. 11 breaks, each made alone in the code, then `inspiration.test.ts` and
+  `rests.test.ts` run (30 tests); each failed at least one test, and each file was restored (30
+  passed again): the change not written, 4 failed; the maximum ignored, 3; the edition's 1 read
+  for the house rules' maximum, 3; the number not rounded down, 1; a number below 0 taking
+  inspiration away, 1; `inspirationOver` given at 0 too, 6; `inspirationOver` never given, 3; one
+  inspiration per rest, not the sum, 2; the path not derived, 6; the change after concentration,
+  1; the short rest giving it too, 1.
+
+Differences from §3 and §4:
+- Item 4 gained the order of the changes beside exhaustion and concentration, written before the
+  first run.
+- Branches not run: 64 before, 64 after.
+- Size S held.
+
+Found, not fixed:
+- SRD 5.2.1's Resourceful is one effect, `add 1` on `inspiration.longRest`; the golden fixture keeps
+  a name, and the test index carries the effect (§4). The Champion's Heroic Warrior (level 10)
+  gives inspiration at the start of a turn in combat, and no action tracks turns (§9). A phase 3
+  note in `BACKLOG.md`.
+
+**Phase 1's gate.** ENG-69 closed first (`c6e3395`), so ENG-64 is the phase's last row, and this
+is the gate's run (`BACKLOG.md`, phase 1). The work above was done on its own branch on
+2026-10-22 and landed on `main` on 2026-10-23, after OPS-29, with no change to its code or tests.
+Measured on 2026-10-23, on this commit:
+- `pnpm lint` `Checked 201 files`, no error; `pnpm typecheck` 6 of 6 `Done`; `pnpm test` pass
+  `unit` `Test Files 63 passed (63)`, `Tests 879 passed (879)`, 16.19 s, then pass `speed`
+  `Tests 2 passed (2)`, 2.84 s. 879 = OPS-29's 871 + this ticket's 8.
+
+| Item | Held by | Measured |
+|---|---|---|
+| Goldens A, B, B4, C, D, E pass | `golden-values.test.ts`, `fixtures-2014.test.ts`, `fixtures-2024.test.ts` (ENG-23 §11 names each line's test) | 40, 10 and 14 tests, all passed |
+| Golden F passes | `golden-values.test.ts`, `describe('ENG-37 golden F: a character mixing both editions')` | 8 tests, all passed |
+| The made-up system passes through the core | `packages/engine/test/test-system.test.ts` | 9 tests, all passed |
+| CI fails if the core imports a system module | `pnpm lint`, ENG-31's rule | `export { fifthEditionModule } from '@grimoire/system-5e';` written into `packages/engine/src/probe.ts`: `lint/style/noRestrictedImports`, "ENG-31: the core knows no game (ADR 004 item 2). …", `Found 2 errors.`; the file deleted |
+| Coverage of `engine` ≥ 90 % | the `unit` pass's threshold | 99.86 % of lines (1,466 of 1,468) |
+| Coverage of the module ≥ 90 % | the same | 100 % of lines (1,307 of 1,307) |
+| The benchmark within 10 ms | the `speed` pass | three runs: median 1.71, 1.47, 1.60 ms; × 4: 6.86, 5.88, 6.39 ms |
+| A formula cycle stops with a readable message | `packages/engine/test/cycle.test.ts` | 8 tests, all passed; the message ENG-23 §11 quotes is asserted word for word (`cycle.test.ts` line 137) |
+| No UI | `git diff --stat b2b700b^..HEAD -- apps/web` (ENG-01, the phase's first commit, to now) | the same 7 files ENG-23 found: `e2e/` (3), `public/schema/5e/pack.schema.json`, `test/pack-schema.test.ts`, `package.json`, `vite.config.ts`; no file in `apps/web/src` |
+| No SRD import | `git diff --stat b2b700b^..HEAD -- packages/content` | nothing; `packages/content/src/index.ts` is `export {};` |
+
+Coverage of the whole `unit` pass, by package: `engine` lines 99.86 % (1,466 / 1,468),
+statements 99.41 % (1,674 / 1,684), branches 97.30 % (1,083 / 1,113), functions 99.05 %
+(313 / 316); `system-5e` lines 100 % (1,307 / 1,307), statements 99.66 % (1,481 / 1,486),
+branches 96.65 % (953 / 986), functions 100 % (355 / 355).
+
+Nothing for the changelog.
 

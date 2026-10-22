@@ -31,6 +31,7 @@ import { RULE_STATS } from './combat';
 import { isDead } from './death-saves';
 import type { FifthEditionEntity } from './entity-types';
 import { hitDicePath } from './hit-dice';
+import { INSPIRATION_LONG_REST_PATH, inspirationGiven } from './inspiration';
 import { fifthEditionModule } from './module';
 import { rulesOf } from './rulesets';
 import { HIT_DIE_SIZES, MAX_SPELL_LEVEL } from './system';
@@ -49,6 +50,8 @@ import { HIT_DIE_SIZES, MAX_SPELL_LEVEL } from './system';
 // exhaustion 4 is the one a long rest fills (dnd5e's order, ENG-61 §8).
 // ENG-65: each rest ends a knock-out whose short rest damage did not interrupt (`resting`), and
 // any knock-out when it gives hit points back (`knockOutEnded`).
+// ENG-64: a long rest gives the inspiration `inspiration.longRest` holds, up to the maximum
+// (`inspirationGiven`).
 
 /**
  * The recovery events each rest triggers, in order: a long rest gives back what comes back on a
@@ -81,6 +84,12 @@ export interface RestOutcome {
   hitDice: SpentHitDie[];
   /** What the formulas of the uses given back, and of the condition levels lowered, met. */
   warnings: (RecoveryWarning | ConditionRecoveryWarning)[];
+  /**
+   * ENG-64: the inspiration a long rest gave past the house rules' maximum, which the character
+   * does not keep (SRD 5.2.1: lost unless given to a player character who lacks it). Only when
+   * there is some.
+   */
+  inspirationOver?: number;
 }
 
 /** Why a rest did not happen. `code` and its data are for the screen; `message` is for logs. */
@@ -227,8 +236,9 @@ export function shortRest(
  * that come back on `long`, else on `short`, and no concentration where the edition's
  * `longRestEndsConcentration` says so. ENG-61: the stored conditions lose the levels their
  * entries take on `long`, else on `short` (each SRD's exhaustion: 1). ENG-65: it ends a knock-out
- * as a short rest does (`knockOutRested`). Refused for a dead character, one at 0 hit points, and
- * as `unchanged` when nothing changes.
+ * as a short rest does (`knockOutRested`). ENG-64: it gives the inspiration `inspiration.longRest`
+ * holds, up to the house rules' maximum, and counts what goes past it (`inspirationOver`). Refused
+ * for a dead character, one at 0 hit points, and as `unchanged` when nothing changes.
  */
 export function longRest(
   character: FifthEditionCharacter,
@@ -259,6 +269,7 @@ export function longRest(
   const levels = Array.from({ length: MAX_SPELL_LEVEL }, (_, at) => at + 1);
   const recovered = recoveredOn(character, computed, REST_EVENTS.long);
   const eased = conditionsRecoveredOn(character, computed, REST_EVENTS.long);
+  const inspired = inspirationGiven(character, computed.values[INSPIRATION_LONG_REST_PATH]);
   return rested(
     character,
     stamp,
@@ -273,11 +284,16 @@ export function longRest(
       changeTo(character, PACT_SPENT_PATH, 0),
       ...recovered.changes,
       ...eased.changes,
+      ...inspired.changes,
       ...(rules.longRestEndsConcentration && concentration !== undefined
         ? [changeTo(character, CONCENTRATION_PATH, undefined)]
         : []),
       ...knockOutRested(character, current),
     ],
-    { hitDice: [], warnings: [...recovered.warnings, ...eased.warnings] },
+    {
+      hitDice: [],
+      warnings: [...recovered.warnings, ...eased.warnings],
+      ...(inspired.over > 0 && { inspirationOver: inspired.over }),
+    },
   );
 }
