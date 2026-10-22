@@ -16500,3 +16500,240 @@ Found, not fixed:
 
 Nothing for the changelog.
 
+---
+
+### ENG-69 Dying of exhaustion ends attunement
+
+**Hat:** Dying of exhaustion ends attunement to magic items
+**Depends on:** ENG-30 (the core's `setCondition`), ENG-63 (`deathChanges`), ENG-67 (`isDead` reads
+exhaustion at its highest level)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.3 ("Истощение": the 6th level is death); §6.4 (the actions); §5.8 (`state`, the
+log entry); ADR 004 item 1
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/conditions.ts` — new: `setConditionLevel`.
+- `packages/system-5e/src/index.ts` — exports the new file.
+- `packages/system-5e/test/action-checks.ts` — changes: ENG-63's charm, its rows and the change
+  death makes to them move here from `death.test.ts`, to be shared.
+- `packages/system-5e/test/death.test.ts` — changes: imports them.
+- `packages/system-5e/test/exhaustion.test.ts` — the tests of §7.
+- `docs/tickets/BACKLOG.md` — a phase 2 note (§9).
+
+#### 2. What is missing now
+
+Measured on `main` at `15bd9f4`, with a test written for it, then deleted. Golden B (2024) at 12
+hit points with `srd-2024:condition/exhaustion` at level 5 and one more row, a custom "Lucky
+stone", attuned. The core's `setCondition` to level 6:
+- the entry changes one path: `state.conditions`;
+- `isDead` after it: `true`;
+- the rows after it: `srd-2024:item/chain-mail` `attuned: false`, `srd-2024:item/greatsword`
+  `false`, "Lucky stone" `true`. The dead character keeps its attunement.
+- `grep -rn "deathChanges(" packages/system-5e/src`: `applyDamage` (`hit-points.ts`) and
+  `rollDeathSave` (`death-saves.ts`) only. No action that sets a condition adds it.
+- `pnpm test`: `Test Files 63 passed (63)`, `Tests 862 passed (862)`, 12.78 s; coverage lines
+  99.92 % (2760/2762), branches 96.93 % (2027/2091); the speed pass `Tests 2 passed (2)`.
+
+#### 3. What it should look like when done
+
+`CONDITIONS` is `state.conditions`; `INVENTORY` is `systemData.inventory`. "Carrying" is ENG-63's
+test character: the golden's own rows (none attuned), then the made-up charm (equipped, attuned)
+and the custom "Lucky stone" (not equipped, attuned). "Unattuned" is ENG-63's change to those
+rows: the charm and the stone `attuned: false`, every other field and the order kept. The 2014
+exhaustion is `exhaustion.test.ts`'s (ENG-19). Golden A and golden B have 12 hit points and no
+condition stored (SPEC §6.7). Every value is worked out by hand from §8 and the data.
+
+**What does not kill is the core's action**
+1. `setConditionLevel(character, index, ask, stamp)` gives what the core's `setCondition` gives,
+   the character and the entry deep-equal, for golden B carrying, at 12 hit points: exhaustion 1
+   from none (`[] → [{ id, level: 1 }]`); exhaustion 4 → 5; the made-up `character:condition/winded`
+   (`maxLevel` 2) 1 → 2, its highest level; and golden A carrying, with a made-up exhaustion of its
+   own, key `exhaustion`, `maxLevel` 10: 5 → 6.
+
+**What kills ends every attunement, in the same entry**
+2. Golden B carrying, at 6 hit points, exhaustion 5 → 6: the entry is
+   `{ action: 'setCondition', subject: 'srd-2024:condition/exhaustion', label: { en: 'Exhaustion' } }`
+   with the changes `[{ CONDITIONS: [{ id, level: 5 }] → [{ id, level: 6 }] }, unattuned]`;
+   `isDead` after it `true`; the charm still equipped, the stone still not.
+3. The same from none: `[{ CONDITIONS: [] → [{ id, level: 6 }] }, unattuned]`. At 0 hit points
+   with 2 failures, exhaustion 5 → 6: the same two changes, the death save counts kept.
+4. Golden A carrying, with the 2014 exhaustion 5 → 6: `[{ CONDITIONS: [{ 2014 id, level: 5 }] →
+   [{ 2014 id, level: 6 }] }, unattuned]`. With the made-up exhaustion of `maxLevel` 3, 2 → 3:
+   `[{ CONDITIONS: [{ own id, level: 2 }] → [{ own id, level: 3 }] }, unattuned]`.
+5. Reversing the entry of item 2 gives back the character before: exhaustion 5, alive, the charm
+   and the stone attuned (the shared check `done`).
+
+**Only the act that kills**
+6. Already dead of three failed death saves (0 hit points, 1 success, 3 failures), the charm and
+   the stone attuned: exhaustion 6 from none gives the core's entry, one change; both rows stay
+   attuned.
+7. Dead of exhaustion 6, the rows unattuned: 6 → 5 gives the core's entry, one change; alive; the
+   rows stay unattuned.
+8. No attuned row (golden B's own rows only), 5 → 6: the core's entry, one change; `isDead`
+   `true`.
+
+**The refusals are the core's**
+9. For golden B carrying at exhaustion 5, each deep-equal to the core's, its message included:
+   `character:condition/gone` → `{ code: 'missing', id }`; level 7 → `{ code: 'badLevel', id,
+   level: 7, max: 6 }`; level 0 → `badLevel` with `level: 0`; level 5 → `{ code: 'unchanged' }`;
+   `srd-2024:item/greatsword` → `{ code: 'notACondition', id, type: 'item' }`.
+
+**Coming back**
+10. 2024: golden B carrying, at 6 hit points, dead of exhaustion through the action, then `revive`
+    with `hp: 1`: hit points 6 → 1, exhaustion 6 → 5, alive; the rows stay unattuned (ENG-63:
+    a revival gives no attunement back).
+11. 2014: golden A carrying, at 6 hit points, dead of exhaustion through the action: `revive`
+    refused `stillDead` (ENG-67); `setConditionLevel` 6 → 5: the core's entry, one change, alive;
+    the rows stay unattuned.
+
+**The rest**
+12. Frozen inputs (golden B carrying at exhaustion 5, the ask, the stamp): the action that kills
+    throws nothing and changes nothing.
+13. ENG-63's and ENG-67's tests pass, the helpers moved; no expected value changes.
+14. The quality gate is green.
+
+#### 4. How to do it
+
+1. `conditions.ts`: `setConditionLevel` calls the core's `setCondition`. Refused, it gives the
+   refusal. Done, and the character is dead after it and was not before (`isDead`), it builds
+   one entry through `settled`: the core's `action`, `subject`, `label` and change, then
+   `deathChanges` of the character before. Otherwise it gives the core's result.
+2. `index.ts` exports it.
+3. The tests of §7: the charm and its rows move to `action-checks.ts`; the new `describe` goes in
+   `exhaustion.test.ts`, which has both editions' exhaustion. Then the gate.
+4. The phase 2 note in `BACKLOG.md` (§9).
+
+Technical choices (ADR 002):
+- **A module action, not `revive`.** The row offered both. `revive` would end the attunement
+  only when the character comes back: SRD 5.1 ends it when the creature dies (§8), so a dead
+  character would show its items attuned; a 2014 character dead of exhaustion comes back by a
+  lower level, not by `revive`, which refuses it (`stillDead`, ENG-67), so it would keep them;
+  and the deaths ENG-63 handles would end it twice. The action that kills ends it, as damage and
+  the third failed death save do (ENG-63), and undoing that one entry gives both back.
+- **The core's action, then death's change.** The module runs the core's `setCondition` and keeps
+  its refusals, its entry's `action` (`setCondition`), `subject`, `label` and change. It adds
+  `deathChanges` after them in the same entry. With no death the result is the core's, so the
+  history reads the same in every system.
+- **Dies in this act: alive before, dead after.** `isDead` (ENG-67) is the one rule of death, read
+  before and after. A character already dead loses nothing more, and one that comes back gets
+  nothing back (ENG-63).
+- **The core does not change.** A hook in the core's `setCondition` for a module's changes would
+  be a new piece of the core's module contract for one rule. The other core actions on
+  conditions only lower a level or take a condition away (`removeCondition`, `conditionsRecoveredOn`),
+  so none of them kills.
+- **The name `setConditionLevel`**, not `setCondition`, so a file that imports both packages
+  names each without an alias.
+
+#### 5. Stored data
+
+Nothing stored changes. No field of `CharacterDoc`, `ContentPack` or a Dexie table is new. The
+entry is the core's entry shape, with one more change to a path the stored shape has
+(`systemData.inventory`, ENG-63).
+
+#### 6. What a person will see
+
+Not a screen. When the sheet sets a condition (phase 2), a fifth-edition character dead of
+exhaustion has no item attuned, and undo gives them back.
+
+#### 7. Tests
+
+- `packages/system-5e/test/exhaustion.test.ts` — `describe('ENG-69 dying of exhaustion ends
+  attunement')`: items 1–12.
+- `packages/system-5e/test/death.test.ts` — ENG-63's tests with the moved helpers: item 13.
+- Control values from: SPEC §6.7 (goldens A and B); ENG-19's exhaustion entries; ENG-58's dead
+  character; ENG-63's charm and rows; ENG-67's revival; the SRD texts of §8; the rest worked out
+  by hand in §3.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-22 at the commits ENG-63 and ENG-67 read: SRD 5.1 and SRD 5.2.1 as
+5e-bits/5e-srd-api quotes them at `e6edf9a51fad4b59a7e9561fad6c15232caed214`
+(`packages/5e-database/src/2014/en/5e-SRD-Rules.json`, `2014/en/5e-SRD-Conditions.json`,
+`2024/en/5e-SRD-Conditions.json`); SRD 5.2.1 as foundryvtt/dnd5e quotes it at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (`packs/_source/content24/appendices/rules-glossary.yml`).
+All CC-BY-4.0.
+
+**SRD 5.1, Attunement:** "A creature's attunement to an item ends if the creature no longer
+satisfies the prerequisites for attunement, if the item has been more than 100 feet away for at
+least 24 hours, if the creature dies, or if another creature attunes to the item."
+
+**SRD 5.1, Exhaustion:** "Exhaustion is measured in six levels." The table's last row: "6 -
+Death".
+
+**SRD 5.2.1, Exhaustion:** "You die if your Exhaustion level is 6."
+
+**SRD 5.2.1, Rules Glossary, Dead:** "If the creature returns to life, the revival effect
+determines the creature's current Hit Points." The same paragraph ends: "If the creature had
+Attunement to one or more magic items, it is no longer attuned to them."
+
+So a death from exhaustion is a death, and death ends attunement, in both. SRD 5.2.1 says it in
+the paragraph on coming back; SRD 5.1 says it ends when the creature dies. ENG-63 ends it at
+death in both editions; a character that comes back has no item attuned either way. This ticket
+keeps ENG-63's moment.
+
+No golden value is touched. The SPEC says nothing of attunement at death (`grep -n -i
+"настро\|attune" docs/SPEC.md`: lines 309, 311, 394, 446, 479, 654, 656, 712, 830, 859, 964; none
+of them about death), so no rules source disagrees with it. Nothing stops.
+
+#### 9. Not in this ticket
+
+- The sheet setting a fifth-edition character's condition through `setConditionLevel`, not the
+  core's `setCondition`: phase 2 (a note in `BACKLOG.md`).
+- An entry's `maxLevel` changed under a stored level (a pack update, phase 5's editor): no action
+  of the character runs, so nothing of it changes; the editor's before/after preview is phase 5's.
+- How many items are attuned: ENG-63's phase 2 note.
+- Lowering a 2014 exhaustion by a spell (SRD 5.1's greater restoration): the person's
+  `setConditionLevel`; its mechanics are phase 3's.
+
+#### 10. Rake check
+
+- **Everything is data; the core names no game.** The death is ENG-67's rule (the key and the
+  entry's `maxLevel`); the core's `setCondition` is untouched.
+- **Each system's rules live in its module; no `if (ruleset === …)`.** One rule in both editions
+  (§8); the action reads no ruleset.
+- **Missing is not broken.** A missing id is the core's `missing` refusal; a row whose item is
+  missing is unattuned as any other (ENG-63).
+- **A stored-shape change needs a migration.** None changes (§5).
+- **The golden tests are the truth.** No expected value changes.
+- **Licensing.** The SRDs are quoted in this ticket only; the test data holds numbers and names.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-22, on `main` at `15bd9f4`:
+- Before: `pnpm test` `Test Files 63 passed (63)`, `Tests 862 passed (862)`, 12.78 s; coverage
+  lines 99.92 % (2760/2762), branches 96.93 % (2027/2091); the speed pass `Tests 2 passed (2)`.
+- After: `pnpm lint` `Checked 201 files`, no error; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`
+  `Test Files 63 passed (63)`, `Tests 871 passed (871)`, 12.25 s, coverage lines 99.92 %
+  (2766/2768), branches 96.99 % (2034/2097); the speed pass `Tests 2 passed (2)`, 2.19 s.
+  `conditions.ts`: lines 6/6, branches 6/6. No file in `apps/web` changed, so no `pnpm e2e`.
+- 9 tests are new, all in `exhaustion.test.ts`. Every expected value was written in §3 before
+  the first run, and each passed on it.
+- Golden B at 6 hit points, exhaustion 5 → 6 through `setConditionLevel`: one entry,
+  `setCondition`, changing `state.conditions` and then `systemData.inventory`; dead; the charm
+  and the stone `attuned: false`. §2: the core's entry changed `state.conditions` alone, and the
+  stone stayed attuned.
+- Branches not run: 64 before, 63 after. The one now run is the core's `lookUp` finding a
+  character's own entity (`trackers.ts`, line 382): no test before set a condition the character
+  itself holds; item 1's winded and the made-up exhaustions do.
+- The tests catch mistakes. 6 breaks, each made alone in `conditions.ts`, then `exhaustion.test.ts`
+  and `death.test.ts` run (45 tests); each failed at least one test, and the file was restored and
+  compared equal (45 passed again): death's change never added, 6 failed; added to a character
+  already dead, 1; added at every level, 2; death's change before the condition's, 3; the action
+  key `setConditionLevel`, not the core's, 2; no label, 2.
+
+Differences from §3 and §4:
+- `carrying` moved to `action-checks.ts` too, with a fourth argument, `more` (the stored
+  conditions, the character's own entities), so both test files build the carrying character one
+  way; §1 named the charm, its rows and the change only. `death.test.ts`'s 5 tests pass with no
+  expected value changed.
+- Size S held.
+
+Found, not fixed: nothing.
+
+Nothing for the changelog: no screen changes.
+

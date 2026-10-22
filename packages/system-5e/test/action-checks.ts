@@ -17,7 +17,8 @@ import { srd2014, srd2024 } from './golden/index.ts';
 // made-up entities (`character:`) carry no text of a book. ENG-21: the hit dice and the core's
 // resources a test sets. ENG-58: whether the character is stable. ENG-59: the inspiration held.
 // ENG-63: the inventory, which death changes. ENG-65: whether the character is knocked out.
-// ENG-67: how the character finds its entries, which `isDead` reads.
+// ENG-67: how the character finds its entries, which `isDead` reads. ENG-69: ENG-63's charm and
+// its rows, which death unattunes, shared by the tests of the actions that kill.
 
 export type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 type EntityInput = FifthEditionCharacter['localEntities'][number];
@@ -97,6 +98,67 @@ export function withTrackers(
     },
   });
 }
+
+type Row = CharacterInput['systemData']['inventory'][number];
+
+/** ENG-63: a made-up charm that needs attunement. */
+export const charm = {
+  id: 'character:item/charm',
+  type: 'item',
+  ruleset: 'any',
+  name: { en: 'Charm' },
+  source: { pack: 'character' },
+  category: 'gear',
+  magic: { rarity: 'rare', attunement: true },
+} satisfies EntityInput;
+
+/** The charm's row: equipped. */
+const charmRow: Row = {
+  uid: 'd4000000-0000-4000-8000-000000000001',
+  itemId: charm.id,
+  qty: 1,
+  equipped: true,
+  attuned: true,
+};
+
+/** A custom row: not equipped. */
+const stoneRow: Row = {
+  uid: 'd4000000-0000-4000-8000-000000000002',
+  custom: { name: 'Lucky stone' },
+  qty: 1,
+  equipped: false,
+  attuned: true,
+};
+
+/** The golden's rows, none attuned, then the charm and the stone, attuned as given. */
+export const rowsOf = (golden: CharacterInput, attuned: boolean): Row[] => [
+  ...golden.systemData.inventory,
+  { ...charmRow, attuned },
+  { ...stoneRow, attuned },
+];
+
+/**
+ * The golden carrying the charm and the stone, attuned as given, with `trackers` set, and `more`
+ * of its fields replaced; its own entities follow the charm.
+ */
+export const carrying = (
+  golden: CharacterInput,
+  trackers: Trackers,
+  attuned = true,
+  more: Partial<CharacterInput> = {},
+) =>
+  withTrackers(golden, trackers, {
+    ...more,
+    localEntities: [charm, ...(more.localEntities ?? [])],
+    systemData: { ...golden.systemData, inventory: rowsOf(golden, attuned) },
+  });
+
+/** The change death makes to the golden's rows: the charm and the stone no longer attuned. */
+export const unattuned = (golden: CharacterInput) => ({
+  path: INVENTORY,
+  before: rowsOf(golden, true),
+  after: rowsOf(golden, false),
+});
 
 /** An action that happened. */
 type Done = { ok: true; character: FifthEditionCharacter; entry: LogEntry };

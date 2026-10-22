@@ -130,7 +130,7 @@ split off an old row got a new id.
 | ENG-66 | Coming back to life lowers a condition's level as its entry says | S | ✅ 2026-10-13 |
 | ENG-67 | Exhaustion at level 6 makes the character dead | S | ✅ 2026-10-22 |
 | ENG-64 | A long rest gives the inspiration a trait names | S | 🔲 |
-| ENG-69 | Dying of exhaustion ends attunement to magic items | S | 🔲 |
+| ENG-69 | Dying of exhaustion ends attunement to magic items | S | ✅ 2026-10-22 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
 | ENG-68 | A mixed character's ability increases may come from neither side | S | ✅ 2026-10-05 |
@@ -144,12 +144,6 @@ split off an old row got a new id.
   decides the shape (a computed path an effect adds to and the rest reads, as `spellDice` reads
   ENG-55's `damage.spell.bonus`; or a field on the entity, a stored-shape change). The rest gains
   it in its one entry, up to ENG-59's bound, `houseRules.inspirationMax`.
-- **ENG-69** — found by ENG-67 (ENG-67 §11). Exhaustion reaches its highest level, death since
-  ENG-67, through the core's `setCondition`, which runs no module code, so ENG-63's
-  `deathChanges` never ends the character's attunement. SRD 5.2.1 (Rules Glossary, Dead): "If the
-  creature had Attunement to one or more magic items, it is no longer attuned to them." The row
-  decides where the attunement ends: a module action that sets a condition's level and adds
-  `deathChanges` when the level kills, or `revive`, for every death.
 
 ---
 
@@ -391,6 +385,10 @@ split off an old row got a new id.
   one (`deathChanges`, `actions.ts`). Nothing counts the attuned rows: both SRDs allow "no more
   than three magic items at a time" (ENG-63's ticket quotes both). A warning, never a block
   (§8.2), computed by the module, not the screen.
+- **Phase 2** — found by ENG-69: the sheet sets a fifth-edition character's condition through the
+  module's `setConditionLevel` (`conditions.ts`), not the core's `setCondition`: only the
+  module's ends every attunement when the level kills (exhaustion at its highest, ENG-67). Below
+  that it gives the core's result.
 - **Phase 2** — found by ENG-34: each d20 test's roll mode is a number path, 1 advantage, −1
   disadvantage, 0 neither, with a step per source: `checks.<stat>.mode`,
   `abilities.<stat>.saveMode`, `skills.<key>.mode`, `init.mode`, `attacks.<key>.mode`,

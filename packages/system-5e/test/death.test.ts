@@ -7,85 +7,28 @@ import {
   rollDeathSave,
 } from '../src/index.ts';
 import {
-  type CharacterInput,
+  carrying,
   copyOf,
   done,
   FAILURE,
   findOf,
   frozen,
   HP,
-  INVENTORY,
   indexOf,
+  rowsOf,
   STABLE,
   SUCCESS,
   stamp,
-  withTrackers,
+  unattuned,
 } from './action-checks.ts';
 import { goldenA, goldenB } from './golden/index.ts';
 
 // ENG-63: death ends attunement. The rule is one in both SRDs (ENG-63's ticket quotes both), so
 // each case runs on golden A (2014) and golden B (2024), each with a hit point maximum of 12 (SPEC
 // §6.7). Every value was worked out by hand in the ticket, never copied from a run. The charm and
-// the stone are made up and carry no text of a book.
+// the stone are `action-checks.ts`'s (ENG-69 shares them).
 
 const GOLDENS = [goldenA, goldenB];
-
-type Row = CharacterInput['systemData']['inventory'][number];
-type EntityInput = FifthEditionCharacter['localEntities'][number];
-
-/** A made-up charm that needs attunement. */
-const charm = {
-  id: 'character:item/charm',
-  type: 'item',
-  ruleset: 'any',
-  name: { en: 'Charm' },
-  source: { pack: 'character' },
-  category: 'gear',
-  magic: { rarity: 'rare', attunement: true },
-} satisfies EntityInput;
-
-/** The charm's row: equipped. */
-const charmRow: Row = {
-  uid: 'd4000000-0000-4000-8000-000000000001',
-  itemId: charm.id,
-  qty: 1,
-  equipped: true,
-  attuned: true,
-};
-
-/** A custom row: not equipped. */
-const stoneRow: Row = {
-  uid: 'd4000000-0000-4000-8000-000000000002',
-  custom: { name: 'Lucky stone' },
-  qty: 1,
-  equipped: false,
-  attuned: true,
-};
-
-/** The golden's rows, none attuned, then the charm and the stone, attuned as given. */
-const rowsOf = (golden: CharacterInput, attuned: boolean): Row[] => [
-  ...golden.systemData.inventory,
-  { ...charmRow, attuned },
-  { ...stoneRow, attuned },
-];
-
-/** The golden carrying the charm and the stone, attuned as given, with `trackers` set. */
-const carrying = (
-  golden: CharacterInput,
-  trackers: Parameters<typeof withTrackers>[1],
-  attuned = true,
-) =>
-  withTrackers(golden, trackers, {
-    localEntities: [charm],
-    systemData: { ...golden.systemData, inventory: rowsOf(golden, attuned) },
-  });
-
-/** The change death makes to the golden's rows: the charm and the stone no longer attuned. */
-const unattuned = (golden: CharacterInput) => ({
-  path: INVENTORY,
-  before: rowsOf(golden, true),
-  after: rowsOf(golden, false),
-});
 
 /** The death save that kept `natural`. */
 const save = (character: FifthEditionCharacter, natural: number) =>

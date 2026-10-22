@@ -31,11 +31,13 @@ import {
   openFifthEditionPack,
   revive,
   rollDeathSave,
+  setConditionLevel,
   setTempHp,
   shortRest,
   stabilize,
 } from '../src/index.ts';
 import {
+  carrying,
   copyOf,
   done,
   findOf,
@@ -43,6 +45,8 @@ import {
   HP,
   refused,
   stamp as restStamp,
+  rowsOf,
+  unattuned,
   withTrackers,
 } from './action-checks.ts';
 import { opened } from './golden/checks.ts';
@@ -750,5 +754,214 @@ describe('ENG-67 exhaustion at its highest level is death', () => {
     expect(revive(ice, index2014, ask, frozen(restStamp)).ok).toBe(false);
     expect(ice).toEqual(copy);
     expect(ask).toEqual({ hp: 1 });
+  });
+});
+
+// ENG-69: a level that kills, set through fifth edition's `setConditionLevel`, ends every
+// attunement in the same entry, as ENG-63's deaths do; any other level gives the core's
+// `setCondition` as it is. The charm and the stone are ENG-63's (`action-checks.ts`). Every value
+// was worked out by hand in ENG-69 §3 from the tables above.
+
+/** `golden` carrying the charm and the stone, attuned as given, with these conditions stored. */
+const carryingWith = (
+  golden: CharacterInput,
+  conditions: StoredCondition[],
+  trackers: Trackers = {},
+  attuned = true,
+  own: OwnEntity[] = [],
+) =>
+  carrying(golden, trackers, attuned, {
+    state: { ...golden.state, conditions },
+    localEntities: own,
+  });
+
+/** The module's action on `character`, from its edition's index, and the core's. */
+const setBoth = (character: FifthEditionCharacter, ask: { id: string; level?: number }) => {
+  const index = indexFor(character);
+  return {
+    module: setConditionLevel(character, index, ask, restStamp),
+    core: setCondition(character, index, ask, restStamp),
+  };
+};
+
+/** The module's action on `character` that happens, checked by `done`. */
+const setLevel = (character: FifthEditionCharacter, id: string, level: number) =>
+  done(character, setConditionLevel(character, indexFor(character), { id, level }, restStamp));
+
+/** The change to the stored conditions from one level of `id` to another; 0 is none. */
+const conditionChange = (id: string, before: number, after: number) => ({
+  path: CONDITIONS,
+  before: before === 0 ? [] : [{ id, level: before }],
+  after: after === 0 ? [] : [{ id, level: after }],
+});
+
+const deadOf = (character: FifthEditionCharacter) => isDead(character, findIn(character));
+
+describe('ENG-69 dying of exhaustion ends attunement', () => {
+  it("gives the core's result for a level that does not kill", () => {
+    const winded = ownCondition('winded', [{ on: 'long', amount: '1' }], 2);
+    const cases: [FifthEditionCharacter, string, number, ReturnType<typeof conditionChange>][] = [
+      [carryingWith(goldenB, []), EXHAUSTION_2024, 1, conditionChange(EXHAUSTION_2024, 0, 1)],
+      [
+        carryingWith(goldenB, [{ id: EXHAUSTION_2024, level: 4 }]),
+        EXHAUSTION_2024,
+        5,
+        conditionChange(EXHAUSTION_2024, 4, 5),
+      ],
+      [
+        carryingWith(goldenB, [{ id: winded.id, level: 1 }], {}, true, [winded]),
+        winded.id,
+        2,
+        conditionChange(winded.id, 1, 2),
+      ],
+      [
+        carryingWith(goldenA, [{ id: OWN_EXHAUSTION, level: 5 }], {}, true, [ownExhaustion(10)]),
+        OWN_EXHAUSTION,
+        6,
+        conditionChange(OWN_EXHAUSTION, 5, 6),
+      ],
+    ];
+    for (const [character, id, level, change] of cases) {
+      const { module, core } = setBoth(character, { id, level });
+      const set = done(character, module);
+      expect(set).toEqual(core);
+      expect(set.entry.changes).toEqual([change]);
+      expect(deadOf(set.character)).toBe(false);
+      expect(set.character.systemData.inventory).toEqual(character.systemData.inventory);
+    }
+  });
+
+  it('ends every attunement when the level kills, in the same entry', () => {
+    const five = carryingWith(goldenB, [{ id: EXHAUSTION_2024, level: 5 }], { current: 6 });
+    const six = setLevel(five, EXHAUSTION_2024, 6);
+    expect(six.entry).toMatchObject({
+      action: 'setCondition',
+      subject: EXHAUSTION_2024,
+      label: { en: 'Exhaustion' },
+    });
+    expect(six.entry.changes).toEqual([conditionChange(EXHAUSTION_2024, 5, 6), unattuned(goldenB)]);
+    expect(deadOf(six.character)).toBe(true);
+    expect(six.character.systemData.inventory).toEqual(rowsOf(goldenB, false));
+
+    const back = reverseEntry(six.character, six.entry);
+    if (!back.ok) throw new Error(back.message);
+    expect(back.character).toEqual(five);
+    expect(back.character.systemData.inventory).toEqual(rowsOf(goldenB, true));
+    expect(deadOf(back.character)).toBe(false);
+  });
+
+  it('kills from no exhaustion, and at 0 hit points, the death saves kept', () => {
+    const none = carryingWith(goldenB, [], { current: 6 });
+    expect(setLevel(none, EXHAUSTION_2024, 6).entry.changes).toEqual([
+      conditionChange(EXHAUSTION_2024, 0, 6),
+      unattuned(goldenB),
+    ]);
+    const dying = carryingWith(goldenB, [{ id: EXHAUSTION_2024, level: 5 }], {
+      current: 0,
+      failure: 2,
+    });
+    const six = setLevel(dying, EXHAUSTION_2024, 6);
+    expect(six.entry.changes).toEqual([conditionChange(EXHAUSTION_2024, 5, 6), unattuned(goldenB)]);
+    expect(six.character.systemData.state.deathSaves).toEqual({
+      success: 0,
+      failure: 2,
+      stable: false,
+    });
+  });
+
+  it("kills at each entry's highest level: 2014's, and one of the character's own", () => {
+    const five = carryingWith(goldenA, [{ id: EXHAUSTION_2014, level: 5 }], { current: 6 });
+    expect(setLevel(five, EXHAUSTION_2014, 6).entry.changes).toEqual([
+      conditionChange(EXHAUSTION_2014, 5, 6),
+      unattuned(goldenA),
+    ]);
+    const own = carryingWith(goldenA, [{ id: OWN_EXHAUSTION, level: 2 }], {}, true, [
+      ownExhaustion(3),
+    ]);
+    expect(setLevel(own, OWN_EXHAUSTION, 3).entry.changes).toEqual([
+      conditionChange(OWN_EXHAUSTION, 2, 3),
+      unattuned(goldenA),
+    ]);
+  });
+
+  it('ends attunement only in the act that kills', () => {
+    const failed = carryingWith(goldenB, [], DEAD);
+    const { module: onDead, core: coreOnDead } = setBoth(failed, { id: EXHAUSTION_2024, level: 6 });
+    const deadTwice = done(failed, onDead);
+    expect(deadTwice).toEqual(coreOnDead);
+    expect(deadTwice.entry.changes).toEqual([conditionChange(EXHAUSTION_2024, 0, 6)]);
+    expect(deadTwice.character.systemData.inventory).toEqual(rowsOf(goldenB, true));
+
+    const fatal = carryingWith(goldenB, [{ id: EXHAUSTION_2024, level: 6 }], { current: 6 }, false);
+    const { module: back, core: coreBack } = setBoth(fatal, { id: EXHAUSTION_2024, level: 5 });
+    const alive = done(fatal, back);
+    expect(alive).toEqual(coreBack);
+    expect(alive.entry.changes).toEqual([conditionChange(EXHAUSTION_2024, 6, 5)]);
+    expect(deadOf(alive.character)).toBe(false);
+    expect(alive.character.systemData.inventory).toEqual(rowsOf(goldenB, false));
+
+    const bare = resting(goldenB, { current: 6 }, [{ id: EXHAUSTION_2024, level: 5 }]);
+    const { module: plain, core: corePlain } = setBoth(bare, { id: EXHAUSTION_2024, level: 6 });
+    const dead = done(bare, plain);
+    expect(dead).toEqual(corePlain);
+    expect(dead.entry.changes).toEqual([conditionChange(EXHAUSTION_2024, 5, 6)]);
+    expect(deadOf(dead.character)).toBe(true);
+  });
+
+  it("refuses as the core's action refuses", () => {
+    const five = carryingWith(goldenB, [{ id: EXHAUSTION_2024, level: 5 }]);
+    const asks = [
+      { id: 'character:condition/gone' },
+      { id: EXHAUSTION_2024, level: 7 },
+      { id: EXHAUSTION_2024, level: 0 },
+      { id: EXHAUSTION_2024, level: 5 },
+      { id: 'srd-2024:item/greatsword' },
+    ];
+    const results = asks.map((ask) => setBoth(five, ask));
+    for (const { module, core } of results) expect(module).toEqual(core);
+    expect(results.map(({ module }) => refused(module))).toEqual([
+      { code: 'missing', id: 'character:condition/gone' },
+      { code: 'badLevel', id: EXHAUSTION_2024, level: 7, max: 6 },
+      { code: 'badLevel', id: EXHAUSTION_2024, level: 0, max: 6 },
+      { code: 'unchanged' },
+      { code: 'notACondition', id: 'srd-2024:item/greatsword', type: 'item' },
+    ]);
+  });
+
+  it('2024: a revival after it gives no attunement back', () => {
+    const five = carryingWith(goldenB, [{ id: EXHAUSTION_2024, level: 5 }], { current: 6 });
+    const { character, entry } = revived(setLevel(five, EXHAUSTION_2024, 6).character);
+    expect(entry.changes).toEqual([
+      { path: HP, before: 6, after: 1 },
+      conditionChange(EXHAUSTION_2024, 6, 5),
+    ]);
+    expect(deadOf(character)).toBe(false);
+    expect(character.systemData.inventory).toEqual(rowsOf(goldenB, false));
+  });
+
+  it('2014: refused a revival, it comes back by a lower level, its attunement still ended', () => {
+    const five = carryingWith(goldenA, [{ id: EXHAUSTION_2014, level: 5 }], { current: 6 });
+    const dead = setLevel(five, EXHAUSTION_2014, 6).character;
+    expect(refused(revive(dead, index2014, { hp: 1 }, restStamp))).toEqual({
+      code: 'stillDead',
+      condition: EXHAUSTION_2014,
+    });
+    const { module, core } = setBoth(dead, { id: EXHAUSTION_2014, level: 5 });
+    const lowered = done(dead, module);
+    expect(lowered).toEqual(core);
+    expect(lowered.entry.changes).toEqual([conditionChange(EXHAUSTION_2014, 6, 5)]);
+    expect(deadOf(lowered.character)).toBe(false);
+    expect(lowered.character.systemData.inventory).toEqual(rowsOf(goldenA, false));
+  });
+
+  it('changes nothing it is given: frozen inputs', () => {
+    const character = carryingWith(goldenB, [{ id: EXHAUSTION_2024, level: 5 }]);
+    const copy = copyOf(character);
+    const ice = frozen(character);
+    const ask = frozen({ id: EXHAUSTION_2024, level: 6 });
+    const result = setConditionLevel(ice, index2024, ask, frozen(restStamp));
+    expect(result.ok && result.entry.changes.length).toBe(2);
+    expect(ice).toEqual(copy);
+    expect(ask).toEqual({ id: EXHAUSTION_2024, level: 6 });
   });
 });
