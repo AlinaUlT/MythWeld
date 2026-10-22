@@ -1,6 +1,7 @@
 import { compute } from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_HOUSE_RULES,
   type FifthEditionCharacter,
   fifthEditionModule,
   type HitDieAsk,
@@ -17,6 +18,7 @@ import {
   HP,
   hexer,
   hitDice,
+  INSPIRATION,
   indexOf,
   ownSpell,
   PACT,
@@ -75,19 +77,23 @@ const RALLY: FifthEditionCharacter['localEntities'][number] = {
 
 /** Golden B with the feat Rally, given by hand. */
 const rallying = (trackers: Parameters<typeof withTrackers>[1]) =>
-  withTrackers(goldenB, trackers, {
-    localEntities: [RALLY],
-    systemData: { ...goldenB.systemData, feats: [{ id: RALLY.id }] },
-  });
+  withTrackers(
+    goldenB,
+    { inspiration: 1, ...trackers },
+    {
+      localEntities: [RALLY],
+      systemData: { ...goldenB.systemData, feats: [{ id: RALLY.id }] },
+    },
+  );
 
 /**
  * Golden B as hexer 3: two pact slots of level 2, at its hit point maximum: the d8's 8, 1 and 1,
- * and CON +2 at 3 levels, 16.
+ * and CON +2 at 3 levels, 16. It holds the inspiration Resourceful gives (ENG-64).
  */
 const pactCaster = (pactSlotsSpent: number) =>
   withTrackers(
     goldenB,
-    { pactSlotsSpent, current: 16 },
+    { pactSlotsSpent, current: 16, inspiration: 1 },
     {
       localEntities: [hexer],
       systemData: {
@@ -328,6 +334,7 @@ describe('ENG-21 rests', () => {
       { path: hitDice(10), before: 1, after: 0 },
       { path: resource(SECOND_WIND), before: 2, after: 0 },
       { path: CONCENTRATION, before: 'character:spell/glimmer' },
+      { path: INSPIRATION, before: 0, after: 1 },
     ]);
   });
 
@@ -361,7 +368,7 @@ describe('ENG-21 rests', () => {
     ]);
     const hexed = pactCaster(2);
     expect(done(hexed, long(hexed)).entry.changes).toEqual([{ path: PACT, before: 2, after: 0 }]);
-    const b4 = withTrackers(goldenB4, { resources: { [SECOND_WIND]: 3 } });
+    const b4 = withTrackers(goldenB4, { resources: { [SECOND_WIND]: 3 }, inspiration: 1 });
     expect(done(b4, long(b4)).entry.changes).toEqual([
       { path: resource(SECOND_WIND), before: 3, after: 0 },
     ]);
@@ -399,7 +406,7 @@ describe('ENG-21 rests', () => {
       { path: slot(1), before: 1, after: 0 },
     ]);
     expect(refused(long(above))).toEqual({ code: 'unchanged' });
-    expect(refused(long(withTrackers(goldenB, {})))).toEqual({ code: 'unchanged' });
+    expect(refused(long(withTrackers(goldenB, { inspiration: 1 })))).toEqual({ code: 'unchanged' });
   });
 
   it('starts a long rest at 1 hit point in both editions', () => {
@@ -439,5 +446,109 @@ describe('ENG-58 a short rest ends stable', () => {
       { path: STABLE, before: true, after: false },
       { path: hitDice(8), after: 1 },
     ]);
+  });
+});
+
+// ENG-64: a long rest gains the inspiration `inspiration.longRest` gives, up to the house rules'
+// maximum. Golden B is SRD 5.2.1's human, whose Resourceful gives 1 ("You gain Heroic Inspiration
+// whenever you finish a Long Rest"); golden A (2014) has no such trait. Both goldens store a
+// maximum of 1; the owner's house rule is 3. The feat Zeal is made up. Every value was worked out
+// by hand in ENG-64 §3.
+
+/** A made-up feat whose effect gives 2 more inspiration on a long rest. */
+const ZEAL: FifthEditionCharacter['localEntities'][number] = {
+  id: 'character:feat/zeal',
+  type: 'feat',
+  ruleset: 'any',
+  name: { en: 'Zeal' },
+  source: { pack: 'character' },
+  effects: [{ id: 'more', target: 'inspiration.longRest', op: 'add', value: 2 }],
+};
+
+/** Golden B at 3 hit points holding `inspiration`, with the owner's maximum of 3, and `more`. */
+const zealous = (inspiration: number, more: Parameters<typeof withTrackers>[2] = {}) =>
+  withTrackers(
+    goldenB,
+    { current: 3, inspiration },
+    { ...more, systemData: { ...goldenB.systemData, houseRules: DEFAULT_HOUSE_RULES } },
+  );
+
+/** Golden B at 3 hit points holding `inspiration`, the owner's maximum of 3, the feat Zeal. */
+const withZeal = (inspiration: number) =>
+  withTrackers(
+    goldenB,
+    { current: 3, inspiration },
+    {
+      localEntities: [ZEAL],
+      systemData: {
+        ...goldenB.systemData,
+        houseRules: DEFAULT_HOUSE_RULES,
+        feats: [{ id: ZEAL.id }],
+      },
+    },
+  );
+
+/** The change a long rest made to the inspiration held, none when it made none. */
+const inspirationChange = (character: FifthEditionCharacter) =>
+  done(character, long(character)).entry.changes.filter(
+    (change) => change.path.join('.') === INSPIRATION.join('.'),
+  );
+
+describe('ENG-64 a long rest gives the inspiration a trait names', () => {
+  it("computes golden B's 1 from Resourceful, and golden A's 0", () => {
+    const a = compute(goldenA, indexOf(goldenA), fifthEditionModule);
+    expect(a.values['inspiration.longRest']).toBe(0);
+    expect(a.breakdown['inspiration.longRest']).toEqual([]);
+    const b = compute(goldenB, indexOf(goldenB), fifthEditionModule);
+    expect(b.values['inspiration.longRest']).toBe(1);
+    expect(b.breakdown['inspiration.longRest']).toEqual([
+      expect.objectContaining({
+        kind: 'effect',
+        part: 'srd-2024:feature/resourceful#inspiration',
+        op: 'add',
+        value: 1,
+      }),
+    ]);
+  });
+
+  it("gains it in the rest's one entry, and never for golden A", () => {
+    const b = withTrackers(goldenB, { current: 3 });
+    const rest = done(b, long(b));
+    expect(rest.entry).toMatchObject({ action: 'longRest', subject: 'rest' });
+    expect(rest.entry.changes).toEqual([
+      { path: HP, before: 3, after: 12 },
+      { path: INSPIRATION, before: 0, after: 1 },
+    ]);
+    expect(inspirationChange(withTrackers(goldenA, { current: 3 }))).toEqual([]);
+  });
+
+  it("gains up to the house rules' maximum, and the rest is lost", () => {
+    expect(inspirationChange(withTrackers(goldenB, { current: 3, inspiration: 1 }))).toEqual([]);
+    expect(inspirationChange(zealous(1))).toEqual([{ path: INSPIRATION, before: 1, after: 2 }]);
+    expect(inspirationChange(zealous(3))).toEqual([]);
+    expect(inspirationChange(withZeal(0))).toEqual([{ path: INSPIRATION, before: 0, after: 3 }]);
+    expect(inspirationChange(withZeal(2))).toEqual([{ path: INSPIRATION, before: 2, after: 3 }]);
+  });
+
+  it('counts the value whole, never below 0, and lets an override win', () => {
+    const gives = (value: number) =>
+      zealous(1, { overrides: [{ path: 'inspiration.longRest', value }] });
+    expect(inspirationChange(gives(1.5))).toEqual([{ path: INSPIRATION, before: 1, after: 2 }]);
+    expect(inspirationChange(gives(-1))).toEqual([]);
+    expect(inspirationChange(gives(0))).toEqual([]);
+    expect(inspirationChange(gives(2))).toEqual([{ path: INSPIRATION, before: 1, after: 3 }]);
+  });
+
+  it('is gained by no short rest', () => {
+    const b = withTrackers(goldenB, { current: 3 });
+    expect(done(b, short(b, [d10(6)])).entry.changes).toEqual([
+      { path: HP, before: 3, after: 11 },
+      { path: hitDice(10), after: 1 },
+    ]);
+  });
+
+  it('makes a rest that gives back nothing else happen', () => {
+    const b = withTrackers(goldenB, {});
+    expect(done(b, long(b)).entry.changes).toEqual([{ path: INSPIRATION, before: 0, after: 1 }]);
   });
 });

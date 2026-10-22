@@ -30,6 +30,7 @@ import { RULE_STATS } from './combat';
 import { isDead } from './death-saves';
 import type { FifthEditionEntity } from './entity-types';
 import { hitDicePath } from './hit-dice';
+import { INSPIRATION_LONG_REST_PATH, inspirationRested } from './inspiration';
 import { fifthEditionModule } from './module';
 import { rulesOf } from './rulesets';
 import { HIT_DIE_SIZES, MAX_SPELL_LEVEL } from './system';
@@ -48,6 +49,7 @@ import { HIT_DIE_SIZES, MAX_SPELL_LEVEL } from './system';
 // exhaustion 4 is the one a long rest fills (dnd5e's order, ENG-61 §8).
 // ENG-65: each rest ends a knock-out whose short rest damage did not interrupt (`resting`), and
 // any knock-out when it gives hit points back (`knockOutEnded`).
+// ENG-64: a long rest gains the inspiration `inspiration.longRest` computes (`inspirationRested`).
 
 /**
  * The recovery events each rest triggers, in order: a long rest gives back what comes back on a
@@ -225,8 +227,9 @@ export function shortRest(
  * that come back on `long`, else on `short`, and no concentration where the edition's
  * `longRestEndsConcentration` says so. ENG-61: the stored conditions lose the levels their
  * entries take on `long`, else on `short` (each SRD's exhaustion: 1). ENG-65: it ends a knock-out
- * as a short rest does (`knockOutRested`). Refused for a dead character, one at 0 hit points, and
- * as `unchanged` when nothing changes.
+ * as a short rest does (`knockOutRested`). ENG-64: it gains the inspiration `inspiration.longRest`
+ * gives, up to the house rules' maximum. Refused for a dead character, one at 0 hit points, and as
+ * `unchanged` when nothing changes.
  */
 export function longRest(
   character: FifthEditionCharacter,
@@ -275,6 +278,7 @@ export function longRest(
         ? [changeTo(character, CONCENTRATION_PATH, undefined)]
         : []),
       ...knockOutRested(character, current),
+      ...inspirationRested(character, numberAt(computed, INSPIRATION_LONG_REST_PATH)),
     ],
     { hitDice: [], warnings: [...recovered.warnings, ...eased.warnings] },
   );

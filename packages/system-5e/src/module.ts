@@ -17,6 +17,7 @@ import { combatSteps } from './combat';
 import type { FifthEditionEntity } from './entity-types';
 import { equipmentOf } from './equipment';
 import { hitDiceSteps } from './hit-dice';
+import { inspirationSteps } from './inspiration';
 import {
   isLanguageGrant,
   languageWarnings,
@@ -193,6 +194,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     ...rollModeSteps(input),
     ...trainingSteps(input),
     ...spellDiceSteps(),
+    ...inspirationSteps(),
   }),
 
   // Each skill's stat, which an effect may set; the character's size.

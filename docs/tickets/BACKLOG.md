@@ -129,7 +129,7 @@ split off an old row got a new id.
 | ENG-61 | A long rest lowers a condition's level as its entry says | S | ✅ 2026-10-03 |
 | ENG-66 | Coming back to life lowers a condition's level as its entry says | S | ✅ 2026-10-13 |
 | ENG-67 | Exhaustion at level 6 makes the character dead | S | 🔲 |
-| ENG-64 | A long rest gives the inspiration a trait names | S | 🔲 |
+| ENG-64 | A long rest gives the inspiration a trait names | S | ✅ 2026-10-22 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
 | ENG-68 | A mixed character's ability increases may come from neither side | S | ✅ 2026-10-05 |
@@ -145,13 +145,6 @@ split off an old row got a new id.
   for 3 failed death saves. ENG-66's `revive` then brings a 2024 character back at level 5. Found
   by ENG-66: the 2014 exhaustion has no `revive` recovery (SRD 5.1 states none, ENG-66 §8), so a
   2014 character dead from exhaustion 6 comes back still at 6, so still dead.
-- **ENG-64** — found by ENG-21 (ENG-21 §8), taken off ENG-59 (ENG-59 §11). SRD 5.2.1's human,
-  Resourceful: "You gain Heroic Inspiration whenever you finish a Long Rest." Golden B is that
-  human; its Resourceful (`test/golden/srd-2024.ts`) is a name with no mechanics. No entity has a
-  data shape that gives inspiration on a rest, and `longRest` (`rests.ts`) gives none. The row
-  decides the shape (a computed path an effect adds to and the rest reads, as `spellDice` reads
-  ENG-55's `damage.spell.bonus`; or a field on the entity, a stored-shape change). The rest gains
-  it in its one entry, up to ENG-59's bound, `houseRules.inspirationMax`.
 
 ---
 

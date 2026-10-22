@@ -276,7 +276,8 @@ describe('ENG-61 a rest lowers a condition by its entry', () => {
 
   it('2024: a long rest takes 1 level, and at 0 the condition ends', () => {
     const levels = [1, 2, 3, 4, 5].map((level) => {
-      const before = resting(goldenB, {}, [{ id: EXHAUSTION_2024, level }]);
+      // Holding the inspiration Resourceful gives (ENG-64), so the rest changes only the level.
+      const before = resting(goldenB, { inspiration: 1 }, [{ id: EXHAUSTION_2024, level }]);
       const { character, entry } = rested(before);
       expect(entry.changes.map((change) => change.path)).toEqual([CONDITIONS]);
       const { values } = compute(character, index2024, fifthEditionModule);
@@ -292,7 +293,8 @@ describe('ENG-61 a rest lowers a condition by its entry', () => {
   });
 
   it('2024: the hit points and the level change in one entry', () => {
-    const before = resting(goldenB, { current: 3 }, [{ id: EXHAUSTION_2024, level: 2 }]);
+    const trackers = { current: 3, inspiration: 1 };
+    const before = resting(goldenB, trackers, [{ id: EXHAUSTION_2024, level: 2 }]);
     const { character, entry } = rested(before);
     expect(character.systemData.state.hp.current).toBe(12);
     expect(character.state.conditions).toEqual([{ id: EXHAUSTION_2024, level: 1 }]);
