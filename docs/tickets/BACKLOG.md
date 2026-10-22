@@ -129,7 +129,7 @@ split off an old row got a new id.
 | ENG-61 | A long rest lowers a condition's level as its entry says | S | ✅ 2026-10-03 |
 | ENG-66 | Coming back to life lowers a condition's level as its entry says | S | ✅ 2026-10-13 |
 | ENG-67 | Exhaustion at level 6 makes the character dead | S | ✅ 2026-10-22 |
-| ENG-64 | A long rest gives the inspiration a trait names | S | 🔲 |
+| ENG-64 | A long rest gives the inspiration a trait names | S | ✅ 2026-10-22 |
 | ENG-69 | Dying of exhaustion ends attunement to magic items | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
@@ -137,13 +137,6 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | ✅ 2026-10-05 |
 | ENG-23 | The phase 1 gate runs in `pnpm test`: coverage, speed, every golden | S | ✅ 2026-10-05 |
 
-- **ENG-64** — found by ENG-21 (ENG-21 §8), taken off ENG-59 (ENG-59 §11). SRD 5.2.1's human,
-  Resourceful: "You gain Heroic Inspiration whenever you finish a Long Rest." Golden B is that
-  human; its Resourceful (`test/golden/srd-2024.ts`) is a name with no mechanics. No entity has a
-  data shape that gives inspiration on a rest, and `longRest` (`rests.ts`) gives none. The row
-  decides the shape (a computed path an effect adds to and the rest reads, as `spellDice` reads
-  ENG-55's `damage.spell.bonus`; or a field on the entity, a stored-shape change). The rest gains
-  it in its one entry, up to ENG-59's bound, `houseRules.inspirationMax`.
 - **ENG-69** — found by ENG-67 (ENG-67 §11). Exhaustion reaches its highest level, death since
   ENG-67, through the core's `setCondition`, which runs no module code, so ENG-63's
   `deathChanges` never ends the character's attunement. SRD 5.2.1 (Rules Glossary, Dead): "If the
@@ -267,6 +260,11 @@ split off an old row got a new id.
   (both SRDs, level 6) heals the caster 2 + the level when a spell heals another creature, and
   Supreme Healing (both, level 17) uses each healing die's highest number. The mechanics that
   reach those levels add what they need.
+- **Phase 3** — found by ENG-64: SRD 5.2.1's Resourceful (the human) is one effect, `add 1` on
+  `inspiration.longRest` (ENG-64 §3); the golden fixture's Resourceful is a name, and ENG-64's test
+  index carries the effect. The Champion's Heroic Warrior (level 10) gives Heroic Inspiration at
+  the start of a turn in combat; no action tracks turns, so the person gains it with
+  `gainInspiration`. Its mechanics decide whether that stays the person's.
 - **Phase 3** — found by ENG-13: a half proficiency that rounds up (2014's Remarkable Athlete:
   "half your proficiency bonus (round up)") and half a proficiency on every ability check (2014's
   Jack of All Trades). `skills.<key>.prof` 0.5 rounds down (`checkSteps`), and an ability check
