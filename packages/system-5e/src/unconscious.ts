@@ -1,6 +1,7 @@
 import {
   CONDITION_TYPE,
   type DeriveInput,
+  type EntityFinder,
   type KeyFinder,
   type NamedEntity,
   type RuleWarning,
@@ -16,26 +17,34 @@ import { isKnockedOut } from './knock-out';
 // gives it from the stored hit points: no action stores it, so every change of the hit points
 // (damage, healing, a rest, a revival, undo) keeps it right. With no entry in reach, a warning.
 // ENG-65: a knocked-out character has it too, at 1 hit point, from its stored mark (`knock-out.ts`).
+// ENG-67: a character dead of exhaustion has neither (`isDead`).
 
 /** The key of the condition a character at 0 hit points has (ENG-62 §8). */
 export const UNCONSCIOUS_CONDITION = 'unconscious';
 
 /** The character is down: at 0 hit points and alive, dying or stable. */
-export function isDown(character: FifthEditionCharacter): boolean {
-  return character.systemData.state.hp.current === 0 && !isDead(character);
+export function isDown(
+  character: FifthEditionCharacter,
+  find: EntityFinder<FifthEditionEntity>,
+): boolean {
+  return character.systemData.state.hp.current === 0 && !isDead(character, find);
 }
 
 /** The character has the Unconscious condition by a rule: down, or knocked out. */
-function ruledUnconscious(character: FifthEditionCharacter): boolean {
-  return isDown(character) || isKnockedOut(character);
+function ruledUnconscious(
+  character: FifthEditionCharacter,
+  find: EntityFinder<FifthEditionEntity>,
+): boolean {
+  return isDown(character, find) || isKnockedOut(character, find);
 }
 
 /** The Unconscious condition's entry while a rule gives it, when the character can use one. */
 export function unconsciousNamed(
   character: FifthEditionCharacter,
+  find: EntityFinder<FifthEditionEntity>,
   findKey: KeyFinder<FifthEditionEntity>,
 ): NamedEntity[] {
-  if (!ruledUnconscious(character)) return [];
+  if (!ruledUnconscious(character, find)) return [];
   const entry = findKey(CONDITION_TYPE, UNCONSCIOUS_CONDITION);
   return entry === undefined ? [] : [{ id: entry.id }];
 }
@@ -44,9 +53,10 @@ export function unconsciousNamed(
 export function unconsciousWarnings({
   character,
   gathered,
+  find,
 }: DeriveInput<FifthEditionCharacter, FifthEditionEntity>): RuleWarning[] {
   if (
-    !ruledUnconscious(character) ||
+    !ruledUnconscious(character, find) ||
     (gathered.conditions[UNCONSCIOUS_CONDITION]?.level ?? 0) > 0
   ) {
     return [];

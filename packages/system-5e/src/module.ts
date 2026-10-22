@@ -48,7 +48,7 @@ import { unconsciousNamed, unconsciousWarnings } from './unconscious';
 // ENG-56: the side of the starting languages not taken gives none; a mix that gives none warns.
 // ENG-57: a spell grant's own uses are a resource, given beside it (`spell-uses.ts`).
 // ENG-62: at 0 hit points and alive, the Unconscious condition is named by its key; none warns.
-// ENG-65: knocked out too (`knock-out.ts`).
+// ENG-65: knocked out too (`knock-out.ts`). ENG-67: not when dead of exhaustion.
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -154,7 +154,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
       // and of those only what the rules let count (ENG-44).
       ...equipmentOf(character, find).named,
       // The condition the 0 hit points, or a knock-out, give (ENG-62, ENG-65).
-      ...unconsciousNamed(character, findKey),
+      ...unconsciousNamed(character, find, findKey),
     ];
   },
 

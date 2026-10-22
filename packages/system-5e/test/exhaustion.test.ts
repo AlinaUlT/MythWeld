@@ -1,35 +1,53 @@
 import {
   type Computed,
   compute,
+  finderOf,
   type LogStamp,
   loadContentIndex,
   removeCondition,
+  reverseEntry,
+  setCondition,
 } from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
+  applyDamage,
+  applyHealing,
+  EXHAUSTION_CONDITION,
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
   type FifthEditionEntity,
+  fatalExhaustion,
   type fifthEditionCharacterSchema,
   type fifthEditionEntitySchema,
   fifthEditionModule,
+  firstAid,
+  isDead,
+  isDown,
+  isKnockedOut,
+  isStable,
   longRest,
   openFifthEditionCharacter,
   openFifthEditionPack,
   revive,
+  rollDeathSave,
+  setTempHp,
   shortRest,
+  stabilize,
 } from '../src/index.ts';
 import {
   copyOf,
   done,
+  findOf,
   frozen,
+  HP,
   refused,
   stamp as restStamp,
   withTrackers,
 } from './action-checks.ts';
 import { opened } from './golden/checks.ts';
 import { goldenA, goldenB, srd2014, srd2024 } from './golden/index.ts';
+import { UNCONSCIOUS_2024, with2024 } from './unconscious-entries.ts';
 
 // ENG-19: exhaustion is data in both editions (SPEC §6.3): each SRD's condition entity, no edition
 // code. The 2024 one is the golden fixture's (ENG-10). The 2014 one is written here from SRD 5.1's
@@ -511,6 +529,225 @@ describe('ENG-66 coming back to life lowers a condition by its entry', () => {
     expect(result.ok && result.character.state.conditions).toEqual([
       { id: EXHAUSTION_2024, level: 1 },
     ]);
+    expect(ice).toEqual(copy);
+    expect(ask).toEqual({ hp: 1 });
+  });
+});
+
+// ENG-67: exhaustion at its highest level is death, in both editions (ENG-67 §8): `isDead` reads
+// it, so every action refuses as for three failed death saves, and a revival that leaves it there
+// is refused. Every value was worked out by hand in ENG-67 §3 from the tables above.
+
+type Trackers = Parameters<typeof withTrackers>[1];
+
+/** How the character finds its entries: its edition's index, with the 2014 exhaustion. */
+const findIn = (character: FifthEditionCharacter) => finderOf(character, indexFor(character));
+
+/** Golden B with the 2024 exhaustion at `level`, and `trackers` set. */
+const tired = (level: number, trackers: Trackers = {}) =>
+  resting(goldenB, trackers, [{ id: EXHAUSTION_2024, level }]);
+
+/** Golden A with the 2014 exhaustion at `level`, and `trackers` set. */
+const tired2014 = (level: number, trackers: Trackers = {}) =>
+  resting(goldenA, trackers, [{ id: EXHAUSTION_2014, level }]);
+
+const OWN_EXHAUSTION = 'character:condition/exhaustion';
+
+/** A made-up exhaustion of the character's own, with `maxLevel` when given. */
+function ownExhaustion(maxLevel?: number): OwnEntity {
+  return {
+    id: OWN_EXHAUSTION,
+    type: 'condition',
+    key: EXHAUSTION_CONDITION,
+    ruleset: 'any',
+    name: { en: 'exhaustion' },
+    ...(maxLevel !== undefined && { maxLevel }),
+    source: { pack: 'character' },
+  };
+}
+
+describe('ENG-67 exhaustion at its highest level is death', () => {
+  it("is fatal at its entry's highest level, in both editions", () => {
+    expect(EXHAUSTION_CONDITION).toBe('exhaustion');
+    const fatal = (character: FifthEditionCharacter) =>
+      fatalExhaustion(character, findIn(character));
+    expect([1, 2, 3, 4, 5, 6, 7].map((level) => fatal(tired(level)))).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      EXHAUSTION_2024,
+      EXHAUSTION_2024,
+    ]);
+    expect(fatal(resting(goldenB, {}, [{ id: EXHAUSTION_2024 }]))).toBeUndefined();
+    expect([fatal(tired2014(5)), fatal(tired2014(6))]).toEqual([undefined, EXHAUSTION_2014]);
+  });
+
+  it('takes the highest level from the entry, never a number of its own', () => {
+    const own = (maxLevel: number | undefined, level?: number) => {
+      const entry = ownExhaustion(maxLevel);
+      const stored = { id: entry.id, ...(level !== undefined && { level }) };
+      const character = resting(goldenA, {}, [stored], [entry]);
+      return fatalExhaustion(character, findOf(character));
+    };
+    expect([own(3, 2), own(3, 3), own(10, 6), own(10, 10), own(undefined)]).toEqual([
+      undefined,
+      OWN_EXHAUSTION,
+      undefined,
+      OWN_EXHAUSTION,
+      undefined,
+    ]);
+  });
+
+  it('is no other condition at its highest, and no missing one', () => {
+    const winded = ownCondition('winded', [{ on: 'long', amount: '1' }], 2);
+    const character = resting(
+      goldenB,
+      {},
+      [{ id: winded.id, level: 2 }, { id: 'srd-2024:condition/gone' }],
+      [winded],
+    );
+    expect(fatalExhaustion(character, findIn(character))).toBeUndefined();
+    expect(isDead(character, findIn(character))).toBe(false);
+  });
+
+  it('is dead at any hit points, beside three failed death saves', () => {
+    const dead = (character: FifthEditionCharacter) => isDead(character, findIn(character));
+    expect([12, 6, 1, 0].map((current) => dead(tired(6, { current })))).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+    expect(dead(tired(5, { current: 6 }))).toBe(false);
+    expect(dead(withTrackers(goldenB, { current: 0, failure: 3 }))).toBe(true);
+  });
+
+  it('is neither stable, down nor knocked out', () => {
+    const states = (level: number) => {
+      const stable = tired(level, { current: 0, stable: true });
+      const down = tired(level, { current: 0 });
+      const out = tired(level, { current: 1, knockedOut: 'resting' });
+      return [
+        isStable(stable, findIn(stable)),
+        isDown(down, findIn(down)),
+        isKnockedOut(out, findIn(out)),
+      ];
+    };
+    expect(states(6)).toEqual([false, false, false]);
+    expect(states(5)).toEqual([true, true, true]);
+  });
+
+  it('names no Unconscious condition, and warns of none', () => {
+    const unconsciousOf = (character: FifthEditionCharacter) => {
+      const result = compute(character, with2024, fifthEditionModule);
+      const had = result.entities.some(({ entity }) => entity.id === UNCONSCIOUS_2024);
+      return [result.values['conditions.unconscious.level'], had];
+    };
+    expect(unconsciousOf(tired(6, { current: 0 }))).toEqual([0, false]);
+    expect(unconsciousOf(tired(6, { current: 1, knockedOut: 'resting' }))).toEqual([0, false]);
+    expect(unconsciousOf(tired(5, { current: 0 }))).toEqual([1, true]);
+    expect(unconsciousOf(tired(5, { current: 1, knockedOut: 'resting' }))).toEqual([1, true]);
+
+    const rules = (level: number) =>
+      compute(tired(level, { current: 0 }), index2024, fifthEditionModule).warnings.flatMap(
+        (warning) => (warning.code === 'characterRule' ? [warning.rule] : []),
+      );
+    expect(rules(6)).toEqual([]);
+    expect(rules(5)).toEqual(['noUnconsciousCondition']);
+  });
+
+  it('refuses every action the dead are refused, in both editions', () => {
+    const up = tired(6, { current: 6 });
+    const down = tired(6, { current: 0 });
+    const out = tired(6, { current: 1, knockedOut: 'resting' });
+    const refusals = [
+      refused(applyDamage(up, index2024, { amount: 5 }, restStamp)),
+      refused(applyHealing(up, index2024, { amount: 5 }, restStamp)),
+      refused(setTempHp(up, index2024, { amount: 5 }, restStamp)),
+      refused(shortRest(up, index2024, {}, restStamp)),
+      refused(longRest(up, index2024, restStamp)),
+      refused(rollDeathSave(down, index2024, { natural: 10 }, restStamp)),
+      refused(stabilize(down, index2024, restStamp)),
+      refused(firstAid(out, index2024, restStamp)),
+    ];
+    expect(refusals).toEqual(Array.from({ length: 8 }, () => ({ code: 'dead' })));
+    const a = tired2014(6, { current: 6 });
+    expect(refused(longRest(a, index2014, restStamp))).toEqual({ code: 'dead' });
+  });
+
+  it('leaves exhaustion 5 alive', () => {
+    const five = tired(5, { current: 6 });
+    const hit = done(five, applyDamage(five, index2024, { amount: 5 }, restStamp));
+    expect(hit.entry.changes).toEqual([{ path: HP, before: 6, after: 1 }]);
+    const { character, entry } = rested(five);
+    expect(paths(entry)).toEqual([HP.join('.'), CONDITIONS.join('.')]);
+    expect(entry.changes[0]).toEqual({ path: HP, before: 6, after: 12 });
+    expect(character.state.conditions).toEqual([{ id: EXHAUSTION_2024, level: 4 }]);
+  });
+
+  it('2024: a revival takes it to 5, alive', () => {
+    const six = tired(6, { current: 6 });
+    const { character, entry, outcome } = revived(six);
+    expect(entry.changes).toEqual([
+      { path: HP, before: 6, after: 1 },
+      {
+        path: CONDITIONS,
+        before: [{ id: EXHAUSTION_2024, level: 6 }],
+        after: [{ id: EXHAUSTION_2024, level: 5 }],
+      },
+    ]);
+    expect(outcome.warnings).toEqual([]);
+    expect(isDead(character, findIn(character))).toBe(false);
+    const { values } = compute(character, index2024, fifthEditionModule);
+    expect([values['speed.walk'], values['d20.all.bonus']]).toEqual([5, -10]);
+    expect(revived(six, 'max').entry.changes[0]).toEqual({ path: HP, before: 6, after: 12 });
+  });
+
+  it('2014: a revival that leaves it at 6 is refused, the character still dead', () => {
+    for (const trackers of [{ current: 6 }, { current: 1 }, DEAD]) {
+      const before = tired2014(6, trackers);
+      expect(refused(revive(before, index2014, { hp: 1 }, restStamp))).toEqual({
+        code: 'stillDead',
+        condition: EXHAUSTION_2014,
+      });
+    }
+    const dead = tired2014(6, DEAD);
+    const { character, entry } = revived(dead, 'max', index2014Revived);
+    expect(entry.changes[0]).toEqual({ path: HP, before: 0, after: 6 });
+    expect(character.state.conditions).toEqual([{ id: EXHAUSTION_2014, level: 5 }]);
+    expect(isDead(character, finderOf(character, index2014Revived))).toBe(false);
+  });
+
+  it('stores nothing: the level decides, and undo brings the character back', () => {
+    const fresh = withTrackers(goldenB, {});
+    const find = findIn(fresh);
+    expect(isDead(fresh, find)).toBe(false);
+    const six = setCondition(fresh, index2024, { id: EXHAUSTION_2024, level: 6 }, restStamp);
+    if (!six.ok) throw new Error(six.message);
+    expect(isDead(six.character, find)).toBe(true);
+    const back = reverseEntry(six.character, six.entry);
+    if (!back.ok) throw new Error(back.message);
+    expect(isDead(back.character, find)).toBe(false);
+    const five = setCondition(
+      six.character,
+      index2024,
+      { id: EXHAUSTION_2024, level: 5 },
+      restStamp,
+    );
+    if (!five.ok) throw new Error(five.message);
+    expect(isDead(five.character, find)).toBe(false);
+  });
+
+  it('changes nothing it is given: frozen inputs', () => {
+    const character = tired2014(6, { current: 6 });
+    const copy = copyOf(character);
+    const ice = frozen(character);
+    const ask = frozen({ hp: 1 });
+    expect(fatalExhaustion(ice, findIn(ice))).toBe(EXHAUSTION_2014);
+    expect(isDead(ice, findIn(ice))).toBe(true);
+    expect(revive(ice, index2014, ask, frozen(restStamp)).ok).toBe(false);
     expect(ice).toEqual(copy);
     expect(ask).toEqual({ hp: 1 });
   });

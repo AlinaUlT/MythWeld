@@ -6,6 +6,7 @@ import {
   changeTo,
   compute,
   conditionsRecoveredOn,
+  finderOf,
   type LogStamp,
   type RecoveryWarning,
   recoveredOn,
@@ -99,9 +100,10 @@ export type RestResult =
 /** A rest's refusal for a dead character, or one with fewer hit points than `min`. */
 function restRefusal(
   character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
   min: number,
 ): ({ ok: false } & RestRefusal) | undefined {
-  if (isDead(character)) {
+  if (isDead(character, finderOf(character, index))) {
     return { ok: false, code: 'dead', message: 'The character is dead: a rest gives it nothing.' };
   }
   const hp = character.systemData.state.hp.current;
@@ -171,7 +173,7 @@ export function shortRest(
     }
   }
   const rules = rulesOf(character);
-  const refused = restRefusal(character, rules.shortRestMinHp);
+  const refused = restRefusal(character, index, rules.shortRestMinHp);
   if (refused !== undefined) return refused;
 
   const computed = compute(character, index, fifthEditionModule);
@@ -233,7 +235,7 @@ export function longRest(
   index: ContentIndex<FifthEditionEntity>,
   stamp: LogStamp,
 ): RestResult {
-  const refused = restRefusal(character, LONG_REST_MIN_HP);
+  const refused = restRefusal(character, index, LONG_REST_MIN_HP);
   if (refused !== undefined) return refused;
   const rules = rulesOf(character);
   const computed = compute(character, index, fifthEditionModule);

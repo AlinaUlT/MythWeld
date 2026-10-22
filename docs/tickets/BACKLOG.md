@@ -128,23 +128,15 @@ split off an old row got a new id.
 | ENG-21 | A rest changes the character by its edition's rules | S | ✅ 2026-10-03 |
 | ENG-61 | A long rest lowers a condition's level as its entry says | S | ✅ 2026-10-03 |
 | ENG-66 | Coming back to life lowers a condition's level as its entry says | S | ✅ 2026-10-13 |
-| ENG-67 | Exhaustion at level 6 makes the character dead | S | 🔲 |
+| ENG-67 | Exhaustion at level 6 makes the character dead | S | ✅ 2026-10-22 |
 | ENG-64 | A long rest gives the inspiration a trait names | S | 🔲 |
+| ENG-69 | Dying of exhaustion ends attunement to magic items | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
 | ENG-68 | A mixed character's ability increases may come from neither side | S | ✅ 2026-10-05 |
 | ENG-37 | Golden F: a character mixing both editions passes | M | ✅ 2026-10-05 |
 | ENG-23 | The phase 1 gate runs in `pnpm test`: coverage, speed, every golden | S | ✅ 2026-10-05 |
 
-- **ENG-67** — found by ENG-61 (ENG-61 §8): exhaustion 6 is death in both SRDs (SRD 5.1 "6 -
-  Death"; SRD 5.2.1 "You die if your Exhaustion level is 6"; dnd5e's exhaustion `conditions: { 6:
-  ["dead"] }`). `isDead` (`death-saves.ts`) reads only the death saves, so a long rest at
-  exhaustion 6 is not refused, and since ENG-61 it lowers the level to 5. The row decides where
-  the death is said (the condition's entry, as ENG-61's `recovery`; or the module, by the key
-  `exhaustion`, as ENG-62's `unconscious`) and makes `isDead` read it, so the actions refuse as
-  for 3 failed death saves. ENG-66's `revive` then brings a 2024 character back at level 5. Found
-  by ENG-66: the 2014 exhaustion has no `revive` recovery (SRD 5.1 states none, ENG-66 §8), so a
-  2014 character dead from exhaustion 6 comes back still at 6, so still dead.
 - **ENG-64** — found by ENG-21 (ENG-21 §8), taken off ENG-59 (ENG-59 §11). SRD 5.2.1's human,
   Resourceful: "You gain Heroic Inspiration whenever you finish a Long Rest." Golden B is that
   human; its Resourceful (`test/golden/srd-2024.ts`) is a name with no mechanics. No entity has a
@@ -152,6 +144,12 @@ split off an old row got a new id.
   decides the shape (a computed path an effect adds to and the rest reads, as `spellDice` reads
   ENG-55's `damage.spell.bonus`; or a field on the entity, a stored-shape change). The rest gains
   it in its one entry, up to ENG-59's bound, `houseRules.inspirationMax`.
+- **ENG-69** — found by ENG-67 (ENG-67 §11). Exhaustion reaches its highest level, death since
+  ENG-67, through the core's `setCondition`, which runs no module code, so ENG-63's
+  `deathChanges` never ends the character's attunement. SRD 5.2.1 (Rules Glossary, Dead): "If the
+  creature had Attunement to one or more magic items, it is no longer attuned to them." The row
+  decides where the attunement ends: a module action that sets a condition's level and adds
+  `deathChanges` when the level kills, or `revive`, for every death.
 
 ---
 

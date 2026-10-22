@@ -6,10 +6,11 @@ import {
   changeTo,
   compute,
   conditionsRecoveredOn,
+  finderOf,
   type LogStamp,
   type MadeChanges,
 } from '@grimoire/engine';
-import type { LogChange, LogEntry } from '@grimoire/schema';
+import type { EntityId, LogChange, LogEntry } from '@grimoire/schema';
 import {
   CONCENTRATION_PATH,
   DEATH_FAILURE_PATH,
@@ -27,6 +28,7 @@ import {
 import { DEATH_SAVES, type FifthEditionCharacter } from './character';
 import { isDead } from './death-saves';
 import type { FifthEditionEntity } from './entity-types';
+import { fatalExhaustion } from './exhaustion';
 import { fifthEditionModule } from './module';
 import { rulesOf } from './rulesets';
 
@@ -45,6 +47,8 @@ import { rulesOf } from './rulesets';
 // ENG-66: reviving lowers the stored conditions by their entries' `recovery` on `revive` (the
 // core's `conditionsRecoveredOn`), as SRD 5.2.1's exhaustion says. The hit points come from the one
 // `compute()` made before the revival, as a rest's do (ENG-61).
+// ENG-67: a character dead of exhaustion at its highest level is refused as the dead are; a revival
+// that leaves that level, as SRD 5.1's exhaustion does, leaves the character dead, and is refused.
 
 /** The lowest DC of the Constitution save that keeps concentration after damage (both SRDs). */
 export const CONCENTRATION_DC_MIN = 10;
@@ -56,6 +60,7 @@ export type HitPointRefusal = { message: string } & (
   | { code: 'notDead' }
   | { code: 'noKnockOut' }
   | { code: 'notDroppedToZero' }
+  | { code: 'stillDead'; condition: EntityId }
 );
 
 /** What healing or temporary hit points give: the changed character and its entry, or why not. */
@@ -139,6 +144,7 @@ function maxOf(character: FifthEditionCharacter, index: ContentIndex<FifthEditio
 /** The refusal of an amount that is not a whole number from `min`, or of a dead character. */
 function refusal(
   character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
   amount: number,
   min: number,
 ): ({ ok: false } & HitPointRefusal) | undefined {
@@ -146,7 +152,7 @@ function refusal(
     const message = `${amount} is not a whole number of hit points from ${min}.`;
     return { ok: false, code: 'badAmount', amount, message };
   }
-  if (isDead(character)) {
+  if (isDead(character, finderOf(character, index))) {
     return { ok: false, code: 'dead', message: 'The character is dead: it has no hit points.' };
   }
   return undefined;
@@ -197,7 +203,7 @@ export function applyDamage(
   stamp: LogStamp,
 ): DamageResult {
   const { amount, critical = false, knockOut = false } = ask;
-  const refused = refusal(character, amount, 1);
+  const refused = refusal(character, index, amount, 1);
   if (refused !== undefined) return refused;
   const { hp, deathSaves, concentration, knockedOut } = character.systemData.state;
   const temp = Math.min(hp.temp, amount);
@@ -261,7 +267,7 @@ export function applyHealing(
   stamp: LogStamp,
 ): HitPointResult {
   const { amount } = ask;
-  const refused = refusal(character, amount, 1);
+  const refused = refusal(character, index, amount, 1);
   if (refused !== undefined) return refused;
   const { hp } = character.systemData.state;
   const max = maxOf(character, index);
@@ -285,7 +291,8 @@ export function applyHealing(
  * (ENG-65); and the entry. The revival spells give 1 or all (ENG-58 §8). ENG-66: the stored
  * conditions lose the levels their entries take on `revive` (SRD 5.2.1's exhaustion: 1), after the
  * hit points are measured on the maximum before; the outcome holds what their formulas met.
- * Refused for an amount that is not a whole number from 1, and for a character that is not dead.
+ * Refused for an amount that is not a whole number from 1, for a character that is not dead, and
+ * for one the revival leaves dead (ENG-67: exhaustion still at its highest level).
  */
 export function revive(
   character: FifthEditionCharacter,
@@ -298,7 +305,8 @@ export function revive(
     const message = `${hp} is not a whole number of hit points from 1.`;
     return { ok: false, code: 'badAmount', amount: hp, message };
   }
-  if (!isDead(character)) {
+  const find = finderOf(character, index);
+  if (!isDead(character, find)) {
     return { ok: false, code: 'notDead', message: 'The character is not dead.' };
   }
   const computed = compute(character, index, fifthEditionModule);
@@ -316,6 +324,12 @@ export function revive(
     ]),
     'The revival changes nothing.',
   );
+  // A revival that changes nothing leaves the character as it was.
+  const fatal = fatalExhaustion(result.ok ? result.character : character, find);
+  if (fatal !== undefined) {
+    const message = `The revival leaves "${fatal}" at its highest level: the character is still dead.`;
+    return { ok: false, code: 'stillDead', condition: fatal, message };
+  }
   return result.ok ? { ...result, outcome: { warnings: eased.warnings } } : result;
 }
 
@@ -327,11 +341,12 @@ export function revive(
  */
 export function setTempHp(
   character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
   ask: { readonly amount: number; readonly replace?: boolean },
   stamp: LogStamp,
 ): HitPointResult {
   const { amount, replace = false } = ask;
-  const refused = refusal(character, amount, 0);
+  const refused = refusal(character, index, amount, 0);
   if (refused !== undefined) return refused;
   const { temp } = character.systemData.state.hp;
   return settled<HitPointRefusal>(

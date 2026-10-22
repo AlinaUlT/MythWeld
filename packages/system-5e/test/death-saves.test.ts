@@ -13,8 +13,10 @@ import {
   copyOf,
   done,
   FAILURE,
+  findOf,
   frozen,
   HP,
+  indexOf,
   refused,
   STABLE,
   SUCCESS,
@@ -31,7 +33,12 @@ const GOLDENS = [goldenA, goldenB];
 
 /** The death save that kept `natural`, with `total` when it differs. */
 const save = (character: FifthEditionCharacter, natural: number, total?: number) =>
-  rollDeathSave(character, { natural, ...(total !== undefined && { total }) }, stamp);
+  rollDeathSave(
+    character,
+    indexOf(character),
+    { natural, ...(total !== undefined && { total }) },
+    stamp,
+  );
 
 /** The golden at 0 hit points with these death saves, dying. */
 const dying = (golden: CharacterInput, success = 0, failure = 0) =>
@@ -96,7 +103,7 @@ describe('ENG-58 death saves', () => {
           { path: FAILURE, before: 2, after: 0 },
         ]);
         expect(twenty.outcome).toEqual({ successes: 0, failures: 0, hp: 1, status: 'up' });
-        expect(isStable(twenty.character)).toBe(false);
+        expect(isStable(twenty.character, findOf(twenty.character))).toBe(false);
       }
     }
   });
@@ -111,8 +118,8 @@ describe('ENG-58 death saves', () => {
         { path: STABLE, before: false, after: true },
       ]);
       expect(third.outcome).toEqual({ successes: 1, failures: 0, hp: 0, status: 'stable' });
-      expect(isStable(third.character)).toBe(true);
-      expect(isDead(third.character)).toBe(false);
+      expect(isStable(third.character, findOf(third.character))).toBe(true);
+      expect(isDead(third.character, findOf(third.character))).toBe(false);
     }
   });
 
@@ -122,7 +129,7 @@ describe('ENG-58 death saves', () => {
       const third = done(before, save(before, 5));
       expect(third.entry.changes).toEqual([{ path: FAILURE, before: 2, after: 3 }]);
       expect(third.outcome).toEqual({ successes: 0, failures: 1, hp: 0, status: 'dead' });
-      expect(isDead(third.character)).toBe(true);
+      expect(isDead(third.character, findOf(third.character))).toBe(true);
     }
   });
 
@@ -144,36 +151,42 @@ describe('ENG-58 death saves', () => {
   it('stabilizes a dying character: both counts reset', () => {
     for (const golden of GOLDENS) {
       const before = dying(golden, 1, 2);
-      const first = done(before, stabilize(before, stamp));
+      const first = done(before, stabilize(before, indexOf(before), stamp));
       expect(first.entry).toMatchObject({ action: 'stabilize', subject: 'deathSaves' });
       expect(first.entry.changes).toEqual([
         { path: SUCCESS, before: 1, after: 0 },
         { path: FAILURE, before: 2, after: 0 },
         { path: STABLE, before: false, after: true },
       ]);
-      expect(isStable(first.character)).toBe(true);
+      expect(isStable(first.character, findOf(first.character))).toBe(true);
       const fresh = dying(golden);
-      expect(done(fresh, stabilize(fresh, stamp)).entry.changes).toEqual([
+      expect(done(fresh, stabilize(fresh, indexOf(fresh), stamp)).entry.changes).toEqual([
         { path: STABLE, before: false, after: true },
       ]);
     }
   });
 
   it('refuses to stabilize the dead, the living, the stable', () => {
-    expect(refused(stabilize(dying(goldenA, 0, 3), stamp))).toEqual({ code: 'dead' });
-    expect(refused(stabilize(withTrackers(goldenA, { current: 5 }), stamp))).toEqual({
+    const dead = dying(goldenA, 0, 3);
+    expect(refused(stabilize(dead, indexOf(dead), stamp))).toEqual({ code: 'dead' });
+    const up = withTrackers(goldenA, { current: 5 });
+    expect(refused(stabilize(up, indexOf(up), stamp))).toEqual({
       code: 'notDying',
       hp: 5,
     });
     const stable = withTrackers(goldenA, { current: 0, stable: true });
-    expect(refused(stabilize(stable, stamp))).toEqual({ code: 'unchanged' });
+    expect(refused(stabilize(stable, indexOf(stable), stamp))).toEqual({ code: 'unchanged' });
   });
 
   it('is stable only at 0 hit points, alive', () => {
-    expect(isStable(withTrackers(goldenA, { current: 0, stable: true }))).toBe(true);
-    expect(isStable(withTrackers(goldenA, { current: 5, stable: true }))).toBe(false);
-    expect(isStable(withTrackers(goldenA, { current: 0 }))).toBe(false);
-    expect(isStable(withTrackers(goldenA, { current: 0, failure: 3, stable: true }))).toBe(false);
+    const stable = (trackers: Parameters<typeof withTrackers>[1]) => {
+      const character = withTrackers(goldenA, trackers);
+      return isStable(character, findOf(character));
+    };
+    expect(stable({ current: 0, stable: true })).toBe(true);
+    expect(stable({ current: 5, stable: true })).toBe(false);
+    expect(stable({ current: 0 })).toBe(false);
+    expect(stable({ current: 0, failure: 3, stable: true })).toBe(false);
   });
 
   it('changes nothing it is given: frozen inputs', () => {
@@ -182,8 +195,8 @@ describe('ENG-58 death saves', () => {
     const ice = frozen(character);
     const ask = frozen({ natural: 4, total: 11 });
     const frozenStamp = frozen(stamp);
-    expect(rollDeathSave(ice, ask, frozenStamp).ok).toBe(true);
-    expect(stabilize(ice, frozenStamp).ok).toBe(true);
+    expect(rollDeathSave(ice, indexOf(ice), ask, frozenStamp).ok).toBe(true);
+    expect(stabilize(ice, indexOf(ice), frozenStamp).ok).toBe(true);
     expect(ice).toEqual(copy);
     expect(ask).toEqual({ natural: 4, total: 11 });
   });
