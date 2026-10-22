@@ -16498,3 +16498,233 @@ Found, not fixed:
 
 Nothing for the changelog: no screen changes, and the published pack JSON Schema does not change.
 
+---
+
+### ENG-69 Dying of exhaustion makes death's other changes
+
+**Hat:** Dying of exhaustion makes death's other changes
+**Depends on:** ENG-20 (concentration ends at 0 hit points), ENG-63 (`deathChanges`), ENG-67
+(`isDead` reads exhaustion 6)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.4 (the actions, `toggleCondition`; every entry undoes its action); §6.3
+("Истощение"); ADR 004 item 1
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/conditions.ts` — new: `setFifthEditionCondition`, the
+fifth-edition condition action around the core's `setCondition`.
+- `packages/system-5e/src/actions.ts` — changes: `deathChanges` ends the concentration too.
+- `packages/system-5e/src/hit-points.ts` — changes: `applyDamage` writes the concentration's end
+  once when the damage kills.
+- `packages/system-5e/src/death-saves.ts` — changes: the comment of `rollDeathSave` names the
+  concentration.
+- `packages/system-5e/src/index.ts` — exports the new file.
+- `packages/system-5e/test/exhaustion.test.ts` — the tests (§7).
+
+#### 2. What is missing now
+
+Measured on `4bd38d9` (ENG-67), with a test written for it and then deleted. Golden B (2024) at
+12 hit points, `srd-2024:condition/exhaustion` stored at level 5, concentrating on a made-up
+spell, with a made-up attuned row; the core's `setCondition` to level 6:
+- `isDead` before: `false`; after: `true`.
+- The entry's changes: `state.conditions` only.
+- After: the row is still attuned; the concentration is still the spell.
+
+So dying of exhaustion makes none of death's other changes. `deathChanges` (`actions.ts`, ENG-63)
+is added only by `applyDamage` and `rollDeathSave`; no fifth-edition code runs when the core's
+`setCondition` raises a level. `deathChanges` itself writes the inventory only: the concentration's
+end at death comes from `applyDamage`'s "at 0 hit points" (ENG-20), so a third failed death save
+by a character concentrating at 0 hit points (`castSpell` does not refuse there, ENG-62 §11) keeps
+the concentration too.
+
+`pnpm test` before: `Test Files 63 passed (63)`, `Tests 859 passed (859)`, 16.95 s; coverage
+lines 99.92 % (2760/2762), branches 96.93 % (2024/2088); the speed pass `Tests 2 passed (2)`.
+
+#### 3. What it should look like when done
+
+`S` is a made-up spell with concentration, `stone` a made-up custom row, attuned. The goldens'
+own rows are none attuned (ENG-63). Golden A (2014) and golden B (2024) each have 12 hit points
+(SPEC §6.7). The 2014 exhaustion is `exhaustion.test.ts`'s; the 2024 one is the golden pack's.
+"Dead" is 0 hit points with 3 failures (ENG-58). Every value is worked out by hand from §8.
+
+**The action** — `setFifthEditionCondition(character, index, { id, level }, stamp)`
+1. Golden B at exhaustion 5, concentrating on `S`, carrying `stone`, set to 6: one entry, the
+   core's `setCondition` entry (`action: 'setCondition'`, the exhaustion's id as subject, its name
+   as label) with two more changes, in this order: `state.conditions` level 5 → 6;
+   `systemData.state.concentration` `S` → none; `systemData.inventory` with `stone` no longer
+   attuned, every other field and the order kept. After: dead. Undoing the entry gives the
+   character before.
+2. Golden A with the 2014 exhaustion, the same from 5 to 6: the same three changes.
+3. Exhaustion not had, given at 6: `state.conditions` `[]` → `[{ exhaustion, level 6 }]`, then the
+   same two changes.
+4. A level that does not kill (golden B, 4 → 5): the core's entry, one change; `stone` attuned,
+   `S` held.
+5. Nothing to end (golden B with no attuned row and no concentration, 5 → 6): the core's entry,
+   `state.conditions` only; dead.
+6. Only the step from alive to dead: golden B dead (0 hit points, 3 failures) with `stone`
+   attuned again by hand, exhaustion 5 → 6: the core's entry, `stone` attuned. Golden B dead of
+   exhaustion 6, lowered to 5: the core's entry; alive; nothing given back.
+7. The key decides (ENG-67): a condition of golden B's own with the key `weariness` and 6 levels,
+   set to 6: the core's entry; one with the key `exhaustion` and 10 levels, set to 6: the death's
+   two changes.
+8. Refused as the core's is, the character unchanged: an id no pack has, `missing`; a spell's id,
+   `notACondition`; exhaustion at 7, `badLevel` (`max` 6); the level it has, `unchanged`.
+
+**Every death ends the concentration** — `deathChanges`
+9. Golden A and golden B at 0 hit points with 2 failures, concentrating on `S`, carrying `stone`:
+   a death save with a 5 gives `[failure 2 → 3, concentration S → none, inventory]`; damage 1
+   gives the same three. From 6 hit points, damage 18 (12 left over, the maximum): `[hp 6 → 0,
+   failure 0 → 3, concentration S → none, inventory]`, the outcome `status: 'dead'`,
+   `concentrationEnded: S`. The concentration is one change in each.
+10. Every test before passes unchanged: no death in them holds the concentration, so the new
+    change changes nothing there.
+11. Frozen inputs (golden B at exhaustion 5 with `S` and `stone`, the ask, the stamp):
+    `setFifthEditionCondition` throws nothing and changes nothing.
+12. The quality gate is green.
+
+#### 4. How to do it
+
+1. `actions.ts`: `deathChanges` lists the concentration's end before the inventory.
+2. `hit-points.ts`: `applyDamage` lists the concentration's end only when it ends without death;
+   the death's list holds it then. The order of the changes stays.
+3. `conditions.ts`: the action; `index.ts` exports it.
+4. The tests of §7, then the gate.
+
+Technical choices (ADR 002):
+- **A fifth-edition action around the core's**, as the row offers. The core's `setCondition` names
+  no death and stays as it is: a system without death uses it. The module's calls it, and when the
+  character was alive before and is dead after (`isDead`, ENG-67), it builds one entry from the
+  core's changes and `deathChanges`, through `settled` (which drops the changes that change
+  nothing), applied to the character before. So undo is one entry, and an entry that kills holds
+  the level and the death together.
+- **Its own file**, `conditions.ts`: `death-saves.ts` imports `exhaustion.ts`, so an action there
+  reading `isDead` would be an import loop (ENG-62 moved `isDead` for the same reason).
+- **Its name** is `setFifthEditionCondition`, as the module names its own of a core function
+  (`openFifthEditionCharacter`, `openFifthEditionPack`). Its entry keeps the core's action key,
+  subject and label, so the log names it as the core's.
+- **Death is the step from alive to dead**, whatever the stored condition that kills (today
+  exhaustion 6). A character already dead made death's changes when it died; what the person
+  changed since is theirs. Coming back by lowering the level gives nothing back, as `revive` gives
+  nothing back (ENG-63).
+- **Death's changes are one list.** `deathChanges` ends the concentration too (both SRDs, §8), so
+  the three ways to die (damage, the third failure, a condition) make the same changes. `applyDamage`
+  lists the concentration's end once.
+- **The hit points stay**, as ENG-67 left them: SRD 5.2.1's "A dead creature has no Hit Points" is
+  read as the hit points not counting while dead. Every hit point action refuses the dead (ENG-67)
+  and a revival sets them (ENG-66, ENG-67); dnd5e writes none (§8). So lowering the level by hand
+  gives the character back as it was.
+- **The knock-out's mark and `stable` stay**: `isKnockedOut` and `isStable` read `isDead` (ENG-67),
+  and `revive` clears both.
+- **No outcome.** The result is the core's shape; the screen reads `isDead` on the character.
+
+#### 5. Stored data
+
+Nothing stored changes. The entry is a log entry of the shape every action writes; no field of
+`CharacterDoc`, `ContentPack` or a Dexie table is new.
+
+#### 6. What a person will see
+
+Not a screen. When the sheet sets a condition's level (phase 2), a fifth-edition character's
+control calls `setFifthEditionCondition`, not the core's `setCondition`; a note under phase 2 in
+`BACKLOG.md` says so.
+
+#### 7. Tests
+
+- `packages/system-5e/test/exhaustion.test.ts` — `describe('ENG-69 dying of exhaustion makes
+  death's other changes')`: items 1–9 and 11.
+- Item 10: the tests of ENG-20, ENG-58, ENG-63, ENG-65 and ENG-67 as they are.
+- Control values from: SPEC §6.7 (goldens A and B, 12 hit points); ENG-63's massive damage (6, 18);
+  ENG-19's 2014 exhaustion; the golden pack's 2024 exhaustion; the SRD text of §8.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-22: SRD 5.1 as 5e-bits/5e-srd-api quotes it at
+`e6edf9a51fad4b59a7e9561fad6c15232caed214` (`packages/5e-database/src/2014/en/5e-SRD-Rules.json`);
+SRD 5.2.1 as foundryvtt/dnd5e quotes it at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`
+(`packs/_source/content24/appendices/rules-glossary.yml`,
+`packs/_source/content24/appendices/appendix-d-rule-references.yml`), and dnd5e's code at the same
+commit (`module/data/active-effect/condition.mjs`). The same commits as ENG-58 to ENG-67. All
+CC-BY-4.0.
+
+**SRD 5.1.** Concentration: "You lose concentration on a spell if you are incapacitated or if you
+die." Attunement: "A creature's attunement to an item ends if the creature no longer satisfies
+the prerequisites for attunement, if the item has been more than 100 feet away for at least 24
+hours, if the creature dies, or if another creature attunes to the item."
+
+**SRD 5.2.1.** Concentration: "Your Concentration ends if you have the Incapacitated condition or
+you die." Dead: "A dead creature has no Hit Points and can't regain them unless it is first revived
+by magic such as the Raise Dead or Revivify spell." … "If the creature returns to life, the
+revival effect determines the creature's current Hit Points." … "If the creature had Attunement to
+one or more magic items, it is no longer attuned to them."
+
+**Exhaustion 6 is death** in both: ENG-67 §8.
+
+**dnd5e.** `condition.mjs` `prepareDerivedData`: the level clamped to `[1, maxLevel]`, then each
+level's `conditions` added to the effect's statuses (the `dead` status at exhaustion 6), and the
+actor's `conditions` level set. It writes no hit points.
+
+So: in both editions death ends the concentration and every attunement, whatever kills. No golden
+value is touched; no rules source disagrees with the SPEC. Nothing stops.
+
+#### 9. Not in this ticket
+
+- Hit points at 0 on death by exhaustion: kept as they are (§4).
+- A dead character's other actions (`castSpell`, `useResource`, setting a condition): none
+  refuses the dead; phase 2, with the screens (ENG-67 §9).
+- Death's outcome for the screen (which concentration ended, which rows): the sheet reads the
+  entry and `isDead`; phase 2.
+- `removeCondition` stays the core's: taking a condition away never kills.
+
+#### 10. Rake check
+
+- **Each system's rules live in its module; the core names no game.** The core's `setCondition`
+  is used as it is; death and its changes are the fifth-edition module's.
+- **Every entry undoes its action** (SPEC §6.4). The level and death's changes are one entry;
+  the tests reverse it.
+- **The engine is pure.** The caller gives the stamp; the frozen-input test.
+- **Missing is not broken.** An id no pack has is refused `missing`, as the core refuses it.
+- **A stored-shape change needs a migration.** None changes (§5).
+- **The golden tests are the truth.** No expected value changes.
+- **Licensing.** The SRDs are quoted in this ticket only; the test data holds names and numbers.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-22, on `4bd38d9` (ENG-67):
+- Before: `pnpm test` `Test Files 63 passed (63)`, `Tests 859 passed (859)`, 16.95 s, coverage
+  lines 99.92 % (2760/2762), branches 96.93 % (2024/2088); the speed pass `Tests 2 passed (2)`.
+- After: `pnpm lint` `Checked 201 files`, no error; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`
+  `Test Files 63 passed (63)`, `Tests 868 passed (868)`, 16.00 s, coverage lines 99.92 %
+  (2766/2768), branches 96.99 % (2033/2096); the speed pass `Tests 2 passed (2)`, 2.47 s. No file
+  in `apps/web` changed, so no `pnpm e2e`.
+- 9 tests are new, all in `exhaustion.test.ts`. No other test file changed (§3 item 10): ENG-20's,
+  ENG-58's, ENG-63's, ENG-65's and ENG-67's tests pass as they were.
+- Golden B at exhaustion 5, holding a spell and carrying an attuned row, set to 6: one entry of 3
+  changes (the level, the concentration, the inventory); dead; reversing it gives the character
+  before. The same for golden A with the 2014 exhaustion.
+- Branches no test reaches: 64 before, 63 after. None is in this ticket's code.
+- The tests catch mistakes. 9 breaks, each made alone in the code, then 6 test files run
+  (`exhaustion`, `death`, `death-saves`, `hit-points`, `knock-out`, `unconscious`: 97 tests); each
+  failed at least one test, and each file was restored and compared equal (97 passed again):
+  `deathChanges` without the concentration, 6 failed; its two changes swapped, 6; `applyDamage`
+  ending the concentration twice on a death, 1; the action never adding death's changes, 5; adding
+  them though the character was dead before, 1; adding them on every level of a character alive
+  before, 2; death's changes before the level, 5; the entry without the core's label, 2; the
+  entry under its own action key, 2.
+
+Differences from §3 and §4: none. Size S held.
+
+Found, not fixed:
+- The core's `setCondition` still makes no death changes when a screen calls it for a
+  fifth-edition character. The sheet's condition control calls `setFifthEditionCondition`: a note
+  under phase 2 in `BACKLOG.md`.
+- A death save's third failure now ends a concentration held at 0 hit points, but its outcome
+  does not name the spell, as damage's `concentrationEnded` does; the condition action has no
+  outcome. The screen reads the entry's change to the concentration: the same note.
+- ENG-23's speed pass passed in each of the 3 full `pnpm test` runs whose result was read here
+  (OPS-28 unchanged).
+
+Nothing for the changelog: no screen changes, and the published pack JSON Schema does not change.

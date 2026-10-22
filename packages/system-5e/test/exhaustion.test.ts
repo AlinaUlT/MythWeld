@@ -31,16 +31,22 @@ import {
   openFifthEditionPack,
   revive,
   rollDeathSave,
+  setFifthEditionCondition,
   setTempHp,
   shortRest,
   stabilize,
   UNCONSCIOUS_CONDITION,
 } from '../src/index.ts';
 import {
+  CONCENTRATION,
   copyOf,
   done,
+  FAILURE,
   findOf,
   frozen,
+  HP,
+  INVENTORY,
+  ownSpell,
   refused,
   stamp as restStamp,
   withTrackers,
@@ -728,5 +734,229 @@ describe('ENG-67 exhaustion at level 6 is death', () => {
     ]);
     expect(ice).toEqual(copy);
     expect(ask).toEqual({ hp: 1 });
+  });
+});
+
+// ENG-69: dying of exhaustion makes death's other changes in the entry that sets the level: the
+// concentration and every attunement end, as on every death (both SRDs, ENG-69 §8). The spell and
+// the stone are made up and carry no text of a book. Every value was worked out by hand in ENG-69
+// §3: the goldens' own rows are none attuned, and each golden has 12 hit points.
+
+type Row = CharacterInput['systemData']['inventory'][number];
+
+/** A made-up spell with concentration, which the character holds. */
+const glimmer = ownSpell('glimmer', 1, true);
+const GLIMMER = 'character:spell/glimmer';
+
+/** A made-up custom row, attuned as a test gives it. */
+const stone: Row = {
+  uid: 'd6900000-0000-4000-8000-000000000001',
+  custom: { name: 'Lucky stone' },
+  qty: 1,
+  equipped: false,
+  attuned: true,
+};
+
+/** The golden's rows, none attuned, then the stone, attuned as given. */
+const rowsOf = (golden: CharacterInput, attuned: boolean): Row[] => [
+  ...golden.systemData.inventory,
+  { ...stone, attuned },
+];
+
+/**
+ * The golden with `trackers` set and these stored conditions, holding the spell and carrying the
+ * stone attuned, unless told otherwise, with more entities of its own.
+ */
+function holding(
+  golden: CharacterInput,
+  trackers: Parameters<typeof withTrackers>[1],
+  conditions: StoredCondition[],
+  { spell = true, attuned = true } = {},
+  own: OwnEntity[] = [],
+): FifthEditionCharacter {
+  return withTrackers(
+    golden,
+    { ...trackers, ...(spell && { concentration: GLIMMER }) },
+    {
+      state: { ...golden.state, conditions },
+      localEntities: [glimmer, ...own],
+      systemData: { ...golden.systemData, inventory: rowsOf(golden, attuned) },
+    },
+  );
+}
+
+/** Death's changes to the golden holding the spell and carrying the stone attuned. */
+const ended = (golden: CharacterInput) => [
+  { path: CONCENTRATION, before: GLIMMER },
+  { path: INVENTORY, before: rowsOf(golden, true), after: rowsOf(golden, false) },
+];
+
+/** The condition `id` set to `level` by the module's action, from the index of the edition. */
+const setTo = (character: FifthEditionCharacter, id: string, level: number) =>
+  setFifthEditionCondition(character, indexFor(character), { id, level }, restStamp);
+
+/** The entry the core's `setCondition` gives for the same ask. */
+function coreEntry(character: FifthEditionCharacter, id: string, level: number) {
+  const result = setCondition(character, indexFor(character), { id, level }, restStamp);
+  if (!result.ok) throw new Error(result.message);
+  return result.entry;
+}
+
+/** The change of the stored conditions from `before` to `after`. */
+const conditionsChange = (before: StoredCondition[], after: StoredCondition[]) => ({
+  path: CONDITIONS,
+  before,
+  after,
+});
+
+describe("ENG-69 dying of exhaustion makes death's other changes", () => {
+  it('2024: the level that kills ends the concentration and every attunement, in its entry', () => {
+    const before = holding(goldenB, {}, [{ id: EXHAUSTION_2024, level: 5 }]);
+    const { character, entry } = done(before, setTo(before, EXHAUSTION_2024, 6));
+    expect(entry).toMatchObject({
+      action: 'setCondition',
+      subject: EXHAUSTION_2024,
+      label: { en: 'Exhaustion' },
+    });
+    expect(entry).toEqual({
+      ...coreEntry(before, EXHAUSTION_2024, 6),
+      changes: [
+        conditionsChange([{ id: EXHAUSTION_2024, level: 5 }], [{ id: EXHAUSTION_2024, level: 6 }]),
+        ...ended(goldenB),
+      ],
+    });
+    expect(isDead(character, findIn(character))).toBe(true);
+    expect(character.systemData.state.concentration).toBeUndefined();
+    expect(character.systemData.inventory).toEqual(rowsOf(goldenB, false));
+  });
+
+  it('2014: the same changes, with its own exhaustion', () => {
+    const before = holding(goldenA, {}, [{ id: EXHAUSTION_2014, level: 5 }]);
+    const { character, entry } = done(before, setTo(before, EXHAUSTION_2014, 6));
+    expect(entry.changes).toEqual([
+      conditionsChange([{ id: EXHAUSTION_2014, level: 5 }], [{ id: EXHAUSTION_2014, level: 6 }]),
+      ...ended(goldenA),
+    ]);
+    expect(isDead(character, findIn(character))).toBe(true);
+  });
+
+  it('exhaustion not had, given at 6: the same two changes after it', () => {
+    const before = holding(goldenB, {}, []);
+    const { entry } = done(before, setTo(before, EXHAUSTION_2024, 6));
+    expect(entry.changes).toEqual([
+      conditionsChange([], [{ id: EXHAUSTION_2024, level: 6 }]),
+      ...ended(goldenB),
+    ]);
+  });
+
+  it("a level that does not kill, or nothing to end: the core's entry", () => {
+    const four = holding(goldenB, {}, [{ id: EXHAUSTION_2024, level: 4 }]);
+    const five = done(four, setTo(four, EXHAUSTION_2024, 5));
+    expect(five.entry).toEqual(coreEntry(four, EXHAUSTION_2024, 5));
+    expect(five.entry.changes).toHaveLength(1);
+    expect(five.character.systemData.state.concentration).toBe(GLIMMER);
+    expect(five.character.systemData.inventory).toEqual(rowsOf(goldenB, true));
+
+    const bare = holding(goldenB, {}, [{ id: EXHAUSTION_2024, level: 5 }], {
+      spell: false,
+      attuned: false,
+    });
+    const six = done(bare, setTo(bare, EXHAUSTION_2024, 6));
+    expect(six.entry).toEqual(coreEntry(bare, EXHAUSTION_2024, 6));
+    expect(six.entry.changes.map((change) => change.path)).toEqual([CONDITIONS]);
+    expect(isDead(six.character, findIn(six.character))).toBe(true);
+  });
+
+  it('only the step from alive to dead; coming back gives nothing back', () => {
+    const fallen = holding(goldenB, DEAD, [{ id: EXHAUSTION_2024, level: 5 }]);
+    const six = done(fallen, setTo(fallen, EXHAUSTION_2024, 6));
+    expect(six.entry).toEqual(coreEntry(fallen, EXHAUSTION_2024, 6));
+    expect(six.character.systemData.inventory).toEqual(rowsOf(goldenB, true));
+    expect(six.character.systemData.state.concentration).toBe(GLIMMER);
+
+    const spent = { spell: false, attuned: false };
+    const dead = holding(goldenB, { current: 12 }, [{ id: EXHAUSTION_2024, level: 6 }], spent);
+    const five = done(dead, setTo(dead, EXHAUSTION_2024, 5));
+    expect(five.entry).toEqual(coreEntry(dead, EXHAUSTION_2024, 5));
+    expect(isDead(five.character, findIn(five.character))).toBe(false);
+    expect(five.character.systemData.inventory).toEqual(rowsOf(goldenB, false));
+    expect(five.character.systemData.state.concentration).toBeUndefined();
+  });
+
+  it("reads the condition's key, as `isDead` does", () => {
+    const weariness = keyed('weariness', 'weariness', 6);
+    const tired = holding(goldenB, {}, [{ id: weariness.id, level: 5 }], {}, [weariness]);
+    const weary = done(tired, setTo(tired, weariness.id, 6));
+    expect(weary.entry).toEqual(coreEntry(tired, weariness.id, 6));
+
+    const long = keyed('long-exhaustion', EXHAUSTION_CONDITION, 10);
+    const worn = holding(goldenB, {}, [{ id: long.id, level: 5 }], {}, [long]);
+    expect(done(worn, setTo(worn, long.id, 6)).entry.changes).toEqual([
+      conditionsChange([{ id: long.id, level: 5 }], [{ id: long.id, level: 6 }]),
+      ...ended(goldenB),
+    ]);
+  });
+
+  it("is refused as the core's action is", () => {
+    const before = holding(goldenB, {}, [{ id: EXHAUSTION_2024, level: 5 }]);
+    const copy = copyOf(before);
+    const nothing = 'srd-2024:condition/nothing';
+    expect(refused(setTo(before, nothing, 1))).toEqual({ code: 'missing', id: nothing });
+    expect(refused(setTo(before, GLIMMER, 1))).toEqual({
+      code: 'notACondition',
+      id: GLIMMER,
+      type: 'spell',
+    });
+    expect(refused(setTo(before, EXHAUSTION_2024, 7))).toEqual({
+      code: 'badLevel',
+      id: EXHAUSTION_2024,
+      level: 7,
+      max: 6,
+    });
+    expect(refused(setTo(before, EXHAUSTION_2024, 5))).toEqual({ code: 'unchanged' });
+    expect(before).toEqual(copy);
+  });
+
+  it('every death ends the concentration: the third failure and damage, once each', () => {
+    for (const golden of [goldenA, goldenB]) {
+      const dying = holding(golden, { current: 0, failure: 2 }, []);
+      const index = indexFor(dying);
+      const third = [{ path: FAILURE, before: 2, after: 3 }, ...ended(golden)];
+      const saved = done(dying, rollDeathSave(dying, index, { natural: 5 }, restStamp));
+      expect(saved.entry.changes).toEqual(third);
+      expect(saved.outcome.status).toBe('dead');
+      const hit = done(dying, applyDamage(dying, index, { amount: 1 }, restStamp));
+      expect(hit.entry.changes).toEqual(third);
+
+      const hurt = holding(golden, { current: 6 }, []);
+      const massive = done(hurt, applyDamage(hurt, index, { amount: 18 }, restStamp));
+      expect(massive.entry.changes).toEqual([
+        { path: HP, before: 6, after: 0 },
+        { path: FAILURE, before: 0, after: 3 },
+        ...ended(golden),
+      ]);
+      expect(massive.outcome).toEqual({
+        temp: 0,
+        hp: 6,
+        status: 'dead',
+        failures: 3,
+        concentrationEnded: GLIMMER,
+      });
+    }
+  });
+
+  it('changes nothing it is given: frozen inputs', () => {
+    const character = holding(goldenB, {}, [{ id: EXHAUSTION_2024, level: 5 }]);
+    const copy = copyOf(character);
+    const ice = frozen(character);
+    const ask = frozen({ id: EXHAUSTION_2024, level: 6 });
+    const result = setFifthEditionCondition(ice, index2024, ask, frozen(restStamp));
+    expect(result.ok && result.entry.changes.map((change) => change.path)).toEqual([
+      CONDITIONS,
+      CONCENTRATION,
+      INVENTORY,
+    ]);
+    expect(ice).toEqual(copy);
+    expect(ask).toEqual({ id: EXHAUSTION_2024, level: 6 });
   });
 });

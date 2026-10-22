@@ -133,9 +133,9 @@ function deathSaves(
  * The character after the death save `ask` rolled, the entry, and what it did. A 20 gives 1 hit
  * point, resets both counts and ends a knock-out; a 1 is two failures; otherwise a total of 10 or more is a
  * success. The third success resets both counts and makes the character stable; the third
- * failure is death, which ends every attunement (`deathChanges`). Refused for a face that is not
- * a whole number from 1 to 20, a total that is not a whole number, a dead character, one above 0
- * hit points, and a stable one.
+ * failure is death, which ends every attunement and the concentration (`deathChanges`, ENG-69).
+ * Refused for a face that is not a whole number from 1 to 20, a total that is not a whole number,
+ * a dead character, one above 0 hit points, and a stable one.
  */
 export function rollDeathSave(
   character: FifthEditionCharacter,

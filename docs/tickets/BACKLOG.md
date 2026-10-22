@@ -129,7 +129,7 @@ split off an old row got a new id.
 | ENG-61 | A long rest lowers a condition's level as its entry says | S | ✅ 2026-10-03 |
 | ENG-66 | Coming back to life lowers a condition's level as its entry says | S | ✅ 2026-10-13 |
 | ENG-67 | Exhaustion at level 6 makes the character dead | S | ✅ 2026-10-21 |
-| ENG-69 | Dying of exhaustion makes death's other changes | S | 🔲 |
+| ENG-69 | Dying of exhaustion makes death's other changes | S | ✅ 2026-10-22 |
 | ENG-64 | A long rest gives the inspiration a trait names | S | 🔲 |
 | ENG-36 | Level-up changes the character through an undoable action | S | ✅ 2026-10-02 |
 | ENG-22 | Golden E: the homebrew pack from Appendix Д changes character B | S | ✅ 2026-10-02 |
@@ -137,12 +137,6 @@ split off an old row got a new id.
 | ENG-37 | Golden F: a character mixing both editions passes | M | ✅ 2026-10-05 |
 | ENG-23 | The phase 1 gate runs in `pnpm test`: coverage, speed, every golden | S | ✅ 2026-10-05 |
 
-- **ENG-69** — found by ENG-67 (ENG-67 §11): exhaustion 6 is death (`isDead`, `exhaustion.ts`),
-  but the core's `setCondition` raises the level and runs no fifth-edition code, so dying of it
-  makes none of death's other changes: the attuned rows stay attuned (ENG-63's `deathChanges`,
-  which `applyDamage` and `rollDeathSave` add), and the concentration stays (both SRDs end it when
-  the creature dies). The row decides where the module adds them when a level kills (a
-  fifth-edition condition action around the core's, or another place) and keeps undo one entry.
 - **ENG-64** — found by ENG-21 (ENG-21 §8), taken off ENG-59 (ENG-59 §11). SRD 5.2.1's human,
   Resourceful: "You gain Heroic Inspiration whenever you finish a Long Rest." Golden B is that
   human; its Resourceful (`test/golden/srd-2024.ts`) is a name with no mechanics. No entity has a
@@ -391,6 +385,12 @@ split off an old row got a new id.
   one (`deathChanges`, `actions.ts`). Nothing counts the attuned rows: both SRDs allow "no more
   than three magic items at a time" (ENG-63's ticket quotes both). A warning, never a block
   (§8.2), computed by the module, not the screen.
+- **Phase 2** — found by ENG-69: a fifth-edition character's condition control calls
+  `setFifthEditionCondition` (`conditions.ts`), not the core's `setCondition`, so a level that
+  kills (exhaustion 6) makes death's other changes in its entry (`deathChanges`: the concentration
+  and every attunement end). Neither it nor a death save names the concentration it ended, as
+  damage's `concentrationEnded` does: the screen reads the entry's change to
+  `systemData.state.concentration`.
 - **Phase 2** — found by ENG-34: each d20 test's roll mode is a number path, 1 advantage, −1
   disadvantage, 0 neither, with a step per source: `checks.<stat>.mode`,
   `abilities.<stat>.saveMode`, `skills.<key>.mode`, `init.mode`, `attacks.<key>.mode`,

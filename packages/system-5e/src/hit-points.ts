@@ -190,11 +190,11 @@ function hitPoints(action: string, changes: LogChange[]): MadeChanges {
  * over equal to the maximum or more, it dies; already at 0, damage past the temporary hit points
  * gives a failure, two from a critical hit, and kills when it is the maximum or more. Damage
  * past the temporary hit points ends stable. At 0 concentration ends. Death ends every attunement
- * (`deathChanges`). ENG-65: with `knockOut`, the damage that would drop the character to 0 leaves
- * it at 1, knocked out (`resting`), with no failure and no massive damage, and concentration ends;
- * any other damage to a knocked-out character interrupts its rest (`interrupted`). Refused for an
- * amount that is not a whole number from 1, for a dead character, and for a knock-out the edition
- * does not have or the damage does not give.
+ * and the concentration (`deathChanges`). ENG-65: with `knockOut`, the damage that would drop the
+ * character to 0 leaves it at 1, knocked out (`resting`), with no failure and no massive damage,
+ * and concentration ends; any other damage to a knocked-out character interrupts its rest
+ * (`interrupted`). Refused for an amount that is not a whole number from 1, for a dead character,
+ * and for a knock-out the edition does not have or the damage does not give.
  */
 export function applyDamage(
   character: FifthEditionCharacter,
@@ -235,7 +235,8 @@ export function applyDamage(
       changeTo(character, HP_CURRENT_PATH, current),
       changeTo(character, DEATH_FAILURE_PATH, failure),
       ...(through > 0 ? [changeTo(character, DEATH_STABLE_PATH, false)] : []),
-      ...(ends ? [changeTo(character, CONCENTRATION_PATH, undefined)] : []),
+      // Death's changes end the concentration too (ENG-69): one change, in the same place.
+      ...(ends && !dies ? [changeTo(character, CONCENTRATION_PATH, undefined)] : []),
       ...(dies ? deathChanges(character) : []),
       changeTo(character, KNOCKED_OUT_PATH, mark),
     ]),
