@@ -6,6 +6,10 @@ import './i18n';
 import { App } from './App';
 import { db } from './db/db';
 import { requestPersistentStorage } from './db/persist';
+import { applyTheme, baseTheme } from './theme/theme';
+
+// The tokens are filled before the first render, so no frame shows without them.
+applyTheme(baseTheme);
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root is missing from index.html');

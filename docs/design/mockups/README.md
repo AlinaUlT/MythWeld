@@ -68,7 +68,8 @@ that no round is lost.
 ## The tokens these mockups use
 
 Placeholders until the owner chooses the base colours and the heading font (BRIEF Part 5). The
-app turns them into design tokens; a skin replaces them (ADR 005). Contrast is measured on white
+app turns them into design tokens, in `apps/web/src/theme/` (SHEET-01); a skin replaces them
+(ADR 005). Contrast is measured on white
 with `generator/gen2.py`.
 
 | Token | Value | Contrast on white | Used for |
@@ -85,13 +86,20 @@ with `generator/gen2.py`.
 | `temp` | `#2F7A4A` | 5.25 : 1 | temporary hit points |
 | `warnBg`, `warnText` | `#FBF1D9`, `#6B4A00` | 8.06 : 1 (text) | warnings |
 | `danger` | `#A23A2E` | 6.60 : 1 | Delete |
+| `neutral` | `#44464B` | 9.44 : 1 (white on it) | the second swipe action, next to Delete |
+| `scrimLow`, `scrimMid`, `scrim`, `scrimHigh` | `rgba(20, 20, 22, 0.25)`, `rgba(20, 20, 22, 0.35)`, `rgba(20, 20, 22, 0.45)`, `rgba(20, 20, 22, 0.55)` | — | the dimmed screen: above a part-height window; behind Quick rules' topic window; under a floating window; between the topic window and the rule window over it (`V3-QuickRule`) |
 
 - **Fonts:** headings in EB Garamond (a placeholder; the heading font is still open, BRIEF X1),
   everything else in Inter.
 - **Sizes most used:** 11–14 px for second lines and labels, 15–16 px for body text, 18–22 px
   for numbers and names, 28 px for page titles.
 - **Corners:** 14 px on cards, 12 px on buttons, a full pill on chips, 20 px on the top of a
-  floating window.
+  floating window. Also 4 px on small badges, 6 px on tags, 8–10 px on fields and small buttons,
+  16 px on large boxes; a shape whose corner is half its height (bars, chips) is a pill.
+- **Shadows:** `0 1px 3px rgba(0, 0, 0, 0.12)` on a raised tile, `0 -4px 12px rgba(0, 0, 0,
+  0.05)` above the dock, `0 -8px 24px rgba(0, 0, 0, 0.18)` above a floating window,
+  `0 6px 16px rgba(0, 0, 0, 0.25)` under a round floating button. The rings around the token are
+  the token frame's (ADR 015 item 6).
 - **Phone frame:** 360 × 800; buttons and icon buttons are 44–48 px tall.
 - **Light only:** the dark theme is not drawn yet (BRIEF Part 5, "Still open in the design").
 

@@ -183,7 +183,7 @@ chats never claim one version number.
 | ID | Hat | Size | Status |
 |---|---|---|---|
 | **Skin layer** | **before the first screen (ADR 015 item 13)** | | |
-| SHEET-01 | The base theme's tokens cover every token the mockups use | S | 🔲 |
+| SHEET-01 | The base theme's tokens cover every token the mockups use | S | ✅ 2026-10-28 |
 | SHEET-02 | Lint fails on a colour, font or animation written in a component | S | ✅ 2026-10-28 |
 | SHEET-03 | Screens draw named slots the base theme fills | S | 🔲 |
 | SHEET-04 | Each part takes its style from a fixed menu | M | 🔲 |
@@ -249,20 +249,22 @@ chats never claim one version number.
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
-- **SHEET-01** — ADR 015 item 13. Every token `docs/design/mockups/README.md` lists ("The tokens
-  these mockups use"), in light and dark, as data the base theme fills. Their values stay
-  placeholders until the owner picks the base colours and the heading font (BRIEF Part 5, still
-  open); dark stays the default (SPEC §7.2). The row lays the theme out one file per concern, each
-  imported once, so SHEET-03 to SHEET-06 each fill their own file. The web-app manifest's
-  background stays a fixed value (ADR 015 item 13).
 - **SHEET-03** — ADR 015 item 6: the app background, each page background, the token frame, the
-  portrait, the header, the dock, cards, buttons, the dice.
+  portrait, the header, the dock, cards, buttons, the dice. Found by SHEET-01: the slots fill
+  `apps/web/src/theme/slots.ts`, made empty for this row. The rings around the token on the
+  boards (`0 0 0 2px` the surface, `0 0 0 4px` the strong colour; a double ring; a 1 px muted
+  ring) are the token frame's, and were left to this row.
 - **SHEET-04** — ADR 015 item 7: the parts phase 2 draws (button, icon button, card, panel, chip,
   bottom sheet, toast), each with its fixed menu of styles; the base theme picks one each.
+  Found by SHEET-01: the styles fill `apps/web/src/theme/parts.ts`, made empty for this row.
 - **SHEET-05** — ADR 015 items 8 and 9: the phone's "reduce motion" and an app switch (shown by
-  SHEET-13) turn the presets into still pictures; animations stop off screen.
+  SHEET-13) turn the presets into still pictures; animations stop off screen. Found by SHEET-01:
+  the presets fill `apps/web/src/theme/motion.ts`, made empty for this row; the boards' one
+  motion is `transition: transform 0.2s ease`, on 10 elements.
 - **SHEET-06** — ADR 005 item 7.5, ADR 015 item 10: Inter for text, and EB Garamond as the
-  heading placeholder of the mockups until the owner picks (BRIEF X1). No font service.
+  heading placeholder of the mockups until the owner picks (BRIEF X1). No font service. Found by
+  SHEET-01: the `@font-face` rules go in `apps/web/src/theme/fonts.css`, made empty for this row;
+  the family names are already the tokens `font-body` and `font-heading`.
 - **SHEET-08** — SPEC §12 stage 2: "a mini-pack of the stage 1 fixtures". The goldens' SRD
   fixtures (`packages/system-5e/test/golden/srd-2014.ts`, `srd-2024.ts`) become the app's
   built-in packs, with their CC-BY-4.0 metadata; the tests keep reading the same data. If the row

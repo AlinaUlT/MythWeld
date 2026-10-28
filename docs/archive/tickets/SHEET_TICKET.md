@@ -294,3 +294,178 @@ Nothing to check. No rules facts. The palette names and the four animation names
 `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`. New row OPS-30.
 
 **Changelog:** nothing for the changelog; nothing a person sees changed.
+
+### SHEET-01 The base theme's tokens cover every token the mockups use
+
+**Hat:** the base theme's tokens as data
+**Depends on:** Nothing
+**Size:** S
+**Screen:** Yes — every page of the current shell changes colour; the tokens are those of
+`docs/design/mockups/README.md` ("The tokens these mockups use") and BRIEF Part 5
+**SPEC:** §7.2 (dark by default), ADR 015 item 13
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/theme/theme.ts` — new. It merges the concern files and writes their
+values as CSS custom properties.
+- `apps/web/src/theme/part.ts` — new: the shape of one concern.
+- `apps/web/src/theme/colors.ts`, `typography.ts`, `shape.ts` — new: the values.
+- `apps/web/src/theme/slots.ts`, `parts.ts`, `motion.ts`, `fonts.css` — new, empty: SHEET-03,
+  SHEET-04, SHEET-05 and SHEET-06 fill one each, so the wave 2 chats touch different files.
+- `apps/web/src/index.css` — changes: Tailwind's own values are cleared; each token reads
+  `--theme-<name>`.
+- `apps/web/src/main.tsx` — changes: the theme is applied before the first render.
+- `apps/web/src/shell/AppShell.tsx`, `apps/web/src/pages/PageTitle.tsx` — change: the new
+  utility names.
+- `apps/web/src/config/app.ts`, `apps/web/public/favicon.svg` — change: the dark page colour.
+- `docs/design/mockups/README.md` — changes: the token list gains what the boards use and the
+  list did not name.
+
+#### 2. What is missing now
+
+- `apps/web/src/index.css` holds the shadcn/ui neutral set from SETUP-04: 13 colours
+  (`background`, `foreground`, `primary`, …) as `oklch()` values, and one `--radius`.
+- None of the mockups' tokens exists: no `bg`, `surface`, `hp`, `temp`, `warnBg`, no EB Garamond,
+  no 14 px card corner.
+- The values are CSS text, not data a skin or the theme editor can read.
+- Tailwind's default palette (`bg-red-500` and the rest) is open to any component.
+
+Measured on the 35 `V3-*` boards (`grep` over `docs/design/mockups/V3-*.html`):
+- colours: the 14 of the README table, plus `#44464B` (1 use, the swipe "Actions" button in
+  `V3-Characters`) and `#dcdcd8` (the canvas page behind each board, not the app);
+- the dimmed screen: `rgba(20, 20, 22, a)` at 0.25 (6), 0.35 (1), 0.45 (4), 0.55 (1);
+- shadows: `0 1px 3px rgba(0,0,0,0.12)` (3), `0 -4px 12px rgba(0,0,0,0.05)` (14),
+  `0 -8px 24px rgba(0,0,0,0.18)` (7, and 0.2 and 0.22 once each), `0 6px 16px rgba(0,0,0,0.25)`
+  (5), and three rings around the token (21);
+- 20 font sizes: 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 26, 28, 30, 32, 44, 48,
+  54 px;
+- line heights: 22 px (66), 26 px (60), 1.1 (42), 1.35 (35), and 25, 24, 23 px and 1 a few times;
+- corners: 50 % (328), 12 px (235), 14 px (114), 6 px (48, tags 20–24 px tall), 4 px (41), 10 px
+  (33, fields 34–44 px tall), 15 px (26, all on 30 px shapes), 16 px (18, large boxes), 2, 17,
+  9, 8, 5, 18, 22, 11 px, and `20px 20px 0 0` (12);
+- fonts: `'EB Garamond', Georgia, serif` (81) and `Inter, system-ui, sans-serif` (35);
+- weights 500, 600, 700, 800; one motion, `transition: transform 0.2s ease` (10).
+
+#### 3. What it should look like when done
+
+1. Every colour row of the mockups README has a token, filled in light with the README's value
+   and in dark with a placeholder.
+2. Light and dark fill the same keys.
+3. Every text pair the screens use keeps 4.5 : 1 in both modes, measured with the WCAG formula.
+4. The fonts, the 20 sizes, the line heights, the corners, the shadows and the 44 / 48 px control
+   heights are tokens.
+5. The values are TypeScript data, one file per concern, merged once; a key filled by two
+   concerns throws.
+6. `index.css` maps every key once and nothing else; Tailwind's own colours, fonts, sizes, line
+   heights, corners and shadows are cleared.
+7. The page is dark by default and paints with the dark tokens; without the `dark` class it paints
+   with the light ones.
+8. The manifest's background equals the dark page colour, as a fixed value.
+
+#### 4. How to do it
+
+1. `part.ts`: a concern is `{ light?, dark?, shared? }`, each a map from a Tailwind theme
+   variable name (without `--`) to a value. `color-bg` fills `--color-bg`, so `bg-bg` paints
+   with it.
+2. `colors.ts`, `typography.ts`, `shape.ts` hold the values of §2. Names: the README's names in
+   kebab case. Text sizes are named by their pixels and stored in rem, so the phone's text size
+   still scales them. Corners are named by what wears them; every shape whose corner is half its
+   height is `pill`. Font weights stay Tailwind's (500–800 are its `medium` to `extrabold`).
+3. `theme.ts`: `mergeParts()` joins the concerns; `baseTheme` is the six of them; `themeCss()`
+   writes shared and light values on `:root` as `--theme-<key>`, dark ones on `.dark`;
+   `applyTheme()` puts that text in one `<style id="theme">`.
+4. `index.css`: `@theme { --color-*: initial; … }` clears Tailwind's values, and `@theme inline`
+   maps each key to its `--theme-` variable. The body takes `bg`, `text` and `font-body`.
+5. `main.tsx` calls `applyTheme(baseTheme)` before `createRoot`.
+6. The shell's classes move to the new names, at the same sizes (`text-xs` → `text-12`,
+   `text-2xl` → `text-24`).
+7. The dark placeholder `bg` becomes `APP_BACKGROUND_COLOR` and the icon's background.
+
+A skin later replaces values in the same keys at run time; no component changes.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Every page of the current shell, at 360×800. No new text, so no i18n key.
+- Dark (the default): the page `#131417`, text `#ECEBE7`, the inactive tabs `#A2A6AD`.
+- Light (not reachable from the screen until SHEET-13): the mockups' `#F5F5F3` page and
+  `#1C1D20` text.
+- The icon and the splash screen: `#131417` instead of `#0a0a0a`.
+- The text font is Inter where the device has it, else the system font, until SHEET-06 ships it.
+
+#### 7. Tests
+
+- `apps/web/test/theme.test.ts` — the README's colour rows are all filled, with the README's light
+  values; light and dark keys match; 14 text pairs keep 4.5 : 1 in each mode; fonts, a size, the
+  corners, a shadow; each size key equals its rem value × 16; `index.css` maps every key once;
+  Tailwind's colours are cleared; the manifest colour is the dark `bg`; `themeCss()` output; a
+  key filled twice throws.
+- `apps/web/e2e/theme.spec.ts` — the built page has one theme style, its body and heading are
+  the dark `bg` and `text`, its font is `font-body`; without `dark` it is the light `bg`.
+- `apps/web/e2e/pwa.spec.ts` (SETUP-07, unchanged) — the manifest colour is the colour the page
+  renders.
+- Control values from: `docs/design/mockups/README.md` and the `V3-*` boards (§2).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact.
+
+#### 9. Not in this ticket
+
+- The slots, the part styles, the motion presets, the shipped fonts — SHEET-03, 04, 05, 06, each
+  in its own empty file made here.
+- The rings around the token — the token frame, SHEET-03's slot.
+- The lint check against a colour written in a component — SHEET-02.
+- Switching light and dark from the screen, and the page's `theme-color` following the skin —
+  SHEET-13.
+- The real base colours, the real dark theme and the heading font — the owner's (BRIEF Part 5).
+
+#### 10. Rake check
+
+- **No look is written in a component:** the shell's classes name tokens only; Tailwind's
+  default palette no longer exists, so `bg-red-500` paints nothing.
+- **A skin is data, never code:** the values are plain data maps; only `themeCss()` turns them
+  into CSS.
+- **No external requests:** no font service; the font names fall back to local fonts.
+- **Nothing invisible:** no zero-width character, byte-order mark or non-breaking space in the
+  changed files (checked with a Python scan).
+
+#### 11. What came out of it
+
+- `pnpm lint`: 212 files, no fixes. `pnpm typecheck`: green.
+- `pnpm test`: 891 passed, 0 failed (879 before, plus 12 in `theme.test.ts`), 9.66 s; the speed
+  pass 2 passed, 1.61 s.
+- `pnpm e2e`: 13 passed, 0 failed, 8.3 s, with the new `SHEET-01` test and SETUP-07's colour
+  test on the new dark `bg`.
+- Rebased twice onto rows a parallel chat pushed meanwhile, SHEET-07 and SHEET-02. On top of
+  both: `pnpm lint` 214 files, no fixes, SHEET-02's check passing on the shell's new classes;
+  `pnpm test` 896 passed, 0 failed, 9.72 s; `pnpm e2e` 15 passed, 0 failed, 7.2 s.
+- SHEET-02's lint messages named `bg-background`, `text-primary` and `font-sans` as examples;
+  this row removed those tokens, so the messages now name `bg-surface`, `text-muted` and
+  `font-body` (`biome/no-look-literals.grit`, the message text only).
+- Tokens: 19 colours in each mode, 4 shadows in each mode, 2 fonts, 20 sizes, 4 line heights, 8
+  corners, 2 control heights.
+- Measured contrast, light / dark: text on bg 15.44 / 15.44; muted on surface 6.13 / 6.89; hp on
+  surface 5.35 / 5.33; temp on surface 5.25 / 7.13; danger on surface 6.60 / 6.48; warn text on
+  warn bg 7.17 / 9.22; text on a filled button 16.85 / 14.13. The lowest pair is muted on soft in
+  light, 5.18.
+- The built CSS is 9 289 bytes; `.bg-bg` reads `var(--theme-color-bg)`, and
+  `--font-weight-semibold: 600` survives the reset.
+- Differs from the row: the README's list did not hold everything the boards use. The swipe
+  "Actions" colour (`neutral`), the four dimmed-screen levels (`scrimLow` to `scrimHigh`), the
+  other corners and the shadows were measured and added to the README, which stays the owner of
+  the mockups' tokens. The token's rings were left to SHEET-03.
+- Dark placeholders are dark grey, not black: `#131417`, so the icon's background moved from
+  `#0a0a0a` with it.
+
+**Found, not fixed:** written into the notes of SHEET-03 (the token frame's rings), SHEET-05
+(the boards' one transition) and SHEET-06 (where the `@font-face` rules go), with the file each
+fills.
+
+**Changelog:** "The app paints with the mockups' colours: their light values, and placeholder dark
+ones, still dark by default; the icon and the splash screen take the new dark background."

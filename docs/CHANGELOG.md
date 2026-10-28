@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-28 · SHEET-01 · The app paints with the mockups' colours: their light values, and
+  placeholder dark ones, still dark by default; the icon and the splash screen take the new dark
+  background.
 - 2026-10-13 · ENG-66 · The published fifth-edition pack JSON Schema asks for
   `systemSchemaVersion` 8, and a recovery may name `revive`, coming back to life; a pack of
   version 7 still opens in the app.
