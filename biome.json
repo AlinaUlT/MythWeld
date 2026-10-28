@@ -58,6 +58,10 @@
       }
     },
     {
+      "includes": ["apps/web/src/**/*.tsx"],
+      "plugins": ["./biome/no-look-literals.grit"]
+    },
+    {
       "includes": ["apps/web/public/**/*.svg"],
       "linter": {
         "rules": {

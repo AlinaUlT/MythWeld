@@ -1,0 +1,112 @@
+// SHEET-02: no look is written in a component (ADR 015 item 4). In a .tsx file a colour, a font or
+// an animation comes from a design token or a skin slot, the way SETUP-05's check keeps visible
+// text in i18n keys. Biome reports one finding per string; fixing it shows the next, if any.
+language js
+
+or {
+  // A colour in any string: a hex colour, a CSS colour function, a Tailwind palette class.
+  or {
+    JsStringLiteralExpression(),
+    JsxString(),
+    JsTemplateChunkElement()
+  } as $text where {
+    $text <: or {
+      r"(?s)(?:.*[^0-9A-Za-z&/])?#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?:[^0-9A-Za-z_-].*)?",
+      r"(?s)(?:.*[^A-Za-z-])?(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix|light-dark)\(.*",
+      r"(?s)(?:.*[\s'\x22`:!])?(?:bg|text|border(?:-[xytrblse])?|ring(?:-offset)?|inset-ring|outline|decoration|(?:inset-|drop-|text-)?shadow|accent|caret|fill|stroke|from|via|to|divide|placeholder)-(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone|taupe|mauve|mist|olive|black|white)(?:-[0-9]{2,3})?(?:/[^\s'\x22`]*)?(?:[\s'\x22`].*)?",
+      r"(?s).*-\[color:.*"
+    },
+    register_diagnostic(span=$text, message="SHEET-02: a colour is written in a component. Use a theme colour token: a class such as bg-background or text-primary, or var(--token). ADR 015 item 4.")
+  },
+  // A font family in a class: font-[...] other than a weight or a token.
+  or {
+    JsStringLiteralExpression(),
+    JsxString(),
+    JsTemplateChunkElement()
+  } as $text where {
+    $text <: r"(?s).*font-\[.*",
+    $text <: not r"(?s).*font-\[(?:[0-9]+|var\(--[^)\]]*\))\].*",
+    register_diagnostic(span=$text, message="SHEET-02: a font is written in a component. Use a theme font token: a class such as font-sans, or var(--token). ADR 015 item 4.")
+  },
+  // An animation in a class: Tailwind's own four, or one written in brackets.
+  or {
+    JsStringLiteralExpression(),
+    JsxString(),
+    JsTemplateChunkElement()
+  } as $text where {
+    $text <: r"(?s)(?:.*[\s'\x22`:!])?animate-(?:spin|ping|pulse|bounce|\[).*",
+    register_diagnostic(span=$text, message="SHEET-02: an animation is written in a component. Animations are the app's presets (ADR 015 item 8), never written in place. ADR 015 item 4.")
+  },
+  // A colour, font or animation in an inline style object.
+  JsPropertyObjectMember(name=$name, value=$value) where {
+    $value <: within JsxAttribute(name=`style`) ,
+    $value <: or {
+      JsStringLiteralExpression(),
+      JsTemplateExpression()
+    },
+    or {
+      and {
+        $name <: r"['\x22]?(?:color|fill|stroke|[A-Za-z]+Color)['\x22]?",
+        $value <: not r"['\x22`](?:currentColor|currentcolor|transparent|inherit|none|var\(--[^)]*\)|url\(#[^)]*\))['\x22`]",
+        register_diagnostic(span=$value, message="SHEET-02: a colour is written in a component. Use a theme colour token: a class such as bg-background or text-primary, or var(--token). ADR 015 item 4.")
+      },
+      and {
+        $name <: r"['\x22]?background['\x22]?",
+        $value <: not r"(?s).*(?:var\(--|url\().*",
+        register_diagnostic(span=$value, message="SHEET-02: a colour is written in a component. Use a theme colour token: a class such as bg-background or text-primary, or var(--token). ADR 015 item 4.")
+      },
+      and {
+        $name <: r"['\x22]?(?:font|fontFamily)['\x22]?",
+        $value <: not r"['\x22`](?:inherit|var\(--[^)]*\))['\x22`]",
+        register_diagnostic(span=$value, message="SHEET-02: a font is written in a component. Use a theme font token: a class such as font-sans, or var(--token). ADR 015 item 4.")
+      },
+      and {
+        $name <: r"['\x22]?(?:animation|transition)[A-Za-z]*['\x22]?",
+        $value <: not r"['\x22`](?:none|var\(--[^)]*\))['\x22`]",
+        register_diagnostic(span=$value, message="SHEET-02: an animation is written in a component. Animations are the app's presets (ADR 015 item 8), never written in place. ADR 015 item 4.")
+      }
+    }
+  },
+  // A colour or font in an attribute: an SVG paint, an icon's colour, an SVG text's font.
+  JsxAttribute(name=$name, initializer=JsxAttributeInitializerClause(value=$value)) where {
+    $value <: or {
+      JsxString() as $given,
+      JsxExpressionAttributeValue(expression=or {
+        JsStringLiteralExpression(),
+        JsTemplateExpression()
+      } as $given)
+    },
+    or {
+      and {
+        $name <: or {
+          `fill`,
+          `stroke`,
+          `color`,
+          `stopColor`,
+          `floodColor`,
+          `lightingColor`
+        },
+        $given <: not r"['\x22`](?:currentColor|currentcolor|transparent|inherit|none|var\(--[^)]*\)|url\(#[^)]*\))['\x22`]",
+        register_diagnostic(span=$given, message="SHEET-02: a colour is written in a component. Use currentColor with a theme colour class, or var(--token). ADR 015 item 4.")
+      },
+      and {
+        $name <: `fontFamily`,
+        $given <: not r"['\x22`](?:inherit|var\(--[^)]*\))['\x22`]",
+        register_diagnostic(span=$given, message="SHEET-02: a font is written in a component. Use a theme font token: a class such as font-sans, or var(--token). ADR 015 item 4.")
+      }
+    }
+  },
+  // An SVG animation element.
+  or {
+    JsxOpeningElement(name=$element),
+    JsxSelfClosingElement(name=$element)
+  } where {
+    $element <: or {
+      `animate`,
+      `animateMotion`,
+      `animateTransform`,
+      `set`
+    },
+    register_diagnostic(span=$element, message="SHEET-02: an animation is written in a component. Animations are the app's presets (ADR 015 item 8), never written in place. ADR 015 item 4.")
+  }
+}
