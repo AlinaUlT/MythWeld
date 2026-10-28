@@ -991,3 +991,114 @@ with phase 1's gate run in its §11, as its note says. ENG-52's test fails by th
 as ENG-23's speed pass does: OPS-28's hat is widened to the whole gate, and its note holds the
 measurements.
 Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-28 One verdict for one commit, whatever the load
+
+**Hat:** The quality gate gives one verdict for one commit, whatever the load
+**Depends on:** Nothing
+**Size:** S
+**Screen:** No
+**SPEC:** §6.6 (the speed budget ENG-23 checks); no section changes
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/test/speed/compute.speed.ts` — changes: how ENG-23's pass
+times `compute()`.
+- `vitest.config.ts` — changes: each pass's time limit for one test.
+- `packages/engine/test/average.test.ts` — the row names it; it does not change (§11).
+
+#### 2. What is missing now
+
+Measured on `138757e`, a 4-core container. "Load" below is 4 busy `node -e 'for(;;){}'`
+processes, one per core; "load 8" is 8 of them.
+- The speed pass takes the plain median of 500 wall-clock runs. A probe of 10 batches of 100 runs,
+  each run timed by the wall clock and by the process's CPU time, gave batch medians × 4 of 5.56
+  to 10.28 ms with no load, and up to 28.95 ms wall (12.95 ms CPU) under load 8. CPU time moves
+  with wall time when the machine is not over-full, so the slow batches are the machine being
+  slow, not the process waiting. The lowest batch median of each run stayed at 5.56 to 6.34 ms
+  (no load and load), 6.27 to 7.11 ms CPU (load 8).
+- `pnpm test` under load failed 3 of 3 runs: ENG-52's seeded test (`average.test.ts`) and ENG-07's
+  "never throws, whatever the text" (`formula.test.ts`) both stopped at `Test timed out in
+  5000ms`. 5,000 ms is Vitest's default limit; no test sets its own. With no load they took
+  3,244 ms and 1,284 ms under coverage.
+
+#### 3. What it should look like when done
+
+1. The speed pass reads CPU time (`process.cpuUsage()`), runs 10 batches of 100 after 200 warm-up
+   runs, and checks the lowest batch median × 4 against 10 ms.
+2. It prints the lowest and the highest batch median × 4, so a run shows how much load it saw.
+3. A `compute()` twice as slow still fails the pass.
+4. The `unit` and `speed` passes allow 120,000 ms per test and per hook: a limit that stops a hang
+   and judges no speed.
+5. 8 speed-pass runs each with no load, load and load 8 all pass; 3 full `pnpm test` runs with no
+   load and 3 under load all pass.
+
+#### 4. How to do it
+
+1. `compute.speed.ts`: a `cpuMs()` helper over `process.cpuUsage()`; a `median()` helper; the
+   loop runs `BATCHES` × `RUNS`, keeps each batch's median, and checks `Math.min` of them.
+2. `vitest.config.ts`: one `HANG_MS` constant set as `testTimeout` and `hookTimeout` in both
+   projects. Inline projects do not take the root's test options, so each project names it.
+3. Check the probe of §2 and the runs of §3 item 5; break `compute()` on purpose (run it twice
+   per timed run) for item 3, then restore the file.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/speed/compute.speed.ts` — the changed check; its `describe` stays
+  ENG-23's.
+- Control numbers from: SPEC §6.6's 10 ms and × 4, unchanged; the runs measured in §2 and §11.
+
+#### 8. Checked against the source
+
+Nothing to check: no rule of a game is touched.
+
+#### 9. Not in this ticket
+
+- Making `compute()` faster: nothing in the measurements asks for it; its lowest batch median × 4
+  stays near 6 ms.
+- Splitting or shrinking ENG-07's and ENG-52's seeded tests: their texts and counts stay as their
+  tickets set them.
+- CI on GitHub: it runs the same `pnpm test`, so it gets the same change.
+
+#### 10. Rake check
+
+- The golden tests are the truth: no expected value changes; only a time limit and a timing method
+  change.
+- Measure, never estimate: every number in this ticket comes from a run listed in §2 or §11.
+- `packages/engine` is pure: the engine's code is not touched; `process` is read only in a test
+  file, which `test/tsconfig.json` types with Node.
+
+#### 11. What came out of it
+
+Every item of §3 holds. Measured on this ticket's code, 4-core container:
+- Speed pass, lowest batch median × 4, 8 runs each: no load 5.62 to 6.06 ms; load 5.72 to
+  6.46 ms; load 8 5.84 to 7.08 ms. 24 of 24 passed. The highest batch median × 4 in the same runs
+  reached 11.60 ms, so the old plain median could still have failed.
+- `compute()` run twice per timed run: 10.66 ms and 10.78 ms, the pass failed both times. The file
+  was restored.
+- Full `pnpm test` under load: 3 of 3 passed, 879 tests, 73.97 to 81.78 s, speed pass 5.55 to
+  6.20 ms. With no load: 3 of 3 passed, 879 tests, 16.82 to 17.74 s, speed pass 5.65 to 5.75 ms.
+- Under load ENG-52's seeded test took 18,013 ms and ENG-07's 5,591 ms (one run, JSON reporter):
+  the old 5,000 ms limit is below both; 120,000 ms is 6.7 times the slowest.
+
+Differences from the row:
+- The row names `packages/engine/test/average.test.ts`. It does not change: the 5,000 ms was
+  Vitest's default, not the file's, and ENG-07's test in `formula.test.ts` failed the same way, so
+  the limit moved in `vitest.config.ts` for every test.
+- The first limit chosen was 60,000 ms; after the 18,013 ms measurement it became 120,000 ms.
+
+Found, not fixed: nothing.
+
+Nothing for the changelog; a person sees no change.
