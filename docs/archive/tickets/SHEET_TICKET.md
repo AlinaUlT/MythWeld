@@ -803,3 +803,123 @@ Sources: foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (the com
   applies, with the warning. Whether a feat with an unmet prerequisite stops applying is the
   owner's call; nothing changes until she decides.
 - Nothing for the changelog: no screen shows the warnings yet.
+
+---
+
+### SHEET-19 Rolling initiative interrupts a knock-out's rest
+
+**Hat:** Rolling initiative interrupts a knock-out's rest
+**Depends on:** ENG-65 (`state.knockedOut`, `KNOCKED_OUT_PATH`, `firstAid`, `shortRest`'s end of
+the mark)
+**Size:** XS
+**Screen:** No
+**SPEC:** §6.4 (the tracker actions); ENG-65 §9 and §11 put the row here
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/knock-out.ts` — changes: new `rollInitiative`,
+`InitiativeRefusal`.
+- `packages/system-5e/test/knock-out.test.ts` — the SHEET-19 tests.
+
+#### 2. What is missing now
+
+Measured on 2026-10-28 at `a500ec0`:
+- `grep -rn knockedOut packages/*/src`: the mark is written by `applyDamage` (`resting`, or
+  `interrupted` on damage) and removed by `knockOutEnded`; nothing else writes `interrupted`.
+- `grep -rni initiative packages/system-5e/src`: only the computed `init.*` numbers and the roll
+  mode (`combat.ts`, `rolls.ts`); no action.
+- So a knocked-out character who rolls initiative and then takes a short rest has the mark
+  removed by `shortRest`, though SRD 5.2.1 says that rest gave nothing.
+
+#### 3. What it should look like when done
+
+"Knocked out" is golden B (2024) at 1 hit point with `knockedOut: 'resting'`, as in ENG-65 §3.
+1. `rollInitiative(character, index, stamp)` on a knocked-out character: one change,
+   `KNOCKED_OUT` `resting` → `interrupted`; the entry `{ action: 'rollInitiative', subject:
+   'knockedOut' }`; hit points stay 1; still knocked out, the Unconscious level 1. The entry
+   reversed gives the character before.
+2. After it, `shortRest` with no hit die is refused as `unchanged` (ENG-65 §3 item 16's
+   `interrupted` case).
+3. Golden A (2014) with the mark `resting`: the same as item 1 (the stored mark decides, ENG-65
+   §3 item 13).
+4. Refused as `unchanged`: knocked out with `interrupted`; golden B at 12 hit points; golden B at
+   0 with no mark.
+5. Refused as `dead`: golden B at 0 with 3 failures and the mark `resting`.
+6. A frozen input: nothing throws, nothing changes.
+
+#### 4. How to do it
+
+1. `knock-out.ts`: `rollInitiative`, one entry through `settled`; the change is `resting` →
+   `interrupted`, any other mark kept, so `settled` refuses it as `unchanged`.
+2. Tests (§7), then the gate.
+
+Technical choices (ADR 002):
+- **The action records that initiative was rolled, not the roll.** The total belongs to the roll
+  log (SHEET-37, the device table `rollLog`), and the character stores no initiative. So the
+  action takes no number and changes only the mark.
+- **`unchanged` is its usual answer.** The roll dialog calls it after every initiative roll; most
+  characters are not knocked out, and the refusal changes nothing and goes in no history.
+- **The dead are refused**, as `firstAid` refuses them: a dead creature rolls no initiative, and a
+  revival removes the mark anyway (ENG-65).
+- **No edition check.** Only SRD 5.2.1's knock-out gives the mark, and a stored mark is the truth
+  whatever the edition, as `compute()` reads it (ENG-65 §4).
+
+#### 5. Stored data
+
+Nothing stored changes. `state.knockedOut` already holds `interrupted` (ENG-65, version 6).
+
+#### 6. What a person will see
+
+Not a screen. The roll dialog (SHEET-39) calls the action; its note in `BACKLOG.md` says so.
+
+#### 7. Tests
+
+- `packages/system-5e/test/knock-out.test.ts` — `describe('SHEET-19 rolling initiative interrupts
+  the knock-out rest')`: items 1–6.
+- Control values from: the SRD text of §8; ENG-65 §3 (golden B knocked out at 1, the Unconscious
+  level 1, the short rest of an `interrupted` mark refused as `unchanged`).
+
+#### 8. Checked against the source
+
+SRD 5.2.1 as foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` quotes it
+(`packs/_source/content24/appendices/rules-glossary.yml`, Short Rest), read again 2026-10-28, the
+same file and commit as ENG-65 §8. CC-BY-4.0. "Interrupting the Rest. A Short Rest is stopped by
+the following interruptions: Rolling Initiative; Casting a spell other than a cantrip; Taking any
+damage. An interrupted Short Rest confers no benefits."
+
+No golden value is touched; no rules source disagrees with the SPEC. Nothing stops.
+
+#### 9. Not in this ticket
+
+- Recording the initiative total: the roll log (SHEET-37) and the roll dialog (SHEET-39).
+- Casting a spell other than a cantrip, the third interruption: an unconscious creature takes no
+  action; casting's checks are SHEET-17.
+- A short rest the person takes, interrupted: the Rest frames (SHEET-45). This action touches
+  only the knock-out's rest.
+
+#### 10. Rake check
+
+- **Each system's rules live in its module.** The action is the fifth-edition module's; the core
+  changes nothing; no `if (ruleset === …)`.
+- **The engine is pure.** The action takes the stamp and returns a new character; the
+  frozen-input test.
+- **A stored-shape change needs a migration.** None changes (§5).
+- **Licensing.** The SRD text is quoted in this ticket only; the test data holds numbers and keys.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-28, on `main` at `a500ec0`:
+- Before: `pnpm test` `Tests 928 passed (928)` in the unit project, 2 in the speed project.
+- After: `pnpm lint` `Checked 219 files`, no fixes; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`
+  `Test Files 68 passed (68)`, `Tests 932 passed (932)`, 18.29 s, and `2 passed` in the speed
+  project. 4 tests are new, all in `knock-out.test.ts` (14 → 18). No file in `apps/web` changed,
+  so no `pnpm e2e`.
+- The tests catch mistakes. 4 breaks, each made alone in `knock-out.ts`, then `knock-out.test.ts`
+  run, the file restored and compared equal after each: every mark turned `interrupted`, 1
+  failed; nothing interrupted, 2; the mark removed instead, 1; the dead allowed, 1.
+- Differs from §3: nothing. Size XS held.
+- Found, not fixed: nothing.
+- Nothing for the changelog: no screen calls it yet.

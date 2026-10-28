@@ -204,7 +204,7 @@ chats never claim one version number.
 | SHEET-16 | Damage applies the character's defenses by its type | S | 🔲 |
 | SHEET-17 | Casting warns of what forbids it | S | 🔲 |
 | SHEET-18 | Attunement past the limit gives a warning | XS | 🔲 |
-| SHEET-19 | Rolling initiative interrupts a knock-out's rest | XS | 🔲 |
+| SHEET-19 | Rolling initiative interrupts a knock-out's rest | XS | ✅ 2026-10-28 |
 | SHEET-20 | A use's recovery amount is computed with a breakdown | S | 🔲 |
 | SHEET-21 | Every base AC calculation is computed for the pin | S | 🔲 |
 | SHEET-22 | Removing an entity drops what was stored for it | S | 🔲 |
@@ -311,10 +311,6 @@ chats never claim one version number.
 - **SHEET-18** — found by ENG-63: nothing counts the attuned rows; both SRDs allow "no more than
   three magic items at a time" (ENG-63's ticket quotes both). A warning, never a block (§8.2),
   computed by the module, not the screen.
-- **SHEET-19** — found by ENG-65: rolling initiative interrupts the knock-out's short rest (SRD
-  5.2.1, Short Rest): the action that records an initiative roll sets
-  `systemData.state.knockedOut` to `interrupted`; no action does yet. The roll dialog (SHEET-39)
-  calls it.
 - **SHEET-20** — found by ENG-21: a use's label ("1 back on a short rest, all on a long rest")
   reads `Computed.resources[].uses.recovery`; an amount that is a formula has no computed value
   with a breakdown, so this row computes it. Game-free: tested on the made-up system.
@@ -410,7 +406,9 @@ chats never claim one version number.
   the test by `ROLL_TARGETS`), rolls `d20Formula(mode)`, reads the kept d20 face with
   `attackOutcome(face, range)` (a weapon's `crit.range`, a spell's 20) and, on a critical hit,
   rolls `criticalDamage` of the damage dice. ENG-20's concentration save is the Constitution save:
-  its mode is `abilities.con.saveMode`. "Send to DM" waits for the table link.
+  its mode is `abilities.con.saveMode`. "Send to DM" waits for the table link. Found by SHEET-19:
+  after each initiative roll it calls `rollInitiative` (`knock-out.ts`), which interrupts a
+  knock-out's short rest; its `unchanged` refusal is the usual answer and is not shown.
 - **SHEET-40** — ADR 010 item 6, ADR 013 item 1, boards `V3-Keypad` and `V3-TempHP`. Found by
   ENG-20: damage returns the concentration save's DC (`outcome.concentrationDc`); the screen rolls
   it and calls `endConcentration` on a failure. Found by ENG-65: the pad offers knocking out

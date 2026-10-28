@@ -13,6 +13,7 @@ import {
   RULES_2024,
   revive,
   rollDeathSave,
+  rollInitiative,
   setTempHp,
   shortRest,
   stabilize,
@@ -326,5 +327,53 @@ describe('ENG-65 knocked out at 1 hit point', () => {
     expect(shortRest(out, indexOf(out), frozen({}), frozen(stamp)).ok).toBe(true);
     expect(applyHealing(out, indexOf(out), frozen({ amount: 3 }), frozen(stamp)).ok).toBe(true);
     expect([out, five]).toEqual(before);
+  });
+});
+
+// SHEET-19: rolling initiative interrupts the knock-out's short rest (SRD 5.2.1, Short Rest:
+// "Rolling Initiative"; "An interrupted Short Rest confers no benefits"). Values from SHEET-19's
+// ticket, worked out by hand from ENG-65's marks.
+describe('SHEET-19 rolling initiative interrupts the knock-out rest', () => {
+  const roll = (character: FifthEditionCharacter) =>
+    rollInitiative(character, indexOf(character), stamp);
+
+  it('turns a resting knock-out into an interrupted one, which the short rest no longer ends', () => {
+    for (const golden of [goldenB, goldenA]) {
+      const out = knockedOut('resting', golden);
+      const rolled = done(out, roll(out));
+      expect(rolled.entry).toMatchObject({
+        action: 'rollInitiative',
+        subject: 'knockedOut',
+        changes: [{ path: KNOCKED_OUT, before: 'resting', after: 'interrupted' }],
+      });
+      expect(rolled.entry.changes).toHaveLength(1);
+      expect(rolled.character.systemData.state.hp.current).toBe(1);
+      expect(isKnockedOut(rolled.character, findOf(rolled.character))).toBe(true);
+      expect(levelOf(rolled.character)).toBe(1);
+      const rest = shortRest(rolled.character, indexOf(rolled.character), {}, stamp);
+      expect(refused(rest)).toEqual({ code: 'unchanged' });
+    }
+  });
+
+  it('changes nothing for an interrupted knock-out or a character not knocked out', () => {
+    for (const character of [
+      knockedOut('interrupted'),
+      withTrackers(goldenB, { current: 12 }),
+      withTrackers(goldenB, { current: 0 }),
+    ]) {
+      expect(refused(roll(character))).toEqual({ code: 'unchanged' });
+    }
+  });
+
+  it('is refused for the dead', () => {
+    const dead = withTrackers(goldenB, { current: 0, failure: 3, knockedOut: 'resting' });
+    expect(refused(roll(dead))).toEqual({ code: 'dead' });
+  });
+
+  it('changes no frozen input', () => {
+    const out = frozen(knockedOut('resting'));
+    const before = copyOf(out);
+    expect(rollInitiative(out, indexOf(out), frozen(stamp)).ok).toBe(true);
+    expect(out).toEqual(before);
   });
 });
