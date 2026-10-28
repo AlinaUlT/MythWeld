@@ -184,7 +184,7 @@ chats never claim one version number.
 |---|---|---|---|
 | **Skin layer** | **before the first screen (ADR 015 item 13)** | | |
 | SHEET-01 | The base theme's tokens cover every token the mockups use | S | 🔲 |
-| SHEET-02 | Lint fails on a colour, font or animation written in a component | S | 🔲 |
+| SHEET-02 | Lint fails on a colour, font or animation written in a component | S | ✅ 2026-10-28 |
 | SHEET-03 | Screens draw named slots the base theme fills | S | 🔲 |
 | SHEET-04 | Each part takes its style from a fixed menu | M | 🔲 |
 | SHEET-05 | Animations are presets that stop for reduced motion | S | 🔲 |
@@ -255,8 +255,6 @@ chats never claim one version number.
   open); dark stays the default (SPEC §7.2). The row lays the theme out one file per concern, each
   imported once, so SHEET-03 to SHEET-06 each fill their own file. The web-app manifest's
   background stays a fixed value (ADR 015 item 13).
-- **SHEET-02** — ADR 015 item 4, `CLAUDE.md` "No look is written in a component". The check works
-  as SETUP-05's visible-text check does (`biome/no-visible-literals.grit`).
 - **SHEET-03** — ADR 015 item 6: the app background, each page background, the token frame, the
   portrait, the header, the dock, cards, buttons, the dice.
 - **SHEET-04** — ADR 015 item 7: the parts phase 2 draws (button, icon button, card, panel, chip,
@@ -751,6 +749,7 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-27 | Closed tickets leave the files a new chat reads | XS | ✅ 2026-10-01 |
 | OPS-28 | The quality gate gives one verdict for one commit, whatever the load | S | 🔲 |
 | OPS-29 | Phase 2 is cut into rows that run in waves | S | ✅ 2026-10-22 |
+| OPS-30 | `RUNNING.md` names the container's current Chromium path | XS | 🔲 |
 
 - **OPS-28** — found by ENG-66 (ENG-66 §11): ENG-23's speed pass (`compute.speed.ts`, the median
   × 4 at most 10 ms) fails on some runs in the cloud container with no code changed. On `05f3430`,
@@ -763,3 +762,7 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
   It belongs to no phase, so it can run now, beside any other row: it owns
   `packages/system-5e/test/speed/`, `packages/engine/test/average.test.ts` and `vitest.config.ts`,
   which no phase 2 row touches.
+- **OPS-30** — found by SHEET-02 (SHEET-02 §11): `docs/RUNNING.md` gives
+  `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; on 2026-10-28 the container had
+  `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome` and no `chromium-1194`. A path that does
+  not move with the browser's version is better.
