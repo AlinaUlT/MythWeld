@@ -177,11 +177,12 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
   const level = system.level(character);
   const grantsOf = system.grantsOf;
   const find = finderOf(character, index);
+  const findKey = keyFinderOf(character, index);
   const had = gather(
     character,
     index,
     level,
-    system.entities(character, find, keyFinderOf(character, index)),
+    system.entities(character, find, findKey),
     grantsOf === undefined ? ownGrants : (entity) => grantsOf(character, entity, find),
     system.namedIds,
   );
@@ -190,7 +191,7 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
   const stats = statsOf(had, defaults);
   const gathered = suppressed(
     had,
-    system.suppressedEffects?.({ character, gathered: had, stats, find }) ?? [],
+    system.suppressedEffects?.({ character, gathered: had, stats, find, findKey }) ?? [],
   );
   const basePhase: BasePhase = {
     read: (path) => (path === LEVEL_PATH ? level : system.basePath?.(character, path, gathered)),
@@ -198,16 +199,17 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
     ...(defaults.maxRule !== undefined && { maxRule: defaults.maxRule }),
   };
   const base = computeStats(character, gathered, basePhase);
-  const steps = system.derive({ character, gathered, stats, find });
-  const keys = system.keys?.({ character, gathered, stats, find }) ?? {};
-  const rules: CharacterRuleWarning[] = (
-    system.ruleWarnings?.({ character, gathered, stats, find }) ?? []
-  ).map(({ rule, data, message }) => ({
-    code: 'characterRule',
-    rule,
-    ...(data && { data }),
-    message,
-  }));
+  const input: DeriveInput<C, E> = { character, gathered, stats, find, findKey };
+  const steps = system.derive(input);
+  const keys = system.keys?.(input) ?? {};
+  const rules: CharacterRuleWarning[] = (system.ruleWarnings?.(input) ?? []).map(
+    ({ rule, data, message }) => ({
+      code: 'characterRule',
+      rule,
+      ...(data && { data }),
+      message,
+    }),
+  );
   const phases = phasesOf(character, gathered, basePhase);
   const { finish, finishKey } = phases;
   const derived = computeDerived({

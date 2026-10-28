@@ -14,6 +14,7 @@ import type { FifthEditionCharacter } from './character';
 import { checkSteps, skillKeys } from './checks';
 import { characterLevel, classesOf } from './classes';
 import { combatSteps } from './combat';
+import { defenseSteps, defenseWarnings } from './defenses';
 import type { FifthEditionEntity } from './entity-types';
 import { equipmentOf } from './equipment';
 import { hitDiceSteps } from './hit-dice';
@@ -51,6 +52,7 @@ import { unconsciousNamed, unconsciousWarnings } from './unconscious';
 // ENG-62: at 0 hit points and alive, the Unconscious condition is named by its key; none warns.
 // ENG-65: knocked out too (`knock-out.ts`). ENG-67: not when dead of exhaustion.
 // ENG-64 adds the inspiration a long rest gives (`inspiration.ts`).
+// SHEET-15 adds the defenses effects append (`defenses.ts`).
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -196,6 +198,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     ...trainingSteps(input),
     ...spellDiceSteps(),
     ...inspirationSteps(),
+    ...defenseSteps(input),
   }),
 
   // Each skill's stat, which an effect may set; the character's size.
@@ -203,11 +206,12 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
 
   // Ability score increases given by both the species and the background; a mix that gives no
   // starting languages; a character at 0 hit points, or knocked out, with no Unconscious
-  // condition to have.
+  // condition to have; an effect on a list of defenses that gives it no key.
   ruleWarnings: (input) => [
     ...abilityBonusWarnings(input, (entity) => ruledGrants(input.character, entity)),
     ...languageWarnings(input),
     ...unconsciousWarnings(input),
+    ...defenseWarnings(input),
   ],
 
   // The AC effects of a shield worn without training, when its edition takes its AC away.

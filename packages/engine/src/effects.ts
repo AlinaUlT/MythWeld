@@ -240,6 +240,19 @@ export function effectNumber(
   return { op: change.op, value, priority, part, source, label };
 }
 
+/**
+ * SHEET-15: whether an active effect applies now, reading its `when` through `reader`, for an
+ * effect whose value is no formula (an `append` of a key). `false` when its `when` does not parse
+ * or is false, each warned as `applies` warns.
+ */
+export function effectApplies(
+  active: ActiveEffect,
+  outer: EffectReader,
+  warn: (warning: EffectWarning) => void,
+): boolean {
+  return applies(active, undefined, withOwnPaths(active, outer), warn) !== undefined;
+}
+
 /** The key a `set` with a text gives a key path, and where it came from. */
 export interface EffectKey {
   key: string;
