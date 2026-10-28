@@ -15,6 +15,7 @@ export * from './classes';
 export * from './combat';
 export * from './conditions';
 export * from './death-saves';
+export * from './defenses';
 export * from './entity-types';
 export * from './equipment';
 export * from './exhaustion';

@@ -1,8 +1,10 @@
 import {
+  type ActiveEffect,
   type ComputeWarning,
   compute,
   type DerivedStep,
   type EffectWarning,
+  effectApplies,
   evaluateNumber,
   loadContentIndex,
   type StatOf,
@@ -576,6 +578,44 @@ describe("ENG-14 a step's own warnings", () => {
       },
       { code: 'stepRule', path: 'guard', rule: 'unsure', message: 'Unsure.' },
       notAppended,
+    ]);
+  });
+});
+
+describe('SHEET-15 what a step finds by key, and whether an effect applies', () => {
+  it("finds an entry by its type and key through the step's input", () => {
+    const result = computed(
+      ash,
+      withSteps(({ findKey }) => {
+        const found = (type: string, key: string): DerivedStep => {
+          const value = findKey(type, key) === undefined ? 0 : 1;
+          return () => ({ value, steps: [{ kind: 'rule', rule: 'found', value, change: value }] });
+        };
+        return {
+          'found.lost': found('condition', 'lost'),
+          'found.gone': found('condition', 'gone'),
+        };
+      }),
+    );
+    expect(result.values['found.lost']).toBe(1); // `tales-core:condition/lost`
+    expect(result.values['found.gone']).toBe(0);
+  });
+
+  it('applies an effect by its `when`, read through the reader; one that does not parse warns', () => {
+    const active = (id: string, when: string): ActiveEffect => ({
+      effect: { id, target: 'lists.words', op: 'append', value: 'word', when },
+      part: `character:talent/t#${id}`,
+      source: 'character:talent/t',
+      label: { en: 't' },
+    });
+    const reader = { read: (path: string) => (path === 'level' ? 2 : undefined) };
+    const warnings: EffectWarning[] = [];
+    const warn = (warning: EffectWarning) => warnings.push(warning);
+    expect(effectApplies(active('now', '@level >= 2'), reader, warn)).toBe(true);
+    expect(effectApplies(active('later', '@level >= 3'), reader, warn)).toBe(false);
+    expect(effectApplies(active('broken', '@level >='), reader, warn)).toBe(false);
+    expect(warnings.map(({ code, part }) => [code, part])).toEqual([
+      ['formula', 'character:talent/t#broken'],
     ]);
   });
 });
