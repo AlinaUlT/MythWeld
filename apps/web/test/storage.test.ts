@@ -3,11 +3,34 @@ import { DB_NAME, db } from '../src/db/db';
 import { requestPersistentStorage } from '../src/db/persist';
 
 describe('SETUP-06 database', () => {
-  it('is named grimoire, at version 1, with no tables yet', () => {
+  it('is named grimoire', () => {
     expect(DB_NAME).toBe('grimoire');
     expect(db.name).toBe('grimoire');
-    expect(db.verno).toBe(1);
-    expect(db.tables).toEqual([]);
+  });
+});
+
+describe('SHEET-07 phase 2 tables', () => {
+  it('arrive together in version 2, each with its primary key and indexes', () => {
+    expect(db.verno).toBe(2);
+    const tables = db.tables.map(({ name, schema }) => ({
+      name,
+      key: schema.primKey.keyPath,
+      indexes: schema.indexes.map((index) => index.keyPath),
+    }));
+    expect(tables).toEqual([
+      { name: 'characters', key: 'id', indexes: [] },
+      { name: 'packs', key: 'id', indexes: [] },
+      { name: 'settings', key: 'key', indexes: [] },
+      { name: 'rollLog', key: 'id', indexes: [['characterId', 'rolledAt']] },
+      { name: 'history', key: 'id', indexes: [['characterId', 'at']] },
+      { name: 'blobs', key: 'id', indexes: [] },
+    ]);
+  });
+
+  it('key every table by a value the row carries, never by an auto-increment', () => {
+    expect(
+      db.tables.filter((table) => table.schema.primKey.auto).map((table) => table.name),
+    ).toEqual([]);
   });
 });
 

@@ -190,7 +190,7 @@ chats never claim one version number.
 | SHEET-05 | Animations are presets that stop for reduced motion | S | 🔲 |
 | SHEET-06 | The app's fonts ship inside it, each licence read | S | 🔲 |
 | **On the device** | **tables, the mini-pack, saved characters** | | |
-| SHEET-07 | Phase 2's device tables arrive in one database version | XS | 🔲 |
+| SHEET-07 | Phase 2's device tables arrive in one database version | XS | ✅ 2026-10-28 |
 | SHEET-08 | The phase 1 fixtures ship as the built-in mini-pack | M | 🔲 |
 | SHEET-09 | Built-in packs load into the content index at start | S | 🔲 |
 | SHEET-10 | Characters are saved on the device, migrated as they open | S | 🔲 |
@@ -265,10 +265,6 @@ chats never claim one version number.
   SHEET-13) turn the presets into still pictures; animations stop off screen.
 - **SHEET-06** — ADR 005 item 7.5, ADR 015 item 10: Inter for text, and EB Garamond as the
   heading placeholder of the mockups until the owner picks (BRIEF X1). No font service.
-- **SHEET-07** — SPEC §11's tables that phase 2 stores into (characters, packs, settings, roll
-  log, history, blobs), in one Dexie version, so parallel rows never each claim the next version.
-  This departs from SETUP-06's "each table arrives with the ticket that first stores into it", for
-  that reason.
 - **SHEET-08** — SPEC §12 stage 2: "a mini-pack of the stage 1 fixtures". The goldens' SRD
   fixtures (`packages/system-5e/test/golden/srd-2014.ts`, `srd-2024.ts`) become the app's
   built-in packs, with their CC-BY-4.0 metadata; the tests keep reading the same data. If the row
