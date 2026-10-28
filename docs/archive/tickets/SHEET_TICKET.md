@@ -789,9 +789,10 @@ Sources: foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (the com
 
 #### 11. What came out of it
 
-- Quality gate, run on top of SHEET-07 and SHEET-02: `pnpm lint` clean (206 files); `pnpm
-  typecheck` clean; `pnpm test` 904 passed, 0 failed in the unit project (20.9 s), 2 passed in the
-  speed project. 20 tests are new (13 in the engine, 7 in the module); without them, 884.
+- Quality gate, run on top of SHEET-07, SHEET-02, SHEET-01 and SHEET-15: `pnpm lint` clean (219
+  files); `pnpm typecheck` clean; `pnpm test` 928 passed, 0 failed in the unit project (22.6 s), 2
+  passed in the speed project. 20 tests are new (13 in the engine, 7 in the module); without
+  them, 908.
 - Coverage of the whole run: statements 99.5 % (3199 / 3215), branches 96.99 %.
 - 12 earlier engine tests listed Brook's (or Ash with Iron Will's) every warning; each now lists
   Iron Will's two `unmetPrerequisite` warnings too. ENG-12's stat test now also checks the
