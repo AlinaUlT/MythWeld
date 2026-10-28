@@ -8,6 +8,7 @@ export * from './formula';
 export * from './gather';
 export * from './log';
 export * from './phases';
+export * from './prerequisites';
 export * from './roll';
 export * from './stats';
 export * from './trackers';

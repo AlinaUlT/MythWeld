@@ -469,3 +469,158 @@ fills.
 
 **Changelog:** "The app paints with the mockups' colours: their light values, and placeholder dark
 ones, still dark by default; the icon and the splash screen take the new dark background."
+
+---
+
+### SHEET-14 An unmet prerequisite gives a warning
+
+**Hat:** An unmet prerequisite gives a warning
+**Depends on:** ENG-04 (prerequisites), ENG-11 (`compute()`, `Computed.entities`), ENG-27 (Tales'
+`unmetPrerequisites`), ENG-32 (a class's `multiclass.prerequisites`)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.5 (prerequisites warn, never block), §8.2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/prerequisites.ts` — new: `prerequisiteWarnings`, the
+`PrerequisiteWarning` type.
+- `packages/engine/src/compute.ts` — changes: `SystemModule.prerequisitesOf`, the warnings joined to
+  `Computed.warnings`.
+- `packages/engine/src/gather.ts` — changes: `GatherableEntity.prerequisites`.
+- `packages/engine/src/index.ts` — changes: exports the new file.
+- `packages/system-5e/src/classes.ts` — changes: `prerequisitesOf`, the multiclass rule.
+- `packages/system-5e/src/module.ts` — changes: gives `prerequisitesOf`.
+
+#### 2. What is missing now
+
+- `git grep -n -i prerequisite HEAD -- packages/engine/src` prints nothing: the core never reads a
+  prerequisite.
+- In `packages/system-5e/src` the only hits are the schema of `multiclass.prerequisites`
+  (`entity-types.ts`) and two comments. No code checks one against a character.
+- Tales' `unmetPrerequisites` (ENG-27: Brook, `tales-core:talent/iron-will`) is checked only as
+  data (`test-system.test.ts`); `compute()` gives no warning for it.
+
+#### 3. What it should look like when done
+
+1. `compute()` gives one warning `unmetPrerequisite` (`entity`, `prerequisite`, `message`) for
+   each prerequisite an entity the character has does not meet, in the order of
+   `Computed.entities`, then the entity's order of prerequisites.
+2. The check reads the computed values: `ability` is met when `abilities.<key>.score` ≥ `min`
+   (a manual edit included); `level`, when `level` ≥ `min`; `entity`, when an entity with that id
+   is had; `proficiency`, when a grant gives that category and key; `formula`, when it is true.
+3. A formula's warnings (a missing path read as 0, a formula that does not parse) are each a
+   `prerequisiteFormula` warning; a formula that does not parse is unmet.
+4. Nothing is blocked: the entity stays had, its effects and grants apply, no value changes.
+5. Tales: Ash has no prerequisite warning; Brook has two, both Iron Will's (level 4; the craft
+   `rope`), so the entities warned are ENG-27's `unmetPrerequisites`.
+6. A module may give the prerequisites of an entity itself (`prerequisitesOf`); without it, an
+   entity's own `prerequisites` are checked.
+7. Fifth edition: a character with two or more classes is checked against each class's
+   `multiclass.prerequisites`, its first class's included; a character with one class is not.
+   Golden C (both editions) meets them all and still has no warning.
+
+#### 4. How to do it
+
+1. `prerequisites.ts`: `prerequisiteWarnings({ entities, proficiencies, values, prerequisitesOf })`,
+   one `switch` on the kind. A value that is not a number, or is missing, reads as 0 (a stat the
+   character lacks: unmet for any `min` above 0, with no other warning). A formula runs with
+   `evaluateCondition` on the computed values.
+2. `GatherableEntity` takes `prerequisites?`, so the core reads them as it reads `grants`.
+3. `SystemModule.prerequisitesOf?(character, entity)`; `compute()` uses it, or the entity's own
+   list, after the derived values. The warnings sit after the phases' and before the module's rule
+   warnings, so ENG-35's "after every other warning" still holds.
+4. Fifth edition's `prerequisitesOf`: an entity's own list; a class named in `systemData.classes`
+   of a character with two or more classes adds `multiclass.prerequisites`. One rule for both
+   editions: the texts agree (§8), and the editions differ only in data.
+5. The tests that list Brook's every warning now list Iron Will's two as well.
+
+#### 5. Stored data
+
+Nothing stored changes. `Computed` gains warnings; nothing in `CharacterDoc`, `ContentPack` or a
+Dexie table.
+
+#### 6. What a person will see
+
+Not a screen. The manual form (SHEET-27) and the choices badge read these warnings; phase 4's
+wizard shows them with what is missing.
+
+#### 7. Tests
+
+- `packages/engine/test/prerequisites.test.ts` — `describe('SHEET-14 an unmet prerequisite gives a
+  warning')`: Ash and Brook against ENG-27; Brook's two warnings with their messages; Iron Will
+  still applies (`skills.steady.total` 7, its `will` step of 2); each kind met and unmet; a manual
+  edit read; a formula's missing path and parse error; a module's `prerequisitesOf`; no value
+  changes.
+- `packages/system-5e/test/prerequisites.test.ts` — `describe('SHEET-14 a multiclass character
+  meets each class's multiclass prerequisites')`: golden C 2014 and 2024 with no warning; each
+  score below 13 warns, the first class's too; one class asks none; the 2024 fighter's "Strength
+  13 or Dexterity 13".
+- Control numbers from: ENG-27's `tales/expected.ts`; Tales' data (Brook level 3, nerve 8 at its
+  maximum; Ash's lore `stars`, knack `climb`); golden C's scores (SPEC §6.7: Strength 13,
+  Intelligence 15, Charisma 14) and the fixtures' 13s (ENG-32 §8). The changed scores are test
+  data.
+
+#### 8. Checked against the source
+
+Sources: foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (the commit ENG-32 read),
+`packs/_source/rules/chapter-6-customization-options.yml` (SRD 5.1) and
+`packs/_source/content24/chapter-2/character-creation.yml`, `content24/chapter-5/feats.yml`
+(SRD 5.2.1), CC-BY-4.0.
+
+- Multiclassing, SRD 5.1, "Prerequisites": "To qualify for a new class, you must meet the ability
+  score prerequisites for both your current class and your new one, as shown in the Multiclassing
+  Prerequisites table."
+- Multiclassing, SRD 5.2.1, "Prerequisites": "To qualify for a new class, you must have a score of
+  at least 13 in the primary ability of the new class and your current classes."
+- So both check every class of a multiclass character, the first included, and a single class
+  asks nothing. The 13s and the fighter's "or" are the fixtures' data (ENG-32 §8).
+- Feats, SRD 5.1: "You must meet any prerequisite specified in a feat to take that feat. If you
+  ever lose a feat's prerequisite, you can't use that feat until you regain the prerequisite."
+- Feats, SRD 5.2.1, "Prerequisite": "To take a feat, you must meet any prerequisite in its
+  description unless a feature allows you to take the feat without the prerequisite. If a
+  prerequisite includes a class, you must have at least 1 level in that class to take the feat."
+  An `entity` prerequisite naming a class is met by having the class, which is at least 1 level.
+- SPEC §5.5: prerequisites do not block a choice; they give a warning. This ticket follows it: the
+  entity applies whether or not it is met (see §11 for SRD 5.1's second sentence).
+
+#### 9. Not in this ticket
+
+- The words on screen for each warning: the screen rows that show them (SHEET-27, SHEET-36) and
+  phase 4's wizard.
+- The house rule `multiclass` (whether a second class may be taken at all): phase 4's level-up.
+- A proficiency's level: a prerequisite names a proficiency, not a level, so a grant at any level
+  meets it. No SRD prerequisite asks for expertise.
+- A proficiency an effect gives (SPEC §5.4's target `skills.<key>.prof`) rather than a grant: not
+  read, since the core does not know which path a category is. `grep` finds no effect with such a
+  target in `packages/` today.
+
+#### 10. Rake check
+
+- **Prerequisites warn; they never block.** The check only adds warnings, after every value is
+  computed; a test shows Iron Will's effect and Brook's values unchanged.
+- **The core names no game.** The core checks SPEC §5.5's five kinds; the multiclass rule lives in
+  the fifth-edition module (`classes.ts`), with no edition check.
+- **Formulas never run code.** A `formula` prerequisite runs through `evaluateCondition`; a missing
+  path is 0 with a warning, a bad formula is a warning, nothing throws.
+- **Missing is not broken.** An `entity` prerequisite naming an id no pack has is unmet, with no
+  `missing` warning of its own.
+- **Golden values.** No expected value changed; golden C still has no warning.
+
+#### 11. What came out of it
+
+- Quality gate, run on top of SHEET-07 and SHEET-02: `pnpm lint` clean (206 files); `pnpm
+  typecheck` clean; `pnpm test` 904 passed, 0 failed in the unit project (20.9 s), 2 passed in the
+  speed project. 20 tests are new (13 in the engine, 7 in the module); without them, 884.
+- Coverage of the whole run: statements 99.5 % (3199 / 3215), branches 96.99 %.
+- 12 earlier engine tests listed Brook's (or Ash with Iron Will's) every warning; each now lists
+  Iron Will's two `unmetPrerequisite` warnings too. ENG-12's stat test now also checks the
+  entities warned against ENG-27's `unmetPrerequisites`. No expected value changed.
+- Differs from §3: nothing.
+- Found, not fixed: SRD 5.1's feats say a feat whose prerequisite is lost "can't" be used until it
+  is regained; SPEC §5.5 and §8.2 say prerequisites warn and never block, so the feat still
+  applies, with the warning. Whether a feat with an unmet prerequisite stops applying is the
+  owner's call; nothing changes until she decides.
+- Nothing for the changelog: no screen shows the warnings yet.

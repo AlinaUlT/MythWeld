@@ -12,7 +12,7 @@ import { abilityBonusWarnings, leftOutSides } from './ability-bonus';
 import { attackSteps } from './attacks';
 import type { FifthEditionCharacter } from './character';
 import { checkSteps, skillKeys } from './checks';
-import { characterLevel, classesOf } from './classes';
+import { characterLevel, classesOf, prerequisitesOf } from './classes';
 import { combatSteps } from './combat';
 import type { FifthEditionEntity } from './entity-types';
 import { equipmentOf } from './equipment';
@@ -51,6 +51,7 @@ import { unconsciousNamed, unconsciousWarnings } from './unconscious';
 // ENG-62: at 0 hit points and alive, the Unconscious condition is named by its key; none warns.
 // ENG-65: knocked out too (`knock-out.ts`). ENG-67: not when dead of exhaustion.
 // ENG-64 adds the inspiration a long rest gives (`inspiration.ts`).
+// SHEET-14: a class of a multiclass character asks its multiclass prerequisites too.
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -212,4 +213,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
 
   // The AC effects of a shield worn without training, when its edition takes its AC away.
   suppressedEffects: untrainedEffects,
+
+  // An entity's own prerequisites; a class of a character with two or more, its multiclass ones.
+  prerequisitesOf,
 };

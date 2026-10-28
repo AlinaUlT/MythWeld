@@ -139,7 +139,12 @@ describe('ENG-29 resource maximums', () => {
     expect(Object.keys(brookResult.values).filter((path) => path.startsWith('resources.'))).toEqual(
       ['resources.focus.max'],
     ); // the boon does not gather Deep Lungs, so no `breath`
-    expect(brookResult.warnings.map(({ code }) => code)).toEqual(['missing']);
+    // Iron Will's two prerequisites are unmet (SHEET-14).
+    expect(brookResult.warnings.map(({ code }) => code)).toEqual([
+      'missing',
+      'unmetPrerequisite',
+      'unmetPrerequisite',
+    ]);
   });
 
   it('two grants of one key give one resource: the highest maximum, the first one higher', () => {

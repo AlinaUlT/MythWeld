@@ -1,4 +1,4 @@
-import type { EntityPartId } from '@grimoire/schema';
+import type { EntityPartId, Prerequisite } from '@grimoire/schema';
 import type { ContentIndex } from './content-index';
 import {
   type ComputedKey,
@@ -29,6 +29,7 @@ import {
   ownGrants,
 } from './gather';
 import { type PhaseWarning, phasesOf } from './phases';
+import { type PrerequisiteWarning, prerequisiteWarnings } from './prerequisites';
 import { type BasePhase, type BreakdownStep, computeStats, type StatWarning } from './stats';
 
 // The compute pipeline (SPEC §6.1, ADR 004 item 1). The core runs the steps; what only a game
@@ -103,6 +104,13 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    * part naming no effect of an entity the character has changes nothing.
    */
   suppressedEffects?(input: DeriveInput<C, E>): readonly EntityPartId[];
+  /**
+   * SHEET-14: the prerequisites this character must meet to have an entity, when a rule of the
+   * system adds to the entity's own (a fifth-edition class of a character with more than one
+   * class: its multiclass prerequisites). Without it, an entity's own `prerequisites`. Each one
+   * unmet is warned as `unmetPrerequisite`; the entity applies all the same.
+   */
+  prerequisitesOf?(character: C, entity: E): readonly Prerequisite[];
 }
 
 /** A warning a module's `ruleWarnings` gave: `rule` is the module's name for it (ENG-35). */
@@ -115,14 +123,15 @@ export interface CharacterRuleWarning {
 }
 
 /**
- * Something computing met: gathering, the base phase, the derived values, the phases, then the
- * module's rules about the whole character.
+ * Something computing met: gathering, the base phase, the derived values, the phases, the
+ * prerequisites, then the module's rules about the whole character.
  */
 export type ComputeWarning =
   | GatherWarning
   | StatWarning
   | DerivedWarning
   | PhaseWarning
+  | PrerequisiteWarning
   | CharacterRuleWarning;
 
 /** What `compute()` gives: what the character has (SPEC §6.1 steps 1–2), then its values. */
@@ -221,6 +230,16 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
     keys,
     finishKey,
   });
+  const prerequisitesOf = system.prerequisitesOf;
+  const prerequisites = prerequisiteWarnings({
+    entities: gathered.entities,
+    proficiencies: gathered.proficiencies,
+    values: derived.values,
+    prerequisitesOf:
+      prerequisitesOf === undefined
+        ? (entity) => entity.prerequisites ?? []
+        : (entity) => prerequisitesOf(character, entity),
+  });
   return {
     ...gathered,
     values: derived.values,
@@ -232,6 +251,7 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
       ...base.warnings,
       ...derived.warnings,
       ...phases.end(),
+      ...prerequisites,
       ...rules,
     ],
   };

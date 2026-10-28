@@ -115,7 +115,8 @@ function path(at: string, value: number, change = value): BreakdownStep {
 describe('ENG-17 derived-phase effects, toggles and overrides', () => {
   it.each<[string, TalesCharacter, TalesExpected, string[]]>([
     ['Ash', ash, ashExpected, []],
-    ['Brook', brook, brookExpected, ['missing']],
+    // Iron Will's two prerequisites are unmet (SHEET-14).
+    ['Brook', brook, brookExpected, ['missing', 'unmetPrerequisite', 'unmetPrerequisite']],
   ])(
     '%s: every value ENG-27 expects, and no warning of its own',
     (_, character, expected, warned) => {
@@ -286,7 +287,11 @@ describe('ENG-17 derived-phase effects, toggles and overrides', () => {
       { kind: 'base', value: 9, change: 9 },
       { kind: 'cap', value: 8, change: -1 },
     ]);
-    expect(codes(wider).map(({ code }) => code)).toEqual(['missing']);
+    expect(codes(wider).map(({ code }) => code)).toEqual([
+      'missing',
+      'unmetPrerequisite',
+      'unmetPrerequisite',
+    ]);
   });
 
   it("an effect's formula reads any path: a module's, a condition's level; a missing one reads 0", () => {
