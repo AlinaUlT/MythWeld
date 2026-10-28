@@ -1,5 +1,7 @@
 import {
   type ActionResult,
+  type BreakdownStep,
+  type Computed,
   type ContentIndex,
   changeTo,
   compute,
@@ -8,7 +10,7 @@ import {
   resourceSpentPath,
   resourceUses,
 } from '@grimoire/engine';
-import type { LogChange } from '@grimoire/schema';
+import type { EntityId, LogChange, LogEntry } from '@grimoire/schema';
 import {
   CONCENTRATION_PATH,
   isWhole,
@@ -23,6 +25,7 @@ import type { FifthEditionEntity } from './entity-types';
 import { fifthEditionModule } from './module';
 import { PACT_LEVEL_PATH, PACT_SLOTS_PATH, slotsPath } from './spellcasting';
 import { MAX_SPELL_LEVEL } from './system';
+import { CANNOT_CAST_PATH } from './training';
 
 // ENG-20: fifth edition's slots and concentration (SPEC §6.4), each change one log entry (ADR 014
 // item 10). A cast spends the slot the person picks, of the spell's level or higher, or a pact
@@ -32,6 +35,9 @@ import { MAX_SPELL_LEVEL } from './system';
 // are ENG-20 §8's.
 // ENG-57: or one of the own uses of the spell grant that gives the spell, named by its part: a
 // resource of the core (`spell-uses.ts`), spent while its maximum is more than the uses spent.
+// SHEET-17: what forbids a cast warns and never blocks it (SHEET-17 §4): armor worn without training
+// (`spell.cannotCast`, ENG-46), and the Incapacitated condition, read by its key; which conditions
+// include it (Unconscious, Paralyzed, …) is each entry's grant in its pack (SHEET-17 §8).
 
 /** A slot: one of a spell level, 1 to 9, or a pact magic slot. */
 export type SlotAsk = { readonly level: number } | 'pact';
@@ -63,6 +69,46 @@ export type SlotRefusal = { message: string } & (
 
 /** What a slot or a cast gives: the changed character and its entry, or why nothing changed. */
 export type SlotResult = ActionResult<FifthEditionCharacter, SlotRefusal | Unchanged>;
+
+/** The key of the condition that stops every cast: no action, bonus action or reaction (§8). */
+export const INCAPACITATED_CONDITION = 'incapacitated';
+
+/**
+ * A rule that forbids casting now. `code` and its data are for the screen: `cannotCast` with the
+ * breakdown of `spell.cannotCast` (`untrainedArmor`, `untrainedShield`), `incapacitated` with the
+ * entry of that key.
+ */
+export type CastWarning = { message: string } & (
+  | { code: 'cannotCast'; steps: readonly BreakdownStep[] }
+  | { code: 'incapacitated'; condition: EntityId }
+);
+
+/** What a cast gives: the changed character, its entry and its warnings, or why nothing changed. */
+export type CastResult =
+  | {
+      ok: true;
+      character: FifthEditionCharacter;
+      entry: LogEntry;
+      outcome: { warnings: CastWarning[] };
+    }
+  | Extract<SlotResult, { ok: false }>;
+
+/** The rules that forbid the computed character casting now: none when it may cast. */
+export function castWarnings(computed: Computed<FifthEditionEntity>): CastWarning[] {
+  const warnings: CastWarning[] = [];
+  if (whole(computed.values[CANNOT_CAST_PATH]) > 0) {
+    const steps = computed.breakdown[CANNOT_CAST_PATH] ?? [];
+    const message = `"${CANNOT_CAST_PATH}" is 1: a rule stops the character casting spells.`;
+    warnings.push({ code: 'cannotCast', steps, message });
+  }
+  const incapacitated = computed.conditions[INCAPACITATED_CONDITION];
+  const level = whole(computed.values[`conditions.${INCAPACITATED_CONDITION}.level`]);
+  if (incapacitated !== undefined && level > 0) {
+    const message = `The character has "${incapacitated.id}" and can take no action to cast.`;
+    warnings.push({ code: 'incapacitated', condition: incapacitated.id, message });
+  }
+  return warnings;
+}
 
 /** Where a slot's spent count is kept, and the count. */
 interface Spent {
@@ -151,18 +197,18 @@ function spendingUse(
 /**
  * The character after casting `ask.spell` with `ask.slot`, through the own uses of the spell grant
  * `ask.grant`, or with neither, and the entry: the slot or the use is spent, and a concentration
- * spell becomes the one held, ending the one before. Refused for a spell no pack has or an entity
- * that is not a spell, a slot and a grant together, a cantrip with a slot, a slot it cannot use (a
- * bad level, none left, a level below the spell's), uses it cannot spend (no such grant, not its
- * spell, none left), and as `unchanged` when the cast changes nothing (no slot, no use, no new
- * concentration).
+ * spell becomes the one held, ending the one before; the outcome holds `castWarnings`, which never
+ * stop it. Refused for a spell no pack has or an entity that is not a spell, a slot and a grant
+ * together, a cantrip with a slot, a slot it cannot use (a bad level, none left, a level below the
+ * spell's), uses it cannot spend (no such grant, not its spell, none left), and as `unchanged`
+ * when the cast changes nothing (no slot, no use, no new concentration).
  */
 export function castSpell(
   character: FifthEditionCharacter,
   index: ContentIndex<FifthEditionEntity>,
   ask: CastAsk,
   stamp: LogStamp,
-): SlotResult {
+): CastResult {
   const { spell: id, slot, grant } = ask;
   const spell = finderOf(character, index)(id);
   if (spell === undefined)
@@ -202,12 +248,15 @@ export function castSpell(
     changes.push(spent.change);
   }
   if (spell.concentration) changes.push(changeTo(character, CONCENTRATION_PATH, spell.id));
-  return settled<SlotRefusal>(
+  const result = settled<SlotRefusal>(
     character,
     stamp,
     { action: 'castSpell', subject: spell.id, label: spell.name, changes },
     `Casting "${id}" without a slot changes nothing.`,
   );
+  if (!result.ok) return result;
+  const warnings = castWarnings(compute(character, index, fifthEditionModule));
+  return { ...result, outcome: { warnings } };
 }
 
 /**

@@ -172,7 +172,7 @@ chats never claim one version number.
 |---|---|---|
 | 1 | SHEET-01, 02, 07, 14, 15, 17, 19 | Phase 1 is closed |
 | 2 | SHEET-03, 04, 05, 06, 08, 10, 16, 18, 20, 21, 61 | Wave 1 is closed |
-| 3 | SHEET-09, 11, 22 | Wave 2 is closed |
+| 3 | SHEET-09, 11, 22, 62 | Wave 2 is closed |
 | 4 | SHEET-12, 13, 23, 24, 37 | Wave 3 is closed |
 | 5 | SHEET-25, 27, 30, 31, 38 | Wave 4 is closed |
 | 6 | SHEET-26, 28, 32, 33, 36, 39, 46, 48, 50, 53, 54, 55, 56 | Wave 5 is closed |
@@ -202,13 +202,14 @@ chats never claim one version number.
 | SHEET-14 | An unmet prerequisite gives a warning | S | ✅ 2026-10-28 |
 | SHEET-15 | Resistances, immunities, vulnerabilities are computed from effects | S | ✅ 2026-10-28 |
 | SHEET-16 | Damage applies the character's defenses by its type | S | 🔲 |
-| SHEET-17 | Casting warns of what forbids it | S | 🔲 |
+| SHEET-17 | Casting warns of what forbids it | S | ✅ 2026-10-28 |
 | SHEET-18 | Attunement past the limit gives a warning | XS | 🔲 |
 | SHEET-19 | Rolling initiative interrupts a knock-out's rest | XS | ✅ 2026-10-28 |
 | SHEET-20 | A use's recovery amount is computed with a breakdown | S | 🔲 |
 | SHEET-21 | Every base AC calculation is computed for the pin | S | 🔲 |
 | SHEET-22 | Removing an entity drops what was stored for it | S | 🔲 |
 | SHEET-61 | A condition the character is immune to has no effect | S | 🔲 |
+| SHEET-62 | Gaining the Incapacitated condition ends concentration | XS | 🔲 |
 | **Characters** | **the list, the file, the manual form** | | |
 | SHEET-23 | An undo toast reverses the last change | S | 🔲 |
 | SHEET-24 | My characters lists the saved characters | S | 🔲 |
@@ -302,12 +303,6 @@ chats never claim one version number.
   defenses in the engine, for the number pad (SHEET-40). Found by SHEET-15: `defensesOf(values)`
   (`defenses.ts`) gives the four lists; SHEET-15 §8 quotes both SRDs' order (resistance, then
   vulnerability, after every other change) and "only one instance".
-- **SHEET-17** — found by ENG-46: `spell.cannotCast` is 1 while armor worn without training
-  forbids spells (ENG-46 §4), with an `untrainedArmor` or `untrainedShield` warning; `castSpell`
-  (ENG-20) does not read it. Found by ENG-62 (§11): `castSpell` reads neither the hit points nor a
-  knock-out, so a character with the Unconscious condition, and so the Incapacitated one, casts
-  and starts concentrating. The row decides, from each SRD's text, which refuses and which warns;
-  a warning never blocks.
 - **SHEET-18** — found by ENG-63: nothing counts the attuned rows; both SRDs allow "no more than
   three magic items at a time" (ENG-63's ticket quotes both). A warning, never a block (§8.2),
   computed by the module, not the screen.
@@ -327,6 +322,12 @@ chats never claim one version number.
   damage type or a condition, it doesn't affect you in any way" (SHEET-15 §8). The row decides,
   from each SRD's text, whether setting it is refused or warned and whether its effects stop; a
   warning never blocks.
+- **SHEET-62** — found by SHEET-17: both SRDs end concentration on the Incapacitated condition
+  (SHEET-17 §8). Damage to 0 and a knock-out end it (`applyDamage`); `setConditionLevel` (ENG-69)
+  does not, so a character given the Incapacitated condition, or one that includes it by its grant
+  (the Unconscious, Paralyzed, Petrified and Stunned entries), keeps `state.concentration`. The
+  condition is read by its key, `INCAPACITATED_CONDITION` (`casting.ts`). After SHEET-61, which
+  changes setting a condition too.
 - **SHEET-23** — SPEC §7.2: an "Undo" toast after every change, and the last 50 states kept in
   the history table; an entry is ENG-30's log entry.
 - **SHEET-24** — ADR 008 item 4, BRIEF P2, board `V3-Characters`; an empty state with "+" and
@@ -450,7 +451,9 @@ chats never claim one version number.
   SHEET-28): the tab shows each spell's edition or warns.
 - **SHEET-47** — ADR 010 item 10, ADR 011 item 2, board `V3-Cast`: the summary, "See full
   description", "Cast", "Don't use a spell slot"; the dice at a higher slot (ENG-50); a new
-  concentration ends the old one with a confirmation (SPEC §6.4). It reads SHEET-17.
+  concentration ends the old one with a confirmation (SPEC §6.4). Found by SHEET-17: the dialog
+  shows `castWarnings` before Cast, a `cannotCast` warning's steps as a breakdown; the cast still
+  happens, its `outcome.warnings` the same list.
 - **SHEET-48** — ADR 009 item 2, board `V3-Features`: grouped under the species, the class (its
   subclass on the line below), the background, the feats; each with its uses, their recovery label
   (SHEET-20) and its switches (`state.toggles`, ENG-17).

@@ -923,3 +923,220 @@ Measured on 2026-10-28, on `main` at `a500ec0`:
 - Differs from §3: nothing. Size XS held.
 - Found, not fixed: nothing.
 - Nothing for the changelog: no screen calls it yet.
+
+---
+
+### SHEET-17 Casting warns of what forbids it
+
+**Hat:** A cast gives the warnings of the rules that forbid it
+**Depends on:** ENG-20 (`castSpell`), ENG-46 (`spell.cannotCast`), ENG-62 (the Unconscious
+condition at 0 hit points), ENG-11 (`conditions.<key>.level`)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.4 (slots and concentration); §8.2 and `CLAUDE.md` (rules warn, never block); ENG-46 §4
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/casting.ts` — changes: new `INCAPACITATED_CONDITION`,
+`CastWarning`, `castWarnings`, `CastResult`; `castSpell` returns `CastResult`, its warnings in
+`outcome`.
+- `packages/system-5e/test/cast-warnings.test.ts` — new.
+- `docs/tickets/BACKLOG.md` — the row closes; SHEET-47's note names what it reads.
+
+#### 2. What is missing now
+
+Measured on `main` at `a500ec0`, in a test written for it, then deleted:
+- Golden C (2014) as its wizard 3 alone, in the SRD chain mail (no heavy armor training, so
+  `spell.cannotCast` is 1, ENG-46), casting a made-up level 1 spell with a level 1 slot:
+  `ok: true`, the keys `ok,character,entry`, the one change `slotsSpent.1` → 1. No warning.
+- Golden A (2014) storing a made-up condition of key `incapacitated`, casting Bless with a level 1
+  slot: `ok: true`, the keys `ok,character,entry`, the changes `slotsSpent.1` → 1 and
+  `concentration` → Bless. No warning.
+- `grep -n "cannotCast\|incapacitated" packages/system-5e/src/casting.ts`: nothing.
+- `pnpm test`: unit `Test Files 68 passed (68)`, `Tests 928 passed (928)`, 20.87 s; speed
+  `Test Files 1 passed (1)`, `Tests 2 passed (2)`, 3.21 s.
+
+#### 3. What it should look like when done
+
+Golden C as its wizard 3 alone (ENG-46's "the wizard"), in the SRD chain mail of its edition; the
+SRD shield of 2014. Golden A (2014): cleric 1, two level 1 slots, Bless (concentration). The made-up
+spells are `action-checks.ts`'s (`ownSpell`). Two own conditions, numbers and names only:
+`character:condition/incapacitated`, key `incapacitated`; `character:condition/unconscious`, key
+`unconscious`, with an `entity` grant of the first, as both SRDs' Unconscious gives Incapacitated
+(§8). Every value is worked out by hand from §8, ENG-46's test and the data.
+
+1. `INCAPACITATED_CONDITION` is `'incapacitated'`.
+2. `castWarnings(computed)` gives, in this order:
+   - `{ code: 'cannotCast', steps }` while `spell.cannotCast` is 1 or more, `steps` its breakdown;
+   - `{ code: 'incapacitated', condition }` while `conditions.incapacitated.level` is 1 or more,
+     `condition` the id of the entry of that key.
+3. The 2014 wizard in chain mail: `[{ code: 'cannotCast', steps: [{ kind: 'rule', rule:
+   'untrainedArmor', value: 1, change: 1 }] }]`. With the 2014 shield as well: the steps
+   `untrainedArmor` 1/1 and `untrainedShield` 1/0. The 2024 wizard in its chain mail: the
+   `untrainedArmor` step alone. The 2024 wizard with a shield only gives no warning (2024's
+   untrained shield takes its AC, not spells, ENG-46).
+4. Golden A storing the Incapacitated condition: `[{ code: 'incapacitated', condition:
+   'character:condition/incapacitated' }]`.
+5. Golden A at 0 hit points with both own conditions: the Unconscious one is had by ENG-62's rule,
+   its grant gives the Incapacitated one: the same warning as item 4. Golden B (2024) as ENG-20's
+   hexer 3 wears its chain mail without training (ENG-46 §11: `spell.cannotCast` 1 for golden B as
+   the hexer 3): at 0 hit points, the `untrainedArmor` warning and item 4's; at 12, the first
+   alone.
+6. Golden A at 0 hit points with an Unconscious condition that grants nothing: no warning. The pack
+   decides what the Unconscious condition includes.
+7. Golden A at 12 hit points with both own conditions, none stored: no warning.
+8. The 2014 wizard in chain mail storing the Incapacitated condition: two warnings, `cannotCast`
+   first.
+9. `castSpell` warns and never blocks: the wizard in chain mail casting the level 1 spell with a
+   level 1 slot gives `ok: true`, the change `slotsSpent.1` → 1 as before, and `outcome.warnings`
+   item 3's. Golden A storing Incapacitated casting Bless with a level 1 slot: the changes
+   `slotsSpent.1` → 1 and `concentration` → Bless as before, `outcome.warnings` item 4's. Golden A
+   with nothing: `outcome.warnings` `[]`.
+10. A refusal stays as it was: the incapacitated golden A casting a made-up cantrip with no
+    concentration is refused `unchanged`; `castWarnings` still gives item 4's warning for the
+    screen to show before the cast.
+11. Every existing test passes unchanged; the quality gate is green.
+
+#### 4. How to do it
+
+1. `casting.ts`: `INCAPACITATED_CONDITION`, `CastWarning`, `castWarnings(computed)`; `castSpell`
+   computes the character before the cast and returns its warnings in `outcome`.
+2. Tests (§7), then the gate.
+
+Technical choices (ADR 002):
+- **Both warn; none refuses.** The row asks which refuses and which warns. Both SRDs forbid the
+  cast in each case (§8), and both are rules, not bookkeeping: `CLAUDE.md` and SPEC §8.2 have rules
+  warn and never block, and ENG-46 §4 made `spell.cannotCast` a path for that reason. A cast can
+  still be the person's or the table's call (a DM's ruling, a feature the packs do not have yet).
+  The refusals `castSpell` already has stay: they are about what is stored (a slot that is not
+  there cannot be spent), not about a rule.
+- **Incapacitated is read by its key, as data.** The module reads
+  `conditions.incapacitated.level`, as ENG-62 reads `unconscious`. Which conditions include it
+  (Unconscious, Paralyzed, Petrified, Stunned in both SRDs, §8) is each entry's `entity` grant in
+  its pack, never a list in code: a homebrew condition that grants it warns the same way, and
+  item 6's entry that grants nothing does not.
+- **The "cannot cast" warning carries the path's breakdown**, not a fixed list of rule names: the
+  screen shows the steps as any breakdown (`untrainedArmor`, `untrainedShield`), and an effect a
+  homebrew entry puts on `spell.cannotCast` warns with its own step.
+- **`castWarnings` is exported**, so the cast screen (SHEET-47) shows the warning before the person
+  presses Cast, a cantrip included, which `castSpell` refuses as `unchanged` when it changes
+  nothing. `castSpell`'s `outcome.warnings` is the same list, for the screen after a cast, as
+  `revive`'s `outcome.warnings` (ENG-66).
+- **The cast is still the cast.** Its changes do not depend on the warnings: a concentration spell
+  cast while incapacitated is still held. Ending concentration because of the Incapacitated
+  condition is not a cast's rule (§9).
+
+#### 5. Stored data
+
+Nothing stored changes. The warnings are computed; `castSpell`'s entry is the same entry.
+
+#### 6. What a person will see
+
+Not a screen. SHEET-47 (the cast dialog) shows `castWarnings` before Cast, and the steps of a
+`cannotCast` warning as a breakdown.
+
+#### 7. Tests
+
+- `packages/system-5e/test/cast-warnings.test.ts` — `describe('SHEET-17 casting warns of what
+  forbids it')`: §3 items 1–10.
+- Control values from: ENG-46's test (`training.test.ts`: the steps of `spell.cannotCast` for the
+  wizard in chain mail, with the shield, in 2024); ENG-20's test (golden A's two level 1 slots and
+  Bless, the hexer's pact slots); ENG-62 (golden A's and B's Unconscious at 0 hit points); §8.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-28: SRD 5.1 as 5e-bits/5e-srd-api quotes it at
+`e6edf9a51fad4b59a7e9561fad6c15232caed214` (`packages/5e-database/src/2014/en/5e-SRD-Conditions.json`,
+`5e-SRD-Rules.json`); SRD 5.2.1 as the same commit's `2024/en/5e-SRD-Conditions.json` and
+foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` quote it
+(`packs/_source/content24/chapter-7/spells.yml`). The same commits as ENG-62. All CC-BY-4.0.
+
+**Armor without training.** ENG-46 §8 quotes both: SRD 5.1 (Armor Proficiency) and SRD 5.2.1
+(Armor Training) say "you can't cast spells" for armor worn without its training; 2014 says it of a
+shield too, 2024 does not. `spell.cannotCast` already holds this (ENG-46).
+
+**Incapacitated.** SRD 5.1 (Incapacitated): "An incapacitated creature can't take actions or
+reactions." SRD 5.2.1 (Incapacitated): "Inactive. You can't take any action, Bonus Action, or
+Reaction." and "No Concentration. Your Concentration is broken."
+
+**Every cast takes one of those.** SRD 5.1 (Casting Time): "Most spells require a single action to
+cast, but some spells require a bonus action, a reaction, or much more time to cast"; (Longer
+Casting Times): "you must spend your action each turn casting the spell". SRD 5.2.1 (Casting
+Time): "Most spells require the Magic action to cast, but some spells require a Bonus Action, a
+Reaction, or 1 minute or more"; (Longer Casting Times): "you must take the Magic action on each of
+your turns". So no cast is possible while incapacitated, in either edition.
+
+**Which conditions include Incapacitated.** SRD 5.1: "A paralyzed creature is incapacitated", "The
+creature is incapacitated" (Petrified), "A stunned creature is incapacitated", "An unconscious
+creature is incapacitated". SRD 5.2.1: Paralyzed, Petrified and Stunned each "Incapacitated. You
+have the Incapacitated condition."; Unconscious "Inert. You have the Incapacitated and Prone
+conditions". One rule in both editions; the entries' data (phase 3) carries it.
+
+**Concentration while incapacitated.** SRD 5.1 (Concentration): "You lose concentration on a spell
+if you are incapacitated or if you die." SRD 5.2.1: "Your Concentration is broken" (above). Not a
+cast's rule (§4, §9).
+
+No golden value is touched; no rules source disagrees with the SPEC. Nothing stops.
+
+#### 9. Not in this ticket
+
+- Showing the warnings: SHEET-47 (the cast dialog).
+- Gaining the Incapacitated condition ending concentration (both SRDs, §8): no action ends it
+  today but damage to 0 (ENG-20). Found, not fixed (§11).
+- Verbal components while the character can't speak (Unconscious, Paralyzed, Petrified, 2024's
+  Incapacitated "Speechless"), and the one-slot-a-turn rule of each edition: a turn and a spell's
+  components are not tracked; phase 3 or the turn screen.
+- A dead character casting: death is not a condition; the sheet's dead state is phase 2's screens.
+
+#### 10. Rake check
+
+- **The core names no game.** Everything is in `system-5e`; the keys `incapacitated` and the path
+  `spell.cannotCast` are the module's.
+- **Everything is data.** Which conditions include Incapacitated is each entry's grant, not a list
+  in code (§4).
+- **`compute()` is pure.** `castWarnings` reads a `Computed`; `castSpell` computes and changes
+  nothing more than before.
+- **Rules warn, never block** (§8.2). No new refusal.
+- **Each system's rules live in its module; no `if (ruleset === …)`.** The edition's difference
+  (2024's shield) stays in `rulesets/` through ENG-46's `untrained`; the Incapacitated rule is one
+  rule in both editions.
+- **A stored-shape change needs a migration.** None changes (§5).
+- **Licensing.** The rules are quoted from the CC-BY-4.0 SRDs in this ticket only; the test entries
+  hold names and numbers, no rules text.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured:
+- Before (`a500ec0`): `pnpm test` unit `Test Files 68 passed (68)`, `Tests 928 passed (928)`,
+  20.87 s; speed `Tests 2 passed (2)`, 3.21 s.
+- After: `pnpm test` unit `Test Files 69 passed (69)`, `Tests 935 passed (935)`, 21.23 s; speed
+  `Tests 2 passed (2)`, 3.65 s. 7 are new, all in `cast-warnings.test.ts`.
+- Lint: `Checked 220 files`, no error. Typecheck: `Scope: 6 of 7 workspace projects`, all 6
+  `Done`. No file in `apps/web` changed, so no `pnpm e2e`.
+- Rebased onto SHEET-19: unit `Test Files 69 passed (69)`, `Tests 939 passed (939)`, 20.99 s;
+  speed `Tests 2 passed (2)`, 3.66 s; lint `Checked 220 files`, no error; typecheck 6 of 6 `Done`.
+- The 2014 wizard in chain mail casting a level 1 spell: the change `slotsSpent.1` → 1 as before,
+  `outcome.warnings` `[{ code: 'cannotCast', steps: [untrainedArmor 1/1] }]`. Golden A storing
+  Incapacitated casting Bless: `slotsSpent.1` → 1 and `concentration` → Bless as before,
+  `outcome.warnings` `[{ code: 'incapacitated', condition: 'character:condition/incapacitated' }]`.
+- The tests catch mistakes. Each change made alone in `casting.ts`, then `cast-warnings.test.ts`
+  and `casting.test.ts` run (18 tests); each failed at least one, and the file was restored
+  (compared equal to its copy): the outcome always empty, 1 failed; the condition's level ignored,
+  4; `spell.cannotCast` never read, 4; the key `unconscious` read for `incapacitated`, 4; a cast
+  refused while it warns, 2.
+
+Differences from §3:
+- Item 5 first said golden B as the hexer 3 gives the Incapacitated warning alone. Golden B wears
+  its chain mail, which the hexer gives no training for, as ENG-46 §11 measured; the first run
+  showed the `untrainedArmor` warning too. §3 now says so; the run's value matches ENG-46's.
+- Size S held.
+
+Found, not fixed:
+- Gaining the Incapacitated condition does not end concentration: `setConditionLevel` (ENG-69)
+  leaves `state.concentration`, though both SRDs end it (§8). Damage to 0 and a knock-out already
+  end it (`applyDamage`). New row **SHEET-62** (XS), wave 3, after SHEET-61.
+
+Nothing for the changelog: no screen shows the warnings yet (SHEET-47).
