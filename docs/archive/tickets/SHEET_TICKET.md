@@ -627,10 +627,11 @@ Hit Points or fewer remaining." SRD 5.1 has no such term. It is not a defense (ย
 
 #### 11. What came out of it
 
-Quality gate, 2026-10-28: `pnpm lint` 203 files, no fixes; `pnpm typecheck` 6 projects, no
-errors; `pnpm test` 64 files, 891 passed, 0 failed (879 before, +12), then the speed project 1
-file, 2 passed. Coverage: statements 99.53 % (3227/3242), lines 99.92 % (2833/2835). Not
-`apps/web`, so no `pnpm e2e`.
+Quality gate, 2026-10-28, on `main` at `78390e0` (SHEET-01, 02, 07 landed while this ran):
+`pnpm lint` 216 files, no fixes; `pnpm typecheck` 6 projects, no errors; `pnpm test` 66 files,
+908 passed, 0 failed, 15.3 s, then the speed project 1 file, 2 passed. Before the rebase: 891
+passed, against 879 without this ticket (+12). Coverage: statements 99.53 % (3227/3242), lines
+99.92 % (2833/2835). Not `apps/web`, so no `pnpm e2e`.
 
 Differences from ยง3: none. The first draft gave a path only for an effect switched on, so a
 switched-off toggle's key had no path and a formula reading it warned `missingPath`; the test of
