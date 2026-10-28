@@ -267,13 +267,13 @@ Nothing to check. No rules facts. The palette names and the four animation names
 
 <!-- Filled at the end. Never left empty. -->
 
-**Measured on 2026-10-28:**
+**Measured on 2026-10-28, on top of SHEET-07 (`2dc081f`):**
 
-- `pnpm lint`: `Checked 203 files in 409ms. No fixes applied.`, exit 0.
+- `pnpm lint`: `Checked 203 files in 451ms. No fixes applied.`, exit 0.
 - `pnpm typecheck`: every project `Done`.
-- `pnpm test`: unit `Test Files 64 passed (64)`, `Tests 882 passed (882)`, 21.24 s; speed
-  `Tests 2 passed (2)`, 3.40 s.
-- `pnpm e2e`: `12 passed (18.4s)` on `pixel-7`.
+- `pnpm test`: unit `Test Files 64 passed (64)`, `Tests 884 passed (884)`, 19.42 s; speed
+  `Tests 2 passed (2)`, 3.11 s.
+- `pnpm e2e`: `14 passed (16.3s)` on `pixel-7`.
 - The real `pnpm lint` on the §2 probe in `apps/web/src`: 2 findings, `plugin` at 2:23 (colour)
   and 2:70 (font). The probe was deleted.
 
