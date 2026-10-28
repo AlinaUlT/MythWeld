@@ -73,6 +73,20 @@ function codes<W extends { message: string }>(result: { warnings: readonly W[] }
 /** Each kind of warning without its `message`. */
 type WithoutMessage<W> = W extends unknown ? Omit<W, 'message'> : never;
 
+/** Iron Will's two prerequisites, which neither Ash nor Brook meets (SHEET-14). */
+const ironWillUnmet = [
+  {
+    code: 'unmetPrerequisite',
+    entity: 'tales-core:talent/iron-will',
+    prerequisite: { kind: 'level', min: 4 },
+  },
+  {
+    code: 'unmetPrerequisite',
+    entity: 'tales-core:talent/iron-will',
+    prerequisite: { kind: 'proficiency', category: 'craft', key: 'rope' },
+  },
+];
+
 /** A grant of Tales' pack, by entity id and grant id. */
 function grantOf(id: string, grantId: string) {
   const grant = pack.entities
@@ -173,6 +187,7 @@ describe('ENG-11 gathering a character’s entities', () => {
     ]);
     expect(codes(result)).toEqual([
       { code: 'missing', id: 'tales-core:talent/gone-missing', from: 'character' },
+      ...ironWillUnmet,
     ]);
     expect(result.warnings[0]?.message).toBe(
       'Missing: tales-core:talent/gone-missing (given by character).',
@@ -280,6 +295,7 @@ describe('ENG-11 gathering a character’s entities', () => {
         ruleset: 'second-age',
         mixingAllowed: false,
       },
+      ...ironWillUnmet,
     ]);
 
     const gone = computed(
@@ -756,6 +772,7 @@ describe("ENG-49 ids a module's grant names, looked up once", () => {
     expect(codes(result)).toEqual([
       brookMissing,
       { code: 'missing', id: 'tales-core:talent/gone', from: 'character:talent/wish#wish' },
+      ...ironWillUnmet,
     ]);
     expect(result.warnings[1]?.message).toBe(
       'Missing: tales-core:talent/gone (given by character:talent/wish#wish).',
@@ -766,16 +783,19 @@ describe("ENG-49 ids a module's grant names, looked up once", () => {
 
     // Deep Lungs is in the pack: no warning, and still not gathered.
     const found = computed(wishing([boonOf('tales-core:talent/deep-lungs')]));
-    expect(codes(found)).toEqual([brookMissing]);
+    expect(codes(found)).toEqual([brookMissing, ...ironWillUnmet]);
     expect(ids(found)).not.toContain('tales-core:talent/deep-lungs');
   });
 
   it('looks nothing up without namedIds, nor for a grant not reached', () => {
     const gone = wishing([boonOf('tales-core:talent/gone')]);
     const { namedIds: _, ...unnamed } = talesModule;
-    expect(codes(computed(gone, unnamed))).toEqual([brookMissing]);
+    expect(codes(computed(gone, unnamed))).toEqual([brookMissing, ...ironWillUnmet]);
     // Brook is level 3.
-    expect(codes(computed(wishing([boonOf('tales-core:talent/gone', 4)])))).toEqual([brookMissing]);
+    expect(codes(computed(wishing([boonOf('tales-core:talent/gone', 4)])))).toEqual([
+      brookMissing,
+      ...ironWillUnmet,
+    ]);
     const dormant: SystemModule<TalesCharacter, TalesEntity> = {
       ...talesModule,
       entities: (character, find, findKey) =>
@@ -785,12 +805,12 @@ describe("ENG-49 ids a module's grant names, looked up once", () => {
             entity.id === 'character:talent/wish' ? { ...entity, dormant: true } : entity,
           ),
     };
-    expect(codes(computed(gone, dormant))).toEqual([brookMissing]);
+    expect(codes(computed(gone, dormant))).toEqual([brookMissing, ...ironWillUnmet]);
     const leftOut: SystemModule<TalesCharacter, TalesEntity> = {
       ...talesModule,
       grantsOf: (_, entity) => (entity.id === 'character:talent/wish' ? [] : (entity.grants ?? [])),
     };
-    expect(codes(computed(gone, leftOut))).toEqual([brookMissing]);
+    expect(codes(computed(gone, leftOut))).toEqual([brookMissing, ...ironWillUnmet]);
   });
 
   it('warns once per id and place: a missing chosen id once, one id from two places twice', () => {
@@ -808,6 +828,7 @@ describe("ENG-49 ids a module's grant names, looked up once", () => {
       brookMissing,
       { code: 'missing', id: 'tales-core:talent/gone', from: 'character:talent/wish#wish' },
       { code: 'missing', id: 'tales-core:talent/gone', from: 'character:talent/wish#pick' },
+      ...ironWillUnmet,
     ]);
     expect(
       result.pendingChoices.map(({ part, chosen, options }) => [part, chosen, options]),
@@ -824,7 +845,7 @@ describe("ENG-49 ids a module's grant names, looked up once", () => {
         },
       }),
     );
-    expect(codes(twice)).toEqual([brookMissing]);
+    expect(codes(twice)).toEqual([brookMissing, ...ironWillUnmet]);
   });
 
   it('is pure: frozen inputs give the result of unfrozen ones', () => {
@@ -872,10 +893,11 @@ describe("ENG-35 a module's rules see the whole character", () => {
     const result = computed(brook, ruled);
     expect(codes(result)).toEqual([
       brookMissing,
+      ...ironWillUnmet,
       { code: 'characterRule', rule: 'entitiesCounted', data: { name: 'Brook', entities: 4 } },
       { code: 'characterRule', rule: 'noData' },
     ]);
-    expect(result.warnings.map(({ message }) => message).slice(1)).toEqual([
+    expect(result.warnings.map(({ message }) => message).slice(3)).toEqual([
       'A rule made up here, given data.',
       'A rule made up here, without data.',
     ]);
@@ -884,7 +906,7 @@ describe("ENG-35 a module's rules see the whole character", () => {
 
   it('adds no warning for a module without `ruleWarnings`', () => {
     expect(talesModule.ruleWarnings).toBeUndefined();
-    expect(codes(computed(brook))).toEqual([brookMissing]);
+    expect(codes(computed(brook))).toEqual([brookMissing, ...ironWillUnmet]);
   });
 });
 

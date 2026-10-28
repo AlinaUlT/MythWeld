@@ -199,7 +199,7 @@ chats never claim one version number.
 | SHEET-12 | The player page shows its six sections | S | 🔲 |
 | SHEET-13 | Settings keep the person's display choices | S | 🔲 |
 | **Rules the screens need** | **engine and module, no screen** | | |
-| SHEET-14 | An unmet prerequisite gives a warning | S | 🔲 |
+| SHEET-14 | An unmet prerequisite gives a warning | S | ✅ 2026-10-28 |
 | SHEET-15 | Resistances, immunities, vulnerabilities are computed from effects | S | ✅ 2026-10-28 |
 | SHEET-16 | Damage applies the character's defenses by its type | S | 🔲 |
 | SHEET-17 | Casting warns of what forbids it | S | 🔲 |
@@ -297,10 +297,6 @@ chats never claim one version number.
   theme (dark by default, light), the motion switch (SHEET-05), the units (feet or metres, pounds
   or kilograms; stored units stay feet and pounds), "I roll myself" (SPEC §6.5). Language, backup,
   packs, AI and purchases come with their phases.
-- **SHEET-14** — found by ENG-04: no row checks a prerequisite against a character (SPEC §5.5,
-  §8.2: a warning, never a block). Found by ENG-11: Tales' `unmetPrerequisites` (ENG-27) are its
-  test data; `Computed.entities` gives the entities to check. The manual form lets a person pick a
-  class that has multiclass prerequisites; phase 4's wizard shows the same warnings.
 - **SHEET-16** — found by ENG-20: `applyDamage` takes the damage the person types, resistance,
   immunity and vulnerability already applied. It takes the damage's type and applies SHEET-15's
   defenses in the engine, for the number pad (SHEET-40). Found by SHEET-15: `defensesOf(values)`

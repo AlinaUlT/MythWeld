@@ -113,7 +113,15 @@ describe('ENG-12 stat scores in the base phase', () => {
     expect(Object.fromEntries(Object.entries(result.values).filter(isStatPath))).toEqual(
       Object.fromEntries(statPaths),
     );
-    expect(codes(result).map(({ code }) => code)).toEqual(expected.missing.map(() => 'missing'));
+    const warned = codes(result).map(({ code }) => code);
+    expect(warned.filter((code) => code !== 'unmetPrerequisite')).toEqual(
+      expected.missing.map(() => 'missing'),
+    );
+    // SHEET-14: the prerequisites unmet are ENG-27's.
+    const unmet = result.warnings.flatMap((warning) =>
+      warning.code === 'unmetPrerequisite' ? [warning.entity] : [],
+    );
+    expect([...new Set(unmet)]).toEqual(expected.unmetPrerequisites);
   });
 
   it('Brook: the breakdown of a base, a grant, a toggled effect, a cap and each maximum', () => {

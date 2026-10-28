@@ -1,4 +1,5 @@
 import type { Gathered } from '@grimoire/engine';
+import type { Prerequisite } from '@grimoire/schema';
 import type { FifthEditionCharacter } from './character';
 import type { ClassDef, FifthEditionEntity, SubclassDef } from './entity-types';
 
@@ -29,4 +30,19 @@ export function classesOf(
     const subclass = subclassId === undefined ? undefined : had.get(subclassId);
     return [{ entity, level, ...(subclass?.type === 'subclass' && { subclass }) }];
   });
+}
+
+/**
+ * SHEET-14: the prerequisites an entity asks of the character. A class of a character with more
+ * than one class asks its multiclass prerequisites besides its own, the first class's included:
+ * both SRDs' Multiclassing, "Prerequisites", ask them of "your current class" and the new one.
+ */
+export function prerequisitesOf(
+  { systemData }: Pick<FifthEditionCharacter, 'systemData'>,
+  entity: FifthEditionEntity,
+): readonly Prerequisite[] {
+  const own = entity.prerequisites ?? [];
+  if (entity.type !== 'class' || systemData.classes.length < 2) return own;
+  if (!systemData.classes.some(({ id }) => id === entity.id)) return own;
+  return [...own, ...(entity.multiclass?.prerequisites ?? [])];
 }

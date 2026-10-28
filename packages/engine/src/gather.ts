@@ -1,4 +1,12 @@
-import type { Effect, EntityId, EntityPartId, Grant, L10n, UsesDef } from '@grimoire/schema';
+import type {
+  Effect,
+  EntityId,
+  EntityPartId,
+  Grant,
+  L10n,
+  Prerequisite,
+  UsesDef,
+} from '@grimoire/schema';
 import { ANY_RULESET, type ContentIndex, type IndexedEntity, shareRuleset } from './content-index';
 
 // ENG-11: SPEC §6.1 steps 1 and 2. The entities a character has are the ones its module names and
@@ -54,6 +62,7 @@ export interface GatherableEntity extends IndexedEntity {
   readonly tags?: readonly string[];
   readonly grants?: readonly GrantView[];
   readonly effects?: readonly Effect[];
+  readonly prerequisites?: readonly Prerequisite[];
 }
 
 /** One grant of an entity, with the system's own type. */

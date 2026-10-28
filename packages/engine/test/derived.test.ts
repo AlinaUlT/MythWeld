@@ -146,7 +146,12 @@ describe('ENG-28 derived values a system module supplies', () => {
       'skills.steady.total': 7, // nerve 5 + 2 × 0 + `will` 2 (before effects: 5)
       'skills.steady.passive': 12, // 5 + 7 (before effects: 10)
     });
-    expect(warnings.map(({ code }) => code)).toEqual(['missing']);
+    // Iron Will's two prerequisites are unmet (SHEET-14).
+    expect(warnings.map(({ code }) => code)).toEqual([
+      'missing',
+      'unmetPrerequisite',
+      'unmetPrerequisite',
+    ]);
   });
 
   it('Ash: the breakdown of the level, a modifier of each kind, a knack, a total, a passive', () => {
