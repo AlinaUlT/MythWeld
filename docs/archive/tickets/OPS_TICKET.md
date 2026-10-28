@@ -991,3 +991,23 @@ with phase 1's gate run in its §11, as its note says. ENG-52's test fails by th
 as ENG-23's speed pass does: OPS-28's hat is widened to the whole gate, and its note holds the
 measurements.
 Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-31 The chat with the owner is in English · XS
+
+**Hat:** The chat with the owner is in English
+**Where:** `CLAUDE.md` — "Working with the owner" gets one bullet
+**Depends on:** Nothing
+**Screen:** No
+
+**What it should look like when done:**
+1. The owner asked in the chat after SHEET-17: speak only English while working on this project.
+2. `CLAUDE.md`, "Working with the owner", first bullet: "The chat is in English, as everything in
+   this project is."
+3. Nothing else changes: `docs/SPEC.md` stays in Russian, and the Language section's three
+   exceptions stay.
+
+**Tests:** none; a document change. The quality gate runs as for any commit.
+**What came out of it:** Done as item 2 says. Gate measured on this commit is in the chat report.
+Nothing for the changelog; a person sees no change.

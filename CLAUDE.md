@@ -187,6 +187,7 @@ Three exceptions. They are data, not wording:
 
 ## Working with the owner
 
+- **The chat is in English**, as everything in this project is.
 - **Simple words.** Explain a term the first time you use it.
 - **Literal, not figurative.** No analogies. Show the exact text, value or command output.
 - **One fact per line, short sentences.** A list of facts beats a paragraph.

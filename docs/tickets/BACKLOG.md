@@ -750,6 +750,7 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-28 | The quality gate gives one verdict for one commit, whatever the load | S | 🔲 |
 | OPS-29 | Phase 2 is cut into rows that run in waves | S | ✅ 2026-10-22 |
 | OPS-30 | `RUNNING.md` names the container's current Chromium path | XS | 🔲 |
+| OPS-31 | The chat with the owner is in English | XS | ✅ 2026-10-28 |
 
 - **OPS-28** — found by ENG-66 (ENG-66 §11): ENG-23's speed pass (`compute.speed.ts`, the median
   × 4 at most 10 ms) fails on some runs in the cloud container with no code changed. On `05f3430`,
