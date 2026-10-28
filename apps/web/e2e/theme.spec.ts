@@ -28,3 +28,42 @@ test('SHEET-01 the page paints with the base theme, dark by default', async ({
   expect(hex(light)).toBe(baseTheme.light['color-bg']);
   await page.screenshot({ path: testInfo.outputPath('light.png') });
 });
+
+test('SHEET-03 the shell draws its slots, and a skin refills one without a component', async ({
+  page,
+}, testInfo) => {
+  await page.goto('./');
+  const slots = page.locator('[data-skin-slot]');
+  await expect(slots).toHaveCount(3);
+  expect(
+    await slots.evaluateAll((all) => all.map((el) => el.getAttribute('data-skin-slot'))),
+  ).toEqual(['app', 'page', 'dock']);
+  const look = await page.evaluate(() => {
+    const style = (name: string) =>
+      getComputedStyle(document.querySelector(`[data-skin-slot="${name}"]`) as Element);
+    return {
+      app: style('app').backgroundColor,
+      page: style('page').backgroundColor,
+      dock: style('dock').backgroundColor,
+      shadow: style('dock').boxShadow,
+    };
+  });
+  expect(hex(look.app)).toBe(baseTheme.dark['color-bg']);
+  expect(look.page).toBe('rgba(0, 0, 0, 0)');
+  expect(hex(look.dock)).toBe(baseTheme.dark['color-surface']);
+  expect(look.shadow).toBe('rgba(0, 0, 0, 0.3) 0px -4px 12px 0px');
+  await page.screenshot({ path: testInfo.outputPath('slots-dark.png') });
+
+  // A skin fills the same key with a gradient; the shell paints it as it is.
+  await page.evaluate(() =>
+    document.documentElement.style.setProperty(
+      '--theme-slot-app-background',
+      'linear-gradient(var(--theme-color-hp), var(--theme-color-temp))',
+    ),
+  );
+  const image = await page
+    .locator('[data-skin-slot="app"]')
+    .evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(image).toMatch(/^linear-gradient\(/);
+  await page.screenshot({ path: testInfo.outputPath('slots-skin.png') });
+});

@@ -113,11 +113,14 @@ describe('SHEET-01 base theme tokens', () => {
     });
   }
 
+  // A slot's keys are read by <Slot> itself, not by a Tailwind utility (SHEET-03).
   it('maps every key in index.css once, and nothing else', () => {
     const block = indexCss.slice(indexCss.indexOf('@theme inline'));
     const mapped = [...block.matchAll(/--([a-z0-9-]+): var\(--theme-([a-z0-9-]+)\);/g)];
     for (const [, key, source] of mapped) expect(source).toBe(key);
-    const keys = Object.keys({ ...baseTheme.shared, ...baseTheme.light });
+    const keys = Object.keys({ ...baseTheme.shared, ...baseTheme.light }).filter(
+      (key) => !key.startsWith('slot-'),
+    );
     expect(mapped.map((match) => match[1]).sort()).toEqual(keys.sort());
   });
 

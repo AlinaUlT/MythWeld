@@ -1140,3 +1140,137 @@ Found, not fixed:
   end it (`applyDamage`). New row **SHEET-62** (XS), wave 3, after SHEET-61.
 
 Nothing for the changelog: no screen shows the warnings yet (SHEET-47).
+
+---
+
+### SHEET-03 Screens draw named slots the base theme fills
+
+**Hat:** the skin slots as data
+**Depends on:** SHEET-01
+**Size:** S
+**Screen:** Yes — the current shell: its background, its page and its bottom bar become slots;
+the values are those of the `V3-*` boards and `docs/design/mockups/README.md`
+**SPEC:** ADR 015 items 1, 6 and 13
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/theme/slots.ts` — changes (empty since SHEET-01): the slot names,
+the CSS properties each sets, and the base theme's values.
+- `apps/web/src/theme/Slot.tsx` — new: the component a screen draws a slot with.
+- `apps/web/src/shell/AppShell.tsx` — changes: the shell draws the `app`, `page` and `dock`
+  slots instead of its own `bg-bg`.
+- `apps/web/test/theme.test.ts` — changes: the `index.css` mapping check leaves out slot keys.
+- `docs/tickets/BACKLOG.md` — changes: the phase 2 note tells screen rows to draw with `<Slot>`.
+
+#### 2. What is missing now
+
+- `apps/web/src/theme/slots.ts` is `export const slots: ThemePart = {};`.
+- A screen paints its background with a Tailwind colour class (`AppShell.tsx`: `bg-bg` twice).
+  A background class can only hold a colour, so a skin could not put a gradient or a picture
+  there.
+- The token's rings exist only on the boards. Measured with `grep -o` over `V3-*.html`:
+  `0 0 0 2px #FFFFFF, 0 0 0 4px #1C1D20` 18 times in 16 boards; in `V3-Token`, the frame choice
+  "Thin" `0 0 0 1px #5E6269` and "Double" `0 0 0 2px #FFFFFF, 0 0 0 3px #1C1D20, 0 0 0 5px
+  #FFFFFF, 0 0 0 6px #1C1D20`, next to "Ring".
+- The boards' other slot looks: the sheet's header `#FFFFFF`; the dock `#FFFFFF` with
+  `0 -4px 12px rgba(0, 0, 0, 0.05)`; cards and die tiles `#FFFFFF`; a filled button and the
+  portrait's circle `#1C1D20`; the page `#F5F5F3`.
+
+#### 3. What it should look like when done
+
+1. 12 slots exist, named in `slotProperties`: `app`, `page`, `character-page`, `header`, `dock`,
+   `card`, `button`, `portrait`, `token-frame-thin`, `token-frame-ring`, `token-frame-double`,
+   `dice`.
+2. Each slot property has one theme key `slot-<slot>-<property>`, filled by the base theme in
+   both modes; no other `slot-` key is filled.
+3. Each light value, with its tokens read, equals what the board draws (the values of §2).
+4. The page slots are `transparent`, so the app background shows through them.
+5. `<Slot name as>` draws the element asked for, with `data-skin-slot` and a style whose every
+   property reads `var(--theme-slot-…)`; a style the screen passes cannot override the slot's.
+6. The built shell has 3 slots: `app` paints the dark `bg`, `page` is clear, `dock` paints the
+   dark `surface` with the dark dock shadow.
+7. Setting `--theme-slot-app-background` to a gradient at run time paints the gradient, with no
+   component changed.
+
+#### 4. How to do it
+
+1. `slotProperties` maps each slot to the CSS properties it sets. `background` (the shorthand,
+   so a value may be a colour, a gradient or a `url()` picture, an animated one included) or
+   `box-shadow` (the rings).
+2. `slots` fills each key in `shared` with a reference to a colour or shadow token, so light and
+   dark follow their own colours without a second copy.
+3. `slotStyle(name)` builds the inline style; `Slot` spreads the screen's style first, then the
+   slot's.
+4. Slot keys are not Tailwind utilities, so `index.css` does not map them; SHEET-01's mapping
+   test leaves them out.
+5. The token frame is three slots, one per frame the person picks on `V3-Token` (SHEET-56 stores
+   the choice), so a skin can fill each.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+The current shell at 360×800. No new text, so no i18n key.
+- The bottom bar takes the dock's look: dark `surface` `#1C1D21` (was `bg` `#131417`), with the
+  dark dock shadow.
+- The page and its background look as before.
+
+#### 7. Tests
+
+- `apps/web/test/slots.test.tsx` — the 12 names; every key filled in both modes and no other;
+  11 light values against the `V3-Sheet`, `V3-Dice` and `V3-Token` boards; the clear pages;
+  `slotStyle('dock')`; `<Slot>` rendered to HTML.
+- `apps/web/e2e/theme.spec.ts` — the built shell's 3 slots and their computed colours and
+  shadow; a gradient set at run time is painted.
+- Control values from: the `V3-*` boards (§2), read by the test itself.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact.
+
+#### 9. Not in this ticket
+
+- Drawing the header, cards, buttons, the portrait, the token frame and the dice — the screen
+  rows that build them, with `<Slot>` (the phase 2 note in `BACKLOG.md`).
+- A part's shape: corners, borders, its style menu — SHEET-04. A slot holds only the fill.
+- A video filling a slot, and a frame picture that reaches outside the circle — the skins' phase
+  (ADR 015 items 14–16). `Slot` is the one place that will draw them, so no screen changes.
+- Animations in a slot, and stopping them — SHEET-05.
+- The skin file, its schema and its import — the theme editor's phase (ADR 015 item 14).
+
+#### 10. Rake check
+
+- **No look is written in a component:** `Slot.tsx` and the shell name no colour; every value is
+  theme data; SHEET-02's lint passes on both.
+- **A skin is data, never code:** a slot is filled by a value in a theme key; a skin cannot add a
+  slot, since `slotProperties` is the list.
+- **No user-facing string literal:** no new text.
+- **Nothing invisible:** no zero-width character, byte-order mark or non-breaking space in the
+  changed files (checked with a Python scan).
+
+#### 11. What came out of it
+
+- `pnpm lint`: 221 files, no fixes. `pnpm typecheck`: green.
+- `pnpm test`: 948 passed, 0 failed (932 before, plus 16 in `slots.test.tsx`), 17.07 s; the speed
+  pass 2 passed, 2.96 s.
+- `pnpm e2e`: 16 passed, 0 failed, 12.5 s, with the new `SHEET-03` test.
+- Rebased onto SHEET-17, which a parallel chat pushed meanwhile. On top of it: `pnpm lint` 222
+  files, no fixes; `pnpm test` 955 passed, 0 failed, 16.89 s, the speed pass 2 passed, 2.62 s;
+  `pnpm e2e` 16 passed, 0 failed, 10.0 s.
+- Measured in the built app (dark): `app` `#131417`; `page` `rgba(0, 0, 0, 0)`; `dock` `#1C1D21`
+  with `rgba(0, 0, 0, 0.3) 0px -4px 12px 0px`. A `linear-gradient(…)` set on
+  `--theme-slot-app-background` is the `app` slot's computed `background-image`.
+- Differs from the row: the row named "each page background"; ADR 015 item 1 names two kinds,
+  the person's pages and the character pages, so there are two page slots, `page` and
+  `character-page`. The token frame is three slots, one per board frame.
+- The header slot takes the sheet's header (`#FFFFFF` on `V3-Sheet`); the player pages' headers
+  on the boards have no background of their own, so they draw no header slot.
+
+**Found, not fixed:** nothing.
+
+**Changelog:** "The bottom bar takes the dock's look: the surface colour with a soft shadow above
+it."

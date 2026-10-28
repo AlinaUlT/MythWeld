@@ -155,8 +155,10 @@ phase 1's gate is proved. The rows come from SPEC §12 stage 2 and from the ADRs
 phase 2: ADR 008 (navigation), ADR 009, 010, 011 and 013 (the sheet, dice, descriptions, the home
 page) and ADR 015 (the skin layer comes first). Each phase 1 note that named phase 2 is now the
 note of the row that takes it. A screen row builds from its boards in `docs/design/mockups/` and
-its row in BRIEF Part 5 (OPS-22). BRIEF's prompts still hold text that later ADRs replaced, so a
-screen row reads its prompt with the ADRs, and the ADRs win (OPS-27 §11).
+its row in BRIEF Part 5 (OPS-22). It draws the backgrounds, the header, the dock, cards, buttons,
+the portrait, the token frame and the dice with `<Slot>` (SHEET-03). BRIEF's prompts still hold
+text that later ADRs replaced, so a screen row reads its prompt with the ADRs, and the ADRs win
+(OPS-27 §11).
 
 **Running rows at the same time.** The table is in work order. The rows of one wave run in
 parallel chats once every row of the waves before it is closed: each row owns files no other row
@@ -185,7 +187,7 @@ chats never claim one version number.
 | **Skin layer** | **before the first screen (ADR 015 item 13)** | | |
 | SHEET-01 | The base theme's tokens cover every token the mockups use | S | ✅ 2026-10-28 |
 | SHEET-02 | Lint fails on a colour, font or animation written in a component | S | ✅ 2026-10-28 |
-| SHEET-03 | Screens draw named slots the base theme fills | S | 🔲 |
+| SHEET-03 | Screens draw named slots the base theme fills | S | ✅ 2026-10-28 |
 | SHEET-04 | Each part takes its style from a fixed menu | M | 🔲 |
 | SHEET-05 | Animations are presets that stop for reduced motion | S | 🔲 |
 | SHEET-06 | The app's fonts ship inside it, each licence read | S | 🔲 |
@@ -251,11 +253,6 @@ chats never claim one version number.
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
-- **SHEET-03** — ADR 015 item 6: the app background, each page background, the token frame, the
-  portrait, the header, the dock, cards, buttons, the dice. Found by SHEET-01: the slots fill
-  `apps/web/src/theme/slots.ts`, made empty for this row. The rings around the token on the
-  boards (`0 0 0 2px` the surface, `0 0 0 4px` the strong colour; a double ring; a 1 px muted
-  ring) are the token frame's, and were left to this row.
 - **SHEET-04** — ADR 015 item 7: the parts phase 2 draws (button, icon button, card, panel, chip,
   bottom sheet, toast), each with its fixed menu of styles; the base theme picks one each.
   Found by SHEET-01: the styles fill `apps/web/src/theme/parts.ts`, made empty for this row.
