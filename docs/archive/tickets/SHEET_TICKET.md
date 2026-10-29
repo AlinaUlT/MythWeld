@@ -5458,3 +5458,159 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-28 The manual form's equipment step adds items
+
+**Hat:** The manual form's equipment step adds items
+**Depends on:** SHEET-27, ENG-44, ENG-49
+**Size:** S
+**Screen:** Yes — P3 New character; boards `V3-Create` in `docs/design/mockups/`; BRIEF Part 5
+row "P3 Character creation"
+**SPEC:** §7.4 (manual mode), §5.8 (the inventory row), §8.2; ADR 005 item 3 (point 5, the
+edition badge)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/pages/create/EquipmentStep.tsx` — changes (SHEET-27's empty step).
+- `apps/web/src/pages/create/draft.ts` — `DraftItem`, `Draft.items`, `withItem`, and `askOf`
+  passes the rows.
+- `apps/web/src/pages/create/warnings.ts` — `itemWarnings`.
+- `packages/system-5e/src/manual.ts` — `ManualItem`, `ManualCharacterAsk.items`; the maker writes
+  the inventory rows.
+- `apps/web/src/locales/en/create.json` — `equipment.*`.
+
+#### 2. What is missing now
+
+Measured on `30f4382`: `EquipmentStep.tsx` is 14 lines and draws the card "Equipment" with
+"Coming later". `manualCharacter` writes `inventory: []` always. `grep -rn "inventory"
+apps/web/src` finds no code that adds a row. A carried item of the other edition gives no warning
+anywhere: gathering names only the worn items (ENG-44), and a lookup of the rest is the form's
+(ENG-49's note).
+
+#### 3. What it should look like when done
+
+1. The Equipment card lists the starting inventory: each row has the item's name with its edition
+   ("Chain Mail · 2024"), a quantity with "−" and "+", a "Worn" tick, and a remove button.
+2. A picker "Add an item" offers the ticked packs' items of the rules base, or of every edition
+   when mixing is on. Picking one adds a row of 1, not worn; picking one already listed adds 1 to
+   its row. A row holds 1 to 999.
+3. The live bar follows: golden B's inputs with a chain mail worn show AC 16 (the chain mail's
+   base 16, no Dex); carried, AC 11.
+4. A row whose item is of the other edition warns in amber under itself, worn or carried
+   (`otherRuleset`, or `otherRulesetNotMixing` when mixing is off); a row whose item no ticked
+   pack holds stays, named `Missing: <id>`, and warns. Nothing blocks "Create".
+5. "Create" saves each row as an inventory row with the typed `itemId`, `qty` and `equipped`, and
+   `attuned: false`. A form with no rows saves `inventory: []`.
+6. With no ticked pack holding items the card says so instead of showing the picker.
+7. The step names no item and no category in code (D3); the words are `create` keys.
+
+#### 4. How to do it
+
+1. Module: `ManualCharacterAsk.items` (`uid`, `itemId`, `qty`, `equipped`); `manualCharacter`
+   maps each to a row with `attuned: false`. The module makes no ids, so the app gives each `uid`.
+2. `draft.ts`: `Draft.items`; `withItem(draft, id, uid)`; `askOf` maps rows to the ask.
+3. `warnings.ts`: `itemWarnings(entities, id, draft)` looks the item up itself, in the packs'
+   entities, for every row, with the keys `warningsAbout` uses.
+4. `EquipmentStep`: a row per item (a `panel` part, `icon-button` parts for the buttons, `Tick`
+   for "Worn", `Warnings` under it) and a `Picker` that adds.
+
+Technical choices (ADR 002):
+- **Picking a listed item adds one to its row**, not a second row: two rows of one armor are one
+  armor worn, and one row with a quantity says it plainly. The sheet's Gear tab (SHEET-50) still
+  reads rows, so a file with two rows opens as it is.
+- **The step warns by its own lookup, not from `computed.warnings`.** Gathering names only the
+  worn items; a carried item of the other edition is silent in `compute()` (ENG-49). One lookup
+  for every row, so a worn item is not warned twice.
+- **The edition is shown on every row**, not only when mixing, as ADR 005 item 3 point 5 says
+  ("a badge shows each entry's edition"). The picker's options show it only when mixing, as the
+  other pickers do.
+- **"Worn" only.** Attunement, containers and coins belong to the Gear tab (§9).
+
+#### 5. Stored data
+
+Nothing stored changes. The rows are the existing inventory row (`uid`, `itemId`, `qty`,
+`equipped`, `attuned`); core 2, fifth edition 9.
+
+#### 6. What a person will see
+
+The Equipment card of `/characters/new`, below Ability scores, at 360×800, dark and light. States:
+empty (the picker only); two rows, one with an amber warning (a 2014 shield on 2024 rules with
+mixing on); a missing item (its pack unticked). Keys in `create.json`: `equipment.title`, `add`
+"Add an item", `pick` "Pick an item", `none` "No ticked pack holds items. Tick a content pack
+above.", `row` "Item {{name}}", `remove` "Remove {{name}}", `less` "One fewer {{name}}", `more`
+"One more {{name}}", `qty` "× {{qty}}", `worn` "Worn". The warnings reuse `warn.*`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/manual.test.ts` — `describe('SHEET-28 the manual form lists the
+  starting inventory')`: golden A's and B's gear typed in gives their own inventory rows exactly;
+  no items gives `[]`; a quantity and a carried item survive the schema. SHEET-27's golden checks
+  (B: AC 17, A: AC 18) now run with the gear typed in the ask, not copied after.
+- `apps/web/test/create.test.ts` — `describe('SHEET-28 the equipment step')`: the options per
+  edition; `withItem` (new row, one more, the cap); the ask; golden B's inputs with a chain mail
+  worn (AC 16) and carried (AC 11); `itemWarnings` for the other edition, mixing off, and missing.
+- `apps/web/e2e/create.spec.ts` — the step in Chromium at 360×800: add, wear, quantity, the
+  warning, the missing row, remove, Create.
+- Control numbers from: the SRD's chain mail (AC 16, no Dex bonus) and shield (+2), §8.
+
+#### 8. Checked against the source
+
+Source: the fixture packs `srd-2014.ts` and `srd-2024.ts` (SRD 5.1 and 5.2.1, CC-BY-4.0), as
+ENG-44 checked them.
+- Chain mail: `baseAC: 16`, `dexCap: 0`, strength requirement 13. So golden B's inputs with it
+  worn have AC 16 here; golden B's 17 adds the Defense fighting style, a pick this form does not
+  make (SHEET-36).
+- Shield: `ac.bonus` +2 when equipped. Chain mail and shield worn: 18.
+
+#### 9. Not in this ticket
+
+- Attunement, containers, a row's note, and the worn and attuned toggles after creation: the Gear
+  tab, SHEET-50.
+- Coins: SHEET-51. A free-text item: SHEET-52.
+- Search or filters in the item picker: phase 3's library, when the packs hold the whole SRD. The
+  fixture packs hold a handful of items.
+- The Spells tab showing each spell's edition or warning: SHEET-46 (its note keeps that part of
+  ENG-49).
+
+#### 10. Rake check
+
+- **Everything is data**: items come from the packs' `item` entries; no item or category is named.
+- **The core names no game / each system's rules live in its module**: the rows are written by the
+  fifth-edition module; the app reaches it through `systems.ts`.
+- **compute() is pure; the UI reads only Computed**: the bar reads `ac.total`; the step's warnings
+  are a lookup of ids, not a number.
+- **Missing is not broken; warnings never block**: a missing item stays, named, and warns.
+- **Ids are stable**: a row stores the item's id, never its name.
+- **No look in a component / no visible literal**: parts and tokens only; every string is a
+  `create` key.
+- **A stored-shape change needs a migration**: none (§5).
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on `30f4382` plus this change:
+
+- `pnpm lint`: `Checked 354 files`, no fixes. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: 96 files, 1250 passed, 0 failed, 24.8 s, then the speed project 2 passed. Lines
+  covered 99.9 % (3052 / 3055). New: 3 tests in `manual.test.ts`, 6 in `create.test.ts`.
+- `pnpm e2e`: 40 passed, 0 failed, 29.9 s; `create.spec.ts` adds 1.
+- The bar, measured in Chromium: fighter 1, Dex 13: `11 · 10 · +1`; chain mail carried
+  `11 · 10 · +1`; worn `16 · 10 · +1`; with a worn 2014 shield `18 · 10 · +1`.
+
+Differences from §3: none.
+
+Changed outside the hat: SHEET-27's test "makes no pick, no item and no coin" now asks for no
+items, since the ask can carry them; it still checks that the maker adds none itself. SHEET-27's
+golden A and B checks no longer copy the golden's inventory after making the character; they type
+it in the ask, so the form's rows are checked against the golden's.
+
+Found, not fixed:
+- The item picker is one list. With the whole SRD (phase 3) it will need search; the class and
+  species pickers will too.
+
+Changelog: "New character's Equipment step adds items: each shows its edition, a quantity and
+whether it is worn, and a worn armor changes the live AC; an item of the other edition or one no
+pack holds warns in amber and never blocks Create."

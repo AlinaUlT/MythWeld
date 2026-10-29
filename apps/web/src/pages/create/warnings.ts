@@ -4,9 +4,11 @@
 // languages. What those entities give in turn (a species' features) is not repeated under them.
 // Two ability score increases from two editions are SHEET-29's window; a pending choice is the
 // sheet's badge (SHEET-36).
-import type { Computed } from '@grimoire/engine';
+// SHEET-28: an item of the starting inventory is looked up here, worn or not: gathering names only
+// the worn ones, so `compute()` is silent about a carried item of the other edition (ENG-49).
+import { type Computed, shareRuleset } from '@grimoire/engine';
 import type { AppEntity } from '../../content/packs';
-import { nameIn } from './draft';
+import { type Draft, nameIn } from './draft';
 
 /** One warning as the screen words it: a key under `create:warn` and its values. */
 export interface FormWarning {
@@ -62,4 +64,24 @@ export function warningsAbout(computed: Computed<AppEntity>, id: string): FormWa
     }
   }
   return shown;
+}
+
+/**
+ * The warnings about the starting-inventory item `id`: no pack holds it, or it is of the other
+ * edition. The words are the same as `warningsAbout` gives a picked entity.
+ */
+export function itemWarnings(
+  entities: readonly AppEntity[],
+  id: string,
+  draft: Pick<Draft, 'ruleset' | 'mix'>,
+): FormWarning[] {
+  const found = entities.find((entity) => entity.id === id);
+  if (found === undefined) return [{ key: 'missing', values: { id } }];
+  if (shareRuleset(found.ruleset, draft.ruleset)) return [];
+  return [
+    {
+      key: draft.mix ? 'otherRuleset' : 'otherRulesetNotMixing',
+      values: { ruleset: found.ruleset },
+    },
+  ];
 }

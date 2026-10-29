@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-28 · New character's Equipment step adds items: each shows its edition, a
+  quantity and whether it is worn, and a worn armor changes the live AC; an item of the other
+  edition or one no pack holds warns in amber and never blocks Create.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.

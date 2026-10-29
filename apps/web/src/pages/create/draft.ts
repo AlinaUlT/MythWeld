@@ -35,6 +35,18 @@ export interface DraftClass {
   subclass?: EntityId;
 }
 
+/** An item the form lists: one row of the starting inventory (SHEET-28). */
+export interface DraftItem {
+  /** The row's id, made when it is added, so the live numbers and the saved row agree. */
+  uid: string;
+  id: EntityId;
+  qty: number;
+  equipped: boolean;
+}
+
+/** The most of one item a row holds. */
+export const MAX_QTY = 999;
+
 /** The form as the person left it. */
 export interface Draft {
   system: string;
@@ -49,6 +61,8 @@ export interface Draft {
   classes: readonly DraftClass[];
   /** Stat key → the text in its field. */
   scores: Readonly<Record<string, string>>;
+  /** The starting inventory, in the order added. */
+  items: readonly DraftItem[];
 }
 
 /** What a score field counts as while it holds no whole number: the field's starting text. */
@@ -78,6 +92,7 @@ export function newDraft(form: ManualFormSystem, installed: readonly InstalledPa
     name: '',
     classes: [],
     scores: {},
+    items: [],
   };
 }
 
@@ -133,6 +148,21 @@ export function subclassOptionsOf(
 /** The levels the form adds up: no more than `maxLevel` in all. */
 export function levelsLeft(classes: readonly DraftClass[], maxLevel: number): number {
   return maxLevel - classes.reduce((sum, entry) => sum + entry.level, 0);
+}
+
+/**
+ * The form with the item `id` added: a new row of one, not worn, or one more on the row it already
+ * has. `uid` is the new row's id, made by the caller.
+ */
+export function withItem(draft: Draft, id: EntityId, uid: string): Draft {
+  return draft.items.some((item) => item.id === id)
+    ? {
+        ...draft,
+        items: draft.items.map((item) =>
+          item.id === id ? { ...item, qty: Math.min(item.qty + 1, MAX_QTY) } : item,
+        ),
+      }
+    : { ...draft, items: [...draft.items, { uid, id, qty: 1, equipped: false }] };
 }
 
 /** A stat the form asks a score for: its key and its entry. */
@@ -209,5 +239,6 @@ export function askOf(
       ...(subclass !== undefined && { subclass }),
     })),
     scores: Object.fromEntries(stats.map((key) => [key, scoreOf(draft, key)])),
+    items: draft.items.map(({ uid, id, qty, equipped }) => ({ uid, itemId: id, qty, equipped })),
   };
 }

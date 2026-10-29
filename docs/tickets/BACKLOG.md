@@ -228,7 +228,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-25 | A character's Actions copy, export or delete it | S | ✅ 2026-10-29 |
 | SHEET-26 | A character file imports through its checks | S | 🔲 |
 | SHEET-27 | The manual form makes a character | M | ✅ 2026-10-29 |
-| SHEET-28 | The manual form's equipment step adds items | S | 🔲 |
+| SHEET-28 | The manual form's equipment step adds items | S | ✅ 2026-10-29 |
 | SHEET-29 | The manual form shows the ability bonus window | S | 🔲 |
 | **The sheet** | **the frame, the tabs, trackers, rolls** | | |
 | SHEET-30 | The sheet's frame pins the header above the dock | M | ✅ 2026-10-29 |
@@ -265,11 +265,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 
 - **SHEET-26** — SPEC §5.8, §12 stage 2: an older file migrates; a file that fails its checks is
   refused with the reason, and nothing of it is saved.
-- **SHEET-28** — BRIEF P3 step 9. Found by ENG-49: a spell or item a grant names (a `spell` or
-  `item` grant's `fixed` ids, and its chosen ones) is looked up, not gathered, so one of the other
-  edition gets no `otherRuleset` warning, which a gathered entity gets. The starting inventory
-  shows each one's edition (ADR 005 item 3.5) or warns there; the Spells tab does the same
-  (SHEET-46).
 - **SHEET-29** — found by ENG-37 (ADR 017): when the race or species and the background come from
   different editions and both raise ability scores, the manual form (BRIEF P3 step 6) shows a
   warning and a popup, or a sign that opens it: a checkbox for each, either, both or neither,
@@ -349,7 +344,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   spell's row ("1/LR, no spell slot", ADR 010 item 10). The resource's label is its entity's name,
   so two spell grants of one entity (a trait's spells at levels 3 and 5) give two resources with
   one label: the sheet pairs each with its spell through the grant's `key`. Found by ENG-49 (see
-  SHEET-28): the tab shows each spell's edition or warns.
+  SHEET-28 §9): the tab shows each spell's edition or warns.
 - **SHEET-47** — ADR 010 item 10, ADR 011 item 2, board `V3-Cast`: the summary, "See full
   description", "Cast", "Don't use a spell slot"; the dice at a higher slot (ENG-50); a new
   concentration ends the old one with a confirmation (SPEC §6.4). Found by SHEET-17: the dialog

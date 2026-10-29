@@ -9,10 +9,11 @@ import {
   statsOf,
   subclassOptionsOf,
   typedScore,
+  withItem,
   withPack,
   withRuleset,
 } from '../src/pages/create/draft';
-import { warningsAbout } from '../src/pages/create/warnings';
+import { itemWarnings, warningsAbout } from '../src/pages/create/warnings';
 import { MANUAL_FORM_SYSTEMS } from '../src/systems';
 
 // The built-in packs (SHEET-08) and golden B's inputs (SPEC §6.7). The id and time are test data.
@@ -36,6 +37,7 @@ describe('SHEET-27 the manual form', () => {
       name: '',
       classes: [],
       scores: {},
+      items: [],
     });
   });
 
@@ -169,6 +171,99 @@ describe('SHEET-27 the manual form', () => {
     const result = form.make(askOf(both, [], { ...made, unnamed: 'x' }), indexOf(both));
     expect(warningsAbout(result.computed, 'srd-2014:species/dwarf')).toEqual([
       { key: 'otherRulesetNotMixing', values: { ruleset: '2014' } },
+    ]);
+  });
+});
+
+describe('SHEET-28 the equipment step', () => {
+  const U1 = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+  const U2 = '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e';
+  const mixed = {
+    ...newDraft(form, packs),
+    packs: ['srd-2024', 'srd-2014'],
+    mix: true,
+  };
+  const chain = 'srd-2024:item/chain-mail' as const;
+
+  it("offers the rules base's items, or both editions' when mixing", () => {
+    const { entities } = indexOf(mixed);
+    const ids = (mix: boolean) =>
+      optionsOf(entities, 'item', { ...mixed, mix }).map(({ id }) => id);
+    const own = ids(false);
+    expect(own.length).toBeGreaterThan(2);
+    expect(own.every((id) => id.startsWith('srd-2024:'))).toBe(true);
+    expect(own).toContain('srd-2024:item/greatsword');
+    const both = ids(true);
+    expect(both).toEqual(expect.arrayContaining([...own, 'srd-2014:item/shield']));
+    expect(both).toEqual(
+      expect.arrayContaining(['srd-2014:item/chain-mail', 'srd-2014:item/warhammer']),
+    );
+    expect(both.length).toBe(own.length + 3);
+  });
+
+  it('adds a row of one, not worn, and one more to a row already listed', () => {
+    const one = withItem(newDraft(form, packs), chain, U1);
+    expect(one.items).toEqual([{ uid: U1, id: chain, qty: 1, equipped: false }]);
+    const two = withItem(withItem(one, 'srd-2024:item/greatsword', U2), chain, 'not-used');
+    expect(two.items).toEqual([
+      { uid: U1, id: chain, qty: 2, equipped: false },
+      { uid: U2, id: 'srd-2024:item/greatsword', qty: 1, equipped: false },
+    ]);
+  });
+
+  it('stops a row at 999', () => {
+    const full = {
+      ...newDraft(form, packs),
+      items: [{ uid: U1, id: chain, qty: 999, equipped: false }],
+    };
+    expect(withItem(full, chain, U2).items[0]?.qty).toBe(999);
+  });
+
+  it('asks the module for each row as typed', () => {
+    const draft = {
+      ...newDraft(form, packs),
+      items: [{ uid: U1, id: chain, qty: 2, equipped: true }],
+    };
+    expect(askOf(draft, [], { ...made, unnamed: 'x' }).items).toEqual([
+      { uid: U1, itemId: chain, qty: 2, equipped: true },
+    ]);
+  });
+
+  it("changes golden B's AC from 11 to 16 when its chain mail is worn, and not when carried", () => {
+    // SRD chain mail: AC 16, no Dex (the fixture pack's `baseAC: 16`, `dexCap: 0`).
+    const base = {
+      ...newDraft(form, packs),
+      species: 'srd-2024:species/human',
+      background: 'srd-2024:background/soldier',
+      classes: [{ id: 'srd-2024:class/fighter', level: 1 }],
+      scores: { str: '15', dex: '13', con: '14', int: '8', wis: '12', cha: '10' },
+    } as const;
+    const stats = statsOf(indexOf(base), base).map(({ key }) => key);
+    const ac = (equipped: boolean) =>
+      form.make(
+        askOf({ ...base, items: [{ uid: U1, id: chain, qty: 1, equipped }] }, stats, {
+          ...made,
+          unnamed: 'x',
+        }),
+        indexOf(base),
+      ).computed;
+    expect(ac(true).values['ac.total']).toBe(16);
+    expect(ac(false).values['ac.total']).toBe(11);
+    expect(ac(true).warnings).toEqual([]);
+  });
+
+  it('warns under an item no ticked pack holds, or of the other edition, worn or not', () => {
+    const { entities } = indexOf(mixed);
+    expect(itemWarnings(entities, chain, mixed)).toEqual([]);
+    expect(itemWarnings(entities, 'srd-2014:item/shield', mixed)).toEqual([
+      { key: 'otherRuleset', values: { ruleset: '2014' } },
+    ]);
+    expect(itemWarnings(entities, 'srd-2014:item/shield', { ...mixed, mix: false })).toEqual([
+      { key: 'otherRulesetNotMixing', values: { ruleset: '2014' } },
+    ]);
+    const only = indexOf(newDraft(form, packs)).entities;
+    expect(itemWarnings(only, 'srd-2014:item/shield', mixed)).toEqual([
+      { key: 'missing', values: { id: 'srd-2014:item/shield' } },
     ]);
   });
 });

@@ -83,3 +83,54 @@ test('SHEET-27 a mix that may not fit warns in amber and still creates', async (
   await page.getByRole('button', { name: c.create }).click();
   await expect(page).toHaveURL(/characters\/[0-9a-f-]{36}$/);
 });
+
+test('SHEET-28 the equipment step adds items, shows their edition and warns', async ({
+  page,
+}, testInfo) => {
+  await page.goto('characters/new');
+  await page.getByLabel(c.classes.first).selectOption({ label: 'Fighter' });
+  await page.getByLabel('Dexterity', { exact: true }).fill('13');
+  expect(await barOf(page)).toEqual(['11', '10', '+1']);
+
+  // A chain mail is added carried: AC stays 11. Worn, it is 16 (SRD: base 16, no Dex).
+  await page.getByLabel(c.equipment.add).selectOption({ label: 'Chain Mail' });
+  const row = page.getByRole('listitem', { name: 'Item Chain Mail · 2024' });
+  await expect(row).toBeVisible();
+  expect(await barOf(page)).toEqual(['11', '10', '+1']);
+  await row.getByRole('checkbox', { name: c.equipment.worn }).check();
+  expect(await barOf(page)).toEqual(['16', '10', '+1']);
+
+  // Picking it again adds one; the row has one quantity.
+  await page.getByLabel(c.equipment.add).selectOption({ label: 'Chain Mail' });
+  await expect(row.getByText('× 2')).toBeVisible();
+  await row.getByRole('button', { name: 'One fewer Chain Mail' }).click();
+  await expect(row.getByText('× 1')).toBeVisible();
+  await expect(row.getByRole('button', { name: 'One fewer Chain Mail' })).toBeDisabled();
+
+  // The other edition: its item warns, worn or carried, and the AC counts what is worn.
+  await page.getByRole('switch', { name: c.rules.mix }).check({ force: true });
+  await page.getByRole('checkbox', { name: 'SRD 5.1' }).check();
+  await page.getByLabel(c.equipment.add).selectOption({ label: 'Shield · 2014' });
+  const shield = page.getByRole('listitem', { name: 'Item Shield · 2014' });
+  await expect(
+    shield.getByText("From the 2014 rules, not this character's rules base. It may not fit."),
+  ).toBeVisible();
+  await shield.getByRole('checkbox', { name: c.equipment.worn }).check();
+  expect(await barOf(page)).toEqual(['18', '10', '+1']);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await shield.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('create-equipment.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('create-equipment-light.png') });
+
+  // Unticking the pack the shield is in leaves the row, and says it is missing.
+  await page.getByRole('checkbox', { name: 'SRD 5.1' }).uncheck();
+  const gone = page.getByRole('listitem', { name: 'Item Missing: srd-2014:item/shield' });
+  await expect(gone.getByText('Missing: srd-2014:item/shield').nth(1)).toBeVisible();
+
+  // Removing a row drops it; Create saves the inventory.
+  await gone.getByRole('button', { name: 'Remove Missing: srd-2014:item/shield' }).click();
+  await expect(gone).toHaveCount(0);
+  await page.getByRole('button', { name: c.create }).click();
+  await expect(page).toHaveURL(/characters\/[0-9a-f-]{36}$/);
+});

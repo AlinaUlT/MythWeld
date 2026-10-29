@@ -13,6 +13,7 @@ import { COINS, FIFTH_EDITION_SCHEMA_VERSION, FIFTH_EDITION_SYSTEM } from './sys
 // hit points are written as both SRDs give them without a roll: the first class's level 1 at the
 // die's maximum, every other level at the fixed value (SHEET-27 §8). A level typed by hand has no
 // XP behind it, so advancement is by milestone until the person changes it (phase 4's level-up).
+// SHEET-28: the starting inventory is the items the form lists, each as typed and none attuned.
 // The hit points start full: the maximum is computed, then written as the current hit points.
 
 /** A class the manual form names, with its level and, when picked, its subclass. */
@@ -20,6 +21,15 @@ export interface ManualClass {
   readonly id: EntityId;
   readonly level: number;
   readonly subclass?: EntityId;
+}
+
+/** An item the manual form puts in the starting inventory: one row, with its quantity. */
+export interface ManualItem {
+  /** The row's id: the app makes it, as it makes the character's. */
+  readonly uid: string;
+  readonly itemId: EntityId;
+  readonly qty: number;
+  readonly equipped: boolean;
 }
 
 /** What the manual form asks for. `id` and `at` come from the app: the module makes no ids. */
@@ -38,6 +48,8 @@ export interface ManualCharacterAsk {
   readonly classes: readonly ManualClass[];
   /** Stat key → base score, any whole number (SPEC §7.4). */
   readonly scores: Readonly<Record<string, number>>;
+  /** The starting inventory, in the order added; nothing is attuned (SHEET-28). */
+  readonly items: readonly ManualItem[];
 }
 
 /** The method key the manual form's scores are stored with: typed, not made by a method. */
@@ -95,7 +107,13 @@ export function manualCharacter(ask: ManualCharacterAsk): FifthEditionCharacter 
       })),
       feats: [],
       spells: {},
-      inventory: [],
+      inventory: ask.items.map(({ uid, itemId, qty, equipped }) => ({
+        uid,
+        itemId,
+        qty,
+        equipped,
+        attuned: false,
+      })),
       currency: Object.fromEntries(COINS.map((coin) => [coin, 0])) as Record<
         (typeof COINS)[number],
         number

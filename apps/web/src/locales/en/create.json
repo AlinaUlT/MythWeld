@@ -49,7 +49,16 @@
     "untyped": "Not a whole number: {{names}}. Each counts as {{score}} until you type one."
   },
   "equipment": {
-    "title": "Equipment"
+    "title": "Equipment",
+    "add": "Add an item",
+    "pick": "Pick an item",
+    "none": "No ticked pack holds items. Tick a content pack above.",
+    "row": "Item {{name}}",
+    "remove": "Remove {{name}}",
+    "less": "One fewer {{name}}",
+    "more": "One more {{name}}",
+    "qty": "× {{qty, number}}",
+    "worn": "Worn"
   },
   "bar": {
     "label": "Live numbers",
