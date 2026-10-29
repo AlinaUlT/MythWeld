@@ -2484,3 +2484,120 @@ Found, not fixed:
 - Exhaustion at its highest level kills a character immune to it (SHEET-64).
 
 Nothing for the changelog.
+
+---
+
+### SHEET-62 Gaining the Incapacitated condition ends concentration
+
+**Hat:** Gaining the Incapacitated condition ends concentration
+**Depends on:** SHEET-17 (`INCAPACITATED_CONDITION`, its §8), SHEET-61 (`Computed.withheld`),
+ENG-69 (`setConditionLevel`)
+**Size:** XS
+**Screen:** No
+**SPEC:** §6.4 (the tracker actions); SHEET-17 §9 and §11 put the row here
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/conditions.ts` — changes: `setConditionLevel` ends the
+concentration.
+- `packages/system-5e/src/casting.ts` — new `incapacitatedBy`, which `castWarnings` now reads too.
+- `packages/system-5e/test/incapacitated-concentration.test.ts` — new, the SHEET-62 tests.
+
+#### 2. What is missing now
+
+Measured on 2026-10-29 at `d4bee2f`:
+- `setConditionLevel` returns the core's `setCondition` entry, plus `deathChanges` when the level
+  kills. Nothing in it reads `state.concentration`.
+- `grep -rn "CONCENTRATION_PATH, undefined" packages/system-5e/src`: `applyDamage` (0 hit points
+  or a knock-out) and `endConcentration` only.
+- So golden A concentrating on Bless and given the Incapacitated condition keeps
+  `concentration: 'srd-2014:spell/bless'`.
+
+#### 3. What it should look like when done
+
+Golden A (2014) concentrates on Bless; golden B (2024) on the made-up `ward`. The made-up
+conditions: Incapacitated (key `incapacitated`), Unconscious with an `entity` grant of it (as
+SHEET-17 §8 quotes both SRDs), Dazed with no effect.
+1. Setting Incapacitated, both goldens: changes `state.conditions` `[]` → `[{ id: incapacitated
+   }]`, then `concentration` with `before` the spell and no `after`. Action `setCondition`,
+   subject the condition. The entry reversed gives the character before.
+2. Setting Unconscious that grants it: the same, with the Unconscious id.
+3. The same result as the core's `setCondition`: setting Dazed; setting an Unconscious that grants
+   nothing; a character concentrating on nothing; a character with a feat immune to
+   `incapacitated` (SHEET-61 withholds it, so its level is 0), whose concentration stays Bless.
+4. A character storing Incapacitated and still concentrating (a cast while incapacitated warns
+   and happens, SHEET-17), given Dazed: the conditions change, then the concentration ends.
+5. Golden B storing Incapacitated and exhaustion 5, concentrating, carrying ENG-63's charm and
+   stone attuned, set to exhaustion 6: three changes in this order: the conditions, the
+   concentration, the inventory unattuned (ENG-69).
+6. Refusals stay the core's: setting a condition already stored at that level is `unchanged`.
+
+#### 4. How to do it
+
+1. `incapacitatedBy(computed)` in `casting.ts`: `computed.conditions.incapacitated` while
+   `conditions.incapacitated.level` is 1 or more. `castWarnings` reads it, so one function says
+   what incapacitated means.
+2. `setConditionLevel`: after the core's set, when `state.concentration` is set, compute the
+   changed character and ask `incapacitatedBy`. If it is, add
+   `changeTo(character, CONCENTRATION_PATH, undefined)` after the core's changes and before
+   `deathChanges`. The rule is "incapacitated after the set", not "Incapacitated is the condition
+   set": both SRDs end concentration while incapacitated, whatever condition the set changes
+   (item 4).
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/incapacitated-concentration.test.ts` — `describe('SHEET-62 gaining
+  the Incapacitated condition ends concentration', …)`: §3 items 1–6.
+- Control values: worked out by hand in §3 from the stored data; the rule from SHEET-17 §8.
+
+#### 8. Checked against the source
+
+SHEET-17 §8 quotes both: SRD 5.1 (Concentration): "You lose concentration on a spell if you are
+incapacitated or if you die." SRD 5.2.1 (Incapacitated): "No Concentration. Your Concentration is
+broken." One rule in both editions, so nothing goes in `rulesets/`. Which conditions include
+Incapacitated is each entry's grant (SHEET-17 §8). No golden value is touched. Nothing stops.
+
+#### 9. Not in this ticket
+
+- Death ending concentration ("or if you die", SRD 5.1): SHEET-65 (§11).
+- Showing the ended concentration: the trackers' screen rows read the entry.
+- A cast while incapacitated still sets concentration with a warning (SHEET-17's choice).
+
+#### 10. Rake check
+
+- **The core names no game.** All of it is in `system-5e`; the core's `setCondition` is unchanged.
+- **Everything is data.** Incapacitated is read by its key; which conditions include it is each
+  entry's grant.
+- **Rulesets in their files.** One rule in both editions: no `if (ruleset …)`.
+- **Missing is not broken.** A spell missing from every pack still ends: the change names only the
+  stored id.
+- **`compute()` is pure.** The action computes the changed character and reads `Computed`.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-29, on `d4bee2f`: `pnpm lint` 234 files, no fixes; `pnpm typecheck` 6
+projects, no errors; `pnpm test` 77 files, 1040 passed, 0 failed, 26.1 s, then the speed project 1
+file, 2 passed. 1030 before this ticket's 10 tests. Coverage: statements 99.47 % (3389/3407), lines
+99.89 % (2973/2976). Not `apps/web`, so no `pnpm e2e`. Without the `conditions.ts` change, 6 of
+the 10 fail (items 1, 2, 4 and 5); the 4 that pass are item 3's and item 6.
+
+Differences from the row: the row says "gaining". The rule is "incapacitated after any set"
+(§4 step 2), so a character already incapacitated and still concentrating loses it on the next set
+of any condition (§3 item 4).
+
+Found, not fixed:
+- Dying keeps concentration. Measured: golden B at exhaustion 5, concentrating on `ward`, set to 6:
+  the entry changes `state.conditions` and `systemData.inventory`, and `concentration` stays
+  `character:spell/ward`. New row SHEET-65 (XS), wave 4.
+
+Nothing for the changelog.

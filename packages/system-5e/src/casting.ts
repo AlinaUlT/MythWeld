@@ -2,6 +2,7 @@ import {
   type ActionResult,
   type BreakdownStep,
   type Computed,
+  type ConditionLevel,
   type ContentIndex,
   changeTo,
   compute,
@@ -93,6 +94,18 @@ export type CastResult =
     }
   | Extract<SlotResult, { ok: false }>;
 
+/**
+ * The Incapacitated condition the computed character has, stored or granted, while its level is 1
+ * or more; none when a rule withholds it (SHEET-61).
+ */
+export function incapacitatedBy(
+  computed: Computed<FifthEditionEntity>,
+): ConditionLevel | undefined {
+  const incapacitated = computed.conditions[INCAPACITATED_CONDITION];
+  const level = whole(computed.values[`conditions.${INCAPACITATED_CONDITION}.level`]);
+  return level > 0 ? incapacitated : undefined;
+}
+
 /** The rules that forbid the computed character casting now: none when it may cast. */
 export function castWarnings(computed: Computed<FifthEditionEntity>): CastWarning[] {
   const warnings: CastWarning[] = [];
@@ -101,9 +114,8 @@ export function castWarnings(computed: Computed<FifthEditionEntity>): CastWarnin
     const message = `"${CANNOT_CAST_PATH}" is 1: a rule stops the character casting spells.`;
     warnings.push({ code: 'cannotCast', steps, message });
   }
-  const incapacitated = computed.conditions[INCAPACITATED_CONDITION];
-  const level = whole(computed.values[`conditions.${INCAPACITATED_CONDITION}.level`]);
-  if (incapacitated !== undefined && level > 0) {
+  const incapacitated = incapacitatedBy(computed);
+  if (incapacitated !== undefined) {
     const message = `The character has "${incapacitated.id}" and can take no action to cast.`;
     warnings.push({ code: 'incapacitated', condition: incapacitated.id, message });
   }
