@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { entityKeySchema, uuidSchema } from './ids';
+import { type Migration, openerOf } from './migration';
 import { rollerSchema } from './roll';
 import { l10nSchema, visibleTextSchema } from './text';
 
@@ -68,3 +69,55 @@ export const logEntrySchema = z.strictObject({
     }),
 });
 export type LogEntry = z.infer<typeof logEntrySchema>;
+
+// SHEET-23: a change as the device's history keeps it (SPEC §7.2): the entry as it was applied,
+// at the history's version, under the character it changed. The entry names who made the change,
+// not which character it changed, so the row does.
+
+/** The history's stored shape. A change to it bumps this and adds a step to the chain. */
+export const HISTORY_SCHEMA_VERSION = 1;
+
+/** The steps to `HISTORY_SCHEMA_VERSION`: step N takes version N + 1 to N + 2. */
+const HISTORY_MIGRATIONS: readonly Migration[] = [];
+
+/**
+ * One row of the history. `id` and `at` repeat the entry's id and its time, as the table's keys;
+ * `at` is the time as `toISOString` writes it, so text order is time order.
+ */
+export const historyRowSchema = z
+  .strictObject({
+    schemaVersion: z.literal(HISTORY_SCHEMA_VERSION),
+    id: uuidSchema,
+    characterId: uuidSchema,
+    at: z.iso.datetime(),
+    entry: logEntrySchema,
+  })
+  .superRefine((row, ctx) => {
+    const keys = { id: row.entry.id, at: new Date(row.entry.at).toISOString() };
+    for (const [field, value] of Object.entries(keys)) {
+      if (row[field as keyof typeof keys] !== value) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [field],
+          message: `${JSON.stringify(row[field as keyof typeof keys])} is not the entry's ${JSON.stringify(value)}.`,
+        });
+      }
+    }
+  });
+export type HistoryRow = z.infer<typeof historyRowSchema>;
+
+/** The row the history keeps for `entry`, a change to the character `characterId`. */
+export function historyRowOf(characterId: string, entry: LogEntry): HistoryRow {
+  return {
+    schemaVersion: HISTORY_SCHEMA_VERSION,
+    id: entry.id,
+    characterId,
+    at: new Date(entry.at).toISOString(),
+    entry,
+  };
+}
+
+/** The migration frame for the history's rows. */
+export const openHistoryRow = openerOf(historyRowSchema, [
+  { field: 'schemaVersion', migrations: HISTORY_MIGRATIONS },
+]);

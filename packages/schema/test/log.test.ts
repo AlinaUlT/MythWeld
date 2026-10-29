@@ -1,4 +1,10 @@
-import { type LogEntry, logEntrySchema } from '@grimoire/schema';
+import {
+  historyRowOf,
+  historyRowSchema,
+  type LogEntry,
+  logEntrySchema,
+  openHistoryRow,
+} from '@grimoire/schema';
 import { describe, expect, it } from 'vitest';
 
 // A made-up game's change (ADR 004 item 4): Wren spends one luck, 1 used before, 2 after.
@@ -86,5 +92,48 @@ describe('ENG-30 log entry', () => {
     expect(result.error?.issues.map(({ path, message }) => ({ path, message }))).toEqual([
       { path: ['changes', 2, 'path'], message: 'Touches the place of change 0.' },
     ]);
+  });
+});
+
+describe('SHEET-23 the history row', () => {
+  const ash = '1b4e28ba-2fa1-41d2-883f-0016d3cca427';
+  const issuePaths = (value: unknown) => {
+    const result = historyRowSchema.safeParse(value);
+    return result.success ? [] : result.error.issues.map((issue) => issue.path.join('.'));
+  };
+
+  it('keeps the entry under its character, keyed by its id and its time', () => {
+    const row = historyRowOf(ash, { ...entry, at: '2026-10-01T18:30:00Z' });
+    expect(row).toEqual({
+      schemaVersion: 1,
+      id: entry.id,
+      characterId: ash,
+      at: '2026-10-01T18:30:00.000Z',
+      entry: { ...entry, at: '2026-10-01T18:30:00Z' },
+    });
+    expect(openHistoryRow(row)).toEqual({ ok: true, value: row, from: { schemaVersion: 1 } });
+  });
+
+  it("refuses a key that is not the entry's", () => {
+    const row = historyRowOf(ash, entry);
+    expect(issuePaths(row)).toEqual([]);
+    expect(issuePaths({ ...row, id: ash })).toEqual(['id']);
+    expect(issuePaths({ ...row, at: '2026-10-01T18:30:00Z' })).toEqual(['at']);
+    expect(issuePaths({ ...row, at: '2026-10-01T18:30:01.000Z' })).toEqual(['at']);
+  });
+
+  it('refuses an unknown field, a broken entry, a character that is not a uuid, and a newer version', () => {
+    const row = historyRowOf(ash, entry);
+    expect(issuePaths({ ...row, extra: 1 })).toEqual(['']);
+    expect(issuePaths({ ...row, entry: withChanges() })).toEqual(['entry.changes']);
+    expect(issuePaths({ ...row, characterId: 'ash' })).toEqual(['characterId']);
+    expect(issuePaths({ ...row, schemaVersion: undefined })).toEqual(['schemaVersion']);
+    expect(openHistoryRow({ ...row, schemaVersion: 2 })).toMatchObject({
+      ok: false,
+      code: 'newer',
+      field: 'schemaVersion',
+      found: 2,
+      current: 1,
+    });
   });
 });

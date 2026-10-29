@@ -1,1 +1,29 @@
-{}
+{
+  "undo": "Undo",
+  "notUndone": "Not undone: it changed since",
+  "done": {
+    "useResource": "{{name}} used",
+    "regainResource": "{{name}} regained",
+    "setCondition": "{{name}} applied",
+    "removeCondition": "{{name}} ended",
+    "setToggle": "{{name}} switched",
+    "castSpell": "{{name}} cast",
+    "spendSlot": "Spell slot spent",
+    "regainSlot": "Spell slot regained",
+    "endConcentration": "Concentration ended",
+    "applyDamage": "Damage taken",
+    "applyHealing": "Healed",
+    "setTempHp": "Temporary hit points set",
+    "revive": "Revived",
+    "rollDeathSave": "Death save rolled",
+    "stabilize": "Stabilized",
+    "firstAid": "First aid given",
+    "rollInitiative": "Rest interrupted",
+    "shortRest": "Short rest taken",
+    "longRest": "Long rest taken",
+    "gainInspiration": "Inspiration gained",
+    "spendInspiration": "Inspiration spent",
+    "levelUp": "{{name}} level gained",
+    "other": "Change made"
+  }
+}

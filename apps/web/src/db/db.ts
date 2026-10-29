@@ -37,8 +37,11 @@ export interface RollLogRow extends StoredObject {
   rolledAt: string;
 }
 
-/** One change to a character, keyed by its log entry's id. */
-export interface HistoryRow {
+/**
+ * One change to a character, keyed by its log entry's id, at whatever version it was kept
+ * (SHEET-23, `history.ts`).
+ */
+export interface HistoryRow extends StoredObject {
   id: string;
   characterId: string;
   at: string;

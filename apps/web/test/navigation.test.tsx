@@ -7,7 +7,6 @@ import { BreakdownSheet } from '../src/shared/BreakdownSheet';
 import { Description } from '../src/shared/Description';
 import { DicePanel } from '../src/shared/DicePanel';
 import { RollDialog } from '../src/shared/RollDialog';
-import { ToastHost } from '../src/shared/ToastHost';
 import { paths, sheetPath } from '../src/shell/routes';
 
 const localeFiles = readdirSync(new URL('../src/locales/en/', import.meta.url))
@@ -70,7 +69,7 @@ describe('SHEET-11 navigation', () => {
   });
 
   it('creates the shared pieces empty, for the rows that fill them', () => {
-    for (const Piece of [ToastHost, DicePanel, RollDialog, BreakdownSheet, Description]) {
+    for (const Piece of [DicePanel, RollDialog, BreakdownSheet, Description]) {
       expect(renderToStaticMarkup(<Piece />)).toBe('');
     }
   });

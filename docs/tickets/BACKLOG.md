@@ -222,7 +222,7 @@ chats never claim one version number.
 | SHEET-65 | Dying ends concentration | XS | ✅ 2026-10-29 |
 | SHEET-66 | An effect may set the size to any size the packs hold | S | ✅ 2026-10-29 |
 | **Characters** | **the list, the file, the manual form** | | |
-| SHEET-23 | An undo toast reverses the last change | S | 🔲 |
+| SHEET-23 | An undo toast reverses the last change | S | ✅ 2026-10-29 |
 | SHEET-24 | My characters lists the saved characters | S | ✅ 2026-10-29 |
 | SHEET-25 | A character's Actions copy, export or delete it | S | 🔲 |
 | SHEET-26 | A character file imports through its checks | S | 🔲 |
@@ -267,8 +267,6 @@ chats never claim one version number.
   the choice and sets it at start), the units (feet or metres, pounds or kilograms; stored units
   stay feet and pounds), "I roll myself" (SPEC §6.5). Language, backup,
   packs, AI and purchases come with their phases.
-- **SHEET-23** — SPEC §7.2: an "Undo" toast after every change, and the last 50 states kept in
-  the history table; an entry is ENG-30's log entry.
 - **SHEET-25** — ADR 008 item 4: a swipe or "⋯" opens Actions. Copy, Export (a JSON file, SPEC
   §12 stage 2) and Delete (with Undo) work; Link for DM and Transfer wait for the table link's
   phase and show as coming later. Found by SHEET-22: SHEET-07 §9 gives this row the deleted
@@ -301,7 +299,8 @@ chats never claim one version number.
   comes from `Computed`. For the waves, the row gives each tab one empty file per section, an
   empty file for each panel the sheet opens (the number pad, the Rest frames, the "⋯" menu, the
   choices list), and one number component whose tap rolls (SHEET-39) and whose long press opens
-  the breakdown (SHEET-33).
+  the breakdown (SHEET-33). Found by SHEET-23: the "Undo" toast (`ToastHost`) sits 16 px above
+  the page's bottom edge; on the sheet it sits above the dock, as board `V3-Features` draws it.
 - **SHEET-31** — ADR 011, ADR 013 item 7: every entry opens and closes its description in place
   with the turning chevron; "See full description" shows the exact text with its source, or says
   the source has none. Phase 2's texts are the fixtures' and the person's free text.
@@ -429,7 +428,9 @@ chats never claim one version number.
   4), Link for the DM and Transfer (the table link) and Rules options (phase 4's house rules) show
   as coming later. Rest and Edit stay header buttons.
 - **SHEET-59** — SPEC §7.2's 50 states, opened from "⋯" (ADR 013 item 2: "undo any change").
-  Undoing a change that later changes touched is decided in the row.
+  Undoing a change that later changes touched is decided in the row. Found by SHEET-23:
+  `readHistory` lists the kept changes, newest first; `undoChange` reverses any one of them, and
+  refuses as `changed` where a later change wrote over its place.
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
 

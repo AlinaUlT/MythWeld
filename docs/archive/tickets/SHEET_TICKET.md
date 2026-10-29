@@ -4222,3 +4222,173 @@ Found, not fixed:
 
 Changelog: "My characters lists the characters saved on the device, newest change first, each
 with its edition, species and classes; a character that cannot open says why."
+
+---
+
+### SHEET-23 An undo toast reverses the last change
+
+**Hat:** An undo toast reverses the last change
+**Depends on:** SHEET-07, SHEET-10, SHEET-11, ENG-30
+**Size:** S
+**Screen:** Yes — the toast over every page; board `V3-Features` (the "Second Wind used" toast);
+BRIEF Part 2 ("After every change, a small 'Undo' message appears at the bottom")
+**SPEC:** §7.2 ("Undo": a toast after every change, the last 50 states of the character), §5.8
+(`rev`, `updatedAt`, migrations), §11 (the `history` table)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/db/history.ts` — new: `recordChange`, `undoChange`, `readHistory`,
+`HISTORY_LIMIT`. The other files it touches:
+
+- `packages/schema/src/log.ts` — changes: `HISTORY_SCHEMA_VERSION`, `historyRowSchema`,
+  `historyRowOf`, `openHistoryRow`.
+- `apps/web/src/db/db.ts` — changes: `HistoryRow` is a stored object, at whatever version.
+- `apps/web/src/shared/undo.ts` — new: the toast store and `changeCharacter`, `undoToast`.
+- `apps/web/src/shared/ToastHost.tsx` — changes: fills SHEET-11's empty host.
+- `apps/web/src/locales/en/toast.json` — changes: the toast's English text.
+- `packages/schema/test/log.test.ts`, `apps/web/test/history.test.ts`,
+  `apps/web/test/toast.test.tsx` — the tests; `apps/web/test/navigation.test.tsx` — `ToastHost`
+  is no longer an empty piece.
+
+#### 2. What is missing now
+
+Measured on 2026-10-29, at `3b027bd`:
+
+- `grep -rn "history" apps/web/src/db` finds only `db.ts`: the table exists (SHEET-07), keyed by
+  `id` with the index `[characterId+at]`; nothing writes or reads it.
+- `apps/web/src/shared/ToastHost.tsx` returns `null`; `locales/en/toast.json` is `{}`.
+- `applyEntry` and `reverseEntry` (ENG-30) exist, but nothing stores their result; `saveCharacter`
+  stores what it is given, so `rev` and `updatedAt` never move (SHEET-10 §9 gave both to this row).
+
+#### 3. What it should look like when done
+
+1. `recordChange(characterId, entry, now)` applies the entry to the character as stored, stores it
+   with `rev` one higher and `updatedAt` `now`, and keeps the row `{ schemaVersion: 1, id,
+   characterId, at, entry }`; it returns `{ ok: true, character, entry }`.
+2. After 51 changes of one character the history holds 50; change 1 is gone; `readHistory` lists
+   51 down to 2; the character's `rev` is 51.
+3. One character's 51st change drops none of another character's changes: 50 + 1 = 51 rows.
+4. A change made over a newer one (the store holds 11, the entry says 12) is refused as `changed`
+   with `expected: 12`, `found: 11`; nothing is written.
+5. A change to no stored character is `notFound`; an entry the schema refuses is `badEntry`; a
+   result the character's schema refuses (1.5 hit points) is `invalid`; nothing is written.
+6. `undoChange(entryId, now)` reverses the kept change, stores the character one revision on,
+   and drops the change from the history; a second undo of it is `noEntry`.
+7. Undoing a change a later change wrote over is `changed` (`expected: 11`, `found: 10`); nothing
+   is written.
+8. A history row at version 2 is listed in `refused` (`newer`), stays as it was, and its undo is
+   `badEntry`.
+9. `historyRowSchema` refuses a key that is not the entry's (`id`, `at`), an unknown field, a
+   broken entry, a character id that is not a uuid, and a missing version.
+10. After a written change the toast shows the action's text with the entry's name and "Undo":
+    `useResource` on "Second Wind" reads "Second Wind used", as board `V3-Features` draws it. A
+    refused change shows no toast; a newer change replaces the toast.
+11. "Undo" reverses the toast's own change and the toast goes; a refused undo shows "Not undone:
+    it changed since", with no button.
+12. Every action key of the core and the fifth-edition module has its own text; any other action
+    reads "Change made".
+
+#### 4. How to do it
+
+1. `packages/schema/src/log.ts`: the history's row wraps the entry unchanged, as SHEET-37's roll
+   log row wraps a roll, with its own `schemaVersion` and an empty migration chain. The entry's
+   `by` is who made the change, not the character changed, so the row carries `characterId`
+   itself. `at` is the entry's time as `toISOString` writes it (SHEET-37 §4 item 2).
+2. **The entry applies to the stored character.** Technical choice (ADR 002): `recordChange`
+   takes the character's id and the entry, not the screen's changed copy. In one `rw` transaction
+   over `characters` and `history` it opens the stored character, applies the entry, saves the
+   result and keeps the row, then drops that character's oldest rows past 50. Because
+   `applyEntry` checks every `before` value, a change made from a stale copy is refused instead
+   of writing over a newer one.
+3. **Undoing drops the change from the history.** Technical choice: the history holds the
+   changes in effect, so an undone change leaves it; the undo is not a new entry. `undoChange`
+   finds the row by the entry's id, so the toast undoes its own change, not whatever is newest.
+4. **Every write moves `rev` and `updatedAt`.** `rev` counts one on and `updatedAt` is `now` for a
+   change and for its undo alike; neither is in the entry, so undo never moves them back.
+5. `apps/web/src/shared/undo.ts`: `changeCharacter` is the one call a screen makes for a change;
+   it records it and, when it is written, shows the toast. The store is module state read with
+   `useSyncExternalStore`. `undoToast` undoes the toast's entry.
+6. `ToastHost`: a `role="status"` region at the page's bottom edge, 16 px in on each side. The
+   toast is the `toast` part (SHEET-04) on `bg-strong` with `text-on-strong`, 48 px high, the
+   "Undo" button 44 px high (BRIEF: touch targets of at least 44 px; the board draws 40). It goes
+   after `TOAST_MS` = 5000 ms, a technical choice; while the person's focus is in it, it stays.
+   The text is `toast:done.<action>` with `{{name}}`: the label in the app's language, in English,
+   or the entry's subject.
+
+#### 5. Stored data
+
+The `history` table (SHEET-07) gets its first rows, shape version 1 (`HISTORY_SCHEMA_VERSION`),
+with an empty migration chain. No Dexie version bump: the table, its key and its index stay as
+SHEET-07 made them. `CharacterDoc` and `LogEntry` do not change; a change now writes the
+character's `rev` and `updatedAt`, fields it already has.
+
+#### 6. What a person will see
+
+The toast over the bottom of any page, after a change a screen makes. No screen makes one yet:
+the first are SHEET-40 onward. English keys (`toast`):
+
+- `undo`: "Undo"
+- `notUndone`: "Not undone: it changed since"
+- `done.<action>`, 22 of them, for example `useResource`: "{{name}} used", `applyDamage`:
+  "Damage taken", `longRest`: "Long rest taken"; `done.other`: "Change made".
+
+#### 7. Tests
+
+- `packages/schema/test/log.test.ts` — `SHEET-23 the history row`: §3 item 9, and the row of an
+  entry at `18:30:00Z` keyed `18:30:00.000Z`.
+- `apps/web/test/history.test.ts` — `SHEET-23 the history`: §3 items 1–8, each on a fresh
+  database.
+- `apps/web/test/toast.test.tsx` — `SHEET-23 the undo toast`: §3 items 10–12.
+- Control numbers from: SPEC §7.2 (50); SPEC §6.7 golden A (12 hit points, `rev` 0) and golden C
+  (30 hit points); board `V3-Features` ("Second Wind used", "Undo"); the action keys read from
+  `packages/engine/src/trackers.ts` and `packages/system-5e/src/*.ts`.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts.
+
+#### 9. Not in this ticket
+
+- The screens that make changes: each calls `changeCharacter` (SHEET-40 onward).
+- The change history in "⋯", and undoing an older change: SHEET-59 (`readHistory`,
+  `undoChange`).
+- The toast above the sheet's dock: SHEET-30 (its note).
+- Delete with Undo, and dropping a deleted character's changes: SHEET-25.
+- A game master's pending change (ADR 014 item 10): the table link's phase.
+
+#### 10. Rake check
+
+- **A stored-shape change needs a migration**: the row carries `schemaVersion` from its first
+  write and opens through the migration frame; a newer row is tested to be refused and kept.
+- **Missing is not broken**: a missing character, a missing change, a row that does not open and
+  a place that changed each give a code, never an exception; nothing is half written.
+- **No user-facing string literal**: every text is a `toast` key; the label comes from the entry.
+- **No look is written in a component**: the toast is the `toast` part with colour tokens.
+- **Each system's rules live in its own module**: the store applies entries and names no system;
+  the action keys are only the locale's.
+- **No telemetry, no external requests**: IndexedDB only.
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on the base it landed on, SHEET-24 (`4a89c54`):
+
+- `pnpm lint`: `Checked 274 files`, 0 errors. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: `Test Files 87 passed (87)`, `Tests 1144 passed (1144)` (1126 on the base, 18 new:
+  3 in the schema, 8 for the history, 7 for the toast), 20.9 s. The second suite: `Tests 2 passed
+  (2)`, unchanged.
+- `pnpm e2e`: `23 passed (22.4s)` on `pixel-7`, as on the base.
+- The tests are live: with the trimming removed, 2 of the 8 history tests failed.
+- Screenshots at 360×800, dark and light, in the chat: a change written in the dev server
+  ("Second Wind used") shows the toast; "Undo" set the resource back to `{}`, `rev` to 2, and the
+  toast went.
+- Differs from §3: none. Differs from the row: the toast's undo drops the change from the
+  history instead of adding one (§4 item 3).
+
+Found, not fixed:
+
+- The toast sits 16 px over the page's bottom edge; on the sheet it must sit above the dock.
+  Written into SHEET-30's note.
+
+Nothing for the changelog: no screen makes a change yet.
