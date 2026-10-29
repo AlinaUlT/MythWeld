@@ -1413,3 +1413,167 @@ offline, in English and in Russian letters. No new text, so no i18n key.
 
 **Changelog:** "Text is set in Inter and headings in EB Garamond on every device, offline too,
 with Latin and Cyrillic letters."
+
+---
+
+### SHEET-04 Each part takes its style from a fixed menu
+
+**Hat:** the part styles as a fixed menu
+**Depends on:** SHEET-01, SHEET-03
+**Size:** M
+**Screen:** No — no screen draws a part yet; the base looks are those of the `V3-*` boards and
+`docs/design/mockups/README.md`
+**SPEC:** ADR 015 items 1, 7 and 13
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/theme/parts.ts` — changes (empty since SHEET-01): the parts, each
+part's menu of styles, the base theme's picks, and the theme keys a set of picks fills.
+- `apps/web/src/theme/Part.tsx` — new: the component a screen draws a part with.
+- `apps/web/src/theme/slots.ts` — changes: `camel()` is exported, so `parts.ts` uses the same one.
+- `apps/web/test/parts.test.tsx` — new.
+- `apps/web/test/theme.test.ts` — changes: the `index.css` mapping check leaves out part keys.
+- `apps/web/e2e/theme.spec.ts` — changes: a `SHEET-04` test.
+- `docs/tickets/BACKLOG.md` — changes: the phase 2 note tells screen rows to draw parts with
+  `<Part>`.
+
+#### 2. What is missing now
+
+- `apps/web/src/theme/parts.ts` is `export const parts: ThemePart = {};`.
+- A screen could give a button its corners, border and shadow only with Tailwind classes
+  (`rounded-button border border-line`), so a skin can change the token values but never the
+  shape: a raised button or a bevelled window cannot be made from data.
+- The boards' shapes, measured with a Python count of every `style` attribute in `V3-*.html`:
+  - a filled button: `border-radius: 12px; background: #1C1D20; color: #FFFFFF; border: 0`
+    (`V3-Rest` and 12 other boards);
+  - a second button, beside it: `border-radius: 12px; background: transparent; color: #1C1D20;
+    border: 1px solid #5E6269` (7 `<button>`s, and links in 6 boards);
+  - an icon button: 44 × 44, `padding: 0; border: 0; background: transparent` (`V3-Player`'s
+    settings button), no corner; once with a border: `border-radius: 12px; border: 1px solid
+    #E2E2DE` (`V3-SheetDice`, 2);
+  - a card: `border: 1px solid #E2E2DE; border-radius: 14px` (94);
+  - a panel, a large box: the same border and `border-radius: 16px` (`V3-Player`, `V3-DMHome`);
+  - a chip: 30 px tall, `border-radius: 15px`, no border (`V3-Feats`, 24); outlined or dashed
+    once each;
+  - a bottom sheet: `border-radius: 20px 20px 0 0; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18)`
+    (7);
+  - a toast: 48 px tall, `border-radius: 12px`, no border, no shadow (`V3-Features`, 1).
+
+#### 3. What it should look like when done
+
+1. 8 parts exist: `button`, `button-secondary`, `icon-button`, `card`, `panel`, `chip`, `sheet`,
+   `toast`.
+2. Each part has a menu of at least 2 styles; each style sets exactly `border`, `border-radius`
+   and `box-shadow`, every value read from the tokens.
+3. The base theme picks one style per part; it fills one key `part-<part>-<property>` for each
+   part and property, and no other `part-` key.
+4. Each base pick, its tokens read in light, is the shape the board draws (the values of §2).
+5. `partsTheme(picks)` with another pick for one part changes only that part's keys; a pick the
+   menu lacks, or a part with no pick, throws.
+6. `<Part name fill as>` draws the element asked for, with `data-skin-part`, and a style whose
+   every property reads `var(--theme-part-…)`; a style the screen passes cannot override it.
+   `fill` takes only a slot that sets nothing but its background (`card`, `button`, …), so the
+   slot and the part never set one property twice.
+7. In the built app, each part's keys compute to the board's border, corners and shadow; a card's
+   keys filled from `raised` at run time give the raised shadow, with no component changed.
+
+#### 4. How to do it
+
+1. `partProperties` is the three shape properties. A slot holds the fill (SHEET-03); a part holds
+   the shape.
+2. `partStyles` maps each part to its menu: style name → the three values, built from tokens with
+   `var(--theme-…)`. A skin changes a style's look through the same tokens (`radius-card`,
+   `color-line`, `shadow-raised`); it cannot write a style.
+3. `basePicks` is the boards' look. `partsTheme(picks)` writes the chosen styles' values into
+   `shared` keys, and `parts = partsTheme(basePicks)` joins the base theme as before.
+4. `partStyle(name)` builds the inline style. `Part` spreads the screen's style first, then the
+   fill slot's, then the part's.
+5. Part keys are not Tailwind utilities, so `index.css` does not map them; SHEET-01's mapping test
+   leaves them out.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen: no screen draws a part yet. The screen rows draw buttons, cards, chips, sheets and
+toasts with `<Part>`.
+
+#### 7. Tests
+
+- `apps/web/test/parts.test.tsx` — the 8 names; every style sets the 3 properties; every key
+  filled in both modes and no other; 8 base looks against the `V3-Rest`, `V3-Player`, `V3-Dice`,
+  `V3-Feats`, `V3-Cast` and `V3-Features` boards, read by the test itself; a re-pick changes one
+  part; an unknown style and a missing pick throw; `partStyle('card')`; `<Part>` rendered to
+  HTML, with and without a fill; a slot that sets a shadow cannot fill a part (a type error).
+- `apps/web/test/theme.test.ts` — the mapping check, part keys left out.
+- `apps/web/e2e/theme.spec.ts` — each part's computed border, corners and shadow in the built
+  app; a skin's re-pick of the card is painted.
+- Control values from: the `V3-*` boards (§2).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact.
+
+#### 9. Not in this ticket
+
+- Drawing the parts on screens — the screen rows, with `<Part>`.
+- A texture inside a part (ADR 015's "parchment" panel): a texture is a picture, the skin's file;
+  the fill is the slot's (SHEET-03), and pictures in a skin come with the theme editor's phase
+  (ADR 015 item 14). No `parchment` style is in the menu until then.
+- Sizes and spacing (the 44 / 48 px heights, padding): tokens the screens use with classes;
+  ADR 015 item 1 names borders, corners, shadows and textures for a part's style.
+- How a part moves (pressing, opening a sheet) — SHEET-05's presets.
+- The skin file that names its picks, and its schema — the theme editor's phase.
+- The settings page drawn from these parts — SHEET-13.
+
+#### 10. Rake check
+
+- **No look is written in a component:** `Part.tsx` names no colour, corner or shadow; every
+  value is theme data; SHEET-02's lint passes on it.
+- **A skin is data, never code:** a skin names a style from the menu and sets token values; a
+  name the menu lacks throws, so no stranger's CSS is drawn.
+- **No user-facing string literal:** no new text.
+- **Nothing invisible:** no zero-width character, byte-order mark or non-breaking space in the
+  changed files (checked with a Python scan).
+
+#### 11. What came out of it
+
+**Measured on 2026-10-29, on top of SHEET-03 (`3977c50`):**
+
+- `pnpm lint`: `Checked 224 files in 369ms. No fixes applied.`
+- `pnpm typecheck`: every project `Done`.
+- `pnpm test`: unit `Test Files 71 passed (71)`, `Tests 971 passed (971)` (955 before, plus 16
+  in `parts.test.tsx`), 18.64 s; speed `Tests 2 passed (2)`, 3.30 s. The first run's speed pass
+  failed (`its median compute() × 4 is at most 10 ms`) on a container just restarted, with
+  dependencies just installed; the next run passed with no change. That is OPS-28's case.
+- `pnpm e2e`: `17 passed (20.3s)` on `pixel-7`, with the new `SHEET-04` test.
+- Rebased onto SHEET-06, which a parallel chat pushed meanwhile; both rows added a test at the
+  end of `apps/web/e2e/theme.spec.ts`, and both are kept. On top of it (`28123fc`): `pnpm lint`
+  226 files, no fixes; `pnpm test` 975 passed, 0 failed, 19.80 s, the speed pass 2 passed,
+  3.09 s; `pnpm e2e` 18 passed, 0 failed, 16.1 s.
+- Measured in the built app (light): `button` `0px none`, corners 12 px, no shadow;
+  `button-secondary` `1px solid rgb(94, 98, 105)`, 12 px; `icon-button` no border, 12 px; `card`
+  `1px solid rgb(226, 226, 222)`, 14 px; `panel` the same, 16 px; `chip` no border, 9999 px;
+  `sheet` no border, 20 px on top and 0 below, `rgba(0, 0, 0, 0.18) 0px -8px 24px 0px`; `toast`
+  no border, 12 px. The card re-picked as `raised`: `rgba(0, 0, 0, 0.12) 0px 1px 3px 0px`.
+- The menu: 26 styles. `button` and `button-secondary` share one: flat, outlined, raised, bevel;
+  `icon-button`: plain, outlined, round; `card`: outlined, flat, raised; `panel`: outlined, flat,
+  raised, window; `chip`: flat, outlined, dashed; `sheet`: floating, edged, window; `toast`: flat,
+  raised. `bevel` and `window` are the retro looks' raised edge (BRIEF Part 5, "Future skins").
+- Differs from the row: the row named one button; the boards draw two kinds side by side (a
+  filled one and an outlined one), so `button-secondary` is a part of its own, with the same menu,
+  and the base theme picks `outlined` for it. The row's "bottom sheet" is the part `sheet`.
+- The icon button's board draws no corner (no border, no fill); the base pick gives it the
+  button's 12 px, which shows only once a skin gives it a border or a fill.
+- The chip's 15 px on a 30 px chip is the `pill` corner (SHEET-01's rule: half the height).
+
+**Found, not fixed:** `docs/CHANGELOG.md`'s format example reads
+`2026-MM-DD · SHEET-04 · Long-press on any number shows where it came from.`; SHEET-04 is now
+this row, and the long press is SHEET-33, so a search for SHEET-04 finds a wrong line. New row
+OPS-32.
+
+**Changelog:** nothing for the changelog; no screen draws a part yet.

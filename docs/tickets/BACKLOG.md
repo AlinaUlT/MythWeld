@@ -156,9 +156,10 @@ phase 2: ADR 008 (navigation), ADR 009, 010, 011 and 013 (the sheet, dice, descr
 page) and ADR 015 (the skin layer comes first). Each phase 1 note that named phase 2 is now the
 note of the row that takes it. A screen row builds from its boards in `docs/design/mockups/` and
 its row in BRIEF Part 5 (OPS-22). It draws the backgrounds, the header, the dock, cards, buttons,
-the portrait, the token frame and the dice with `<Slot>` (SHEET-03). BRIEF's prompts still hold
-text that later ADRs replaced, so a screen row reads its prompt with the ADRs, and the ADRs win
-(OPS-27 §11).
+the portrait, the token frame and the dice with `<Slot>` (SHEET-03), and the shape of buttons,
+icon buttons, cards, panels, chips, sheets and toasts with `<Part>` (SHEET-04). BRIEF's prompts
+still hold text that later ADRs replaced, so a screen row reads its prompt with the ADRs, and the
+ADRs win (OPS-27 §11).
 
 **Running rows at the same time.** The table is in work order. The rows of one wave run in
 parallel chats once every row of the waves before it is closed: each row owns files no other row
@@ -188,7 +189,7 @@ chats never claim one version number.
 | SHEET-01 | The base theme's tokens cover every token the mockups use | S | ✅ 2026-10-28 |
 | SHEET-02 | Lint fails on a colour, font or animation written in a component | S | ✅ 2026-10-28 |
 | SHEET-03 | Screens draw named slots the base theme fills | S | ✅ 2026-10-28 |
-| SHEET-04 | Each part takes its style from a fixed menu | M | 🔲 |
+| SHEET-04 | Each part takes its style from a fixed menu | M | ✅ 2026-10-29 |
 | SHEET-05 | Animations are presets that stop for reduced motion | S | 🔲 |
 | SHEET-06 | The app's fonts ship inside it, each licence read | S | ✅ 2026-10-29 |
 | **On the device** | **tables, the mini-pack, saved characters** | | |
@@ -253,9 +254,6 @@ chats never claim one version number.
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
-- **SHEET-04** — ADR 015 item 7: the parts phase 2 draws (button, icon button, card, panel, chip,
-  bottom sheet, toast), each with its fixed menu of styles; the base theme picks one each.
-  Found by SHEET-01: the styles fill `apps/web/src/theme/parts.ts`, made empty for this row.
 - **SHEET-05** — ADR 015 items 8 and 9: the phone's "reduce motion" and an app switch (shown by
   SHEET-13) turn the presets into still pictures; animations stop off screen. Found by SHEET-01:
   the presets fill `apps/web/src/theme/motion.ts`, made empty for this row; the boards' one
@@ -744,6 +742,7 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-29 | Phase 2 is cut into rows that run in waves | S | ✅ 2026-10-22 |
 | OPS-30 | `RUNNING.md` names the container's current Chromium path | XS | 🔲 |
 | OPS-31 | The chat with the owner is in English | XS | ✅ 2026-10-28 |
+| OPS-32 | The changelog's format example names no real ticket | XS | 🔲 |
 
 - **OPS-28** — found by ENG-66 (ENG-66 §11): ENG-23's speed pass (`compute.speed.ts`, the median
   × 4 at most 10 ms) fails on some runs in the cloud container with no code changed. On `05f3430`,
@@ -760,3 +759,6 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
   `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; on 2026-10-28 the container had
   `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome` and no `chromium-1194`. A path that does
   not move with the browser's version is better.
+- **OPS-32** — found by SHEET-04 (SHEET-04 §11): `docs/CHANGELOG.md`'s format example is
+  `2026-MM-DD · SHEET-04 · Long-press on any number shows where it came from.`; SHEET-04 is the
+  part styles, and the long press is SHEET-33. A search for a ticket id finds the example.

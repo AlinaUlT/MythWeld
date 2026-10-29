@@ -44,7 +44,8 @@ export const slots = {
   },
 } satisfies ThemePart;
 
-const camel = (property: string) =>
+// `box-shadow` → `boxShadow`, the name a React style takes.
+export const camel = (property: string) =>
   property.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
 
 // The style a slot's element wears: each property reads the slot's theme key.

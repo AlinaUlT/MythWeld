@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { FONT_PACKAGES } from '../src/config/fonts';
+import { basePicks, partStyles, partsTheme } from '../src/theme/parts';
 import { baseTheme } from '../src/theme/theme';
 import { waitForServiceWorker } from './service-worker';
 
@@ -134,4 +135,62 @@ test('SHEET-06 the fonts come from the app itself, Latin and Cyrillic, and stay 
       'This Font Software is licensed under the SIL Open Font License, Version 1.1.',
     );
   }
+});
+
+test('SHEET-04 every part takes its base style in the built app, and a skin re-picks one', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  // No screen draws a part yet, so the test draws each one the way <Part> does: its three keys.
+  const names = Object.keys(partStyles);
+  const look = await page.evaluate((list) => {
+    return Object.fromEntries(
+      list.map((name) => {
+        const el = document.createElement('div');
+        el.style.border = `var(--theme-part-${name}-border)`;
+        el.style.borderRadius = `var(--theme-part-${name}-border-radius)`;
+        el.style.boxShadow = `var(--theme-part-${name}-box-shadow)`;
+        document.body.append(el);
+        const style = getComputedStyle(el);
+        const drawn = {
+          border: `${style.borderTopWidth} ${style.borderTopStyle} ${style.borderTopColor}`,
+          radius: `${style.borderTopLeftRadius} ${style.borderBottomRightRadius}`,
+          shadow: style.boxShadow,
+        };
+        el.remove();
+        return [name, drawn];
+      }),
+    );
+  }, names);
+  expect(look).toEqual({
+    button: { border: '0px none rgb(28, 29, 32)', radius: '12px 12px', shadow: 'none' },
+    'button-secondary': {
+      border: '1px solid rgb(94, 98, 105)',
+      radius: '12px 12px',
+      shadow: 'none',
+    },
+    'icon-button': { border: '0px none rgb(28, 29, 32)', radius: '12px 12px', shadow: 'none' },
+    card: { border: '1px solid rgb(226, 226, 222)', radius: '14px 14px', shadow: 'none' },
+    panel: { border: '1px solid rgb(226, 226, 222)', radius: '16px 16px', shadow: 'none' },
+    chip: { border: '0px none rgb(28, 29, 32)', radius: '9999px 9999px', shadow: 'none' },
+    sheet: {
+      border: '0px none rgb(28, 29, 32)',
+      radius: '20px 0px',
+      shadow: 'rgba(0, 0, 0, 0.18) 0px -8px 24px 0px',
+    },
+    toast: { border: '0px none rgb(28, 29, 32)', radius: '12px 12px', shadow: 'none' },
+  });
+
+  // A skin's pick fills the same keys from another style of the menu; nothing else changes.
+  const raised = partsTheme({ ...basePicks, card: 'raised' }).shared ?? {};
+  const shadow = await page.evaluate((values) => {
+    for (const [key, value] of Object.entries(values))
+      document.documentElement.style.setProperty(`--theme-${key}`, value);
+    const el = document.createElement('div');
+    el.style.boxShadow = 'var(--theme-part-card-box-shadow)';
+    document.body.append(el);
+    return getComputedStyle(el).boxShadow;
+  }, raised);
+  expect(shadow).toBe('rgba(0, 0, 0, 0.12) 0px 1px 3px 0px');
 });
