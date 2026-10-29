@@ -167,7 +167,7 @@ describe('SHEET-23 the undo toast', () => {
     const stored = fifthEditionCharacterSchema.parse(await database.characters.get(a.id));
     expect(stored.systemData.state.hp.current).toBe(12);
     expect(renderToStaticMarkup(<ToastHost />)).toBe(
-      '<div role="status" class="pointer-events-none fixed inset-x-4 bottom-4"></div>',
+      '<div role="status" class="pointer-events-none fixed inset-x-4 bottom-[calc(var(--dock-height,0px)+16px)]"></div>',
     );
   });
 

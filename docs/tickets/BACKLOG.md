@@ -169,10 +169,10 @@ parallel chats once every row of the waves before it is closed: each row owns fi
 of its wave touches. Two rows make that possible. SHEET-11 gives every phase 2 screen its route,
 an empty page and its own i18n namespace file, and creates empty the shared pieces later rows
 fill. SHEET-30 gives each tab of the sheet one empty file per section, and one empty file for each
-panel the sheet opens. Every chat still edits `BACKLOG.md`, `SHEET_TICKET.md` and the archive, so
-the second chat to push rebases, keeps both sides and runs the gate again (`CLAUDE.md`, the
-steps). A wave holds at most one row that may change a stored shape (SHEET-53, SHEET-57), so two
-chats never claim one version number.
+panel the sheet opens (its §11 lists each file, its row and its namespace). Every chat still edits
+`BACKLOG.md`, `SHEET_TICKET.md` and the archive, so the second chat to push rebases, keeps both
+sides and runs the gate again (`CLAUDE.md`, the steps). A wave holds at most one row that may
+change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version number.
 
 | Wave | Rows | Starts when |
 |---|---|---|
@@ -231,7 +231,7 @@ chats never claim one version number.
 | SHEET-28 | The manual form's equipment step adds items | S | 🔲 |
 | SHEET-29 | The manual form shows the ability bonus window | S | 🔲 |
 | **The sheet** | **the frame, the tabs, trackers, rolls** | | |
-| SHEET-30 | The sheet's frame pins the header above the dock | M | 🔲 |
+| SHEET-30 | The sheet's frame pins the header above the dock | M | ✅ 2026-10-29 |
 | SHEET-31 | An entry's description opens in place | S | ✅ 2026-10-29 |
 | SHEET-32 | The Main tab shows every check bonus | S | 🔲 |
 | SHEET-33 | A long press opens a number's breakdown | S | 🔲 |
@@ -279,18 +279,6 @@ chats never claim one version number.
   warning and a popup, or a sign that opens it: a checkbox for each, either, both or neither,
   and "Create" stays on. ENG-68's warning `abilityBonusConflict` says when, its `source` what is
   ticked. Board `V3-Conflict`. Phase 4's creation wizard shows the same.
-- **SHEET-30** — BRIEF P4 V3, board `V3-Sheet`, ADR 013 items 1 and 2: the header (the name, the
-  class line as the level, the edition badge, the choices badge, AC · initiative · speed ·
-  proficiency, and for a caster the spellcasting line of ADR 009 item 4); the dock (the hit point
-  bar with temporary hit points in their own colour, Damage, Heal, the tabs: the six of SPEC §7.2,
-  About and Turn); play mode locked by default, with the Edit switch (SPEC §7.2). Every number
-  comes from `Computed`. For the waves, the row gives each tab one empty file per section, an
-  empty file for each panel the sheet opens (the number pad, the Rest frames, the "⋯" menu, the
-  choices list), and one number component whose tap rolls (SHEET-39) and whose long press opens
-  the breakdown (SHEET-33). Found by SHEET-38: the dice button opens `DiceSheet`
-  (`apps/web/src/shared/DicePanel.tsx`) with the character as `roller`; the e2e taps it. Found
-  by SHEET-23: the "Undo" toast (`ToastHost`) sits 16 px above the page's bottom edge; on the
-  sheet it sits above the dock, as board `V3-Features` draws it.
 - **SHEET-32** — board `V3-Sheet`: the stats, the saves, the skills with their proficiency, the
   passives. Found by ENG-43: a skill's stat is `Computed.keys['skills.<key>.ability']`, with steps
   naming the skill, each effect and a manual edit; the sheet shows that key, never the skill's own
@@ -417,6 +405,8 @@ chats never claim one version number.
   row and BRIEF P10 named feet or metres, so Settings offers those two. The row adds `sq` to
   `settingValues.distance` (`apps/web/src/settings/settings.ts`) and its label; no stored row
   changes. How many feet one square is, and whether a person can change it, is decided in the row.
+  Found by SHEET-30: the sheet shows a distance through `shownDistance`
+  (`apps/web/src/settings/units.ts`); squares join it there.
 
 ---
 

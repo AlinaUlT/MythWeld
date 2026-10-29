@@ -21,7 +21,7 @@ export function characterLevel({ systemData }: Pick<FifthEditionCharacter, 'syst
 /** Each class the character has that a pack holds, with its level, in the order taken. */
 export function classesOf(
   character: FifthEditionCharacter,
-  gathered: Gathered<FifthEditionEntity>,
+  gathered: Pick<Gathered<FifthEditionEntity>, 'entities'>,
 ): HadClass[] {
   const had = new Map(gathered.entities.map(({ entity }) => [entity.id as string, entity]));
   return character.systemData.classes.flatMap(({ id, level, subclass: subclassId }) => {

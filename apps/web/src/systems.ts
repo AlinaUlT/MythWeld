@@ -3,15 +3,25 @@
 // SHEET-09: a pack file names its system too, and opens through that module's pack opener.
 // SHEET-24: what My characters names under a character's name is its module's too.
 // SHEET-27: the manual form makes a character through its system's maker, with its rules bases.
-import type { ContentIndex } from '@grimoire/engine';
+// SHEET-30: so is what the sheet's header and dock read, and the module `compute()` runs.
+import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
   EDITION_RULES,
   type EditionTerms,
+  FIFTH_EDITION_HEADER_NUMBERS,
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
+  type FifthEditionEntity,
   type FifthEditionPack,
+  fifthEditionCasting,
+  fifthEditionClassLine,
+  fifthEditionHitPoints,
   fifthEditionListLine,
+  fifthEditionModule,
+  type HeaderCasting,
+  type HeaderHitPoints,
+  type HeaderNumber,
   type ListLinePart,
   MAX_LEVEL,
   type MadeByHand,
@@ -26,6 +36,9 @@ export type AppCharacter = FifthEditionCharacter;
 
 /** A content pack of any system the app carries. */
 export type AppPack = FifthEditionPack;
+
+/** What `compute()` gives for a character of any system the app carries. */
+export type AppComputed = Computed<FifthEditionEntity>;
 
 /** Opens a stored character of one system through its migration frame (SPEC §5.8). */
 export type CharacterOpener = (file: unknown) => Opened<AppCharacter>;
@@ -100,3 +113,33 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
 ];
 
 export type { MadeByHand, ManualCharacterAsk };
+
+/** What the sheet reads of one system: its module, and what its header and dock name. */
+export interface SheetSystem {
+  module: SystemModule<AppCharacter, FifthEditionEntity>;
+  /** Each class with its level: the level shown next to the name (ADR 013 item 2). */
+  classLine: ListLine;
+  /** The header's stats row, left to right. */
+  numbers: readonly HeaderNumber[];
+  /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
+  casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
+  hitPoints(character: AppCharacter): HeaderHitPoints;
+}
+
+/** Each system's sheet, by system id. */
+export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
+  [FIFTH_EDITION_SYSTEM]: {
+    module: fifthEditionModule,
+    classLine: fifthEditionClassLine,
+    numbers: FIFTH_EDITION_HEADER_NUMBERS,
+    casting: fifthEditionCasting,
+    hitPoints: fifthEditionHitPoints,
+  },
+};
+
+/** The sheet of `character`'s system, or `undefined` when the app has none for it. */
+export function sheetSystemOf(character: AppCharacter): SheetSystem | undefined {
+  return Object.hasOwn(SHEET_SYSTEMS, character.system)
+    ? SHEET_SYSTEMS[character.system]
+    : undefined;
+}

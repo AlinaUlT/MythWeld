@@ -2,6 +2,7 @@
 // (SPEC §7.2, board V3-Features). It names what changed: the action's text, with the entry's
 // label, or its subject when the content no longer has a name for it. It goes after `TOAST_MS`,
 // unless the person's focus is in it; a refused undo says so in its place.
+// SHEET-30: on the sheet it sits 16 px above the dock, which writes its height in `--dock-height`.
 import type { LogEntry } from '@grimoire/schema';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -55,7 +56,7 @@ export function ToastHost() {
   return (
     <div
       role="status"
-      className="pointer-events-none fixed inset-x-4 bottom-4"
+      className="pointer-events-none fixed inset-x-4 bottom-[calc(var(--dock-height,0px)+16px)]"
       onFocus={() => setHeld(true)}
       onBlur={() => setHeld(false)}
     >

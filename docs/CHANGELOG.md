@@ -11,6 +11,10 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-30 · A character opens its sheet: the name, class and level, edition, AC,
+  initiative, speed, proficiency, passive Perception and, for a caster, the spell save DC and
+  attack pinned at the top; hit points with temporary ones in their own colour, Damage, Heal and
+  eight tabs pinned at the bottom. The tabs are still empty.
 - 2026-10-29 · SHEET-27 · New character makes a character by hand: rules base and packs, name,
   race or species, background, classes and levels, and any ability scores, with the live AC, hit
   points and initiative pinned at the bottom; warnings show in amber and never block Create.

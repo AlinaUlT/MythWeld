@@ -5102,3 +5102,195 @@ Found, not fixed:
 Changelog: "New character makes a character by hand: rules base and packs, name, race or species,
 background, classes and levels, and any ability scores, with the live AC, hit points and
 initiative pinned at the bottom; warnings show in amber and never block Create."
+
+---
+
+### SHEET-30 The sheet's frame pins the header above the dock
+
+**Hat:** The sheet's frame pins the header above the dock
+**Depends on:** SHEET-09, SHEET-10, SHEET-11, SHEET-13, SHEET-23, SHEET-38 (`DiceSheet`)
+**Size:** M
+**Screen:** Yes — the character sheet; board `V3-Sheet` (and `V3-TempHP` for the bar), BRIEF P4,
+its row in `docs/design/BRIEF.md` Part 5 ("P4 Character sheet, since 2026-10-01")
+**SPEC:** §7.2 (the pinned header, the tabs, play mode), §6.1 (the UI reads only `Computed`),
+§7.5 (units shown), §8.2; ADR 009 item 4, ADR 013 items 1 and 2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/pages/SheetPage.tsx` — changes (it was SHEET-11's empty page).
+- `packages/system-5e/src/sheet-header.ts` — new: what the header names for fifth edition.
+- `packages/system-5e/src/classes.ts` — `classesOf` takes anything with `entities`, so `Computed`.
+- `apps/web/src/systems.ts` — `SHEET_SYSTEMS`, each system's module and header parts.
+- `apps/web/src/sheet/` — new: `SheetContext.ts`, `SheetHeader.tsx`, `SheetDock.tsx`,
+  `SheetNumber.tsx`, `tabs.ts`, `SheetDice.tsx`, `header/`, `sections/`, `panels/`.
+- `apps/web/src/settings/units.ts` — new: a distance in feet, shown in the chosen unit.
+- `apps/web/src/shared/RollDialog.tsx`, `BreakdownSheet.tsx` — take the number's path.
+- `apps/web/src/shared/ToastHost.tsx` — the toast sits above the dock.
+- `apps/web/src/locales/en/` — `sheet.json` filled; 18 new empty namespaces.
+
+#### 2. What is missing now
+
+Measured on `d1cd153`: `/characters/<id>` draws `<Page title="Character">` and nothing else,
+for any id. `SheetPage.tsx` is 9 lines with the comment "empty until SHEET-30 fills it". No code
+in `apps/web` calls `compute()`. The toast sits at `bottom-4` (16 px) on every page.
+
+#### 3. What it should look like when done
+
+1. Golden B (SPEC §6.7) saved and opened: the header shows "Golden B", "Fighter 1", "2024", and
+   the row 17 AC, +3 Init, 30 ft Speed, +2 Prof, 13 Passive, each read from `Computed`.
+2. Golden A's header adds the spellcasting line: WIS, Save DC 13, Attack +5.
+3. The dock shows "12 / 12" and, with 5 temporary hit points, "+5" in the `temp` colour, and
+   a bar of 70.6 % `hp` and 29.4 % `temp` (board `V3-TempHP`); Damage and Heal; eight tabs:
+   Main, Turn, Combat, Spells, Gear, Features, About, Notes.
+4. The header's top is at y 0 and the dock's bottom at y 800; the tab scrolls between them;
+   the page is 360 px wide.
+5. The Edit switch is off (a lock) each time the sheet opens; a tap turns it on.
+6. A tap on a tab, or a sideways swipe of 56 px on the tab, changes the tab; `?tab=` keeps it.
+7. Every number of the header is one `SheetNumber`: a tap calls the roll (SHEET-39) when it
+   rolls, a long press of 500 ms or the context menu calls the breakdown (SHEET-33).
+8. Each tab's sections, and the number pad, the Rest frames, the "⋯" menu and the choices
+   list, are their own empty files, each with its own namespace.
+9. A character not on the device, one that does not open, and a pack not on the device each say
+   so in words; nothing throws.
+10. The toast sits 16 px above the dock on the sheet, and 16 px above the bottom elsewhere.
+11. A round 56 px dice button sits 16 px above the dock; it opens SHEET-38's `DiceSheet`, at most
+    400 px high, with the character as `roller` and its computed paths as `read` (SHEET-38's
+    note for this row).
+
+#### 4. How to do it
+
+1. In the module, `sheet-header.ts`: the stats row as paths (`ac.total`, `init.total`,
+   `speed.walk`, `prof`, `skills.perception.passive`), the class line, each casting class's
+   stat with its `classes.<key>.spell.dc` and `.attack`, and the stored hit points.
+2. In `systems.ts`, `SHEET_SYSTEMS` by system id, as `CHARACTER_LIST_LINES` is.
+3. `SheetPage` watches the row with Dexie's `liveQuery`, so each change and undo shows; it loads
+   the packs once per pack list and runs `compute()` once per stored version.
+4. `SheetContext` hands the character, content, `Computed`, edit mode and the two openers to
+   every piece; the frame mounts the open panel.
+5. The dock writes its height into `--dock-height`; the toast's `bottom` and the dice button's
+   read it.
+
+#### 5. Stored data
+
+Nothing stored changes. Edit mode and the open panel live only while the sheet is open; the tab
+lives in the address.
+
+#### 6. What a person will see
+
+The sheet opens from a card of My characters. While the row is read, the page frame shows
+with nothing in it. Ready: the header, the empty tab, the dock. The messages: `sheet.notFound`
+"This character is not on this device.", `sheet.failed`, `sheet.unopened.*` (the list's three
+reasons), `sheet.noSheet`, `sheet.notInstalled` "The pack {{id}} is not on this device: its
+entries show as missing." The labels: `sheet.numbers.*`, `sheet.casting.dc` "Save DC",
+`sheet.casting.attack` "Attack", `sheet.hp.label` "Hit points", `sheet.damage`, `sheet.heal`,
+`sheet.rest`, `sheet.edit`, `sheet.actions`, `sheet.tabs.*`, `sheet.choices` "{{count}}
+choices to make" with the badge `!{{count}}`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-header.test.ts` — the row's values on golden B, each with a
+  breakdown; golden A's DC and attack; golden C's two casting classes; the class line; the hit
+  points.
+- `apps/web/test/sheet.test.tsx` — the header and the dock drawn from golden A, B and C; the
+  temporary hit points; the choices badge; the formats; the swipe; every empty piece.
+- `apps/web/e2e/sheet.spec.ts` — the frame at 360×800 in Chromium; edit mode, tabs, swipe and
+  reload; the dice button and its panel; the caster line; a missing character; a missing pack;
+  the toast above the dock.
+- Control numbers from: SPEC §6.7 goldens A and B, as the golden tests state them (AC 17,
+  initiative +3, speed 30, proficiency +2, passive Perception 13, 12 hit points; AC 18, DC 13,
+  attack +5).
+
+#### 8. Checked against the source
+
+No rules fact is new. The paths are those the golden tests already read. Passive Perception is
+both SRDs' passive check of the Perception skill (`skills.perception.passive`, ENG-13).
+
+#### 9. Not in this ticket
+
+- What each section and panel shows: the rows named in their files (SHEET-32 to SHEET-58).
+- Squares as a distance: SHEET-68, in `apps/web/src/settings/units.ts`.
+- Custom sections as extra tabs: SHEET-57.
+
+#### 10. Rake check
+
+- **The UI reads only `Computed`**: every header number is a `SheetNumber` at a path with a
+  breakdown (checked on golden B); the stored current and temporary hit points are trackers.
+- **Own fields only**: `numberAt` reads `Object.hasOwn`, so `toString` reads as no value.
+- **Each system's rules live in its module**: the paths and the casting classes come from
+  `system-5e`; the frame asks `SHEET_SYSTEMS`, never a system id.
+- **Stored units are feet**: speed is converted only on screen (`units.ts`).
+- **No look in a component, no visible literal**: tokens, slots and parts only; every string is
+  a `sheet` key; lint passes.
+- **Missing is not broken**: a missing row, a refused row, a missing pack and a missing value
+  are each a line of text or "—".
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on `24050f9` (SHEET-27, the base it landed on; SHEET-31, SHEET-38 and
+SHEET-27 landed while this row ran):
+
+- Whole gate (`lint && typecheck && test && e2e`): exit 0, 89 s.
+- `pnpm lint`: `Checked 350 files`, no fixes. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: 95 files, 1222 passed, 0 failed, 27.11 s, then the speed project 2 passed. 22
+  of the tests are new here: 6 in `sheet-header.test.ts`, 16 in `sheet.test.tsx`.
+- `pnpm e2e`: 36 passed, 0 failed, 27.2 s; 6 of them are new (`sheet.spec.ts`).
+  `sheet.spec.ts`, `navigation.spec.ts` and `dice.spec.ts` with `--repeat-each=5`: 70 passed,
+  0 failed.
+
+Which row fills which file (each with its own namespace in `apps/web/src/locales/en/`):
+
+| File in `apps/web/src/sheet/` | Row | Namespace |
+|---|---|---|
+| `sections/Abilities.tsx`, `SavingThrows.tsx`, `Skills.tsx` | SHEET-32 | `checks` |
+| `sections/Conditions.tsx` (on Main and Combat) | SHEET-42 | `conditions` |
+| `sections/TurnList.tsx` | SHEET-49 | `turn` |
+| `sections/Attacks.tsx` | SHEET-44 | `attacks` |
+| `sections/Concentration.tsx` | SHEET-41 | `concentration` |
+| `sections/DeathSaves.tsx` | SHEET-43 | `deathSaves` |
+| `sections/SpellList.tsx` | SHEET-46 | `spells` |
+| `sections/Items.tsx` | SHEET-50 | `gear` |
+| `sections/Coins.tsx` | SHEET-51 | `coins` |
+| `sections/FeatureList.tsx` | SHEET-48 | `features` |
+| `sections/AboutList.tsx` | SHEET-53 | `about` |
+| `sections/NotesText.tsx` | SHEET-54 | `notes` |
+| `header/Inspiration.tsx` | SHEET-55 | `inspiration` |
+| `header/Token.tsx` (draws the first letter now) | SHEET-56 | `token` |
+| `panels/NumberPad.tsx` (`mode` damage or heal) | SHEET-40 | `numberPad` |
+| `panels/RestPanel.tsx` | SHEET-45 | `rest` |
+| `panels/ActionsMenu.tsx` | SHEET-58 | `actions` |
+| `panels/ChoicesPanel.tsx` | SHEET-36 | `choices` |
+
+A section reads the sheet with `useSheet()`; a panel gets `onClose`. `RollDialog` and
+`BreakdownSheet` get the number's `path` and `onClose` from the frame.
+
+Differences from §3 and from the board:
+- The class line stands on the second line, before the edition badge, not beside the name: at
+  360 px, beside the name, both "Golden B" and "Fighter 1" were cut ("Golde…", "Fight…") in the
+  first screenshot. The board's second line holds the inspiration stars; they follow the badges.
+- The board's fifth number, Passive, is kept, although the row named four.
+- The Edit switch shows a lock in play mode and a pencil in edit mode (BRIEF P4: "A lock icon in
+  the header shows play mode"; Part 5: Edit stays a header button).
+- Decided here (ADR 002): metres are shown at 5 ft to 1.5 m (30 ft is 9 m), rounded to a
+  tenth; this was left open by SHEET-13 §11.
+
+- SHEET-38 closed while this row ran and left it a note: the dice button opens `DiceSheet` with
+  the character as `roller`. `SheetDice.tsx`, first made empty for SHEET-38, now holds the
+  button and the panel (§3 item 11).
+
+Changed outside the hat, because this ticket changed it: `toast.test.tsx` expected the toast's
+old `bottom-4` class; `navigation.test.tsx` lists the 18 new namespaces and passes the roll
+dialog and the breakdown a path.
+
+Found, not fixed:
+- The header's spellcasting line names casting classes only. A spell a feat or a species gives
+  with its own stat has its DC at `abilities.<stat>.spell.dc` (ENG-51) and is not in the line;
+  SHEET-46 decides whether the Spells tab's line shows it.
+- Dexie's `liveQuery` sees only writes made through Dexie; every write in the app is one. The
+  e2e tests write rows before the sheet opens, so they do not rely on it.
+
+Changelog: "A character opens its sheet: the name, class and level, edition, AC, initiative,
+speed, proficiency, passive Perception and, for a caster, the spell save DC and attack pinned
+at the top; hit points with temporary ones in their own colour, Damage, Heal and eight tabs
+pinned at the bottom. The tabs are still empty."

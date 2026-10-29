@@ -1,3 +1,61 @@
 {
-  "title": "Character"
+  "title": "Character",
+  "loading": "Opening the character…",
+  "notFound": "This character is not on this device.",
+  "failed": "This character could not be read on this device.",
+  "unopened": {
+    "newer": "Saved by a newer version of the app. Update the app to open it.",
+    "invalid": "Its saved data could not be read.",
+    "unknownSystem": "Made for a game system this app does not have."
+  },
+  "noSheet": "This app has no sheet for this character's game system.",
+  "notInstalled": "The pack {{id}} is not on this device: its entries show as missing.",
+  "classLevel": "{{name}} {{level}}",
+  "separator": " · ",
+  "missing": "Missing: {{id}}",
+  "choices": "{{count}} choices to make",
+  "choicesBadge": "!{{count}}",
+  "rest": "Rest",
+  "edit": "Edit",
+  "actions": "Actions",
+  "dice": "Dice",
+  "numbers": {
+    "ac": "AC",
+    "init": "Init",
+    "speed": "Speed",
+    "prof": "Prof",
+    "passive": "Passive"
+  },
+  "casting": {
+    "dc": "Save DC",
+    "attack": "Attack"
+  },
+  "signed": {
+    "plus": "+{{value}}",
+    "minus": "−{{value}}"
+  },
+  "distance": {
+    "ft": "{{value, number}} ft",
+    "m": "{{value, number}} m"
+  },
+  "noValue": "—",
+  "hp": {
+    "label": "Hit points",
+    "max": "/ {{value}}",
+    "temp": "+{{value}}",
+    "summary": "Hit points {{current}} of {{max}}, temporary {{temp}}"
+  },
+  "damage": "Damage",
+  "heal": "Heal",
+  "tabs": {
+    "label": "Sheet tabs",
+    "main": "Main",
+    "turn": "Turn",
+    "combat": "Combat",
+    "spells": "Spells",
+    "gear": "Gear",
+    "features": "Features",
+    "about": "About",
+    "notes": "Notes"
+  }
 }

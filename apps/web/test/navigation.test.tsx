@@ -34,18 +34,36 @@ describe('SHEET-11 navigation', () => {
     expect(Object.keys(en).sort()).toEqual(localeFiles);
     expect([...(i18n.options.ns as string[])].sort()).toEqual(localeFiles);
     expect(localeFiles).toEqual([
+      'about',
+      'actions',
+      'attacks',
       'breakdown',
       'characters',
+      'checks',
+      'choices',
+      'coins',
       'common',
+      'concentration',
+      'conditions',
       'create',
+      'deathSaves',
       'description',
       'dice',
+      'features',
+      'gear',
+      'inspiration',
+      'notes',
+      'numberPad',
       'player',
+      'rest',
       'roll',
       'settings',
       'sheet',
+      'spells',
       'start',
       'toast',
+      'token',
+      'turn',
     ]);
   });
 
@@ -67,8 +85,9 @@ describe('SHEET-11 navigation', () => {
   });
 
   it('creates the shared pieces empty, for the rows that fill them', () => {
+    // SHEET-30: the sheet passes the roll dialog and the breakdown their number's path.
     for (const Piece of [RollDialog, BreakdownSheet]) {
-      expect(renderToStaticMarkup(<Piece />)).toBe('');
+      expect(renderToStaticMarkup(<Piece path="init.total" onClose={() => {}} />)).toBe('');
     }
   });
 });
