@@ -199,7 +199,7 @@ chats never claim one version number.
 | **On the device** | **tables, the mini-pack, saved characters** | | |
 | SHEET-07 | Phase 2's device tables arrive in one database version | XS | ✅ 2026-10-28 |
 | SHEET-08 | The phase 1 fixtures ship as the built-in mini-pack | M | ✅ 2026-10-29 |
-| SHEET-09 | Built-in packs load into the content index at start | S | 🔲 |
+| SHEET-09 | Built-in packs load into the content index at start | S | ✅ 2026-10-29 |
 | SHEET-10 | Characters are saved on the device, migrated as they open | S | ✅ 2026-10-29 |
 | **Navigation** | **ADR 008, ADR 013** | | |
 | SHEET-11 | The start page replaces the bottom bar | M | ✅ 2026-10-29 |
@@ -262,16 +262,6 @@ chats never claim one version number.
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
-- **SHEET-09** — found by ENG-25: a character's active pack that is not installed on the device
-  never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
-  on each of its entries. The row starts the load from `apps/web/src/main.tsx`, which SHEET-11, in
-  the same wave, leaves alone. Found by SHEET-10: an installed pack opens through its system's
-  frame; its opener joins the table in `apps/web/src/systems.ts`, beside the character's. Found by
-  SHEET-08: the built-in packs (`BUILT_IN_PACKS`, `@grimoire/content`) have no
-  `license.attribution`. SPEC Appendix В's two texts are `[ПРОВЕРИТЬ]` against each SRD PDF's
-  legal page, and the cloud container cannot reach the PDFs (`media.wizards.com`,
-  `media.dndbeyond.com`: 403, measured 2026-10-29). Loading the packs puts them in the public
-  build, so the row fills each pack's `attribution` from the checked text first.
 - **SHEET-12** — ADR 013 item 17, board `V3-Player`: Characters works; Sources, Library, Quick
   rules and Bookmarks open with phase 3, and Dice roll with SHEET-38; until then each shows as
   coming later. No "2 of 3": no limit applies before the payment phase (ADR 005 item 2).

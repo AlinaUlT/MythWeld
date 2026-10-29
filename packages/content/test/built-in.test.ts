@@ -12,6 +12,15 @@ import { BUILT_IN_PACKS, srd2014, srd2024 } from '../src/index.ts';
 // license the public build may carry (SPEC §3, ADR 003). Counts are the fixtures' own (ENG-09 §8,
 // ENG-10 §8) with the simple types SHEET-08 §4 adds: 66 + 8 and 57 + 9.
 
+// SHEET-09: each SRD PDF's attribution statement, read from its legal page: SRD_CC_v5.1.pdf and
+// SRD_CC_v5.2.1.pdf, page 1, as SHEET-09 §8 names them.
+const ATTRIBUTION: Readonly<Record<string, string>> = {
+  'srd-2014':
+    'This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.',
+  'srd-2024':
+    'This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.',
+};
+
 /** A built-in pack opened as the app opens a file, or the test fails with why it did not open. */
 function opened(file: unknown): FifthEditionPack {
   const result = openFifthEditionPack(file);
@@ -38,6 +47,7 @@ describe('SHEET-08 the built-in mini-pack', () => {
         spdx: 'CC-BY-4.0',
         name: 'Creative Commons Attribution 4.0 International',
         url: 'https://creativecommons.org/licenses/by/4.0/legalcode',
+        attribution: ATTRIBUTION[pack.id],
         redistributable: true,
       });
     }
