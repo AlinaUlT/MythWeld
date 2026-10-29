@@ -1,4 +1,5 @@
 // SHEET-11: the frame of a page: its header (back arrow, title, gear) above what the page holds.
+// SHEET-24: a page may put its own control at the header's end, before the gear (My characters' +).
 import { ChevronLeft, SlidersHorizontal } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -68,15 +69,18 @@ interface PageProps {
   title: string;
   back: Back;
   gear?: boolean;
+  /** The page's own control, at the header's end. */
+  action?: ReactNode;
   children?: ReactNode;
 }
 
-export function Page({ title, back, gear = false, children }: PageProps) {
+export function Page({ title, back, gear = false, action, children }: PageProps) {
   return (
     <Slot as="main" name="page" className="flex min-h-dvh flex-col">
       <header className="flex h-15 shrink-0 items-center gap-1 px-1">
         <BackButton to={back} />
         <h1 className="grow font-heading text-28 leading-tight font-bold">{title}</h1>
+        {action}
         {gear && <GearLink />}
       </header>
       {children}

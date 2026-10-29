@@ -2,6 +2,8 @@
 // opens (SPEC §5.8). Opening never writes: an older row stays as it is until the next save
 // stores the current version, and a row the app refuses (newer, invalid, of a system it does
 // not carry) is left untouched, so no saved data is lost or rewritten (ADR 002).
+// SHEET-24: My characters opens every row the same way; one that does not open is listed with
+// its reason, never dropped.
 import type { Opened } from '@grimoire/schema';
 import { type AppCharacter, characterOpenerOf } from '../systems';
 import { type CharacterRow, db } from './db';
@@ -74,4 +76,34 @@ export async function saveCharacter(
 /** How many characters are stored, each counted whether it opens or not (ADR 005 item 2). */
 export function countCharacters(characters = db.characters): Promise<number> {
   return characters.count();
+}
+
+/** A stored character as My characters lists it: its row's id and name, and what opening it gave. */
+export interface ListedCharacter {
+  id: string;
+  /** The row's own name, when it holds one, so a row that does not open is still named. */
+  name?: string;
+  opened: Opened<AppCharacter> | UnknownSystem;
+}
+
+/** The row's `updatedAt` in milliseconds, or `-Infinity` when it holds no readable time. */
+function updatedAtOf(row: CharacterRow): number {
+  const time = typeof row.updatedAt === 'string' ? Date.parse(row.updatedAt) : Number.NaN;
+  return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+}
+
+/**
+ * Every stored character, each opened at the current versions; no row is written. The newest
+ * change comes first, a row with no readable `updatedAt` last, equal times by id.
+ */
+export async function listCharacters(characters = db.characters): Promise<ListedCharacter[]> {
+  const rows = await characters.toArray();
+  return rows
+    .map((row) => ({ row, time: updatedAtOf(row) }))
+    .sort((a, b) => b.time - a.time || (a.row.id < b.row.id ? -1 : a.row.id > b.row.id ? 1 : 0))
+    .map(({ row }) => ({
+      id: row.id,
+      ...(typeof row.name === 'string' && row.name !== '' && { name: row.name }),
+      opened: openFile(row),
+    }));
 }

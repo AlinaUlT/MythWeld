@@ -4057,3 +4057,168 @@ Differences from the row: none. The row's measured case (exhaustion 6) is item 4
 Found, not fixed: nothing.
 
 Nothing for the changelog.
+
+---
+
+### SHEET-24 My characters lists the saved characters
+
+**Hat:** My characters lists the saved characters
+**Depends on:** SHEET-10 (`openCharacter`, the `characters` table), SHEET-09 (`contentOf`, the
+built-in packs at start), SHEET-11 (the page, its route and namespace)
+**Size:** S
+**Screen:** Yes — My characters, board `V3-Characters`; BRIEF Part 2 P2 and its Part 5 row
+**SPEC:** §7.1 as ADR 008 item 4 changes it; §5.8 (a row opens through its migration frame);
+§8.2 (missing is not broken); §9 (i18n)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/pages/CharactersPage.tsx` — changes: the list, its empty, loading and
+failed states.
+- `apps/web/src/db/characters.ts` — changes: `listCharacters`, every row opened, newest change first.
+- `packages/system-5e/src/list-line.ts` — new: the entities a list card names under a fifth-edition
+  character's name (its species, its classes with their levels).
+- `packages/system-5e/src/index.ts` — exports it.
+- `apps/web/src/systems.ts` — changes: each system's list line, by system id, beside its opener.
+- `apps/web/src/locales/en/characters.json` — the page's strings.
+
+#### 2. What is missing now
+
+- `/characters` shows only its header: `CharactersPage.tsx` is `<Page title back />` with nothing
+  under it ("empty until SHEET-24 fills it").
+- `apps/web/src/db/characters.ts` opens one row by id (`openCharacter`); nothing reads every row.
+- Nothing names a character's species and classes for a list: `characterLevel` gives the level
+  only, and the app may not read a system's `systemData` itself (ADR 004, `systems.ts`).
+- No e2e test saves a character in Chromium and opens it (SHEET-10 §11, "Found, not fixed").
+
+#### 3. What it should look like when done
+
+1. `listCharacters()` gives one entry per row of the `characters` table: the row's id, its stored
+   name when it holds one, and what opening it gave (`openCharacter`'s answer). Newest
+   `updatedAt` first; a row without a readable `updatedAt` goes last; equal times by id. No row
+   is written.
+2. `listLineOf(character)` gives fifth edition's line: the species' id, then each class's id with
+   its level, in the order taken. Golden B (2024): `srd-2024:species/human`, then
+   `srd-2024:class/fighter` at 1. Golden C (2014): no species; `srd-2014:class/wizard` at 3, then
+   `srd-2014:class/paladin` at 3.
+3. The page lists every saved character as a card: a round portrait with the name's first letter,
+   the name, the edition badge (`2014` or `2024`, the character's `ruleset`), the line
+   ("Human · Fighter 1", each name from the character's own packs, or "Missing: <id>"), and
+   "Created <date>". A card is a link to `/characters/<id>`.
+4. A "+" in the header (44 × 44 px or more, label "New character") links to `/characters/new`.
+   No counter and no limit (ADR 005 item 2).
+5. No character: the line "No characters yet. Make one with +, or bring one from a file.", a
+   "New character" button to `/characters/new`, and "Import file", shown as coming later until
+   SHEET-26.
+6. A row that does not open is a card that is not a link: its stored name (or "Unnamed
+   character") and why — newer app, unreadable data, or a game system the app does not carry.
+   The page never crashes on it, and the other cards still open.
+7. While the rows are read the page shows nothing under the header; if the database cannot be
+   read it says so in one line.
+8. Nothing is wider than 360 px. Dark by default; light the same.
+9. e2e: a character saved into the app's own database in Chromium is listed, opens its sheet's
+   path, and a newer row beside it shows its reason.
+
+#### 4. How to do it
+
+1. `list-line.ts`: `listLineOf(character)` → `ListLinePart[]` (`{ id, level? }`) from
+   `systemData.species` and `systemData.classes`. A lineage stays out: the board names the species.
+2. `systems.ts`: `CHARACTER_LIST_LINES` by system id, and `listLineOf(character)` that reads it.
+3. `characters.ts`: `listCharacters(characters = db.characters)` reads `toArray()`, runs each row
+   through `openFile`, sorts as §3 item 1 says.
+4. `CharactersPage`: reads `listCharacters()` once in an effect (a later row's Delete reads it
+   again), then draws the states. Names come from `contentOf(character).index.get(id)`; a
+   `missing` lookup draws `Missing: <id>`. The card is `<Part name="card" fill="card">`, the
+   portrait `<Slot name="portrait">`, the badge `<Part name="chip">`, the "+" `<Part
+   name="icon-button">` on `<Slot name="button">`.
+5. The date goes through i18next's `datetime` formatter, so it follows the language.
+
+#### 5. Stored data
+
+Nothing stored changes. The list reads rows and writes none.
+
+#### 6. What a person will see
+
+- From Player's "My characters" (SHEET-12) or `/characters`: the header (back arrow, "My
+  characters", the round "+"), then one card per character, newest change first, and under them
+  "Tap a character to open it."
+- Empty: the friendly line, "New character" and "Import file" (greyed, "Coming later").
+- A card that does not open: greyed text, no link, the reason in place of the line.
+- English keys in `characters`: `title` "My characters", `new` "New character", `empty` "No
+  characters yet. Make one with +, or bring one from a file.", `import` "Import file", `hint`
+  "Tap a character to open it.", `created` "Created {{date, datetime}}", `classLevel`
+  "{{name}} {{level}}", `separator` " · ", `missing` "Missing: {{id}}", `unnamed` "Unnamed
+  character", `failed` "Your characters could not be read on this device.",
+  `unopened.newer` "Saved by a newer version of the app. Update the app to open it.",
+  `unopened.invalid` "Its saved data could not be read.", `unopened.unknownSystem` "Made for a
+  game system this app does not have."
+
+#### 7. Tests
+
+- `packages/system-5e/test/list-line.test.ts` — §3 item 2 on goldens A, B, C.
+- `apps/web/test/characters.test.ts` — `SHEET-24 listing`: §3 item 1 (order, the stored name,
+  refused rows listed with their code, nothing written, an empty table).
+- `apps/web/test/characters-page.test.tsx` — the line's text from the built-in packs, and
+  `Missing: <id>` for an id no pack holds.
+- `apps/web/e2e/characters.spec.ts` — §3 items 3–9 in Chromium at 360 × 800; screenshots.
+- Control values from: SPEC §6.7 goldens A, B, C (`packages/system-5e/test/golden/`); the names in
+  the built-in packs (`srd-2014`, `srd-2024`, SHEET-08).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact.
+
+#### 9. Not in this ticket
+
+- A swipe or "⋯" for Actions, Copy, Export, Delete: SHEET-25. Importing a file: SHEET-26.
+- The manual form "+" opens: SHEET-27. The sheet a card opens: SHEET-30.
+- The player page's card with the count and the last opened character: SHEET-12.
+- The portrait picture (SHEET-56); a card shows the first letter until then.
+- The paid limit and its counter: the payment phase (ADR 005 item 2).
+
+#### 10. Rake check
+
+- **Missing is not broken**: a row that does not open, and an id no pack holds, each show a
+  reason; nothing throws, and no row is changed or deleted.
+- **Each system's rules live in its own module**: the line comes from the module through
+  `systems.ts`'s table; the page never reads `systemData`.
+- **No look written in a component**: token classes, `<Part>` and `<Slot>` only; lint is green.
+- **No user-facing string literal**: every string is a `characters` key; the name, the badge and
+  the entity names are data.
+- **Entity names stay bilingual**: the line reads `name.en`, the only filled locale.
+- **No external requests**: IndexedDB and the built-in packs only.
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on top of SHEET-65 (`759442e`; built on `3b027bd`, then SHEET-12,
+SHEET-67 and SHEET-65 landed and the gate ran again):
+
+- `pnpm lint`: `Checked 270 files`, 0 errors. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: `Test Files 85 passed (85)`, `Tests 1126 passed (1126)`, 28.93 s (1116 on the
+  base, 10 new: 3 in `list-line.test.ts`, 4 in `characters.test.ts`, 3 in
+  `characters-page.test.tsx`); lines covered 99.9 % (3026 / 3029). The second suite
+  `Tests 2 passed (2)`, unchanged.
+- `pnpm e2e`: `23 passed (22.1s)` on `pixel-7` (2 new in `characters.spec.ts`).
+- The tests are live: with the sort turned oldest first, `characters.test.ts` gave
+  `2 failed | 11 passed (13)`.
+- Build: `index-*.js` 632,821 bytes (194,153 through `gzip -c`); at `759442e`, 623,971
+  (191,566): 8,850 bytes more.
+- Screenshots at 360 × 800, dark and light: golden B ("Human · Fighter 1", `2024`, "Created
+  Oct 2, 2026"), golden C ("Wizard 3 · Paladin 3", `2014`), and a newer row with its reason;
+  the empty state. `scrollWidth` 360 on both.
+- Differs from the board: the "+" is a rounded square, not a circle: the base pick for
+  `icon-button` is `plain` (SHEET-04), and a page cannot re-pick a part. The edition badge is a
+  filled chip, not the board's outline, for the same reason (as SHEET-11's chip). No hit point bar
+  on the card (BRIEF P2 asks one; the newer V3 board draws none). The hint says "Tap a character
+  to open it." without the swipe: swiping comes with SHEET-25.
+- Decided here (ADR 002): the list is ordered by the newest change (`updatedAt`), since no row
+  records when it was last opened. `Page` takes an `action` for a page's own header control.
+  "Import file" shows in the empty state only, greyed with "Coming later", until SHEET-26.
+
+Found, not fixed:
+
+- Nothing.
+
+Changelog: "My characters lists the characters saved on the device, newest change first, each
+with its edition, species and classes; a character that cannot open says why."

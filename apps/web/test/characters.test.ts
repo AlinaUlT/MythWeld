@@ -2,9 +2,20 @@ import 'fake-indexeddb/auto';
 import { FIFTH_EDITION_SCHEMA_VERSION, fifthEditionCharacterSchema } from '@grimoire/system-5e';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { goldenA } from '../../../packages/system-5e/test/golden/characters-2014.ts';
-import { countCharacters, openCharacter, saveCharacter } from '../src/db/characters';
+import { goldenB } from '../../../packages/system-5e/test/golden/characters-2024.ts';
+import {
+  countCharacters,
+  listCharacters,
+  openCharacter,
+  saveCharacter,
+} from '../src/db/characters';
 import { GrimoireDb } from '../src/db/db';
-import { CHARACTER_OPENERS, characterOpenerOf } from '../src/systems';
+import {
+  CHARACTER_LIST_LINES,
+  CHARACTER_OPENERS,
+  characterOpenerOf,
+  listLineOf,
+} from '../src/systems';
 
 // Golden A of SPEC §6.7 is the saved character; the older and broken rows are made from it.
 
@@ -143,6 +154,51 @@ describe('SHEET-12 the count of stored characters', () => {
   });
 });
 
+describe('SHEET-24 listing the characters on the device', () => {
+  const savedB = fifthEditionCharacterSchema.parse(goldenB);
+
+  it('lists nothing from an empty table', async () => {
+    expect(await listCharacters(database.characters)).toEqual([]);
+  });
+
+  it('lists every row opened, the newest change first, and writes none', async () => {
+    const older = { ...saved, updatedAt: '2026-10-01T09:00:00.000Z' };
+    const newer = { ...savedB, updatedAt: '2026-10-03T09:00:00.000Z' };
+    const old = { ...version2(), id: '6c1d2e3f-4a5b-4c6d-8e7f-8091a2b3c4d5' };
+    await database.characters.bulkPut([older, newer, old]);
+    const listed = await listCharacters(database.characters);
+    // Golden A's own `updatedAt` is 2026-10-02, between the two.
+    expect(listed.map(({ id }) => id)).toEqual([newer.id, old.id, older.id]);
+    expect(listed.map(({ name }) => name)).toEqual(['Golden B', 'Golden A', 'Golden A']);
+    expect(listed[0]?.opened).toEqual({
+      ok: true,
+      value: newer,
+      from: { schemaVersion: 2, systemSchemaVersion: FIFTH_EDITION_SCHEMA_VERSION },
+    });
+    expect(listed[1]?.opened).toMatchObject({ ok: true, from: { systemSchemaVersion: 2 } });
+    expect(await database.characters.toArray()).toEqual([older, newer, old].sort(byId));
+  });
+
+  it('lists a row that does not open with its reason and its stored name', async () => {
+    const newer = { ...goldenA, systemSchemaVersion: FIFTH_EDITION_SCHEMA_VERSION + 1 };
+    const broken = { ...goldenB, abilities: 'none' };
+    const other = { ...goldenA, id: '6c1d2e3f-4a5b-4c6d-8e7f-8091a2b3c4d5', system: 'tales' };
+    const bare = { id: '00000000-0000-4000-8000-000000000001', name: 7 };
+    await database.characters.bulkPut([newer, broken, other, bare]);
+    const listed = await listCharacters(database.characters);
+    // A, its copy and B share an `updatedAt`, so their ids order them; the bare row has no time.
+    expect(listed.map(({ id, name, opened }) => [id, name, opened.ok || opened.code])).toEqual([
+      [goldenA.id, 'Golden A', 'newer'],
+      [other.id, 'Golden A', 'unknownSystem'],
+      [goldenB.id, 'Golden B', 'invalid'],
+      [bare.id, undefined, 'unknownSystem'],
+    ]);
+    expect(await database.characters.count()).toBe(4);
+  });
+});
+
+const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : 1);
+
 describe('SHEET-10 systems the app carries', () => {
   it("finds a system's opener by its id, and nothing for another name", () => {
     expect(Object.keys(CHARACTER_OPENERS)).toEqual(['5e']);
@@ -150,5 +206,15 @@ describe('SHEET-10 systems the app carries', () => {
     for (const name of ['tales', 'toString', '__proto__', 5, undefined]) {
       expect(characterOpenerOf(name)).toBeUndefined();
     }
+  });
+});
+
+describe('SHEET-24 each system names its list line', () => {
+  it("reads the line of the character's own system", () => {
+    expect(Object.keys(CHARACTER_LIST_LINES)).toEqual(['5e']);
+    expect(listLineOf(fifthEditionCharacterSchema.parse(goldenB))).toEqual([
+      { id: 'srd-2024:species/human' },
+      { id: 'srd-2024:class/fighter', level: 1 },
+    ]);
   });
 });

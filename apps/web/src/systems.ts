@@ -1,11 +1,14 @@
 // SHEET-10: the system modules the app carries, by system id (ADR 004). A stored file names its
 // system, and the app finds that module's opener here; no other code asks which system it is.
 // SHEET-09: a pack file names its system too, and opens through that module's pack opener.
+// SHEET-24: what My characters names under a character's name is its module's too.
 import type { Opened } from '@grimoire/schema';
 import {
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
   type FifthEditionPack,
+  fifthEditionListLine,
+  type ListLinePart,
   openFifthEditionCharacter,
   openFifthEditionPack,
 } from '@grimoire/system-5e';
@@ -44,4 +47,20 @@ export function packOpenerOf(system: unknown): PackOpener | undefined {
   return typeof system === 'string' && Object.hasOwn(PACK_OPENERS, system)
     ? PACK_OPENERS[system]
     : undefined;
+}
+
+/** The entities a list card names under a character's name, with a class's level. */
+export type ListLine = (character: AppCharacter) => readonly ListLinePart[];
+
+/** Each system's list line, by system id. */
+export const CHARACTER_LIST_LINES: Readonly<Record<string, ListLine>> = {
+  [FIFTH_EDITION_SYSTEM]: fifthEditionListLine,
+};
+
+/** The entities a list card names under `character`'s name; none for a system without a line. */
+export function listLineOf(character: AppCharacter): readonly ListLinePart[] {
+  const line = Object.hasOwn(CHARACTER_LIST_LINES, character.system)
+    ? CHARACTER_LIST_LINES[character.system]
+    : undefined;
+  return line === undefined ? [] : line(character);
 }

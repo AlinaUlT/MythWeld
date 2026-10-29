@@ -1,3 +1,18 @@
 {
-  "title": "My characters"
+  "title": "My characters",
+  "new": "New character",
+  "empty": "No characters yet. Make one with +, or bring one from a file.",
+  "import": "Import file",
+  "hint": "Tap a character to open it.",
+  "created": "Created {{date, datetime(day: numeric; month: short; year: numeric)}}",
+  "classLevel": "{{name}} {{level}}",
+  "separator": " · ",
+  "missing": "Missing: {{id}}",
+  "unnamed": "Unnamed character",
+  "failed": "Your characters could not be read on this device.",
+  "unopened": {
+    "newer": "Saved by a newer version of the app. Update the app to open it.",
+    "invalid": "Its saved data could not be read.",
+    "unknownSystem": "Made for a game system this app does not have."
+  }
 }

@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-24 · My characters lists the characters saved on the device, newest change
+  first, each with its edition, species and classes; a character that cannot open says why.
 - 2026-10-29 · SHEET-12 · The player page shows six sections: Characters, with how many are
   saved, opens the list; Sources, Library, Dice roll, Quick rules and Bookmarks are marked as
   coming later.

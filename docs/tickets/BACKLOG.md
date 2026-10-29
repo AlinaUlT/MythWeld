@@ -223,7 +223,7 @@ chats never claim one version number.
 | SHEET-66 | An effect may set the size to any size the packs hold | S | ✅ 2026-10-29 |
 | **Characters** | **the list, the file, the manual form** | | |
 | SHEET-23 | An undo toast reverses the last change | S | 🔲 |
-| SHEET-24 | My characters lists the saved characters | S | 🔲 |
+| SHEET-24 | My characters lists the saved characters | S | ✅ 2026-10-29 |
 | SHEET-25 | A character's Actions copy, export or delete it | S | 🔲 |
 | SHEET-26 | A character file imports through its checks | S | 🔲 |
 | SHEET-27 | The manual form makes a character | M | 🔲 |
@@ -269,11 +269,6 @@ chats never claim one version number.
   packs, AI and purchases come with their phases.
 - **SHEET-23** — SPEC §7.2: an "Undo" toast after every change, and the last 50 states kept in
   the history table; an entry is ENG-30's log entry.
-- **SHEET-24** — ADR 008 item 4, BRIEF P2, board `V3-Characters`; an empty state with "+" and
-  "Import file". No counter and no limit before the payment phase (ADR 005 item 2). Found by
-  SHEET-10: rows open through `openCharacter` (`apps/web/src/db/characters.ts`), which no e2e
-  test runs yet; this row's e2e saves one in Chromium and lists it, and a row that does not open
-  shows its reason, not a crash.
 - **SHEET-25** — ADR 008 item 4: a swipe or "⋯" opens Actions. Copy, Export (a JSON file, SPEC
   §12 stage 2) and Delete (with Undo) work; Link for DM and Transfer wait for the table link's
   phase and show as coming later. Found by SHEET-22: SHEET-07 §9 gives this row the deleted
