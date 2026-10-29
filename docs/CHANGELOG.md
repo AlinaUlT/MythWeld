@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-13 · Settings chooses dark or light colours, stops animations, picks feet
+  or metres and pounds or kilograms, and turns on "I roll myself"; each choice is kept on the
+  device and already holds when the app opens.
 - 2026-10-29 · SHEET-24 · My characters lists the characters saved on the device, newest change
   first, each with its edition, species and classes; a character that cannot open says why.
 - 2026-10-29 · SHEET-12 · The player page shows six sections: Characters, with how many are

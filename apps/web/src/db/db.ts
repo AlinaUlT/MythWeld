@@ -22,9 +22,10 @@ export interface PackRow {
   id: string;
 }
 
-/** One display choice of the person (SHEET-13), keyed by its name. */
+/** One display choice of the person, keyed by its name; its value is checked as it is read (SHEET-13). */
 export interface SettingRow {
   key: string;
+  value: unknown;
 }
 
 /**

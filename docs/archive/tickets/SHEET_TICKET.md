@@ -4392,3 +4392,167 @@ Found, not fixed:
   Written into SHEET-30's note.
 
 Nothing for the changelog: no screen makes a change yet.
+
+---
+
+### SHEET-13 Settings keep the person's display choices
+
+**Hat:** keep the person's display choices
+**Depends on:** SHEET-04 (parts), SHEET-05 (`setMotionStill`), SHEET-07 (the `settings` table),
+SHEET-11 (the Settings route)
+**Size:** S
+**Screen:** Yes — Settings; BRIEF P10 frame 1, not drawn yet, so it is built from SHEET-04's parts
+**SPEC:** §7.5 (units, "I roll myself", theme), §6.5 ("I roll myself"), §7.2 (dark by default)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/settings/settings.ts` — new: each choice's values, the defaults, the
+read and the save of the `settings` table, and `applySettings`.
+- `apps/web/src/settings/useSettings.ts` — new: the choices in memory, `startSettings`,
+  `changeSetting`, `useSettings`.
+- `apps/web/src/pages/SettingsPage.tsx` — the page (was empty).
+- `apps/web/src/main.tsx` — the first render waits for `startSettings`.
+- `apps/web/src/db/db.ts` — `SettingRow` gets its `value`.
+- `apps/web/src/locales/en/settings.json` — the page's strings.
+- `apps/web/e2e/theme.spec.ts` — two tests wait for the page to be drawn (see §11).
+
+#### 2. What is missing now
+
+- `SettingsPage.tsx` draws only the header: `<Page title={t('title')} back="history" />`.
+- `index.html` puts `class="dark"` on `<html>`; nothing removes it, so the light theme cannot be
+  reached from the screen (SHEET-01 §11).
+- `setMotionStill` (SHEET-05) has no caller in `src`.
+- The `settings` table exists (SHEET-07) and nothing writes to it. `SettingRow` holds only `key`.
+
+#### 3. What it should look like when done
+
+1. The choices and their values, the first being the default: `theme` dark / light,
+   `stillMotion` false / true, `distance` ft / m, `weight` lb / kg, `rollMyself` false / true.
+2. An empty table reads as the defaults. Each saved choice is one row `{ key, value }`, and a second
+   save replaces it.
+3. A row whose value is not on its list reads as the default, and its message names the key, the
+   value and the list: `Setting theme holds "sepia", not one of ["dark","light"]; it reads as
+   "dark"`. A row with an unknown key is left in the table and ignored.
+4. Light removes `dark` from `<html>`, and the body paints `#F5F5F3`. "Stop animations" sets
+   `data-motion="still"` on `<html>`.
+5. After a reload, every choice holds, and the app's first frame already wears the theme and the
+   motion switch.
+6. Settings shows three groups, Units (Distance, Weight), Dice (I roll myself) and Theme (Colours,
+   Stop animations). Each control is at least 44 px high; the page is 360 px wide with no
+   horizontal scroll.
+
+#### 4. How to do it
+
+1. `settingValues` lists each choice's values; `Settings` and `DEFAULT_SETTINGS` are derived from
+   it, so a new choice is one line.
+2. `readSettings(table)` reads every row and checks its value against its list (no Zod in
+   `apps/web`; a list check is enough). `saveSetting` puts `{ key, value }`.
+3. `applySettings` toggles the `dark` class and calls `setMotionStill`.
+4. A small store (`useSyncExternalStore`) holds the choices. `changeSetting` shows the change at
+   once and then saves it; a failed save is logged.
+5. Technical choice (ADR 002): `main.tsx` renders after `startSettings()`, which waits at most
+   `START_WAIT_MS` (500 ms) and never fails. Without the wait, a person who chose Light sees one
+   dark frame on every start. The cap means a hung IndexedDB (for example an upgrade blocked by
+   another tab) cannot keep the app from starting. A read that lands after the cap is still
+   applied, but it never undoes a choice the person made meanwhile.
+6. The page draws a choice as native radio buttons inside `chip` parts, and a switch as a native
+   checkbox with `role="switch"` and a `chip` part for its track. Colours come from tokens:
+   `strong` / `on-strong` when on, `soft`, `track` and `muted` when off.
+
+#### 5. Stored data
+
+The first rows of the `settings` table: `{ key: <choice name>, value: <one of its values> }`.
+There is no database version and no `schemaVersion`: SHEET-07 keyed the table by name so that a
+choice adds a row. Each value is checked as it is read, so a value the app no longer takes reads as
+the default and is named, not thrown. A choice whose meaning changes later takes a new key, or a
+migration with its own test. `CharacterDoc`, `ContentPack` and the stored units (feet and pounds)
+do not change.
+
+#### 6. What a person will see
+
+Settings opens from the gear (SHEET-11). At 360×800:
+- Units: Distance — Feet / Metres; Weight — Pounds / Kilograms.
+- Dice: "I roll myself", hint "Type what your own dice show; the app adds the rest."
+- Theme: Colours — Dark / Light; "Stop animations", hint "Nothing on screen moves, as when the
+  phone asks for reduced motion."
+- The picked value is filled with `strong`; a switch that is on is `strong` with its knob at the
+  right.
+- There is no empty, loading or error state. Before the read, and if it fails, the defaults show.
+
+English keys (`settings` namespace): `units.title|distance|weight|ft|m|lb|kg`,
+`dice.title|rollMyself|rollMyselfHint`, `theme.title|mode|dark|light|stillMotion|stillMotionHint`.
+
+#### 7. Tests
+
+- `apps/web/test/settings.test.tsx` — `SHEET-13 the display choices`: the values and defaults; an
+  empty table; one row per choice and a replacing save; a value off its list; an unknown key; the
+  `<html>` class and motion attribute; the page's strings, its three radios checked by default, two
+  switches off.
+- `apps/web/e2e/settings.spec.ts` — `SHEET-13`: defaults; 44 px controls; 360 px width; each choice
+  changing the page; the five stored rows; after a reload the choices hold and the first frame
+  wears them; a stored `sepia` theme opens dark with its warning.
+- Control numbers from: SPEC §7.2 (dark by default), §7.5 (stored units are feet and pounds), the
+  base theme's `color-bg` (`colors.ts`).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts. "I roll myself" is only kept here; what it does is SHEET-38's
+and SHEET-39's.
+
+#### 9. Not in this ticket
+
+- Showing a distance or a weight in the chosen unit, and the conversion: the first screen that
+  shows one (the sheet's rows). The setting is read with `useSettings()`.
+- The roll dialog and the dice panel taking typed results: SHEET-38, SHEET-39.
+- Squares as a distance unit (SPEC §7.5): SHEET-68.
+- Language, dice notation, backup, packs, AI, purchases, About, modes and the theme editor (BRIEF
+  P10): their phases.
+
+#### 10. Rake check
+
+- **No look written in a component**: every colour, corner and size comes from a token class or a
+  part; no transition is written (the switch's knob jumps, as SHEET-05 allows only presets).
+- **No user-facing string literal**: every string is a `settings` key; SHEET-02's lint and the
+  literal check pass.
+- **Stored units are feet and pounds**: the choice is a display setting only; nothing stored is
+  converted.
+- **A stored-shape change needs a migration**: see §5; the table's rows are new, and each value is
+  checked as it is read.
+- **Missing is not broken**: a bad or unknown row never throws, and a failed read leaves the
+  defaults.
+- **No telemetry, no external requests**: the choices stay in IndexedDB on the device.
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on `683cc8c` (SHEET-23, the base it landed on):
+
+- Whole gate (`lint && typecheck && test && e2e`): exit 0, 58 s.
+- `pnpm lint`: `Checked 278 files`, no fixes. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: 88 files, 1151 passed, 0 failed, 18.6 s, then the speed project 2 passed. That is
+  87 files and 1144 tests before, plus 1 file and 7 tests.
+- `pnpm e2e`: 25 passed, 0 failed, 17.1 s (23 before, plus 2). The whole suite with
+  `--repeat-each=5`, on `4a89c54`: 125 passed, 0 failed.
+- The app's first frame after a reload, with the choices on it: 144 ms after navigation (107 ms,
+  132 ms, 141 ms and 142 ms in earlier runs). So the read finishes far inside the 500 ms cap.
+- SHEET-67 landed while this row ran, so `<Part fill="card">` is written in place.
+
+Differences from §3: none.
+
+Changed outside the hat, because this ticket broke it: the first gate run had 1 failure in 22,
+`SHEET-04 every part takes its base style` (expected shadow `rgba(0, 0, 0, 0.12)`, got the dark
+`0.4`). That test removed `dark` right after `goto`, and the stored-settings read, landing after
+it, put `dark` back. `SHEET-01` and `SHEET-04` in `theme.spec.ts` now wait for the page heading
+before touching the class. After that: `theme`, `settings` and `navigation` specs with
+`--repeat-each=10`, 120 passed, 0 failed.
+
+Found, not fixed:
+- SPEC §7.5 also lists squares as a distance unit. The row and BRIEF P10 named feet or metres:
+  SHEET-68.
+- The metre value of 5 feet (1.5 m, the usual table value, or 1.524 m) is not written anywhere yet.
+  It is decided by the first screen that shows a distance.
+
+Changelog: "Settings chooses dark or light colours, stops animations, picks feet or metres and
+pounds or kilograms, and turns on "I roll myself"; each choice is kept on the device and already
+holds when the app opens."

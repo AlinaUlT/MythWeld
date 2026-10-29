@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { FONT_PACKAGES } from '../src/config/fonts';
 import { basePicks, partStyles, partsTheme } from '../src/theme/parts';
 import { baseTheme } from '../src/theme/theme';
@@ -10,10 +10,15 @@ function hex(rgb: string): string {
   return `#${bytes.map((byte) => Number(byte).toString(16).padStart(2, '0')).join('')}`.toUpperCase();
 }
 
+// SHEET-13: the stored choices are put on <html> before the first render, so a test that changes
+// the theme's class by hand waits for the page to be drawn, or the late read puts the class back.
+const appDrawn = (page: Page) => expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
 test('SHEET-01 the page paints with the base theme, dark by default', async ({
   page,
 }, testInfo) => {
   await page.goto('./');
+  await appDrawn(page);
   await expect(page.locator('style#theme')).toHaveCount(1);
   const dark = await page.evaluate(() => {
     const body = getComputedStyle(document.body);
@@ -140,6 +145,7 @@ test('SHEET-04 every part takes its base style in the built app, and a skin re-p
   page,
 }) => {
   await page.goto('./');
+  await appDrawn(page);
   await page.evaluate(() => document.documentElement.classList.remove('dark'));
   // No screen draws a part yet, so the test draws each one the way <Part> does: its three keys.
   const names = Object.keys(partStyles);

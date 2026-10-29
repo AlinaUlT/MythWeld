@@ -1,3 +1,25 @@
 {
-  "title": "Settings"
+  "title": "Settings",
+  "units": {
+    "title": "Units",
+    "distance": "Distance",
+    "weight": "Weight",
+    "ft": "Feet",
+    "m": "Metres",
+    "lb": "Pounds",
+    "kg": "Kilograms"
+  },
+  "dice": {
+    "title": "Dice",
+    "rollMyself": "I roll myself",
+    "rollMyselfHint": "Type what your own dice show; the app adds the rest."
+  },
+  "theme": {
+    "title": "Theme",
+    "mode": "Colours",
+    "dark": "Dark",
+    "light": "Light",
+    "stillMotion": "Stop animations",
+    "stillMotionHint": "Nothing on screen moves, as when the phone asks for reduced motion."
+  }
 }

@@ -180,7 +180,7 @@ chats never claim one version number.
 | 2 | SHEET-03, 04, 05, 06, 08, 10, 16, 18, 20, 21, 61 | Wave 1 is closed |
 | 3 | SHEET-09, 11, 22, 62, 63, 64 | Wave 2 is closed |
 | 4 | SHEET-12, 13, 23, 24, 37, 65, 66, 67 | Wave 3 is closed |
-| 5 | SHEET-25, 27, 30, 31, 38 | Wave 4 is closed |
+| 5 | SHEET-25, 27, 30, 31, 38, 68 | Wave 4 is closed |
 | 6 | SHEET-26, 28, 32, 33, 36, 39, 46, 48, 50, 53, 54, 55, 56 | Wave 5 is closed |
 | 7 | SHEET-29, 34, 40, 41, 42, 43, 44, 45, 47, 49, 51, 52, 57, 58 | Wave 6 is closed |
 | 8 | SHEET-35, 59 | Wave 7 is closed |
@@ -204,7 +204,8 @@ chats never claim one version number.
 | **Navigation** | **ADR 008, ADR 013** | | |
 | SHEET-11 | The start page replaces the bottom bar | M | ✅ 2026-10-29 |
 | SHEET-12 | The player page shows its six sections | S | ✅ 2026-10-29 |
-| SHEET-13 | Settings keep the person's display choices | S | 🔲 |
+| SHEET-13 | Settings keep the person's display choices | S | ✅ 2026-10-29 |
+| SHEET-68 | Distances can be shown in squares | XS | 🔲 |
 | **Rules the screens need** | **engine and module, no screen** | | |
 | SHEET-14 | An unmet prerequisite gives a warning | S | ✅ 2026-10-28 |
 | SHEET-15 | Resistances, immunities, vulnerabilities are computed from effects | S | ✅ 2026-10-28 |
@@ -262,11 +263,6 @@ chats never claim one version number.
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
-- **SHEET-13** — SPEC §7.5, BRIEF P10 (not drawn yet; the row draws it from SHEET-04's parts). The
-  theme (dark by default, light), the motion switch (SHEET-05's `setMotionStill`; this row keeps
-  the choice and sets it at start), the units (feet or metres, pounds or kilograms; stored units
-  stay feet and pounds), "I roll myself" (SPEC §6.5). Language, backup,
-  packs, AI and purchases come with their phases.
 - **SHEET-25** — ADR 008 item 4: a swipe or "⋯" opens Actions. Copy, Export (a JSON file, SPEC
   §12 stage 2) and Delete (with Undo) work; Link for DM and Transfer wait for the table link's
   phase and show as coming later. Found by SHEET-22: SHEET-07 §9 gives this row the deleted
@@ -433,6 +429,10 @@ chats never claim one version number.
   refuses as `changed` where a later change wrote over its place.
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
+- **SHEET-68** — found by SHEET-13: SPEC §7.5 lists squares beside feet and metres; the SHEET-13
+  row and BRIEF P10 named feet or metres, so Settings offers those two. The row adds `sq` to
+  `settingValues.distance` (`apps/web/src/settings/settings.ts`) and its label; no stored row
+  changes. How many feet one square is, and whether a person can change it, is decided in the row.
 
 ---
 

@@ -7,6 +7,7 @@ import { App } from './App';
 import { startPacks } from './content/packs';
 import { db } from './db/db';
 import { requestPersistentStorage } from './db/persist';
+import { startSettings } from './settings/useSettings';
 import { applyTheme, baseTheme } from './theme/theme';
 
 // The tokens are filled before the first render, so no frame shows without them.
@@ -19,14 +20,18 @@ for (const unopened of startPacks().unopened) console.error(unopened.message);
 const root = document.getElementById('root');
 if (!root) throw new Error('#root is missing from index.html');
 
-createRoot(root).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+// SHEET-13: the person's theme and motion choices are on the page before its first frame. The
+// read waits at most START_WAIT_MS and never fails, so storage cannot keep the app from starting.
+startSettings().then(() =>
+  createRoot(root).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  ),
 );
 
-// Storage never holds up the first render. Nothing reads the database yet, so a failure is only
-// logged; the screen that explains it comes with the first data (phase 2).
+// Beyond the settings, storage never holds up the first render. A failure is only logged; the
+// screen that explains it comes with the first data (phase 2).
 db.open().catch((error: unknown) => console.error(error));
 requestPersistentStorage().catch((error: unknown) => console.error(error));
 
