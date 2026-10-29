@@ -66,12 +66,13 @@ names inside code, test data, the next ticket. In doubt, it is not a stop
 | Russian terms | `packages/content/glossary.ru.json` (seeded from SPEC Appendix B) |
 | Copy-paste prompts for new chats (the owner) | [`PROMPTS.md`](PROMPTS.md) |
 | Open tickets of one theme, expanded | `docs/tickets/<AREA>_TICKET.md` |
-| Closed tickets and what each one learned | `docs/archive/tickets/<AREA>_TICKET.md` |
+| Closed tickets and what each one learned | `docs/archive/tickets/<AREA>_TICKET.md`; closed backlog rows: `docs/archive/BACKLOG_CLOSED.md` |
 | Ticket → files → commits | Search the ticket id in the code, and `git log --grep=<id>` |
 
 **`docs/archive/` is not for working from.** Open a file there only if the owner names it, or if a
 ticket builds on a closed ticket's §11 (a "found by" note or a "§11 has the measurement" points
-there).
+there). Never read an archive file whole (`ENG_TICKET.md` alone is over 1 MB): search for the
+ticket's heading (`### ENG-07`) and read only that ticket.
 
 ---
 
@@ -191,19 +192,18 @@ Three exceptions. They are data, not wording:
 - **Simple words.** Explain a term the first time you use it.
 - **Literal, not figurative.** No analogies. Show the exact text, value or command output.
 - **One fact per line, short sentences.** A list of facts beats a paragraph.
-- **Name what does NOT change**, as its own list.
+- **Short reports.** A finished ticket is reported in at most 8 lines: what changed for a
+  person (or "nothing visible"), the gate's measured line, the commit, what comes next. The
+  details are in §11; the chat does not retell them. No file-by-file tour, no restating the
+  ticket. Name what does NOT change only where she could think it did.
 - **End with what was done and what comes next**, not with a question. Only for a decision
   that is hers, state the choice in one sentence, with what happens after each answer.
 - **One fact, one place.** A note points at the file that owns the fact; it does not repeat it.
 - **Nothing she says is lost.** Every requirement, design choice or technical detail the owner gives
   in the chat is written, in the same chat, into the file that owns it: an ADR for a decision,
   `docs/design/BRIEF.md` for a screen. The report names the file and the commit.
-- **Technical choices are made, not asked** ([ADR 002](docs/adr/002-technical-choices.md)). How
-  a thing is built, stored, tested or ordered is decided in the ticket, even where it departs
-  from the letter of a SPEC detail. The ticket says why; the chat reports it as done.
-- **The owner decides** everything else ADR 002 lists: when the SPEC and a rules source disagree, a
-  decision in §2 that looks wrong, golden values, licensing, what the app does for a person.
-  Stop and ask. Do not change such a decision without asking.
+- **Technical choices are made, not asked** ([ADR 002](docs/adr/002-technical-choices.md)). The
+  ticket says why; the chat reports it as done. What stops for her is the list in "Stops" above.
 
 ---
 

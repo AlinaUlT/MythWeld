@@ -1181,3 +1181,31 @@ Found, not fixed: nothing.
 Nothing for the changelog; a person sees no change.
 
 ---
+
+### OPS-33 A new chat reads less · XS
+
+**Hat:** A new chat reads less
+**Where:** `docs/tickets/BACKLOG.md`, `docs/archive/BACKLOG_CLOSED.md`, `CLAUDE.md`, `PROMPTS.md`
+**Depends on:** Nothing
+**Screen:** No
+
+The owner asked to cut what costs reading in every chat, losing no progress and no detail.
+Measured before: `BACKLOG.md` 54,311 bytes, two thirds of it closed rows of phases 0 and 1 and
+OPS; `docs/archive/tickets/ENG_TICKET.md` 1,098,212 bytes, opened whole when a note says "found
+by ENG-xx".
+
+**What it should look like when done:**
+1. Phases 0 and 1 (tables, gates, notes) and the closed OPS rows move word for word to
+   `docs/archive/BACKLOG_CLOSED.md`; `BACKLOG.md` keeps a two-line pointer and the next OPS number.
+2. `CLAUDE.md` says to read one ticket from an archive file by its heading, never the file whole.
+3. `CLAUDE.md` asks for short reports (at most 8 lines for a finished ticket) and drops the
+   bullets that repeated "Stops".
+4. Nothing else changes: phase 2 and phases 3–7 rows and notes, the ADRs, the SPEC, the code.
+
+**Tests:** none; a document change. No code changed, so the gate's result is that of the commit
+before.
+**What came out of it:** Done as items 1–3 say. `BACKLOG.md` 54,311 → 42,952 bytes. A closed
+OPS row now goes to `BACKLOG_CLOSED.md`, as this one does. Found, not fixed: nothing.
+Nothing for the changelog; a person sees no change.
+
+---

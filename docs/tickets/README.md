@@ -66,7 +66,8 @@ Only `BACKLOG.md` carries a status. A ticket file never says "done". Its §11 sa
    `docs/tickets/<AREA>_TICKET.md` to the end of `docs/archive/tickets/<AREA>_TICKET.md`. The open
    file keeps only the theme header and the open tickets, so a new chat reads little.
 8. **✅ and the date in `BACKLOG.md`**; its note under the table, if any, is deleted (the ticket
-   holds it now). Then the commit and the push.
+   holds it now). A closed OPS row, and a phase's
+   rows once the phase closes, move to `docs/archive/BACKLOG_CLOSED.md`. Then the commit and the push.
 9. **The theme closes** when every row of it is ✅ or ❌. `OPS` never closes.
 
 **A phase closes** when every row in it is closed **and** that stage's "Готово, когда" list in

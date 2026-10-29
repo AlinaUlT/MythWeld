@@ -81,8 +81,8 @@ and what it needs from me (an account, a decision, nothing). Do not start it.
 ```
 Grimoire project. Read CLAUDE.md and docs/tickets/BACKLOG.md. Phase <N-1> is closed.
 Read SPEC §12 stage <N> and the SPEC sections it depends on. Cut phase <N> into rows of size
-XS, S or M, each with a hat of one phrase without "and", in the same table form as phases
-0 and 1. Name the phase's last row: its §11 will carry the proof of the stage gate. A row that
+XS, S or M, each with a hat of one phrase without "and", in the same table form as phase
+2. Name the phase's last row: its §11 will carry the proof of the stage gate. A row that
 builds a screen names its boards in docs/design/mockups/.
 Write them into BACKLOG.md and commit. Stop first only if a row adds or drops a feature
 compared with SPEC §12 and the ADRs (ADR 007).
