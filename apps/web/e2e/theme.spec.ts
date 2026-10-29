@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
+import { FONT_PACKAGES } from '../src/config/fonts';
 import { baseTheme } from '../src/theme/theme';
+import { waitForServiceWorker } from './service-worker';
 
 // The colour the screen shows, as #RRGGBB, so it compares with the theme's hex values.
 function hex(rgb: string): string {
@@ -66,4 +68,70 @@ test('SHEET-03 the shell draws its slots, and a skin refills one without a compo
     .evaluate((el) => getComputedStyle(el).backgroundImage);
   expect(image).toMatch(/^linear-gradient\(/);
   await page.screenshot({ path: testInfo.outputPath('slots-skin.png') });
+});
+
+test('SHEET-06 the fonts come from the app itself, Latin and Cyrillic, and stay offline', async ({
+  page,
+  request,
+  baseURL,
+}, testInfo) => {
+  const fontOrigins = new Set<string>();
+  page.on('request', (sent) => {
+    if (sent.resourceType() === 'font') fontOrigins.add(new URL(sent.url()).origin);
+  });
+  await page.goto('./');
+  await waitForServiceWorker(page);
+
+  // A sample in each family, through the tokens, with a Latin and a Cyrillic line.
+  await page.evaluate(() => {
+    const sample = document.createElement('div');
+    sample.id = 'font-sample';
+    sample.style.cssText =
+      'position:fixed;inset:auto 0 0 0;padding:16px;background:var(--theme-color-bg)';
+    for (const token of ['--theme-font-heading', '--theme-font-body']) {
+      for (const line of ['Hit Points 27 / 31', 'Хиты 27 / 31']) {
+        const p = document.createElement('p');
+        p.textContent = line;
+        p.style.cssText = `font-family:var(${token});font-size:22px;color:var(--theme-color-text)`;
+        sample.append(p);
+      }
+    }
+    document.body.append(sample);
+  });
+  const loaded = await page.evaluate(async () => {
+    await document.fonts.ready;
+    return [...document.fonts]
+      .filter((face) => face.status === 'loaded')
+      .map((face) => `${face.family} ${face.unicodeRange.split(',')[0]}`)
+      .sort();
+  });
+  // Each family loads its Latin face and its Cyrillic face, and nothing more.
+  expect(loaded).toEqual([
+    'EB Garamond U+0-FF',
+    'EB Garamond U+301',
+    'Inter U+0-FF',
+    'Inter U+301',
+  ]);
+  expect([...fontOrigins]).toEqual([new URL(baseURL ?? '').origin]);
+  await page.locator('#font-sample').screenshot({ path: testInfo.outputPath('fonts.png') });
+
+  // The service worker keeps every font file, so text keeps its font offline.
+  const cached = await page.evaluate(async () => {
+    const urls: string[] = [];
+    for (const name of await caches.keys()) {
+      const cache = await caches.open(name);
+      urls.push(...(await cache.keys()).map((entry) => entry.url));
+    }
+    return urls.filter((url) => url.includes('.woff2')).length;
+  });
+  expect(cached).toBe(8);
+
+  // Each font's licence ships beside it.
+  for (const font of FONT_PACKAGES) {
+    const response = await request.get(font.license);
+    expect(response.status()).toBe(200);
+    expect(await response.text()).toContain(
+      'This Font Software is licensed under the SIL Open Font License, Version 1.1.',
+    );
+  }
 });

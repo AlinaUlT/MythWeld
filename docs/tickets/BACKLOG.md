@@ -190,7 +190,7 @@ chats never claim one version number.
 | SHEET-03 | Screens draw named slots the base theme fills | S | ✅ 2026-10-28 |
 | SHEET-04 | Each part takes its style from a fixed menu | M | 🔲 |
 | SHEET-05 | Animations are presets that stop for reduced motion | S | 🔲 |
-| SHEET-06 | The app's fonts ship inside it, each licence read | S | 🔲 |
+| SHEET-06 | The app's fonts ship inside it, each licence read | S | ✅ 2026-10-29 |
 | **On the device** | **tables, the mini-pack, saved characters** | | |
 | SHEET-07 | Phase 2's device tables arrive in one database version | XS | ✅ 2026-10-28 |
 | SHEET-08 | The phase 1 fixtures ship as the built-in mini-pack | M | 🔲 |
@@ -260,10 +260,6 @@ chats never claim one version number.
   SHEET-13) turn the presets into still pictures; animations stop off screen. Found by SHEET-01:
   the presets fill `apps/web/src/theme/motion.ts`, made empty for this row; the boards' one
   motion is `transition: transform 0.2s ease`, on 10 elements.
-- **SHEET-06** — ADR 005 item 7.5, ADR 015 item 10: Inter for text, and EB Garamond as the
-  heading placeholder of the mockups until the owner picks (BRIEF X1). No font service. Found by
-  SHEET-01: the `@font-face` rules go in `apps/web/src/theme/fonts.css`, made empty for this row;
-  the family names are already the tokens `font-body` and `font-heading`.
 - **SHEET-08** — SPEC §12 stage 2: "a mini-pack of the stage 1 fixtures". The goldens' SRD
   fixtures (`packages/system-5e/test/golden/srd-2014.ts`, `srd-2024.ts`) become the app's
   built-in packs, with their CC-BY-4.0 metadata; the tests keep reading the same data. If the row

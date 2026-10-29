@@ -11,6 +11,8 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@fontsource-variable/eb-garamond": "5.3.0",
+    "@fontsource-variable/inter": "5.3.0",
     "@grimoire/content": "workspace:*",
     "@grimoire/engine": "workspace:*",
     "@grimoire/pdf": "workspace:*",

@@ -1274,3 +1274,142 @@ Nothing to check: no rules fact.
 
 **Changelog:** "The bottom bar takes the dock's look: the surface colour with a soft shadow above
 it."
+
+---
+
+### SHEET-06 The app's fonts ship inside it, each licence read
+
+**Hat:** the shipped font files
+**Depends on:** SHEET-01
+**Size:** S
+**Screen:** Yes — every screen's text: body text in Inter, headings in EB Garamond, the fonts
+`docs/design/mockups/README.md` names
+**SPEC:** §11; ADR 005 item 7.5, ADR 015 item 10, BRIEF X1
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/theme/fonts.css` — changes (empty since SHEET-01): the `@font-face`
+rules.
+- `apps/web/src/config/fonts.ts` — new: the font packages the app ships, and where each
+  licence goes in the build.
+- `apps/web/vite.config.ts` — changes: a build step copies each package's `LICENSE`; the service
+  worker precaches `woff2` and `txt` files.
+- `apps/web/package.json` — changes: `@fontsource-variable/inter` and
+  `@fontsource-variable/eb-garamond`, both 5.3.0.
+
+#### 2. What is missing now
+
+- `apps/web/src/theme/fonts.css` holds only a comment.
+- The tokens name `Inter, system-ui, sans-serif` and `'EB Garamond', Georgia, serif`, but no
+  font file is in the build: a device without Inter or EB Garamond installed draws its own
+  fallback font.
+- The built app's precache: 12 entries, 518.63 KiB, no `woff2` file.
+
+#### 3. What it should look like when done
+
+1. `fonts.css` declares exactly two families, `Inter` and `EB Garamond`, the first family of the
+   tokens `font-body` and `font-heading`.
+2. Every `url()` points into one of the two packages; none is `http(s)://` or `//`.
+3. Each family has a face whose range starts `U+0000-00FF` (Latin) and one with `U+0400-045F`
+   (Cyrillic).
+4. Each package's `package.json` says `OFL-1.1`, and its `LICENSE` is the SIL Open Font License
+   1.1 text.
+5. The build has `fonts/inter-OFL.txt` and `fonts/eb-garamond-OFL.txt`, each served with status
+   200 and the OFL text.
+6. In the built app, a Latin and a Cyrillic line in each family load four faces (each family's
+   Latin and Cyrillic), every font request goes to the app's own origin, and the service worker's
+   cache holds all 8 font files.
+
+#### 4. How to do it
+
+1. Take the font files from the Fontsource npm packages (the Google Fonts files, with their
+   `LICENSE` and `metadata.json`), pinned at 5.3.0. A package keeps the binaries out of git and
+   names their version in the lockfile.
+2. Write the `@font-face` rules by hand, not `@import` the package's CSS: only the upright
+   variable face (`wght`), only the subsets `latin`, `latin-ext`, `cyrillic`, `cyrillic-ext`.
+   The unicode ranges are copied from the package's `wght.css`. The family names stay `Inter`
+   and `EB Garamond`, so the tokens do not change.
+3. Vite resolves `url("@fontsource-variable/…/files/….woff2")` from the package and puts each
+   file in `assets/` with a hash.
+4. A small build plugin reads each package's `LICENSE` (through its `./LICENSE` export) and emits
+   it at the path `FONT_PACKAGES` names.
+5. Add `woff2` and `txt` to Workbox's `globPatterns`, so the fonts and licences work offline.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Every screen at 360×800: text in Inter, headings in EB Garamond, on any device, online or
+offline, in English and in Russian letters. No new text, so no i18n key.
+
+#### 7. Tests
+
+- `apps/web/test/fonts.test.ts` — §3 items 1–4, read from `fonts.css`, the theme tokens and the
+  installed packages.
+- `apps/web/e2e/theme.spec.ts` — §3 items 5 and 6 in the built app; a screenshot of a Latin and a
+  Cyrillic line in each family.
+- Control values from: the packages' own `LICENSE`, `package.json` and `wght.css`.
+
+#### 8. Checked against the source
+
+- Licence, read from each package's `LICENSE` file in `node_modules`:
+  - Inter: "Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)", then "This
+    Font Software is licensed under the SIL Open Font License, Version 1.1.", then the full
+    licence text, "SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007".
+  - EB Garamond: "Copyright 2017 The EB Garamond Project Authors
+    (https://github.com/octaviopardo/EBGaramond12)", then the same licence text (the two files
+    differ only in the copyright line, checked with `diff`).
+- `package.json` `license` of both: `OFL-1.1`; `metadata.json` `source` of both:
+  `https://github.com/google/fonts`, the source ADR 005's sources name.
+- The OFL's condition 2: the font may be bundled with software "provided that each copy contains
+  the above copyright notice and this license". The build ships each `LICENSE` beside the fonts
+  (§4 step 4). The OFL's condition 1 (no selling the font by itself) does not apply: the app is
+  not a font.
+- Character sets, from `metadata.json`: both list `cyrillic`, `cyrillic-ext`, `latin`,
+  `latin-ext`. Weights: Inter variable `wght` 100–900, EB Garamond 400–800; the mockups use 300 to
+  800 (counted with `grep` over `docs/design/mockups/`); 300 occurs 4 times, all in Inter text.
+- Italic: the mockups' 3 `font-style: italic` are all in `Retro-Parchment` with another font, so
+  no italic face ships.
+
+#### 9. Not in this ticket
+
+- The final heading font — the owner's choice (BRIEF X1); EB Garamond is the placeholder. A new
+  pick changes `FONT_PACKAGES`, `fonts.css` and the `font-heading` token.
+- Showing the font licences on an About screen — not a row yet; the files are in the build for
+  it.
+- A skin's own fonts — the skins' phase (ADR 015 items 10, 14).
+- Greek, Vietnamese and italic faces — nothing on screen needs them yet.
+
+#### 10. Rake check
+
+- **No external requests:** every font request goes to the app's own origin (e2e); no font
+  service.
+- **Only openly licensed content:** both fonts are OFL-1.1, read from their files; ADR 005 item
+  7.5 already approved these families.
+- **No look is written in a component:** the families stay in the tokens; `fonts.css` is the
+  theme's file, no component changed.
+- **Nothing invisible:** no zero-width character, byte-order mark or non-breaking space in the
+  changed files (checked with a Python scan).
+
+#### 11. What came out of it
+
+- `pnpm lint`: 224 files, no fixes. `pnpm typecheck`: green.
+- `pnpm test`: 959 passed, 0 failed (955 before, plus 4 in `fonts.test.ts`), 14.01 s; the speed
+  pass 2 passed, 2.37 s.
+- `pnpm e2e`: 17 passed, 0 failed, 16.0 s, with the new `SHEET-06` test.
+- The 8 font files: 396,268 bytes. Inter: Latin 48.25 kB, Latin extended 85.06 kB, Cyrillic
+  18.74 kB, Cyrillic extended 25.96 kB. EB Garamond: 44.33, 113.92, 26.02, 33.94 kB.
+- Precache: 22 entries, 914.40 KiB (12 entries, 518.63 KiB before: plus 8 fonts and 2 licences).
+- Loaded in the built app for a Latin and a Cyrillic line per family: `EB Garamond U+0-FF`,
+  `EB Garamond U+301`, `Inter U+0-FF`, `Inter U+301` (the browser reports each range's first
+  item); the Latin and Cyrillic extended files load only when a page has one of their letters.
+- Differs from §4: nothing.
+
+**Found, not fixed:** nothing.
+
+**Changelog:** "Text is set in Inter and headings in EB Garamond on every device, offline too,
+with Latin and Cyrillic letters."

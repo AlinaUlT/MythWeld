@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-06 · Text is set in Inter and headings in EB Garamond on every device,
+  offline too, with Latin and Cyrillic letters.
 - 2026-10-28 · SHEET-03 · The bottom bar takes the dock's look: the surface colour with a soft
   shadow above it.
 - 2026-10-28 · SHEET-01 · The app paints with the mockups' colours: their light values, and
