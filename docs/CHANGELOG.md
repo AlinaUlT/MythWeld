@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-25 · A swipe or "⋯" on a character opens its Actions: Copy makes a
+  copy, Export saves it as a JSON file, and Delete removes it with an Undo.
 - 2026-10-29 · SHEET-13 · Settings chooses dark or light colours, stops animations, picks feet
   or metres and pounds or kilograms, and turns on "I roll myself"; each choice is kept on the
   device and already holds when the app opens.

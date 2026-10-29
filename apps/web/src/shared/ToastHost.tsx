@@ -2,6 +2,7 @@
 // (SPEC §7.2, board V3-Features). It names what changed: the action's text, with the entry's
 // label, or its subject when the content no longer has a name for it. It goes after `TOAST_MS`,
 // unless the person's focus is in it; a refused undo says so in its place.
+// SHEET-25: a deleted character's toast names it, and its "Undo" puts it back.
 import type { LogEntry } from '@grimoire/schema';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,14 +29,16 @@ export function ToastView({ toast, onUndo }: { toast: Toast; onUndo?: () => void
   const text =
     toast.kind === 'changed'
       ? t(`done.${doneKeyOf(toast.entry.action)}`, { name: nameOf(toast.entry, i18n.language) })
-      : t('notUndone');
+      : toast.kind === 'deleted'
+        ? t('deleted', { name: toast.name })
+        : t('notUndone');
   return (
     <Part
       name="toast"
       className="pointer-events-auto flex h-12 items-center gap-2 bg-strong pr-1.5 pl-4 text-on-strong"
     >
       <span className="grow truncate">{text}</span>
-      {toast.kind === 'changed' && (
+      {toast.kind !== 'notUndone' && (
         <button type="button" onClick={onUndo} className="h-11 shrink-0 px-3.5 font-bold underline">
           {t('undo')}
         </button>
@@ -59,7 +62,12 @@ export function ToastHost() {
       onFocus={() => setHeld(true)}
       onBlur={() => setHeld(false)}
     >
-      {toast && <ToastView toast={toast} onUndo={() => void undoToast(toast)} />}
+      {toast && (
+        <ToastView
+          toast={toast}
+          onUndo={toast.kind === 'notUndone' ? undefined : () => void undoToast(toast)}
+        />
+      )}
     </div>
   );
 }

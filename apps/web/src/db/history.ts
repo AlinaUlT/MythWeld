@@ -56,7 +56,7 @@ export interface History {
 }
 
 /** The history rows of `characterId`, oldest first. */
-function rowsOf(characterId: string, table: GrimoireDb['history']): Promise<HistoryRow[]> {
+export function rowsOf(characterId: string, table: GrimoireDb['history']): Promise<HistoryRow[]> {
   return table
     .where('[characterId+at]')
     .between([characterId, Dexie.minKey], [characterId, Dexie.maxKey])

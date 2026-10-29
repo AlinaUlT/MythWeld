@@ -4556,3 +4556,173 @@ Found, not fixed:
 Changelog: "Settings chooses dark or light colours, stops animations, picks feet or metres and
 pounds or kilograms, and turns on "I roll myself"; each choice is kept on the device and already
 holds when the app opens."
+
+---
+
+### SHEET-25 A character's Actions copy, export or delete it
+
+**Hat:** A character's Actions copy, export or delete it
+**Depends on:** SHEET-24 (the list and its cards), SHEET-23 (the toast and its "Undo"), SHEET-07
+(the `history` and `rollLog` tables), SHEET-10 (`openCharacter`, `saveCharacter`)
+**Size:** S
+**Screen:** Yes — My characters, boards `V3-Characters` (the swiped card) and `V3-Actions` (the
+Actions sheet); BRIEF Part 2 P2 and its Part 5 row
+**SPEC:** §7.1 as ADR 008 item 4 changes it; §12 stage 2 (export of a character as JSON); §11
+(the tables); §8.2 (missing is not broken); §9 (i18n)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/db/characterActions.ts` — new: `copyCharacter`, `characterFileOf`,
+`exportCharacter`, `deleteCharacter`, `restoreCharacter`.
+- `apps/web/src/shared/CharacterActions.tsx` — new: the Actions sheet; SHEET-58 opens the same one
+  from the sheet's "⋯".
+- `apps/web/src/lib/swipe.ts` — new: `useSwipe`, `swipeOffset`, `settlesOpen`.
+- `apps/web/src/lib/download.ts` — new: `downloadFile`, the browser's own download.
+- `apps/web/src/pages/CharactersPage.tsx` — changes: the card's swipe tray and its "⋯"; the list
+  follows the database (`liveQuery`).
+- `apps/web/src/shared/undo.ts`, `ToastHost.tsx` — changes: a `deleted` toast whose "Undo" puts
+  the rows back.
+- `apps/web/src/db/history.ts`, `rollLog.ts` — export their `rowsOf`.
+- `apps/web/src/locales/en/actions.json` — new namespace; `characters.json`, `toast.json` change.
+
+#### 2. What is missing now
+
+Measured on 2026-10-29, at `ed11c6f`:
+
+- A card on My characters is one link; nothing swipes and there is no "⋯"
+  (`CharactersPage.tsx`, `OpenedCard`).
+- Nothing copies, exports or deletes a character: `characters.ts` has `openCharacter`,
+  `saveCharacter`, `countCharacters`, `listCharacters` only.
+- The toast knows only a change's entry (`Toast` is `changed` or `notUndone`, each with an entry).
+- The list reads the rows once, in an effect; a write after that does not show.
+
+#### 3. What it should look like when done
+
+1. `copyCharacter(id, { id, name, now })` stores the stored character under a new id, with
+   `name`, `rev` 0, `createdAt` and `updatedAt` `now`; every other field is the original's as
+   stored (golden A after a hit: 9 hit points). The copy has no changes and no rolls; the
+   original keeps its own. An id no row has is `notFound`; nothing is stored.
+2. `exportCharacter(id)` gives `{ name: '<name>.json', text }`; the text is the stored character at
+   the current versions, two-space JSON, and opens through the system's opener to the same
+   character. Characters a file name may not hold (`\ / : * ? " < > |`, control characters) become
+   spaces; a name with nothing else gives `<id>.json`.
+3. `deleteCharacter(id)` drops, in one transaction, the character, its history rows and its roll
+   rows, and no other character's; it gives back every dropped row as it was stored.
+4. `restoreCharacter(deleted)` puts every one of those rows back unchanged (the history undoes
+   again); when a row with the id is stored again it is `taken` and writes nothing.
+5. Swiping a card left more than half the tray (240 px: four tiles of 60 px) shows Copy, DM link
+   (greyed), Delete and More; less settles closed; a swipe never opens the sheet. One card is
+   swiped open at a time; a tap on an open card closes it.
+6. The card's "⋯" (44 × 44 px, label "Actions for <name>") or the tray's More opens Actions: a
+   sheet at the bottom, the page dimmed behind: the name and the list line, then Link for the DM
+   (coming later), Export, Copy, Transfer (coming later), Delete in the danger colour. The dim
+   area, Escape or a done action closes it.
+7. Copy adds the card "<name> (copy)" at the top. Export saves `<name>.json`. Delete removes the
+   card and shows the toast "<name> deleted" with "Undo"; Undo brings the card back. A refused
+   undo shows "Not undone: it changed since".
+8. A row that does not open has no Actions (SHEET-10: such a row is never changed).
+9. Nothing is wider than 360 px; dark and light.
+
+#### 4. How to do it
+
+1. `characterActions.ts`: the four store functions, each in one Dexie transaction over the tables
+   it touches, taking a `GrimoireDb` as `history.ts` does.
+2. **Technical choice (ADR 002): Undo holds the dropped rows in memory**, inside the toast. The
+   rows are deleted at once, not marked; "Undo" puts back the rows as they were stored, not a
+   migrated copy, so no saved data is rewritten. Once the toast goes, the rows are gone.
+3. **A copy starts its own story**: a new id, revision 0, the time it was made; its rolls and
+   changes are not copied. A portrait (`portraitBlobId`) is shared, and Delete leaves blobs alone.
+4. `undo.ts`: `UndoableToast` is `changed` or `deleted`; `removeCharacter` deletes and shows the
+   toast; `undoToast` undoes either. `notUndone` no longer carries an entry: nothing reads it.
+5. `swipe.ts`: pointer events on the card; the first 8 px decide sideways or scroll
+   (`touch-action: pan-y`); the card follows the finger between −240 and 0 and settles at the
+   nearer end. A sideways move cancels the click, so the link does not open.
+6. The list subscribes with Dexie's `liveQuery` to `listCharacters`, so a copy, a delete and its
+   undo show without a reload.
+7. `CharacterActions`: `<Part name="sheet">` on `bg-surface` over a `bg-scrim-low` button, role
+   `dialog`, focused when it opens. Export makes a `Blob` and clicks a download link: nothing leaves
+   the device.
+
+#### 5. Stored data
+
+Nothing stored changes shape. Rows are added (a copy) and dropped (a delete) in the tables
+SHEET-07 made; a restore writes the dropped rows back byte for byte.
+
+#### 6. What a person will see
+
+- My characters: each card has "⋯" at its end; a swipe left shows the tray. The hint reads "Tap
+  to open. Swipe left for actions." (board V3-Characters).
+- Actions: the sheet of §3 item 6. After an action it closes; if the character could not be read,
+  it stays open with "Not done: this character could not be read on this device."
+- English keys, namespace `actions`: `title`, `open` "Actions for {{name}}", `close` "Close",
+  `dmLink` "Link for the DM", `dmLinkShort` "DM link", `export` "Export", `exportNote` "A JSON
+  file to keep or import", `copy` "Copy", `copyName` "{{name}} (copy)", `transfer` "Transfer",
+  `delete` "Delete", `deleteNote` "Undo stays available for a moment", `more` "More", `failed`.
+  `toast:deleted` "{{name}} deleted"; `characters:hint` changes as above.
+
+#### 7. Tests
+
+- `apps/web/test/characterActions.test.ts` — `SHEET-25 copy`, `export`, `delete and its undo`,
+  `the swipe`: §3 items 1–5 on fresh databases.
+- `apps/web/test/toast.test.tsx` — `SHEET-25 the delete toast`: the text, Undo, no toast for a
+  missing id, a refused undo.
+- `apps/web/e2e/characters.spec.ts` — a swipe, Copy, "⋯", Export's file, Delete and Undo in
+  Chromium at 360 × 800; screenshots.
+- Control values from: SPEC §6.7 goldens A (12 hit points) and B (2024, "Human · Fighter 1");
+  board V3-Characters (four tiles of 60 px); board V3-Actions (the rows and their notes).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact.
+
+#### 9. Not in this ticket
+
+- The sheet's "⋯" and its other rows (Level up, Rules options, Change history): SHEET-58, which
+  opens `CharacterActions`.
+- Importing the exported file: SHEET-26. Export as PDF: phase 6.
+- Link for the DM and Transfer: the table link's phase (ADR 005).
+- Dropping a portrait no character names any more: SHEET-56 (its note).
+- "Export all" (SPEC §11): not a phase 2 row.
+
+#### 10. Rake check
+
+- **A person's saved data**: Delete is undoable; Undo restores the rows exactly as stored; a row
+  that does not open is never offered for delete.
+- **Missing is not broken**: a missing id gives `notFound`, a taken id `taken`; nothing throws.
+- **Each system's rules live in its own module**: the actions name no system; Export goes through
+  `openCharacter`, which finds the system's opener in `systems.ts`.
+- **No look written in a component**: token classes, `<Part>` and `<Slot>`; the one inline colour
+  is `var(--color-neutral)` (see §11). No motion is added.
+- **No user-facing string literal**: every text is an `actions`, `toast` or `characters` key.
+- **No external requests**: the file is made on the device and saved through the browser.
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on `ed11c6f` (SHEET-13):
+
+- `pnpm lint`: `Checked 284 files`, no errors. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: `Test Files 89 passed (89)`, `Tests 1163 passed (1163)`, 24.4 s; lines covered
+  99.9 % (3026 / 3029). The second suite `Tests 2 passed (2)`.
+- `pnpm e2e`: `26 passed (34.9s)` on `pixel-7` (1 new in `characters.spec.ts`).
+- The tests are live: with the roll rows not dropped, `characterActions.test.ts` gave
+  `1 failed | 9 passed (10)`.
+- Build: `index-*.js` 650,942 bytes (199,608 through `gzip -c`).
+- Screenshots at 360 × 800, dark: the swiped tray, the Actions sheet over the list, and the toast
+  "Golden B (copy) deleted" with "Undo". `scrollWidth` 360.
+- Differs from the board: the card has a "⋯" (ADR 008 item 4 asks for it; V3-Characters draws
+  none). The tray's tiles are square at the card's edge, inside the card's border. The swipe
+  settles without a motion: no preset slides (SHEET-05), and the board draws none.
+- Differs from the row: none.
+- `notUndone` toasts no longer carry the entry; SHEET-23's tests were changed to match.
+
+Found, not fixed:
+
+- The base theme's `neutral` colour cannot be used as the class `bg-neutral`: SHEET-02's lint
+  reads it as Tailwind's palette name. The More tile uses `var(--color-neutral)`. New row SHEET-69.
+- Deleting a character leaves its portrait in the blobs table, and a copy shares it: written into
+  SHEET-56's note.
+
+Changelog: "A swipe or "⋯" on a character opens its Actions: Copy makes a copy, Export saves it
+as a JSON file, and Delete removes it with an Undo."

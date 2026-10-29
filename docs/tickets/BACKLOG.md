@@ -181,7 +181,7 @@ chats never claim one version number.
 | 3 | SHEET-09, 11, 22, 62, 63, 64 | Wave 2 is closed |
 | 4 | SHEET-12, 13, 23, 24, 37, 65, 66, 67 | Wave 3 is closed |
 | 5 | SHEET-25, 27, 30, 31, 38, 68 | Wave 4 is closed |
-| 6 | SHEET-26, 28, 32, 33, 36, 39, 46, 48, 50, 53, 54, 55, 56 | Wave 5 is closed |
+| 6 | SHEET-26, 28, 32, 33, 36, 39, 46, 48, 50, 53, 54, 55, 56, 69 | Wave 5 is closed |
 | 7 | SHEET-29, 34, 40, 41, 42, 43, 44, 45, 47, 49, 51, 52, 57, 58 | Wave 6 is closed |
 | 8 | SHEET-35, 59 | Wave 7 is closed |
 | 9 | SHEET-60 | Every other row is closed |
@@ -196,6 +196,7 @@ chats never claim one version number.
 | SHEET-05 | Animations are presets that stop for reduced motion | S | ✅ 2026-10-29 |
 | SHEET-06 | The app's fonts ship inside it, each licence read | S | ✅ 2026-10-29 |
 | SHEET-67 | A part names its fill slot without a lint finding | XS | ✅ 2026-10-29 |
+| SHEET-69 | The `neutral` colour token is usable as a class | XS | 🔲 |
 | **On the device** | **tables, the mini-pack, saved characters** | | |
 | SHEET-07 | Phase 2's device tables arrive in one database version | XS | ✅ 2026-10-28 |
 | SHEET-08 | The phase 1 fixtures ship as the built-in mini-pack | M | ✅ 2026-10-29 |
@@ -225,7 +226,7 @@ chats never claim one version number.
 | **Characters** | **the list, the file, the manual form** | | |
 | SHEET-23 | An undo toast reverses the last change | S | ✅ 2026-10-29 |
 | SHEET-24 | My characters lists the saved characters | S | ✅ 2026-10-29 |
-| SHEET-25 | A character's Actions copy, export or delete it | S | 🔲 |
+| SHEET-25 | A character's Actions copy, export or delete it | S | ✅ 2026-10-29 |
 | SHEET-26 | A character file imports through its checks | S | 🔲 |
 | SHEET-27 | The manual form makes a character | M | 🔲 |
 | SHEET-28 | The manual form's equipment step adds items | S | 🔲 |
@@ -263,10 +264,6 @@ chats never claim one version number.
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
-- **SHEET-25** — ADR 008 item 4: a swipe or "⋯" opens Actions. Copy, Export (a JSON file, SPEC
-  §12 stage 2) and Delete (with Undo) work; Link for DM and Transfer wait for the table link's
-  phase and show as coming later. Found by SHEET-22: SHEET-07 §9 gives this row the deleted
-  character's rolls and changes (`rollLog`, `history`).
 - **SHEET-26** — SPEC §5.8, §12 stage 2: an older file migrates; a file that fails its checks is
   refused with the reason, and nothing of it is saved.
 - **SHEET-27** — SPEC §7.4 (manual mode), BRIEF P3 steps 1–8, board `V3-Create`: one scrolling
@@ -415,6 +412,8 @@ chats never claim one version number.
   picture or a short video included, kept in the blobs table on the device (ADR 005 item 10); the
   token is the image in a round frame (SHEET-03's slot). Found by SHEET-05: CSS cannot stop an
   animated picture or a video, so while `motionIsStill()` is true the token shows a still frame.
+  Found by SHEET-25: deleting a character leaves its `portraitBlobId`'s blob, and a copy shares
+  it; a blob no stored character names is dropped here.
 - **SHEET-57** — ADR 009 items 7 and 8, board `V3-Add`: Mounts, Pets, Familiars, Notes or any
   named list, each entry free text; a companion is such an entry with its small stat block as text.
   A companion with a sheet of its own waits for the table link (ADR 014 item 9). A stored-shape
@@ -422,7 +421,8 @@ chats never claim one version number.
 - **SHEET-58** — ADR 013 item 2 and the P4 prompt's list, board `V3-Actions`: Level up first, then
   Link for the DM, Export, Copy, Transfer, Rules options, Change history, Delete. Level up (phase
   4), Link for the DM and Transfer (the table link) and Rules options (phase 4's house rules) show
-  as coming later. Rest and Edit stay header buttons.
+  as coming later. Rest and Edit stay header buttons. Found by SHEET-25: Export, Copy and Delete
+  are built in `apps/web/src/shared/CharacterActions.tsx`; this row opens it from the sheet.
 - **SHEET-59** — SPEC §7.2's 50 states, opened from "⋯" (ADR 013 item 2: "undo any change").
   Undoing a change that later changes touched is decided in the row. Found by SHEET-23:
   `readHistory` lists the kept changes, newest first; `undoChange` reverses any one of them, and
@@ -433,6 +433,11 @@ chats never claim one version number.
   row and BRIEF P10 named feet or metres, so Settings offers those two. The row adds `sq` to
   `settingValues.distance` (`apps/web/src/settings/settings.ts`) and its label; no stored row
   changes. How many feet one square is, and whether a person can change it, is decided in the row.
+- **SHEET-69** — found by SHEET-25: the base theme's `color-neutral` (the board's second swipe
+  tile) is a token, but SHEET-02's lint (`biome/no-look-literals.grit`) reads `bg-neutral` as
+  Tailwind's palette name and fails it, so My characters' More tile writes
+  `var(--color-neutral)`. The row lets the lint pass the theme's own colour names, and the tile
+  takes the class.
 
 ---
 

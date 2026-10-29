@@ -1,5 +1,6 @@
 // SHEET-11: every English namespace, one file per screen or shared piece, so two rows of one wave
 // never edit one locale file. A new screen or piece adds its file here.
+import actions from '../locales/en/actions.json' with { type: 'json' };
 import breakdown from '../locales/en/breakdown.json' with { type: 'json' };
 import characters from '../locales/en/characters.json' with { type: 'json' };
 import common from '../locales/en/common.json' with { type: 'json' };
@@ -26,6 +27,7 @@ export const en = {
   roll,
   breakdown,
   description,
+  actions,
 };
 
 export type Namespaces = typeof en;

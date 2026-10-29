@@ -14,8 +14,10 @@ import {
   changeCharacter,
   currentToast,
   hideToast,
+  removeCharacter,
   subscribeToast,
   type Toast,
+  type UndoableToast,
   undoToast,
 } from '../src/shared/undo';
 
@@ -133,9 +135,7 @@ describe('SHEET-23 the undo toast', () => {
   });
 
   it('says a refused undo in its place, with no "Undo"', () => {
-    const html = renderToStaticMarkup(
-      <ToastView toast={{ kind: 'notUndone', entry: made('useResource', 'luck') }} />,
-    );
+    const html = renderToStaticMarkup(<ToastView toast={{ kind: 'notUndone' }} />);
     expect(html).toContain('Not undone: it changed since');
     expect(html).not.toContain('<button');
   });
@@ -151,17 +151,17 @@ describe('SHEET-23 the undo toast', () => {
     expect(renderToStaticMarkup(<ToastHost />)).toContain('Damage taken');
     // Made over the stored 11 as if it still held 12: refused, and the toast stays the first's.
     expect((await changeCharacter(a.id, hurt(2, 12, 10), at, database)).ok).toBe(false);
-    expect(currentToast()?.entry).toEqual(first);
+    expect(currentToast()).toEqual({ kind: 'changed', entry: first });
     const second = hurt(3, 11, 9);
     await changeCharacter(a.id, second, at, database);
-    expect(currentToast()?.entry).toEqual(second);
+    expect(currentToast()).toEqual({ kind: 'changed', entry: second });
     expect(calls).toBe(2);
     stop();
   });
 
   it("undoes the toast's own change, and the toast goes", async () => {
     await changeCharacter(a.id, hurt(1, 12, 11), at, database);
-    const toast = currentToast() as Toast;
+    const toast = currentToast() as UndoableToast;
     expect((await undoToast(toast, at, database)).ok).toBe(true);
     expect(currentToast()).toBeUndefined();
     const stored = fifthEditionCharacterSchema.parse(await database.characters.get(a.id));
@@ -173,7 +173,7 @@ describe('SHEET-23 the undo toast', () => {
 
   it('says so when the undo is refused, and an old toast never hides a newer one', async () => {
     await changeCharacter(a.id, hurt(1, 12, 11), at, database);
-    const toast = currentToast() as Toast;
+    const toast = currentToast() as UndoableToast;
     // Another tab writes over the place: the store holds 7, not 11.
     const stored = fifthEditionCharacterSchema.parse(await database.characters.get(a.id));
     await saveCharacter(
@@ -188,10 +188,35 @@ describe('SHEET-23 the undo toast', () => {
     );
     expect(await undoToast(toast, at, database)).toMatchObject({ ok: false, code: 'changed' });
     const refused = currentToast() as Toast;
-    expect(refused).toEqual({ kind: 'notUndone', entry: toast.entry });
+    expect(refused).toEqual({ kind: 'notUndone' });
     hideToast(toast);
     expect(currentToast()).toBe(refused);
     hideToast(refused);
     expect(currentToast()).toBeUndefined();
+  });
+});
+
+describe('SHEET-25 the delete toast', () => {
+  it('names the deleted character, and its "Undo" puts it back', async () => {
+    expect((await removeCharacter(a.id, a.name, database)).ok).toBe(true);
+    const toast = currentToast() as UndoableToast;
+    expect(toast.kind).toBe('deleted');
+    expect(textOf(toast).trim().split(/\s+/)).toEqual([...a.name.split(' '), 'deleted', 'Undo']);
+    expect(await database.characters.get(a.id)).toBeUndefined();
+    expect(await undoToast(toast, at, database)).toEqual({ ok: true });
+    expect(currentToast()).toBeUndefined();
+    expect(await database.characters.get(a.id)).toEqual(a);
+  });
+
+  it('shows no toast when nothing was deleted, and says so when the undo is refused', async () => {
+    expect(
+      await removeCharacter('6ba7b810-9dad-41d1-80b4-00c04fd430c8', 'X', database),
+    ).toMatchObject({ ok: false, code: 'notFound' });
+    expect(currentToast()).toBeUndefined();
+    await removeCharacter(a.id, a.name, database);
+    const toast = currentToast() as UndoableToast;
+    await saveCharacter(a, database.characters);
+    expect(await undoToast(toast, at, database)).toMatchObject({ ok: false, code: 'taken' });
+    expect(currentToast()).toEqual({ kind: 'notUndone' });
   });
 });

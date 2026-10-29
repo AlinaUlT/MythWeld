@@ -2,15 +2,28 @@
 // "Undo" toast follows each one (SPEC §7.2). The toast holds the change's entry; its "Undo"
 // reverses that entry, not whatever change is newest. One toast shows at a time: a new change
 // replaces it. The toast store is plain module state, so a screen and the host share it.
+// SHEET-25: deleting a character shows its toast too; its "Undo" puts the dropped rows back.
 import type { LogEntry } from '@grimoire/schema';
+import {
+  type DeletedCharacter,
+  type DeleteResult,
+  deleteCharacter,
+  restoreCharacter,
+  type Taken,
+} from '../db/characterActions';
 import type { GrimoireDb } from '../db/db';
 import { type ChangeResult, recordChange, type UndoResult, undoChange } from '../db/history';
 
 /** How long a toast stays, in milliseconds, unless the person's focus is in it. */
 export const TOAST_MS = 5000;
 
-/** The toast after a change, with "Undo"; or the one saying an undo was refused, without it. */
-export type Toast = { kind: 'changed'; entry: LogEntry } | { kind: 'notUndone'; entry: LogEntry };
+/** A toast with "Undo": after a change, or after a character is deleted. */
+export type UndoableToast =
+  | { kind: 'changed'; entry: LogEntry }
+  | { kind: 'deleted'; name: string; deleted: DeletedCharacter };
+
+/** A toast with "Undo", or the one saying an undo was refused, without it. */
+export type Toast = UndoableToast | { kind: 'notUndone' };
 
 let current: Toast | undefined;
 const listeners = new Set<() => void>();
@@ -48,13 +61,30 @@ export async function changeCharacter(
   return result;
 }
 
-/** Undoes the toast's change (`undoChange`): the toast goes, or says the undo was refused. */
+/** Deletes the character (`deleteCharacter`) and, when it is gone, shows its toast. */
+export async function removeCharacter(
+  id: string,
+  name: string,
+  database?: GrimoireDb,
+): Promise<DeleteResult> {
+  const result = await deleteCharacter(id, database);
+  if (result.ok) show({ kind: 'deleted', name, deleted: result.deleted });
+  return result;
+}
+
+/**
+ * Undoes the toast's change (`undoChange`) or delete (`restoreCharacter`): the toast goes, or
+ * says the undo was refused.
+ */
 export async function undoToast(
-  toast: Toast,
+  toast: UndoableToast,
   now?: string,
   database?: GrimoireDb,
-): Promise<UndoResult> {
-  const result = await undoChange(toast.entry.id, now, database);
-  if (current === toast) show(result.ok ? undefined : { kind: 'notUndone', entry: toast.entry });
+): Promise<UndoResult | { ok: true } | Taken> {
+  const result =
+    toast.kind === 'changed'
+      ? await undoChange(toast.entry.id, now, database)
+      : await restoreCharacter(toast.deleted, database);
+  if (current === toast) show(result.ok ? undefined : { kind: 'notUndone' });
   return result;
 }

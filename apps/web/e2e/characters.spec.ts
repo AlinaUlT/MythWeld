@@ -92,3 +92,72 @@ test('SHEET-24 saved characters are listed, newest first, and a card opens its s
   await cards(page).nth(0).tap();
   await expect(page).toHaveURL(`characters/${goldenB.id}`);
 });
+
+/** Swipes the card holding `name` to the left by `dx` px, as a finger would. */
+async function swipe(page: Page, name: RegExp, dx: number) {
+  const box = await cards(page).filter({ hasText: name }).boundingBox();
+  if (box === null) throw new Error('The card is not on screen.');
+  const y = box.y + box.height / 2;
+  const x = box.x + box.width - 20;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let step = 1; step <= 10; step += 1) await page.mouse.move(x + (dx * step) / 10, y);
+  await page.mouse.up();
+}
+
+test('SHEET-25 a swipe shows the actions; Copy, Export, Delete and Undo work', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto('characters');
+  await expect(cards(page)).toHaveCount(1);
+
+  // A short swipe settles closed; a long one shows the four tiles, 60 px each.
+  await swipe(page, /Golden B/, -80);
+  await expect(page.getByRole('button', { name: en.actions.more, exact: true })).toHaveCount(0);
+  await swipe(page, /Golden B/, -200);
+  const more = page.getByRole('button', { name: en.actions.more, exact: true });
+  await expect(more).toBeVisible();
+  await expect(page.getByRole('button', { name: en.actions.dmLinkShort })).toBeDisabled();
+  expect((await more.boundingBox())?.width).toBe(60);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('characters-swiped.png') });
+  // The swipe opened nothing.
+  await expect(page).toHaveURL(/characters$/);
+
+  // Copy from the tray: a second card, named as a copy.
+  await page.getByRole('button', { name: en.actions.copy, exact: true }).tap();
+  await expect(cards(page)).toHaveCount(2);
+  await expect(page.getByText('Golden B (copy)')).toBeVisible();
+
+  // "⋯" opens Actions; Link for the DM and Transfer come later.
+  await page.getByRole('button', { name: 'Actions for Golden B (copy)' }).tap();
+  const dialog = page.getByRole('dialog', { name: 'Actions for Golden B (copy)' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: /^Link for the DM/ })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: /^Transfer/ })).toBeDisabled();
+  await page.screenshot({ path: testInfo.outputPath('characters-actions.png') });
+
+  // Export saves the character as a JSON file.
+  const download = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: /^Export/ }).tap();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe('Golden B (copy).json');
+  const path = await file.path();
+  const text = await import('node:fs/promises').then((fs) => fs.readFile(path, 'utf8'));
+  expect(JSON.parse(text)).toMatchObject({ name: 'Golden B (copy)', rev: 0, ruleset: '2024' });
+  await expect(dialog).toHaveCount(0);
+
+  // Delete, then Undo: the card goes and comes back.
+  await page.getByRole('button', { name: 'Actions for Golden B (copy)' }).tap();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /^Delete/ })
+    .tap();
+  await expect(cards(page)).toHaveCount(1);
+  await expect(page.getByRole('status')).toContainText('Golden B (copy) deleted');
+  await page.screenshot({ path: testInfo.outputPath('characters-deleted.png') });
+  await page.getByRole('button', { name: en.toast.undo }).tap();
+  await expect(cards(page)).toHaveCount(2);
+  await expect(page.getByRole('status')).toBeEmpty();
+});

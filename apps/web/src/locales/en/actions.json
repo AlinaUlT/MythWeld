@@ -1,0 +1,16 @@
+{
+  "title": "Actions for {{name}}",
+  "open": "Actions for {{name}}",
+  "close": "Close",
+  "dmLink": "Link for the DM",
+  "dmLinkShort": "DM link",
+  "export": "Export",
+  "exportNote": "A JSON file to keep or import",
+  "copy": "Copy",
+  "copyName": "{{name}} (copy)",
+  "transfer": "Transfer",
+  "delete": "Delete",
+  "deleteNote": "Undo stays available for a moment",
+  "more": "More",
+  "failed": "Not done: this character could not be read on this device."
+}

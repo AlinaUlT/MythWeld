@@ -36,6 +36,7 @@ describe('SHEET-11 navigation', () => {
     expect(Object.keys(en).sort()).toEqual(localeFiles);
     expect([...(i18n.options.ns as string[])].sort()).toEqual(localeFiles);
     expect(localeFiles).toEqual([
+      'actions',
       'breakdown',
       'characters',
       'common',

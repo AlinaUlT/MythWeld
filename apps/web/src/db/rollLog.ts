@@ -30,7 +30,10 @@ export interface RollLog {
 }
 
 /** The rows of `characterId`, or of the rolls made off a sheet, oldest first. */
-function rowsOf(characterId: string | undefined, table: RollLogTable): Promise<RollLogRow[]> {
+export function rowsOf(
+  characterId: string | undefined,
+  table: RollLogTable,
+): Promise<RollLogRow[]> {
   // Dexie leaves a row with no `characterId` out of the compound index, so those are filtered.
   if (characterId === undefined) {
     return table.filter((row) => row.characterId === undefined).sortBy('rolledAt');
