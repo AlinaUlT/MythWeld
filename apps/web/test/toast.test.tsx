@@ -151,10 +151,10 @@ describe('SHEET-23 the undo toast', () => {
     expect(renderToStaticMarkup(<ToastHost />)).toContain('Damage taken');
     // Made over the stored 11 as if it still held 12: refused, and the toast stays the first's.
     expect((await changeCharacter(a.id, hurt(2, 12, 10), at, database)).ok).toBe(false);
-    expect(currentToast()?.entry).toEqual(first);
+    expect(currentToast()).toEqual({ kind: 'changed', entry: first });
     const second = hurt(3, 11, 9);
     await changeCharacter(a.id, second, at, database);
-    expect(currentToast()?.entry).toEqual(second);
+    expect(currentToast()).toEqual({ kind: 'changed', entry: second });
     expect(calls).toBe(2);
     stop();
   });
@@ -173,7 +173,7 @@ describe('SHEET-23 the undo toast', () => {
 
   it('says so when the undo is refused, and an old toast never hides a newer one', async () => {
     await changeCharacter(a.id, hurt(1, 12, 11), at, database);
-    const toast = currentToast() as Toast;
+    const toast = currentToast() as Extract<Toast, { kind: 'changed' }>;
     // Another tab writes over the place: the store holds 7, not 11.
     const stored = fifthEditionCharacterSchema.parse(await database.characters.get(a.id));
     await saveCharacter(

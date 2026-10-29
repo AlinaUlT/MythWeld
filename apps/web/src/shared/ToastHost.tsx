@@ -3,7 +3,9 @@
 // label, or its subject when the content no longer has a name for it. It goes after `TOAST_MS`,
 // unless the person's focus is in it; a refused undo says so in its place.
 // SHEET-30: on the sheet it sits 16 px above the dock, which writes its height in `--dock-height`.
+// SHEET-25: a deleted character's toast names it, with "Undo" too.
 import type { LogEntry } from '@grimoire/schema';
+import type { TFunction } from 'i18next';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { en } from '../i18n/namespaces';
@@ -23,20 +25,32 @@ export function nameOf(entry: LogEntry, language: string): string {
   return label?.[language] ?? label?.en ?? entry.subject;
 }
 
+/** What the toast says. */
+function textOf(toast: Toast, t: TFunction<'toast'>, language: string): string {
+  switch (toast.kind) {
+    case 'changed':
+      return t(`done.${doneKeyOf(toast.entry.action)}`, { name: nameOf(toast.entry, language) });
+    case 'notUndone':
+      return t('notUndone');
+    case 'deleted':
+      return t('deleted', { name: toast.name });
+    case 'notRestored':
+      return t('notRestored', { name: toast.name });
+  }
+}
+
 /** One toast as it is drawn; `onUndo` runs when "Undo" is tapped. */
 export function ToastView({ toast, onUndo }: { toast: Toast; onUndo?: () => void }) {
   const { t, i18n } = useTranslation('toast');
-  const text =
-    toast.kind === 'changed'
-      ? t(`done.${doneKeyOf(toast.entry.action)}`, { name: nameOf(toast.entry, i18n.language) })
-      : t('notUndone');
+  const text = textOf(toast, t, i18n.language);
+  const undoable = toast.kind === 'changed' || toast.kind === 'deleted';
   return (
     <Part
       name="toast"
       className="pointer-events-auto flex h-12 items-center gap-2 bg-strong pr-1.5 pl-4 text-on-strong"
     >
       <span className="grow truncate">{text}</span>
-      {toast.kind === 'changed' && (
+      {undoable && (
         <button type="button" onClick={onUndo} className="h-11 shrink-0 px-3.5 font-bold underline">
           {t('undo')}
         </button>

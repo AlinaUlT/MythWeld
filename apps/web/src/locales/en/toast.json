@@ -1,6 +1,8 @@
 {
   "undo": "Undo",
   "notUndone": "Not undone: it changed since",
+  "deleted": "{{name}} deleted",
+  "notRestored": "{{name}} could not be brought back",
   "done": {
     "useResource": "{{name}} used",
     "regainResource": "{{name}} regained",

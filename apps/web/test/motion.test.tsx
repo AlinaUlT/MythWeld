@@ -63,8 +63,9 @@ function fakeObserver() {
 }
 
 describe('SHEET-05 motion presets that stop for reduced motion', () => {
-  it('names the boards’ one transition and three loops a skin can pick', () => {
-    expect(names).toEqual(['turn', 'pulse', 'float', 'spin']);
+  it('names the two transitions and three loops a skin can pick', () => {
+    // `slide` is SHEET-25's: a swiped card on My characters.
+    expect(names).toEqual(['turn', 'slide', 'pulse', 'float', 'spin']);
     expect(loops).toEqual(['pulse', 'float', 'spin']);
   });
 

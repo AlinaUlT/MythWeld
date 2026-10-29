@@ -225,7 +225,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | **Characters** | **the list, the file, the manual form** | | |
 | SHEET-23 | An undo toast reverses the last change | S | ✅ 2026-10-29 |
 | SHEET-24 | My characters lists the saved characters | S | ✅ 2026-10-29 |
-| SHEET-25 | A character's Actions copy, export or delete it | S | 🔲 |
+| SHEET-25 | A character's Actions copy, export or delete it | S | ✅ 2026-10-29 |
 | SHEET-26 | A character file imports through its checks | S | 🔲 |
 | SHEET-27 | The manual form makes a character | M | ✅ 2026-10-29 |
 | SHEET-28 | The manual form's equipment step adds items | S | 🔲 |
@@ -263,10 +263,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
-- **SHEET-25** — ADR 008 item 4: a swipe or "⋯" opens Actions. Copy, Export (a JSON file, SPEC
-  §12 stage 2) and Delete (with Undo) work; Link for DM and Transfer wait for the table link's
-  phase and show as coming later. Found by SHEET-22: SHEET-07 §9 gives this row the deleted
-  character's rolls and changes (`rollLog`, `history`).
 - **SHEET-26** — SPEC §5.8, §12 stage 2: an older file migrates; a file that fails its checks is
   refused with the reason, and nothing of it is saved.
 - **SHEET-28** — BRIEF P3 step 9. Found by ENG-49: a spell or item a grant names (a `spell` or
@@ -385,7 +381,9 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   one does `inspiration.use` (advantage in 2014, a reroll of one die in 2024).
 - **SHEET-56** — ADR 009 item 6, ADR 015 item 2, board `V3-Token`: the person's image, an animated
   picture or a short video included, kept in the blobs table on the device (ADR 005 item 10); the
-  token is the image in a round frame (SHEET-03's slot). Found by SHEET-05: CSS cannot stop an
+  token is the image in a round frame (SHEET-03's slot). Found by SHEET-25: Copy copies the blob
+  under a new id and Delete drops it (`apps/web/src/db/characterActions.ts`), whatever the blob
+  row holds. Found by SHEET-05: CSS cannot stop an
   animated picture or a video, so while `motionIsStill()` is true the token shows a still frame.
 - **SHEET-57** — ADR 009 items 7 and 8, board `V3-Add`: Mounts, Pets, Familiars, Notes or any
   named list, each entry free text; a companion is such an entry with its small stat block as text.
@@ -394,7 +392,10 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 - **SHEET-58** — ADR 013 item 2 and the P4 prompt's list, board `V3-Actions`: Level up first, then
   Link for the DM, Export, Copy, Transfer, Rules options, Change history, Delete. Level up (phase
   4), Link for the DM and Transfer (the table link) and Rules options (phase 4's house rules) show
-  as coming later. Rest and Edit stay header buttons.
+  as coming later. Rest and Edit stay header buttons. Found by SHEET-25: `ActionRows`
+  (`apps/web/src/shared/CharacterActions.tsx`) already draws and runs Link for the DM, Export,
+  Copy, Transfer and Delete; the menu adds its own rows around them. Deleting from the sheet
+  leaves a page whose character is gone: the menu goes back to My characters.
 - **SHEET-59** — SPEC §7.2's 50 states, opened from "⋯" (ADR 013 item 2: "undo any change").
   Undoing a change that later changes touched is decided in the row. Found by SHEET-23:
   `readHistory` lists the kept changes, newest first; `undoChange` reverses any one of them, and

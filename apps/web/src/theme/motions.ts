@@ -27,6 +27,8 @@ interface Loop {
 export const motionPresets = {
   // The boards' one motion: the step's chevron turns (V3-Create, V3-Conflict).
   turn: { kind: 'transition', property: 'transform', easing: 'ease', duration: '200ms' },
+  // SHEET-25: a swiped card slides open over its actions, or back.
+  slide: { kind: 'transition', property: 'transform', easing: 'ease-out', duration: '200ms' },
   pulse: {
     kind: 'loop',
     easing: 'ease-in-out',

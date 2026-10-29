@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
+  Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
+  the DM and Transfer are marked as coming later.
 - 2026-10-29 · SHEET-68 · Settings can show distances in squares of 5 feet; the sheet's speed
   follows.
 - 2026-10-29 · SHEET-30 · A character opens its sheet: the name, class and level, edition, AC,

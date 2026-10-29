@@ -3,7 +3,7 @@
   "new": "New character",
   "empty": "No characters yet. Make one with +, or bring one from a file.",
   "import": "Import file",
-  "hint": "Tap a character to open it.",
+  "hint": "Tap to open. Swipe left, or tap ⋯, for actions.",
   "created": "Created {{date, datetime(day: numeric; month: short; year: numeric)}}",
   "classLevel": "{{name}} {{level}}",
   "separator": " · ",

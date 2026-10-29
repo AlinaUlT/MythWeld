@@ -5332,3 +5332,129 @@ sections checked: none names a grid). Foundry dnd5e `system.json`: `"grid": { "d
 - Found, not fixed: BRIEF P10's design prompt still names "feet or metres"; the screen is not
   drawn yet, and the prompt is the owner's text.
 - Changelog: "Settings can show distances in squares of 5 feet; the sheet's speed follows."
+
+---
+
+### SHEET-25 A character's Actions copy, export or delete it
+
+**Hat:** A character's Actions copy, export or delete it
+**Depends on:** SHEET-10, SHEET-22, SHEET-23, SHEET-24
+**Size:** S
+**Screen:** Yes — My characters; boards `V3-Characters` (the swiped card) and `V3-Actions` (the
+list), BRIEF P2, its row in `docs/design/BRIEF.md` Part 5 ("P2 Characters list")
+**SPEC:** §11 (the tables), §12 stage 2 (export of a character in JSON); ADR 008 item 4
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/shared/CharacterActions.tsx` — new: the Actions list and its rows.
+- `apps/web/src/db/characterActions.ts` — new: copy, export, delete and restore on the device.
+- `apps/web/src/shared/saveFile.ts` — new: hands a file to the browser's download.
+- `apps/web/src/shared/undo.ts`, `ToastHost.tsx` — a deleted character's toast, with Undo.
+- `apps/web/src/pages/CharactersPage.tsx` — the swipe, the card's "⋯", the list watched.
+- `apps/web/src/theme/motions.ts` — a `slide` preset for the swiped card.
+- `apps/web/src/locales/en/actions.json` (filled), `toast.json`, `characters.json` (the hint).
+
+#### 2. What is missing now
+
+Measured on `84167f7`: a card on My characters is a link and nothing else; no swipe, no "⋯".
+`actions.json` is `{}`. No code deletes a `characters` row, and nothing drops a character's
+`rollLog` or `history` rows (SHEET-07 §9, SHEET-22 §9 name this row for it). No file is made
+anywhere in `apps/web/src`.
+
+#### 3. What it should look like when done
+
+1. A card dragged left by 56 px or more slides 240 px open over four actions, 60 px each: Copy,
+   DM link (disabled), Delete, More. Dragged right by 56 px it closes. A drag never opens the
+   sheet; a tap on an open card closes it.
+2. Each card has a "⋯" button (44 px or more, label "Actions") that opens the Actions list; so
+   does More. The list is a sheet from the bottom: the name, the card's line, then Link for the
+   DM ("Coming later", disabled), Export, Copy, Transfer ("Coming later", disabled), Delete.
+3. Copy stores a new character: a new id, `rev` 0, `createdAt` and `updatedAt` now, the name
+   "<name> (copy)", its own copy of the portrait blob. Its rolls and changes stay with the first.
+   It lists first, and opens its own sheet.
+4. Export saves `<name>.json` (characters a file name cannot hold become `_`): the stored row as
+   it was saved, at its versions, 2-space JSON. A row that does not open exports too.
+5. Delete drops the character, its rolls, its changes and its portrait (unless another character
+   names it) in one transaction. The toast says "<name> deleted" with Undo; Undo puts every row
+   back as it was. A failed undo says "<name> could not be brought back", with no Undo.
+6. A row that does not open (SHEET-24) offers Export and Delete; Copy is disabled.
+
+#### 4. How to do it
+
+1. `characterActions.ts`: `copyCharacter`, `exportCharacter`, `deleteCharacter`,
+   `restoreCharacter`, `characterFileName`; each takes the database, as `history.ts` does.
+2. `undo.ts`: the toast kinds `deleted` and `notRestored`; `deleteWithUndo`; `undoToast` restores.
+3. `CharacterActions.tsx`: `ActionRows` (the rows and what they run) and `CharacterActions` (the
+   sheet around them), so SHEET-58's menu reuses the rows.
+4. `CharactersPage.tsx`: `SwipeRow` around each card; the list read through `liveQuery`.
+
+#### 5. Stored data
+
+Nothing stored changes shape. Copy writes a new row of the current versions; Delete and Undo
+remove and put back rows as they were.
+
+#### 6. What a person will see
+
+My characters at 360×800. The hint reads "Tap to open. Swipe left, or tap ⋯, for actions."
+Keys in `actions`: `title` "Actions", `close` "Close", `dmLink` "Link for the DM", `export`
+"Export", `exportNote` "A file of this character", `copy` "Copy", `copyName` "{{name}} (copy)",
+`noCopy` "Only a character that opens can be copied", `transfer` "Transfer", `delete` "Delete",
+`deleteNote` "Undo stays available for a moment", `swipe.copy` "Copy", `swipe.dmLink` "DM link",
+`swipe.delete` "Delete", `swipe.more` "More". In `toast`: `deleted` "{{name}} deleted",
+`notRestored` "{{name}} could not be brought back". "Coming later" is `common`'s.
+
+#### 7. Tests
+
+- `apps/web/test/character-actions.test.tsx` — `SHEET-25 Copy`, `Export`, `Delete`, `the Actions
+  list and the swipe`: 18 tests, on golden A and golden B of SPEC §6.7 with rolls, changes and a
+  portrait row made in the test.
+- `apps/web/e2e/characters.spec.ts` — two tests: the swipe, Copy; the "⋯", Export (the
+  downloaded file equals golden B), Delete, Undo.
+- `apps/web/test/motion.test.tsx`, `toast.test.tsx` — the preset list and the toast's type.
+- Control numbers from: board `V3-Characters` (four actions of 60 px, 84 px high); golden B.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts.
+
+#### 9. Not in this ticket
+
+- Importing a file: SHEET-26. The sheet's "⋯": SHEET-58, which reuses `ActionRows`.
+- Link for the DM and Transfer: the table link's phase (ADR 005).
+- "Export all" of SPEC §11 (characters and packs in one file): not a phase 2 row.
+- The free limit's counter "1 of 3": the payment phase (ADR 005 item 2).
+
+#### 10. Rake check
+
+- **A person's saved data:** Delete keeps every row it drops and Undo puts them back; a row
+  that does not open is never rewritten, and exports as it was.
+- **No look in a component:** the colours are tokens (`bg-strong`, `bg-danger`, the `neutral`
+  token through its variable), the corner is the card part's, the slide is a motion preset.
+- **No visible literal:** every string is an `actions`, `toast` or `common` key.
+- **No external requests:** the file is made in memory and saved by the browser's download.
+- **Ids are stable:** the copy gets a new id; the first keeps its own.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-29, on `80c9538` (SHEET-68 landed while this ran) plus this ticket:
+`pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` exit 0 in 84.6 s. `pnpm lint` 354 files,
+no fixes. `pnpm test` 96 files, 1241 passed, 0 failed (18 new), then the speed project 1 file,
+2 passed. Coverage: statements 99.45 % (3478/3497), lines 99.9 % (3051/3054). `pnpm e2e` 39
+passed, 0 failed, 27.6 s (2 new). Before the rebase, on `84167f7`: 1240 and 38 passed.
+
+Differences from §3 and the board:
+- The board has no "⋯" on the card; ADR 008 item 4 and BRIEF P2 name one, and without it the
+  Actions cannot be reached without a swipe (a keyboard, a screen reader). It sits on the card's
+  right; the card keeps 56 px free for it.
+- The actions under a closed card are hidden: the first screenshot showed their edge as a thin
+  line past the card's rounded corners.
+- The card takes the pointer only once a drag turns sideways; a tap keeps its link. A vertical
+  drag still scrolls the list.
+
+Found, not fixed: nothing.
+
+Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
+copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
+are marked as coming later."

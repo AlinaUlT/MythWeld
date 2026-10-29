@@ -1,1 +1,19 @@
-{}
+{
+  "title": "Actions",
+  "close": "Close",
+  "dmLink": "Link for the DM",
+  "export": "Export",
+  "exportNote": "A file of this character",
+  "copy": "Copy",
+  "copyName": "{{name}} (copy)",
+  "noCopy": "Only a character that opens can be copied",
+  "transfer": "Transfer",
+  "delete": "Delete",
+  "deleteNote": "Undo stays available for a moment",
+  "swipe": {
+    "copy": "Copy",
+    "dmLink": "DM link",
+    "delete": "Delete",
+    "more": "More"
+  }
+}
