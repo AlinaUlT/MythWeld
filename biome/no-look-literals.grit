@@ -37,6 +37,15 @@ or {
     $text <: r"(?s)(?:.*[\s'\x22`:!])?animate-(?:spin|ping|pulse|bounce|\[).*",
     register_diagnostic(span=$text, message="SHEET-02: an animation is written in a component. Animations are the app's presets (ADR 015 item 8), never written in place. ADR 015 item 4.")
   },
+  // SHEET-05: a speed, delay or easing in a class. The theme's default transition is the only one.
+  or {
+    JsStringLiteralExpression(),
+    JsxString(),
+    JsTemplateChunkElement()
+  } as $text where {
+    $text <: r"(?s)(?:.*[\s'\x22`:!])?(?:(?:duration|delay)-(?:[0-9]|\[)|ease-(?:in|out|linear|\[)).*",
+    register_diagnostic(span=$text, message="SHEET-05: a speed, delay or easing is written in a component. A transition takes the theme's default; an animation is a preset drawn with <Motion>. ADR 015 item 8.")
+  },
   // A colour, font or animation in an inline style object.
   JsPropertyObjectMember(name=$name, value=$value) where {
     $value <: within JsxAttribute(name=`style`) ,

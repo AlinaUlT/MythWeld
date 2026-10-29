@@ -189,7 +189,7 @@ chats never claim one version number.
 | SHEET-02 | Lint fails on a colour, font or animation written in a component | S | ✅ 2026-10-28 |
 | SHEET-03 | Screens draw named slots the base theme fills | S | ✅ 2026-10-28 |
 | SHEET-04 | Each part takes its style from a fixed menu | M | 🔲 |
-| SHEET-05 | Animations are presets that stop for reduced motion | S | 🔲 |
+| SHEET-05 | Animations are presets that stop for reduced motion | S | ✅ 2026-10-29 |
 | SHEET-06 | The app's fonts ship inside it, each licence read | S | 🔲 |
 | **On the device** | **tables, the mini-pack, saved characters** | | |
 | SHEET-07 | Phase 2's device tables arrive in one database version | XS | ✅ 2026-10-28 |
@@ -256,10 +256,6 @@ chats never claim one version number.
 - **SHEET-04** — ADR 015 item 7: the parts phase 2 draws (button, icon button, card, panel, chip,
   bottom sheet, toast), each with its fixed menu of styles; the base theme picks one each.
   Found by SHEET-01: the styles fill `apps/web/src/theme/parts.ts`, made empty for this row.
-- **SHEET-05** — ADR 015 items 8 and 9: the phone's "reduce motion" and an app switch (shown by
-  SHEET-13) turn the presets into still pictures; animations stop off screen. Found by SHEET-01:
-  the presets fill `apps/web/src/theme/motion.ts`, made empty for this row; the boards' one
-  motion is `transition: transform 0.2s ease`, on 10 elements.
 - **SHEET-06** — ADR 005 item 7.5, ADR 015 item 10: Inter for text, and EB Garamond as the
   heading placeholder of the mockups until the owner picks (BRIEF X1). No font service. Found by
   SHEET-01: the `@font-face` rules go in `apps/web/src/theme/fonts.css`, made empty for this row;
@@ -295,6 +291,8 @@ chats never claim one version number.
   theme (dark by default, light), the motion switch (SHEET-05), the units (feet or metres, pounds
   or kilograms; stored units stay feet and pounds), "I roll myself" (SPEC §6.5). Language, backup,
   packs, AI and purchases come with their phases.
+  Found by SHEET-05: the switch calls `setAppMotion(on)` from `apps/web/src/theme/motion.ts`
+  before the first render; with no stored value, motion is on and only the phone's setting stops it.
 - **SHEET-16** — found by ENG-20: `applyDamage` takes the damage the person types, resistance,
   immunity and vulnerability already applied. It takes the damage's type and applies SHEET-15's
   defenses in the engine, for the number pad (SHEET-40). Found by SHEET-15: `defensesOf(values)`

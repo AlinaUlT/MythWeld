@@ -1,0 +1,153 @@
+/* SHEET-05: the animation presets (ADR 015 item 8). Each reads its settings from the theme keys
+   `motion-<preset>-<setting>` that motion.ts fills, so a skin changes them as data. A keyframe
+   changes only what a phone draws cheaply: scale, translate, transform, opacity (item 9). pulse
+   and float use the separate `scale` and `translate`, so they add to a transform the element has.
+   The presets sit in a layer, so a utility class such as `absolute` still wins over them. */
+@layer components {
+  [data-motion="pulse"] {
+    animation: motion-pulse var(--theme-motion-pulse-duration) ease-in-out infinite;
+  }
+
+  [data-motion="float"] {
+    animation: motion-float var(--theme-motion-float-duration) ease-in-out infinite;
+  }
+
+  /* glow, sparkle and gradient-shift animate a layer of their own; without the animation the
+     layer stays as a still picture: a steady halo, steady sparks, the gradient at rest. */
+  [data-motion="glow"],
+  [data-motion="sparkle"],
+  [data-motion="gradient-shift"] {
+    position: relative;
+    isolation: isolate;
+  }
+
+  [data-motion="glow"]::before,
+  [data-motion="sparkle"]::before,
+  [data-motion="gradient-shift"]::before {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+  }
+
+  [data-motion="glow"]::before {
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    box-shadow: 0 0 var(--theme-motion-glow-size) var(--theme-motion-glow-color);
+    opacity: 0.6;
+    animation: motion-glow var(--theme-motion-glow-duration) ease-in-out infinite alternate;
+  }
+
+  [data-motion="sparkle"]::before {
+    inset: 0;
+    z-index: 1;
+    background:
+      radial-gradient(
+        circle at 18% 22%,
+        var(--theme-motion-sparkle-color) 0 var(--theme-motion-sparkle-size),
+        transparent calc(var(--theme-motion-sparkle-size) + 1px)
+      ),
+      radial-gradient(
+        circle at 82% 34%,
+        var(--theme-motion-sparkle-color) 0 var(--theme-motion-sparkle-size),
+        transparent calc(var(--theme-motion-sparkle-size) + 1px)
+      ),
+      radial-gradient(
+        circle at 58% 84%,
+        var(--theme-motion-sparkle-color) 0 var(--theme-motion-sparkle-size),
+        transparent calc(var(--theme-motion-sparkle-size) + 1px)
+      );
+    animation: motion-sparkle var(--theme-motion-sparkle-duration) ease-in-out infinite;
+  }
+
+  [data-motion="gradient-shift"] {
+    overflow: hidden;
+  }
+
+  [data-motion="gradient-shift"]::before {
+    inset: 0 auto 0 0;
+    width: 200%;
+    z-index: -1;
+    background: linear-gradient(
+      90deg,
+      var(--theme-motion-gradient-shift-from),
+      var(--theme-motion-gradient-shift-to),
+      var(--theme-motion-gradient-shift-from)
+    );
+    animation: motion-gradient-shift var(--theme-motion-gradient-shift-duration) ease-in-out
+      infinite alternate;
+  }
+}
+
+@keyframes motion-pulse {
+  50% {
+    scale: var(--theme-motion-pulse-scale);
+  }
+}
+
+@keyframes motion-float {
+  50% {
+    translate: 0 calc(-1 * var(--theme-motion-float-distance));
+  }
+}
+
+@keyframes motion-glow {
+  from {
+    opacity: 0.2;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes motion-sparkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes motion-gradient-shift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Off screen, or with the app in the background, a preset holds its frame (item 9). */
+[data-motion-paused],
+[data-motion-paused]::before,
+.app-hidden [data-motion],
+.app-hidden [data-motion]::before {
+  animation-play-state: paused;
+}
+
+/* The phone's "reduce motion", or the app's switch off: every animation and transition stops,
+   and each element shows its still picture (item 9). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: the person's wish beats any rule or inline style */
+    animation: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: the person's wish beats any rule or inline style */
+    transition: none !important;
+  }
+}
+
+.motion-off,
+.motion-off *,
+.motion-off *::before,
+.motion-off *::after {
+  /* biome-ignore lint/complexity/noImportantStyles: the person's wish beats any rule or inline style */
+  animation: none !important;
+  /* biome-ignore lint/complexity/noImportantStyles: the person's wish beats any rule or inline style */
+  transition: none !important;
+}

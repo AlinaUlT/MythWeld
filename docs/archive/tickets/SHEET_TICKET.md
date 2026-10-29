@@ -1274,3 +1274,174 @@ Nothing to check: no rules fact.
 
 **Changelog:** "The bottom bar takes the dock's look: the surface colour with a soft shadow above
 it."
+
+### SHEET-05 Animations are presets that stop for reduced motion
+
+**Hat:** Animations are presets that stop for reduced motion
+**Depends on:** SHEET-01, SHEET-02
+**Size:** S
+**Screen:** No visible change today: no screen uses a preset yet. The boards' one motion is the
+step chevron of `V3-Create` (BRIEF, ADR 013 item 6); steps that open and close are phase 4's
+(SHEET-27's note).
+**SPEC:** ADR 015 items 8, 9 and 13; ADR 013 item 6 (the chevron turns with a short animation)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/theme/motion.ts` — changes: the list of presets and their settings,
+the base theme's values for them, and the three switches that stop them. The other files:
+
+- `apps/web/src/theme/motion.css` — new: one `@keyframes` and one rule per preset, and the rules
+  that pause or stop every animation.
+- `apps/web/src/theme/Motion.tsx` — new: the component a screen draws a preset with.
+- `apps/web/src/index.css` — changes: imports `motion.css`; clears Tailwind's own easings and
+  animations; the default transition reads the theme.
+- `apps/web/src/main.tsx` — changes: animations pause while the app is in the background.
+- `biome/no-look-literals.grit` — changes: a speed, delay or easing written in a class fails.
+- Tests: `apps/web/test/motion.test.tsx` (new), `apps/web/e2e/motion.spec.ts` (new),
+  `apps/web/test/no-look-literals.test.ts` and `apps/web/test/theme.test.ts` (change).
+
+#### 2. What is missing now
+
+Measured on 2026-10-28, at `3977c50`:
+
+- `apps/web/src/theme/motion.ts` is `export const motion: ThemePart = {};`.
+- `grep -rn "reduced-motion\|data-motion\|visibilitychange\|IntersectionObserver" apps/web/src`
+  finds 0 lines: nothing stops an animation for the phone's setting, off screen, or in the
+  background.
+- A class `transition-transform duration-200 ease-[cubic-bezier(0,0,1,1)] delay-75` in a `.tsx`
+  file lints clean: `Checked 1 file in 5ms. No fixes applied.` A screen can write its own speed.
+- A plain `transition-transform` takes Tailwind's own default, `150ms` and
+  `cubic-bezier(0.4, 0, 0.2, 1)` (Tailwind 4.3.3 `theme.css` lines 492 and 493), not the boards'
+  `transition: transform 0.2s ease`.
+
+#### 3. What it should look like when done
+
+1. `motion.ts` lists five presets, the ADR 015 item 8 examples: `pulse`, `float`, `glow`,
+   `sparkle`, `gradient-shift`. Each has named settings (speed, size, colour), and the base theme
+   fills a key `motion-<preset>-<setting>` for each one. Dice effects wait for the dice phase.
+2. `motion.css` has `@keyframes motion-<preset>` and a `[data-motion='<preset>']` rule for each
+   preset. Every keyframe changes only `scale`, `translate`, `transform` or `opacity` (ADR 015
+   item 9), each setting is read from its theme key.
+3. `<Motion preset="pulse">` draws an element with `data-motion="pulse"`; in the browser its
+   computed `animation-name` is `motion-pulse`.
+4. With the phone's "reduce motion" (Playwright `reducedMotion: 'reduce'`), every element and
+   pseudo-element computes `animation-name: none` and `transition-duration: 0s`: the preset's
+   element shows its still picture.
+5. `setAppMotion(false)` does the same with the phone's setting off (the switch SHEET-13 shows);
+   `setAppMotion(true)` brings the animations back.
+6. A `<Motion>` element off screen computes `animation-play-state: paused`; scrolled into view,
+   `running`. With the page hidden (`visibilitychange`), every preset computes `paused`.
+7. A plain `transition-transform` takes the theme's `0.2s` and `ease`, the boards' value; a skin
+   changes the two keys `default-transition-duration` and `default-transition-timing-function`.
+8. `pnpm lint` fails on `duration-200`, `delay-75`, `duration-[…]`, `ease-in`, `ease-[…]` in a
+   component; `transition-transform` alone passes.
+9. Running all five presets for 2 s on the Pixel 7 profile is measured: the layout count does not
+   grow (ADR 015 item 9: only what a phone draws cheaply).
+
+#### 4. How to do it
+
+1. `motion.ts`: `motionSettings = { pulse: ['duration', 'scale'], … } as const`, like
+   `slotProperties`; `motion` fills `motion-<preset>-<setting>` from colour tokens, so each mode
+   follows its own colours; plus `default-transition-duration: 0.2s` and
+   `default-transition-timing-function: ease`, mapped in `index.css` like every other token.
+2. `motion.css`: the presets sit in `@layer components`, so a utility class (`absolute`) still
+   wins over the `position: relative` a pseudo-element preset needs. `pulse` and `float` animate
+   the separate `scale` and `translate` properties, so they add to a `transform` the element
+   already has (the chevron's turn). `glow`, `sparkle` and `gradient-shift` animate a `::before`
+   layer: its `opacity` or its `transform`, never a shadow or a background position.
+3. The stops, outside any layer and `!important`: `@media (prefers-reduced-motion: reduce)` and
+   `.motion-off` on `<html>` set `animation: none` and `transition: none` on everything.
+   `[data-motion-paused]` and `.app-hidden [data-motion]` set `animation-play-state: paused`.
+4. `Motion.tsx` puts `data-motion` on the element and, through a ref, `pauseOffScreen(element)`:
+   an `IntersectionObserver` that toggles `data-motion-paused`. `pauseInBackground(document)`
+   toggles `.app-hidden` on `visibilitychange`; `main.tsx` calls it before the first render.
+5. The lint: the animation pattern of `no-look-literals.grit` also takes
+   `duration-<n>`, `delay-<n>`, their brackets, and `ease-in`, `-out`, `-in-out`, `-linear`,
+   `ease-[…]`. `index.css` clears `--ease-*` and `--animate-*`, so the classes it does not catch
+   make nothing.
+
+#### 5. Stored data
+
+Nothing stored changes. The app switch's value is stored by SHEET-13.
+
+#### 6. What a person will see
+
+Nothing yet: the base theme puts no preset on any screen, and the shell has no transition. When
+the phone asks for reduced motion, later screens show their presets as still pictures. No i18n
+key.
+
+#### 7. Tests
+
+- `apps/web/test/motion.test.tsx` — the five presets and their keys, each filled in both modes;
+  each preset's keyframes and rule in `motion.css`, and only cheap properties in the keyframes;
+  `<Motion>`'s markup; `pauseOffScreen` with a stand-in observer; `pauseInBackground` and
+  `setAppMotion` on a stand-in document.
+- `apps/web/e2e/motion.spec.ts` — §3 items 3–6 and 9 in the built app on `pixel-7`, with the
+  presets drawn on the page by the test.
+- `apps/web/test/no-look-literals.test.ts` — the bad sample gains a line of written speeds.
+- `apps/web/test/theme.test.ts` — the `motion-` keys are read by `motion.css`, not mapped in
+  `index.css`, as the `slot-` keys are read by `<Slot>`.
+- Control numbers from: the boards' `transition: transform 0.2s ease` (`V3-Create.dc.html`).
+
+#### 8. Checked against the source
+
+Nothing to check. No rules facts. Tailwind's defaults were read from
+`node_modules/.pnpm/tailwindcss@4.3.3/node_modules/tailwindcss/theme.css`, lines 434–441 and
+492–493; `duration-<n>` making `<n>ms` from any number, from its `dist/lib.js`.
+
+#### 9. Not in this ticket
+
+- The settings switch on screen and its stored value — SHEET-13.
+- Dice effects for roll, land and critical — the dice phase (ADR 015 item 15).
+- A skin choosing which preset goes on which slot, and a still frame for an animated picture or
+  video — the skin schema, the theme editor's phase (ADR 015 item 14); pausing a portrait video
+  — SHEET-56.
+- The chevron that turns — phase 4, with the steps that open and close; it draws it with
+  `transition-transform`.
+- Different settings for one preset on two elements: a skin sets each preset once.
+
+#### 10. Rake check
+
+- **No look is written in a component:** every speed, size and colour of a preset is a theme
+  key; the lint now also fails on a written speed, delay or easing.
+- **No user-facing string literal in a component:** `Motion.tsx` shows no text.
+- **No telemetry and no external requests:** nothing loads; the observers are the browser's.
+- **`engine` is pure TypeScript:** only `apps/web` and `biome/` change.
+- **Nothing invisible; no tool attribution:** new files are plain ASCII.
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+
+**Measured on 2026-10-29, on top of SHEET-03 (`3977c50`):**
+
+- `pnpm lint`: `Checked 226 files in 427ms. No fixes applied.`, exit 0.
+- `pnpm typecheck`: every project `Done` (6).
+- `pnpm test`: unit `Test Files 71 passed (71)`, `Tests 967 passed (967)`, 19.57 s; speed
+  `Tests 2 passed (2)`, 3.58 s.
+- `pnpm e2e`: `19 passed (17.4s)` on `pixel-7`, the three new ones included.
+- The five presets running together for 2 s on the Pixel 7 profile: layout `+0`, style passes
+  `+9` to `+10` over three runs (2 s is 120 frames). One preset alone takes 5 or 6 passes, the
+  same as a keyframe with literal values (`scale: 1.06`, `opacity`), so the `var()` settings keep
+  them on the compositor.
+- The real `pnpm lint` on the §2 probe in `apps/web/src`: `Found 1 error.`, `plugin` at 2:26. The
+  probe was deleted.
+
+**Differences from §3 and §4:**
+
+- §3 item 6: no screen draws `<Motion>` yet, so the e2e test draws its markup by hand. The
+  observer that sets `data-motion-paused` is checked by the unit test with a stand-in
+  `IntersectionObserver`; the browser checks the CSS that pauses on that attribute, and the real
+  `pauseInBackground` from `main.tsx` on a dispatched `visibilitychange`.
+- §3 item 9: a `requestAnimationFrame` frame counter made a style pass of its own on every frame
+  (`+121` in 2 s), so the measurement only waits; it asserts layout `0` and fewer than 60 style
+  passes.
+- The four `!important` stops carry a `biome-ignore` for `noImportantStyles`: the person's
+  "reduce motion" must beat an inline `animation: var(--…)` the lint allows.
+
+**Found, not fixed:** nothing new. (The container's Chromium path in `docs/RUNNING.md` is still
+OPS-30's row; the runs used `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`.)
+
+**Changelog:** nothing for the changelog; nothing a person sees changed.

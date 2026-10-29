@@ -46,6 +46,10 @@ const bad = `export function Bad({ x }: { x: string }) {
       <Icon color="tomato" />
       <span className="animate-pulse" />
       <span className="motion-safe:animate-[wiggle_1s_ease-in-out]" />
+      <span className="transition-transform duration-200" />
+      <span className="delay-75" />
+      <span className="ease-[cubic-bezier(0,0,1,1)]" />
+      <span className={\`ease-in-out \${x}\`} />
     </div>
   );
 }
@@ -57,7 +61,7 @@ export function Good({ tone }: { tone: string }) {
   const { t } = useTranslation();
   return (
     <div
-      className="bg-background text-primary border-border font-sans font-black font-[600] font-[var(--heading)] animate-none"
+      className="bg-background text-primary border-border font-sans font-black font-[600] font-[var(--heading)] animate-none transition-transform"
       style={{ color: 'var(--primary)', background: 'url(a.png)', width: '2px', animation: 'none' }}
     >
       <svg aria-hidden="true" fill="none" stroke="currentColor">
@@ -78,8 +82,11 @@ describe('SHEET-02 no look written in a component', () => {
     // variant and an opacity (5); colour function in a template (6); typed colour (7); SVG fill
     // and stroke (8); style animation, background, transition (9); <animate> (10); SVG font (12);
     // font in brackets (14); icon colour (15); Tailwind's own animation (16); animation in
-    // brackets (17).
-    expect(result.lines).toEqual([3, 3, 3, 4, 5, 6, 7, 8, 8, 9, 9, 9, 10, 12, 14, 15, 16, 17]);
+    // brackets (17); SHEET-05: a written speed (18), delay (19), easing in brackets (20), named
+    // easing in a template (21).
+    expect(result.lines).toEqual([
+      3, 3, 3, 4, 5, 6, 7, 8, 8, 9, 9, 9, 10, 12, 14, 15, 16, 17, 18, 19, 20, 21,
+    ]);
   });
 
   it('passes theme tokens, weights, currentColor, url(#...), var(--...) and anchors', () => {

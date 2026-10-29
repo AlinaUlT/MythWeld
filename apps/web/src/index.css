@@ -1,10 +1,11 @@
 /* SHEET-01: Tailwind v4 with the base theme's tokens and nothing else. Tailwind's own colours,
-   fonts, text sizes, line heights, corners and shadows are cleared, so a utility can only paint
-   with a token. Each token reads `--theme-<name>`, which src/theme/ fills from data at start
-   (applyTheme), so a skin changes a value without touching a component (ADR 015). Dark is the
-   default: index.html puts the `dark` class on <html>. */
+   fonts, text sizes, line heights, corners, shadows, easings and animations are cleared, so a
+   utility can only paint with a token. Each token reads `--theme-<name>`, which src/theme/ fills
+   from data at start (applyTheme), so a skin changes a value without touching a component
+   (ADR 015). Dark is the default: index.html puts the `dark` class on <html>. */
 @import "tailwindcss";
 @import "./theme/fonts.css";
+@import "./theme/motion.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -15,6 +16,8 @@
   --leading-*: initial;
   --radius-*: initial;
   --shadow-*: initial;
+  --ease-*: initial;
+  --animate-*: initial;
 }
 
 @theme inline {
@@ -77,6 +80,8 @@
   --shadow-dock: var(--theme-shadow-dock);
   --shadow-sheet: var(--theme-shadow-sheet);
   --shadow-float: var(--theme-shadow-float);
+  --default-transition-duration: var(--theme-default-transition-duration);
+  --default-transition-timing-function: var(--theme-default-transition-timing-function);
 }
 
 :root {
