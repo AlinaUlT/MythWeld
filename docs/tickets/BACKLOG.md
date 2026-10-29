@@ -233,7 +233,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | **The sheet** | **the frame, the tabs, trackers, rolls** | | |
 | SHEET-30 | The sheet's frame pins the header above the dock | M | ✅ 2026-10-29 |
 | SHEET-31 | An entry's description opens in place | S | ✅ 2026-10-29 |
-| SHEET-32 | The Main tab shows every check bonus | S | 🔲 |
+| SHEET-32 | The Main tab shows every check bonus | S | ✅ 2026-10-29 |
 | SHEET-33 | A long press opens a number's breakdown | S | 🔲 |
 | SHEET-34 | A manual edit overrides a number | S | 🔲 |
 | SHEET-35 | The AC breakdown pins its base calculation | XS | 🔲 |
@@ -261,6 +261,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-57 | Custom sections hold the person's own lists | S | 🔲 |
 | SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | 🔲 |
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
+| SHEET-69 | The sheet's tab leaves room for the dice button | XS | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
 - **SHEET-26** — SPEC §5.8, §12 stage 2: an older file migrates; a file that fails its checks is
@@ -275,10 +276,9 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   warning and a popup, or a sign that opens it: a checkbox for each, either, both or neither,
   and "Create" stays on. ENG-68's warning `abilityBonusConflict` says when, its `source` what is
   ticked. Board `V3-Conflict`. Phase 4's creation wizard shows the same.
-- **SHEET-32** — board `V3-Sheet`: the stats, the saves, the skills with their proficiency, the
-  passives. Found by ENG-43: a skill's stat is `Computed.keys['skills.<key>.ability']`, with steps
-  naming the skill, each effect and a manual edit; the sheet shows that key, never the skill's own
-  `ability`.
+- **SHEET-69** — found by SHEET-32: the dice button floats over the open tab (SHEET-30), and at the
+  end of a scroll it covers the right edge of the last row on every tab. The tab's bottom padding
+  clears it.
 - **SHEET-33** — SPEC §7.2, BRIEF P5 sheet 2, board `V3-Roll`. Found by ENG-17: the breakdown's
   kind `override` is shown as "Manual edit" (SPEC §6.1 step 7). Found by ENG-40: an override's
   path or an effect's target may be one step such as `toString` (`computedPathSchema`).

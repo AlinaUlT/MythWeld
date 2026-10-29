@@ -58,7 +58,8 @@ test('SHEET-30 the sheet pins the header above the dock, every number from Compu
   await expect(number(page, 'init.total')).toHaveText('+3Init');
   await expect(number(page, 'speed.walk')).toHaveText('30 ftSpeed');
   await expect(number(page, 'prof')).toHaveText('+2Prof');
-  await expect(number(page, 'skills.perception.passive')).toHaveText('13Passive');
+  // The Main tab lists the passive value too (SHEET-32), so the header's is found inside it.
+  await expect(header.locator('[data-path="skills.perception.passive"]')).toHaveText('13Passive');
   await expect(header).not.toContainText(en.sheet.casting.dc);
 
   // The dock: 12 of 12 hit points and 5 temporary ones in their own colour; Damage, Heal, tabs.
@@ -202,4 +203,53 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   await page.goto(`characters/${goldenB.id}`);
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
+});
+
+test('SHEET-32 the Main tab lists abilities, saves, skills and passive values', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  const panel = page.getByRole('tabpanel');
+
+  // Golden B: modifiers +3 +1 +2 −1 +1 +0 over scores 17 13 15 8 12 10.
+  const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+  const mods = ['STR+3', 'DEX+1', 'CON+2', 'INT−1', 'WIS+1', 'CHA+0'];
+  for (const [at, key] of abilities.entries()) {
+    await expect(panel.locator(`[data-path="checks.${key}.total"]`)).toHaveText(mods[at] ?? '');
+  }
+  await expect(panel.locator('[data-path="abilities.str.score"]')).toHaveText('Strength score17');
+  // Saves STR +5 and CON +4 are proficient; the others equal their modifier.
+  await expect(panel.locator('[data-path="abilities.str.save"]')).toHaveText('STR+5');
+  await expect(panel.locator('[data-path="abilities.con.save"]')).toHaveText('CON+4');
+  await expect(panel.locator('[data-path="abilities.dex.save"]')).toHaveText('DEX+1');
+  await expect(panel.locator('[data-path="abilities.str.save"] [data-mark="full"]')).toHaveCount(1);
+  await expect(panel.locator('[data-path="abilities.dex.save"] [data-mark="none"]')).toHaveCount(1);
+
+  // Skills in two columns, a stat's heading over its skills.
+  await expect(panel.locator('[data-path="skills.athletics.total"]')).toHaveText('Athletics+5');
+  await expect(panel.locator('[data-path="skills.acrobatics.total"]')).toHaveText('Acrobatics+1');
+  await expect(panel.locator('[data-path="skills.perception.total"]')).toHaveText('Perception+3');
+  await expect(panel.getByRole('heading', { level: 3 })).toHaveText([
+    'Strength',
+    'Dexterity',
+    'Intelligence',
+    'Wisdom',
+    'Charisma',
+  ]);
+  const left = await panel.locator('[data-path="skills.athletics.total"]').boundingBox();
+  const right = await panel.locator('[data-path="skills.insight.total"]').boundingBox();
+  expect(right?.x).toBeGreaterThan((left?.x ?? 0) + (left?.width ?? 0));
+  expect(left?.height).toBeGreaterThanOrEqual(34);
+
+  await panel.locator('[data-path="skills.perception.passive"]').scrollIntoViewIfNeeded();
+  await expect(panel.locator('[data-path="skills.perception.passive"]')).toHaveText(
+    'Passive Perception13',
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('main-skills.png') });
+  await panel.evaluate((node) => node.scrollTo(0, 0));
+  await page.screenshot({ path: testInfo.outputPath('main-top.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('main-top-light.png') });
 });

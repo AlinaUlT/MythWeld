@@ -4,6 +4,7 @@
 // SHEET-24: what My characters names under a character's name is its module's too.
 // SHEET-27: the manual form makes a character through its system's maker, with its rules bases.
 // SHEET-30: so is what the sheet's header and dock read, and the module `compute()` runs.
+// SHEET-32: and the stats, skills and passive values the Main tab lists.
 import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
@@ -15,6 +16,7 @@ import {
   type FifthEditionEntity,
   type FifthEditionPack,
   fifthEditionCasting,
+  fifthEditionChecks,
   fifthEditionClassLine,
   fifthEditionHitPoints,
   fifthEditionListLine,
@@ -29,6 +31,9 @@ import {
   madeByHand,
   openFifthEditionCharacter,
   openFifthEditionPack,
+  type ProficiencyMark,
+  proficiencyMark,
+  type SheetChecks,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
@@ -124,6 +129,10 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** The stats and skills the Main tab lists, with their paths (SHEET-32). */
+  checks(computed: AppComputed): SheetChecks;
+  /** How a proficiency level is marked on a skill or a save. */
+  proficiencyMark(level: number | undefined): ProficiencyMark;
 }
 
 /** Each system's sheet, by system id. */
@@ -134,6 +143,8 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    checks: fifthEditionChecks,
+    proficiencyMark,
   },
 };
 

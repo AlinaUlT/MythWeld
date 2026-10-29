@@ -35,6 +35,7 @@ export * from './pack';
 export * from './rests';
 export * from './rolls';
 export * from './rulesets';
+export * from './sheet-checks';
 export * from './sheet-header';
 export * from './size';
 export * from './spell-dice';

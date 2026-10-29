@@ -2,7 +2,7 @@
 // (SHEET-33's note); a tap rolls it when it rolls (SHEET-39), and a long press, or the context
 // menu, opens its breakdown (SHEET-33, SPEC §7.2). Every number of the header is one of these.
 import type { TFunction } from 'i18next';
-import { type PointerEvent, useRef } from 'react';
+import { type PointerEvent, type ReactNode, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { shownDistance } from '../settings/units';
 import { useSettings } from '../settings/useSettings';
@@ -92,6 +92,8 @@ interface SheetNumberProps {
   labelClassName?: string;
   /** The label after the value, as the header's row draws it; before it otherwise. */
   labelAfter?: boolean;
+  /** SHEET-32: a mark between the label and the value, such as a proficiency dot. */
+  mark?: ReactNode;
 }
 
 export function SheetNumber({
@@ -103,6 +105,7 @@ export function SheetNumber({
   valueClassName,
   labelClassName,
   labelAfter = false,
+  mark,
 }: SheetNumberProps) {
   const { t } = useTranslation('sheet');
   const { distance } = useSettings();
@@ -115,6 +118,7 @@ export function SheetNumber({
   return (
     <button type="button" data-path={path} className={className} {...handlers}>
       {!labelAfter && name}
+      {mark}
       <span className={valueClassName}>{value}</span>
       {labelAfter && name}
     </button>

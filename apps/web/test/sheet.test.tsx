@@ -23,6 +23,9 @@ import { SheetDice } from '../src/sheet/SheetDice';
 import { barShares, SheetDock } from '../src/sheet/SheetDock';
 import { SheetHeader } from '../src/sheet/SheetHeader';
 import { formatNumber, numberAt } from '../src/sheet/SheetNumber';
+import { Abilities } from '../src/sheet/sections/Abilities';
+import { SavingThrows } from '../src/sheet/sections/SavingThrows';
+import { Skills } from '../src/sheet/sections/Skills';
 import { SHEET_TABS, tabOf } from '../src/sheet/tabs';
 import { type AppCharacter, sheetSystemOf } from '../src/systems';
 
@@ -217,7 +220,9 @@ describe('SHEET-30 tabs', () => {
     // Fourteen files; Conditions stands on two tabs.
     const sections = [...new Set(SHEET_TABS.flatMap(({ sections }) => sections))];
     expect(sections).toHaveLength(14);
-    for (const Section of [...sections, Inspiration]) {
+    // SHEET-32 filled the three of the Main tab's checks; they have their own test file.
+    const filled = [Abilities, SavingThrows, Skills];
+    for (const Section of [...sections.filter((each) => !filled.includes(each)), Inspiration]) {
       expect(draw(sheet, <Section />)).toBe('');
     }
     for (const Panel of [RestPanel, ActionsMenu, ChoicesPanel]) {

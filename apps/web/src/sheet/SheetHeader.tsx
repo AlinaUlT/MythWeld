@@ -4,7 +4,6 @@
 // class's ability, spell save DC and spell attack (ADR 009 item 4). Every number is a
 // `SheetNumber`.
 import { STAT_TYPE } from '@grimoire/engine';
-import type { L10n } from '@grimoire/schema';
 import type { TFunction } from 'i18next';
 import { Ellipsis, Lock, Moon, PencilLine } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +13,7 @@ import { Part } from '../theme/Part';
 import { Slot } from '../theme/Slot';
 import { Inspiration } from './header/Inspiration';
 import { Token } from './header/Token';
+import { nameIn } from './names';
 import { useSheet } from './SheetContext';
 import { SheetNumber } from './SheetNumber';
 
@@ -21,11 +21,6 @@ const iconButton = 'flex size-control shrink-0 items-center justify-center text-
 const icon = 'size-[22px]';
 
 type SheetT = TFunction<'sheet'>;
-
-/** An entity's name in the first filled locale; English is the only one for now (ADR 000). */
-function nameIn(name: L10n): string {
-  return name.en ?? name.ru ?? '';
-}
 
 /** The class line: each class named from the character's packs, with its level. */
 function useClassLine(t: SheetT): string {

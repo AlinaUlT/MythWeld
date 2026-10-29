@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-32 · The Main tab lists the abilities with their check bonuses and
+  scores, the saving throws, and the skills grouped by ability, each with a proficiency dot, then
+  the passive values.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.
