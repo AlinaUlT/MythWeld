@@ -730,8 +730,4 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-29 | Phase 2 is cut into rows that run in waves | S | ✅ 2026-10-22 |
 | OPS-30 | `RUNNING.md` names the container's current Chromium path | XS | ✅ 2026-10-29 |
 | OPS-31 | The chat with the owner is in English | XS | ✅ 2026-10-28 |
-| OPS-32 | The changelog's format example names no real ticket | XS | 🔲 |
-
-- **OPS-32** — found by SHEET-04 (SHEET-04 §11): `docs/CHANGELOG.md`'s format example is
-  `2026-MM-DD · SHEET-04 · Long-press on any number shows where it came from.`; SHEET-04 is the
-  part styles, and the long press is SHEET-33. A search for a ticket id finds the example.
+| OPS-32 | The changelog's format example names no real ticket | XS | ✅ 2026-10-29 |

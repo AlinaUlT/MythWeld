@@ -1153,3 +1153,31 @@ Done as §3 says, measured on `2da9707` with the change:
   engine code.
 Found, not fixed: nothing.
 Nothing for the changelog; a person sees no change.
+
+### OPS-32 The changelog's format example names no real ticket · XS
+
+**Hat:** The changelog's format example names no real ticket
+**Where:** `docs/CHANGELOG.md` — the "Format" block
+**Depends on:** Nothing
+**Screen:** No
+
+Found by SHEET-04 (SHEET-04 §11). Measured on `d4bee2f`: `docs/CHANGELOG.md` line 9 reads
+`- 2026-MM-DD · SHEET-04 · Long-press on any number shows where it came from.`. SHEET-04 is the
+part styles; the long press is SHEET-33. `grep -rn "SHEET-04"` finds the example beside the real
+ticket.
+
+**What it should look like when done:**
+1. The format example reads `- 2026-MM-DD · AREA-NN · What a person can now see, in one
+   sentence.`: the date, the id and the sentence are all placeholders, as `TEMPLATE.md`'s
+   `<AREA-NN>` is.
+2. `grep -rn "Long-press on any number"` outside `docs/archive/` finds nothing.
+3. Nothing else changes: every real changelog line stays as it is, and the closed tickets in
+   `docs/archive/` keep the old example they quoted.
+
+**Tests:** none; a document change. The quality gate runs as for any commit.
+**What came out of it:** Done as item 1 says. `grep -rn "Long-press on any number"` outside
+`docs/archive/` and `node_modules`: no match. Gate measured on this commit is in the chat report.
+Found, not fixed: nothing.
+Nothing for the changelog; a person sees no change.
+
+---

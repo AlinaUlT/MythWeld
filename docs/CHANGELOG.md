@@ -6,7 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
-- 2026-MM-DD · SHEET-04 · Long-press on any number shows where it came from.
+- 2026-MM-DD · AREA-NN · What a person can now see, in one sentence.
 ```
 
 ---
