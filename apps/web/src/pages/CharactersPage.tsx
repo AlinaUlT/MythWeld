@@ -5,6 +5,8 @@
 // SHEET-25: a card swiped left shows Copy, DM link, Delete and More; More, or the card's "⋯",
 // opens the character's Actions. The list is watched, so a copy, a deletion and its undo show at
 // once.
+// SHEET-26: "Import file" reads a character file through its checks; a refused one shows its
+// reason in a card above the list, and nothing of it is saved.
 import type { L10n } from '@grimoire/schema';
 import { liveQuery } from 'dexie';
 import type { TFunction } from 'i18next';
@@ -27,6 +29,7 @@ import {
   copyTarget,
   deleteTarget,
 } from '../shared/CharacterActions';
+import { ImportButton, ImportRefusal, type RefusedFile } from '../shared/CharacterImport';
 import { Page } from '../shell/Page';
 import { paths, sheetPath } from '../shell/routes';
 import { type AppCharacter, listLineOf } from '../systems';
@@ -292,8 +295,13 @@ function NewCharacterLink() {
   );
 }
 
-function Empty({ t }: { t: CharactersT }) {
-  const { t: tc } = useTranslation();
+function Empty({
+  t,
+  onRefused,
+}: {
+  t: CharactersT;
+  onRefused: (refused: RefusedFile | undefined) => void;
+}) {
   return (
     <div className="flex grow flex-col items-center justify-center gap-3 px-4 pb-12 text-center">
       <p className="text-15 text-muted">{t('empty')}</p>
@@ -307,17 +315,7 @@ function Empty({ t }: { t: CharactersT }) {
         <Plus aria-hidden className="size-5" />
         {t('new')}
       </Part>
-      {/* Importing a file comes with SHEET-26. */}
-      <Part
-        as="button"
-        type="button"
-        name="button-secondary"
-        disabled
-        className="flex h-control flex-col items-center justify-center px-5 text-muted"
-      >
-        <span className="text-14 font-semibold">{t('import')}</span>
-        <span className="text-11">{tc('comingLater')}</span>
-      </Part>
+      <ImportButton onRefused={onRefused} />
     </div>
   );
 }
@@ -334,12 +332,20 @@ function targetOf(listed: ListedCharacter, t: CharactersT): ActionsTarget {
     : { id: listed.id, name: listed.name ?? t('unnamed'), opens: false };
 }
 
-function List({ characters, t }: { characters: readonly ListedCharacter[]; t: CharactersT }) {
+function List({
+  characters,
+  t,
+  onRefused,
+}: {
+  characters: readonly ListedCharacter[];
+  t: CharactersT;
+  onRefused: (refused: RefusedFile | undefined) => void;
+}) {
   const [swiped, setSwiped] = useState<string | undefined>(undefined);
   const [actions, setActions] = useState<{ target: ActionsTarget; line?: string } | undefined>(
     undefined,
   );
-  if (characters.length === 0) return <Empty t={t} />;
+  if (characters.length === 0) return <Empty t={t} onRefused={onRefused} />;
   return (
     <div className="flex grow flex-col gap-2.5 px-4 py-2">
       {characters.map((listed) => {
@@ -362,6 +368,9 @@ function List({ characters, t }: { characters: readonly ListedCharacter[]; t: Ch
         );
       })}
       <p className="mx-1 mt-1.5 text-13 text-muted">{t('hint')}</p>
+      <div className="flex justify-center">
+        <ImportButton onRefused={onRefused} />
+      </div>
       {actions !== undefined && (
         <CharacterActions
           target={actions.target}
@@ -376,6 +385,7 @@ function List({ characters, t }: { characters: readonly ListedCharacter[]; t: Ch
 export function CharactersPage() {
   const { t } = useTranslation('characters');
   const [list, setList] = useState<ListState>({ status: 'loading' });
+  const [refused, setRefused] = useState<RefusedFile | undefined>(undefined);
 
   useEffect(() => {
     const watched = liveQuery(() => listCharacters()).subscribe({
@@ -391,7 +401,12 @@ export function CharactersPage() {
   // While the rows are read, nothing shows under the header.
   return (
     <Page title={t('title')} back={paths.player} action={<NewCharacterLink />}>
-      {list.status === 'ready' && <List characters={list.characters} t={t} />}
+      {refused !== undefined && (
+        <ImportRefusal refused={refused} onClose={() => setRefused(undefined)} />
+      )}
+      {list.status === 'ready' && (
+        <List characters={list.characters} t={t} onRefused={setRefused} />
+      )}
       {list.status === 'failed' && <p className="px-5 py-2 text-15 text-muted">{t('failed')}</p>}
     </Page>
   );

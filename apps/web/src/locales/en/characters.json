@@ -14,5 +14,19 @@
     "newer": "Saved by a newer version of the app. Update the app to open it.",
     "invalid": "Its saved data could not be read.",
     "unknownSystem": "Made for a game system this app does not have."
+  },
+  "importRefused": {
+    "title": "{{file}} was not imported",
+    "nothingSaved": "Nothing was saved.",
+    "close": "Close",
+    "unreadable": "The file could not be read.",
+    "tooLarge": "The file is larger than {{limit}} MB.",
+    "notJson": "The file is not JSON text.",
+    "notACharacter": "The file is not a character file.",
+    "unknownSystem": "It is made for a game system this app does not have.",
+    "newer": "It was saved by a newer version of the app: its {{field}} is {{found}}, and this app reads up to {{current}}. Update the app to import it.",
+    "invalid": "Its data failed these checks:",
+    "wholeFile": "the file",
+    "more": "and {{count}} more"
   }
 }

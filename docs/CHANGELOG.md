@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-26 · Import file on My characters reads a character file: an older file is
+  brought up to date and opens its sheet; a file that fails its checks is refused with the reason
+  and nothing is saved; a file of a character already on the device comes in as a copy.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.

@@ -5458,3 +5458,153 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+### SHEET-26 A character file imports through its checks
+
+**Hat:** A character file imports through its checks
+**Depends on:** SHEET-10, SHEET-24, SHEET-25
+**Size:** S
+**Screen:** Yes — My characters; the "Import file" action of BRIEF P2 ("smaller action"), its row
+in `docs/design/BRIEF.md` Part 5 ("P2 Characters list"). The board `V3-Characters` has no refusal
+card, so the refusal follows the Actions list's parts and tokens.
+**SPEC:** §5.8 (an older file migrates when it is imported), §12 stage 2 (import of a character in
+JSON), §8.2 (a bad file never crashes the app); ADR 005 item 2 (no limit before the payment phase)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/db/characterImport.ts` — new: `importCharacter`, which reads a file's
+text, opens it through its system's migration frame and stores it, or refuses with a reason.
+- `apps/web/src/db/characters.ts` — `openFile` is exported, so import opens a file the way every
+  stored row opens.
+- `apps/web/src/shared/CharacterImport.tsx` — new: the "Import file" button and the refusal card.
+- `apps/web/src/pages/CharactersPage.tsx` — the disabled button of the empty state becomes the
+  real one; the list gets it too; the page keeps the refusal that is showing.
+- `apps/web/src/locales/en/characters.json` — the refusal's words.
+
+#### 2. What is missing now
+
+Measured on `30f4382`: `Empty` in `CharactersPage.tsx` draws "Import file" with `disabled` and the
+text "Coming later"; a list with characters in it has no import at all. No code in `apps/web/src`
+reads a file the person chose. `saveCharacter` stores a character that is already parsed; nothing
+turns a file's text into one. SHEET-25's Export writes `<name>.json` and nothing reads it back.
+
+#### 3. What it should look like when done
+
+1. "Import file" opens the device's file picker for `.json` files. It shows in the empty state and
+   under the list, a smaller action than "+" (BRIEF P2).
+2. A file of a character saved at the current versions is stored as it is: same id, same `rev`,
+   same times. The app then opens that character's sheet.
+3. A file saved at an older version migrates (SPEC §5.8): the stored row has the current
+   `schemaVersion` and `systemSchemaVersion`. The file on the person's disk is not changed.
+4. A file whose id a character on this device already has never replaces that character. It is
+   stored as a new character: a new id, `rev` 0, `createdAt` and `updatedAt` now, the name
+   "<name> (copy)". Both characters stay.
+5. A file that fails is refused, and nothing of it is saved: no row, no partial row. The card on
+   My characters says "<file name> was not imported" and "Nothing was saved.", then the reason:
+   - not text the app can read: `unreadable`;
+   - larger than 5 MB: `tooLarge`;
+   - not JSON: `notJson`;
+   - JSON that is not an object with a `system` text (a pack, a list, a number): `notACharacter`;
+   - a `system` this app does not carry: `unknownSystem`;
+   - a version above the app's: `newer`, saying which field and both numbers;
+   - failing the schema: `invalid`, with the first five failed checks as `path: message`, and
+     "and N more" when there are more.
+6. A refused file leaves the characters that were there unchanged, in value and in order.
+7. The card has a "Close" button; choosing the next file replaces it.
+8. A file with a leading byte-order mark opens.
+
+#### 4. How to do it
+
+1. `characterImport.ts`: `importCharacter(source, nameIfTaken, now?, database?)`. `source` is
+   `{ size, text() }`, which a `File` is. Order: size against `IMPORT_MAX_BYTES`; `text()`; strip a
+   leading `﻿`; `JSON.parse`; the plain-object and `system` check; `openFile` (the frame).
+   Then, in one `rw` transaction on `characters`: when a row with the opened id exists, store a
+   copy with a new id, `rev` 0, `now`, `nameIfTaken(name)`; else store the opened value. Both go
+   through `saveCharacter`, so what is stored is what the schema reads.
+2. Each refusal carries `code`, its numbers and an English `message` for logs, as the frame's do.
+3. `CharacterImport.tsx`: `ImportButton` (a visually hidden `<input type="file">`, reset after
+   each choice so the same file can be chosen again; success navigates to `sheetPath(id)`),
+   `ImportRefusal` (the card, `role="alert"`).
+4. `CharactersPage.tsx`: `refusal` state; the button in `Empty` and under the list's hint.
+
+#### 5. Stored data
+
+Nothing stored changes shape. Import writes one row of the current versions to `characters`, the
+same as Copy does. No migration is added; the existing frame (ENG-06) runs the existing steps.
+
+#### 6. What a person will see
+
+My characters at 360×800. The button is a secondary button, 44 px or more high. Keys in
+`characters`: `import` "Import file" (exists), `importRefused.title` "{{file}} was not imported",
+`importRefused.nothingSaved` "Nothing was saved.", `importRefused.close` "Close",
+`importRefused.unreadable` "The file could not be read.", `importRefused.tooLarge` "The file is
+larger than {{limit}} MB.", `importRefused.notJson` "The file is not JSON text.",
+`importRefused.notACharacter` "The file is not a character file.", `importRefused.unknownSystem`
+"It is made for a game system this app does not have.", `importRefused.newer` "It was saved by a
+newer version of the app: its {{field}} is {{found}}, and this app reads up to {{current}}. Update
+the app to import it.", `importRefused.invalid` "Its data failed these checks:",
+`importRefused.wholeFile` "the file", `importRefused.more` "and {{count}} more". The empty state's
+"Coming later" line goes.
+
+#### 7. Tests
+
+- `apps/web/test/character-import.test.ts` — `SHEET-26 Import`: current file stored as it is;
+  version-2 file (the form `characters.test.ts` already makes of golden A) stored at the current
+  versions; id taken → new character, both stay; every refusal code, each leaving the table
+  unchanged; a BOM; the file's text untouched; issue lines; and Export then Import into a clean
+  database equals the first character (the round trip SPEC §12 stage 2 names).
+- `apps/web/e2e/characters.spec.ts` — the button picks a file and opens the sheet; a refused file
+  shows the card and lists no new character; the old "disabled" assertion goes.
+- Control numbers from: golden A and golden B of SPEC §6.7 (stored as they are).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts. The frame's behaviour (newer refused, older migrated, then the
+schema parses) is `packages/schema/src/migration.ts`, read for this ticket.
+
+#### 9. Not in this ticket
+
+- The portrait's picture: Export writes the row, not the blob (SHEET-25), so an imported
+  `portraitBlobId` names no picture on this device. The portrait is SHEET-56's.
+- Importing a pack, a theme, or several characters in one file ("Export all"): not a phase 2 row.
+- The free limit's counter and the paid offer after an import: the payment phase (ADR 005).
+- A choice between replacing and keeping when an id is taken: import never replaces (a person's
+  saved data); a replace would be its own ticket if the owner asks for one.
+
+#### 10. Rake check
+
+- **A person's saved data:** import never overwrites a row; a refused file writes nothing; the
+  file on disk is only read.
+- **Missing is not broken:** a bad file gives a reason on screen, never a crash or a blank page.
+- **A stored-shape change needs a migration:** no shape changes.
+- **No visible literal / no look in a component:** every string is a `characters` key; the card
+  and button are `Part`s with tokens.
+- **No external requests:** the file is read in the browser from the picker.
+- **Nothing invisible:** the byte-order mark is stripped with an escape in code, not typed.
+- **`packages/engine` stays pure:** all the code is in `apps/web`.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-29, on `30f4382` plus this ticket: `pnpm lint && pnpm typecheck && pnpm test
+&& pnpm e2e` exit 0. `pnpm lint` 357 files, no fixes. `pnpm test` 97 files, 1258 passed, 0 failed
+(17 new), then the speed project 1 file, 2 passed. Coverage: statements 99.45 % (3478/3497),
+lines 99.9 % (3051/3054). `pnpm e2e` 40 passed, 0 failed, 31.9 s (1 new, 1 changed).
+Screenshots at 360×800 were shown in the chat: the refusal card over the empty state, and the
+list after an import.
+
+Differences from §3:
+- Nothing differed. A file whose version is newer is refused on `systemSchemaVersion` for golden B
+  edited to 10 (the app reads up to 9); that is the frame's own message, shown as written in §6.
+- The Zod messages of a failed check are shown as the library words them (English), under the
+  path; they are data of the file, not strings of the app.
+
+Found, not fixed:
+- Export writes the row and not the portrait's blob, so a character exported and imported on
+  another device keeps a `portraitBlobId` that names no picture there. SHEET-56 owns the portrait;
+  it decides whether a file carries the picture.
+
+Changelog: "Import file on My characters reads a character file: an older file is brought up to
+date and opens its sheet; a file that fails its checks is refused with the reason and nothing is
+saved; a file of a character already on the device comes in as a copy."

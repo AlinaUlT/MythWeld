@@ -51,7 +51,9 @@ test('SHEET-24 with no character, the list says so and offers + and Import file'
   const box = await newCharacter.first().boundingBox();
   expect(box?.width).toBeGreaterThanOrEqual(44);
   expect(box?.height).toBeGreaterThanOrEqual(44);
-  await expect(page.getByRole('button', { name: en.characters.import })).toBeDisabled();
+  const importButton = page.getByRole('button', { name: en.characters.import });
+  await expect(importButton).toBeEnabled();
+  expect((await importButton.boundingBox())?.height).toBeGreaterThanOrEqual(44);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
   await page.screenshot({ path: testInfo.outputPath('characters-empty.png') });
 });
@@ -209,4 +211,59 @@ test('SHEET-25 the card’s ⋯ opens Actions; Export saves the file, Delete has
   await expect(cards(page).first()).toContainText('Golden B');
   await cards(page).first().click();
   await expect(page).toHaveURL(`characters/${goldenB.id}`);
+});
+
+test('SHEET-26 Import file opens a character file, or refuses it and saves nothing', async ({
+  page,
+}, testInfo) => {
+  await page.goto('characters');
+  const input = page.getByTestId('import-input');
+
+  await input.setInputFiles({
+    name: 'broken.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({ ...goldenB, systemSchemaVersion: FIFTH_EDITION_SCHEMA_VERSION + 1 }),
+    ),
+  });
+  const refusal = page.getByRole('alert');
+  await expect(refusal).toContainText('broken.json was not imported');
+  await expect(refusal).toContainText('saved by a newer version of the app');
+  await expect(refusal).toContainText('Nothing was saved.');
+  await expect(page.getByText(en.characters.empty)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('characters-import-refused.png') });
+
+  await input.setInputFiles({
+    name: 'not-json.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{"name": '),
+  });
+  await expect(refusal).toContainText('not-json.json was not imported');
+  await expect(refusal).toContainText(en.characters.importRefused.notJson);
+  await refusal.getByRole('button', { name: en.characters.importRefused.close }).click();
+  await expect(refusal).toHaveCount(0);
+
+  await input.setInputFiles({
+    name: 'Golden B.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(goldenB)),
+  });
+  await expect(page).toHaveURL(`characters/${goldenB.id}`);
+
+  await page.goto('characters');
+  await expect(cards(page)).toHaveCount(1);
+  await expect(page.getByRole('button', { name: en.characters.import })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('characters-imported.png') });
+
+  // The same file again never replaces the character: it comes in as a copy.
+  await input.setInputFiles({
+    name: 'Golden B.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(goldenB)),
+  });
+  await expect(page).not.toHaveURL(`characters/${goldenB.id}`);
+  await page.goto('characters');
+  await expect(cards(page)).toHaveCount(2);
+  await expect(cards(page).filter({ hasText: 'Golden B (copy)' })).toHaveCount(1);
 });

@@ -226,7 +226,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-23 | An undo toast reverses the last change | S | ✅ 2026-10-29 |
 | SHEET-24 | My characters lists the saved characters | S | ✅ 2026-10-29 |
 | SHEET-25 | A character's Actions copy, export or delete it | S | ✅ 2026-10-29 |
-| SHEET-26 | A character file imports through its checks | S | 🔲 |
+| SHEET-26 | A character file imports through its checks | S | ✅ 2026-10-29 |
 | SHEET-27 | The manual form makes a character | M | ✅ 2026-10-29 |
 | SHEET-28 | The manual form's equipment step adds items | S | 🔲 |
 | SHEET-29 | The manual form shows the ability bonus window | S | 🔲 |
@@ -263,8 +263,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
-- **SHEET-26** — SPEC §5.8, §12 stage 2: an older file migrates; a file that fails its checks is
-  refused with the reason, and nothing of it is saved.
 - **SHEET-28** — BRIEF P3 step 9. Found by ENG-49: a spell or item a grant names (a `spell` or
   `item` grant's `fixed` ids, and its chosen ones) is looked up, not gathered, so one of the other
   edition gets no `otherRuleset` warning, which a gathered entity gets. The starting inventory
