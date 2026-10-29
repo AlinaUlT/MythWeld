@@ -103,7 +103,8 @@ describe('SHEET-23 the undo toast', () => {
   });
 
   it('gives every action of the core and the fifth-edition module its own text', () => {
-    // Each action key an `ActionResult`'s entry carries, read from the actions' source files.
+    // Each action key an `ActionResult`'s entry carries, read from the actions' source files, and
+    // the two a screen makes itself: SHEET-36's answers to a choice.
     const actions = [
       'useResource',
       'regainResource',
@@ -127,6 +128,8 @@ describe('SHEET-23 the undo toast', () => {
       'gainInspiration',
       'spendInspiration',
       'levelUp',
+      'setChoice',
+      'setKey',
     ];
     expect(Object.keys(en.toast.done)).toEqual([...actions, 'other']);
     for (const action of actions) expect(doneKeyOf(action)).toBe(action);
@@ -167,7 +170,7 @@ describe('SHEET-23 the undo toast', () => {
     const stored = fifthEditionCharacterSchema.parse(await database.characters.get(a.id));
     expect(stored.systemData.state.hp.current).toBe(12);
     expect(renderToStaticMarkup(<ToastHost />)).toBe(
-      '<div role="status" class="pointer-events-none fixed inset-x-4 bottom-[calc(var(--dock-height,0px)+16px)]"></div>',
+      '<div role="status" class="pointer-events-none fixed inset-x-4 bottom-[calc(var(--dock-height,0px)+16px)] z-20"></div>',
     );
   });
 

@@ -203,3 +203,90 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
 });
+
+// SHEET-36: golden B with its seven choices unmade (the count `compute()` gives, ticket §2), and
+// golden B with every choice made and the species' size not chosen.
+const unmade = { ...goldenB, choices: {} };
+const noSize = {
+  ...goldenB,
+  systemData: { ...goldenB.systemData, species: { id: goldenB.systemData.species.id } },
+};
+
+const badge = (page: Page, count: number) =>
+  page.getByRole('banner').getByRole('button', { name: `${count} choices to make` });
+const card = (page: Page, title: string) =>
+  page
+    .getByRole('dialog')
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('heading', { name: title, exact: true }) });
+
+test('SHEET-36 the choices badge opens every pending choice, each answered from its list', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [unmade]);
+  await page.goto(`characters/${goldenB.id}`);
+  await badge(page, 7).tap();
+  const panel = page.getByRole('dialog', { name: en.choices.title });
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole('heading', { level: 3 })).toHaveCount(7);
+  await page.screenshot({ path: testInfo.outputPath('choices-open.png') });
+
+  // A pick of two: the first item leaves the choice pending, the second ends it.
+  const fighter = card(page, 'Fighter');
+  await fighter.getByRole('button', { name: 'Choose Perception' }).tap();
+  await expect(fighter.getByRole('button', { name: 'Remove Perception' })).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('Choice made for Fighter');
+  await expect(badge(page, 7)).toBeVisible();
+  await fighter.getByRole('button', { name: 'Choose Survival' }).tap();
+  await expect(badge(page, 6)).toBeVisible();
+  await expect(card(page, 'Fighter')).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('choices-after-skills.png') });
+
+  // Undo takes back the last item; the choice is pending again with one item chosen.
+  await page.getByRole('status').getByRole('button', { name: en.toast.undo }).tap();
+  await expect(badge(page, 7)).toBeVisible();
+  await expect(
+    card(page, 'Fighter').getByRole('button', { name: 'Remove Perception' }),
+  ).toBeVisible();
+  // Tapping a chosen item takes it out again.
+  await card(page, 'Fighter').getByRole('button', { name: 'Remove Perception' }).tap();
+  await expect(
+    card(page, 'Fighter').getByRole('button', { name: 'Remove Perception' }),
+  ).toHaveCount(0);
+
+  // A distribution: the pattern first, then the stats in order; it is stored when the pattern is full.
+  const soldier = card(page, 'Soldier').filter({ hasText: en.choices.kind.distribute });
+  await expect(soldier.getByRole('button', { name: 'Choose Strength' })).toHaveCount(0);
+  await soldier.getByRole('button', { name: '+2, +1' }).tap();
+  await soldier.getByRole('button', { name: 'Choose Strength' }).tap();
+  await expect(soldier.getByRole('button', { name: 'Remove Strength' })).toContainText(
+    'Strength +2',
+  );
+  await soldier.getByRole('button', { name: 'Choose Constitution' }).tap();
+  await expect(soldier).toHaveCount(0);
+  await expect(badge(page, 6)).toBeVisible();
+
+  // The answers are stored: a reload keeps the badge's count.
+  await page.reload();
+  await expect(badge(page, 6)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
+});
+
+test('SHEET-36 a size not chosen is answered in the species, and the badge goes', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [noSize]);
+  await page.goto(`characters/${goldenB.id}`);
+  await badge(page, 1).tap();
+  const panel = page.getByRole('dialog', { name: en.choices.title });
+  await panel.getByRole('button', { name: 'Choose Small' }).tap();
+  await expect(panel.getByText(en.choices.empty)).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('Small chosen');
+  await expect(
+    page.getByRole('banner').getByRole('button', { name: /choices to make/ }),
+  ).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('choices-empty.png') });
+  await panel.getByRole('button', { name: en.choices.close }).tap();
+  await expect(panel).toHaveCount(0);
+});

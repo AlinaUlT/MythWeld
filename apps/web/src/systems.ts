@@ -4,6 +4,7 @@
 // SHEET-24: what My characters names under a character's name is its module's too.
 // SHEET-27: the manual form makes a character through its system's maker, with its rules bases.
 // SHEET-30: so is what the sheet's header and dock read, and the module `compute()` runs.
+// SHEET-36: and where the sheet stores an answer to a choice, and how it names the options.
 import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
@@ -17,6 +18,8 @@ import {
   fifthEditionCasting,
   fifthEditionClassLine,
   fifthEditionHitPoints,
+  fifthEditionKeyAnswer,
+  fifthEditionKeyTypes,
   fifthEditionListLine,
   fifthEditionModule,
   type HeaderCasting,
@@ -124,6 +127,10 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** SHEET-36: where the answer to a key path not chosen yet is stored; none if it has no place. */
+  keyAnswer(path: string): readonly string[] | undefined;
+  /** SHEET-36: the entity types a proficiency category's keys are entries of. */
+  keyTypes(category: string): readonly string[];
 }
 
 /** Each system's sheet, by system id. */
@@ -134,6 +141,8 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    keyAnswer: fifthEditionKeyAnswer,
+    keyTypes: fifthEditionKeyTypes,
   },
 };
 

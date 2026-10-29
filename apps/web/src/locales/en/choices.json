@@ -1,1 +1,29 @@
-{}
+{
+  "title": "What needs choosing",
+  "close": "Close",
+  "empty": "Nothing is left to choose.",
+  "separator": " · ",
+  "left": "{{count}} left to choose",
+  "chosen": "Chosen",
+  "choose": "Choose {{name}}",
+  "remove": "Remove {{name}}",
+  "pattern": "Raise by",
+  "missing": "Missing: {{id}}",
+  "noOptions": "Nothing can be offered for this choice.",
+  "refused": "This choice could not be saved: the character changed since.",
+  "kind": {
+    "skill": "Skills",
+    "save": "Saving throws",
+    "armor": "Armor",
+    "weapon": "Weapons",
+    "tool": "Tools",
+    "language": "Languages",
+    "mastery": "Weapon mastery",
+    "feat": "Feat",
+    "lineage": "Lineage",
+    "distribute": "Ability scores",
+    "size": "Size",
+    "entity": "Choice",
+    "other": "Choice"
+  }
+}

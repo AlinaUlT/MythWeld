@@ -12,6 +12,7 @@ export * from './attunement';
 export * from './casting';
 export * from './character';
 export * from './checks';
+export * from './choices';
 export * from './classes';
 export * from './combat';
 export * from './conditions';

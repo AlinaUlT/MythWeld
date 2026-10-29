@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-36 · The choices badge opens "What needs choosing": every pending choice of
+  a class, background, species or feat as a card with its options; each answer is stored at once
+  with Undo, and the badge's count goes down.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.

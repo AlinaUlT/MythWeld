@@ -237,7 +237,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-33 | A long press opens a number's breakdown | S | 🔲 |
 | SHEET-34 | A manual edit overrides a number | S | 🔲 |
 | SHEET-35 | The AC breakdown pins its base calculation | XS | 🔲 |
-| SHEET-36 | The choices badge opens every pending choice | M | 🔲 |
+| SHEET-36 | The choices badge opens every pending choice | M | ✅ 2026-10-29 |
 | SHEET-37 | Rolls are kept in the roll log | S | ✅ 2026-10-29 |
 | SHEET-38 | The dice panel rolls any formula fairly | M | ✅ 2026-10-29 |
 | SHEET-39 | Tapping a number rolls it in the roll dialog | M | 🔲 |
@@ -293,11 +293,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 - **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates:
   `Computed.candidates['ac.base']`, each `{ key, value, steps }`; a pin that does not apply is not
   among them and warns `acCalcNotApplying`.
-- **SHEET-36** — SPEC §7.2, "What needs choosing": the grants' `pendingChoices` and
-  `Computed.pendingKeys`, each answered from the list. Found by ENG-48: a size not chosen is in
-  `Computed.pendingKeys` (`{ path, options }`); the answer is written to
-  `systemData.species.size`, not to `choices`. A stored size the species does not offer warns
-  `stepRule` `sizeNotOffered`.
 - **SHEET-39** — BRIEF P5 sheet 1, board `V3-Roll`. Found by ENG-34: each d20 test's roll mode is
   a number path, 1 advantage, −1 disadvantage, 0 neither, with a step per source:
   `checks.<stat>.mode`, `abilities.<stat>.saveMode`, `skills.<key>.mode`, `init.mode`,

@@ -5458,3 +5458,134 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-36 The choices badge opens every pending choice
+
+**Hat:** Answer each pending choice from a list
+**Depends on:** SHEET-30 (the badge and the panel's slot), SHEET-23 (undoable changes), ENG-48 (a size not chosen)
+**Size:** M
+**Screen:** Yes — SPEC §7.2 "What needs choosing" (no board of its own); BRIEF Part 2, line "An unmade choice shows a badge with a count, like [!1], that opens the list of choices", and the sheet panels of board `V3-Sheet`
+**SPEC:** §7.2 (What needs choosing), §6.1 (`pendingChoices`), §5.5 (grants), §8.2 (an unmade choice is not an error)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/panels/ChoicesPanel.tsx` — changes (empty since SHEET-30).
+- `apps/web/src/sheet/choices.ts` — new. The pure part: the rows from `Computed`, the log entry of an answer.
+- `packages/system-5e/src/choices.ts` — new. What the fifth-edition module says about answers: where a key path's answer is stored, and which entity types a proficiency category's keys are entries of.
+- `apps/web/src/systems.ts` — `SheetSystem` gets `keyAnswer` and `keyTypes`.
+- `apps/web/src/locales/en/choices.json`, `toast.json` — the words.
+
+#### 2. What is missing now
+
+Measured on the goldens with `choices: {}`: golden B has 7 pending choices, golden A 4, golden C 1 (`compute()`'s `pendingChoices`). The badge (SHEET-30) shows `!7` and opens `ChoicesPanel`, which returns `null`: nothing opens. There is no screen that writes `character.choices`, and none that writes `systemData.species.size` (ENG-48). `changeCharacter` (SHEET-23) has no caller.
+
+#### 3. What it should look like when done
+
+1. The badge opens a bottom panel titled "What needs choosing", over the sheet, closed by its X, by Escape and by a tap on the scrim.
+2. Each pending choice (`Computed.pendingChoices`) is one card: the name of the entity that gives it, what it picks (skills, languages, a feat, …), how many are left, and its options as buttons of at least 44 px.
+3. Tapping an option of a pick choice stores it at once in `choices[<entity id>#<grant id>]` through `changeCharacter`; a choice with more items than one is stored one item at a time, and a chosen item (shown under "Chosen") is removed by tapping it. Removing the last item removes the key.
+4. A stat distribution (`abilityScore`, `mode: distribute`) first shows its patterns ("+2, +1" and "+1, +1, +1" for golden B's soldier); the stats are tapped in order, each shows the number it takes; the choice is stored once, when the last stat is placed, because a stored list that fits a pattern ends the choice.
+5. A pending key (`Computed.pendingKeys`, a size) is a card with its options; the answer is stored in `systemData.species.size`, not in `choices` (ENG-48 §11).
+6. After every answer the toast says what changed and "Undo" reverses it; the card, and then the badge's count, follow the stored character: the answered card goes, `!7` becomes `!6`. With none left the panel says "Nothing is left to choose." and the badge is gone.
+7. An option's name is the entry's name; a missing entry reads "Missing: <id>"; a key with no entry (a tool such as `masonsTools`) reads from its key, "Masons tools".
+8. Play mode and edit mode both answer: a pending choice is not a locked number, and the badge would be a dead end if play mode blocked it.
+9. A write that is refused (the character changed since) says so in the panel, in a `role="alert"` line, and writes nothing.
+
+#### 4. How to do it
+
+1. `packages/system-5e/src/choices.ts`: `fifthEditionKeyAnswer(path)` gives `['systemData','species','size']` for `size` (`SIZE_PATH`), `undefined` for any other path; `fifthEditionKeyTypes(category)` gives `skill → skill`, `language → language`, `save → ability`, `weapon`, `armor`, `tool`, `mastery → item`.
+2. `systems.ts`: the two functions join `SheetSystem` and the 5e entry.
+3. `sheet/choices.ts`: `choiceRows(sheet)` → `{ kind: 'pick' | 'distribute' | 'key', … }[]` from `computed.pendingChoices` and `pendingKeys`: the source entity from the part id, the count still to choose (`choose.count − chosen`, or the patterns), the options with names. `choiceEntry(sheet, row, items)` builds the `LogEntry` with `entryOf` and `changeTo` (never `Date.now()` in the pure part: the stamp is an argument).
+4. `ChoicesPanel.tsx`: the overlay (the markup of `DiceSheet`), the cards, `changeCharacter` on a tap; a refused write sets the alert line.
+5. `toast.json`: `setChoice` ("Choice made for {{name}}") and `setKey` ("{{name}} chosen"); `toast.test.tsx` lists the actions, so its list gets the two.
+
+#### 5. Stored data
+
+Nothing stored changes. `choices` and `systemData.species.size` already exist (SPEC §5.1, ENG-48); only a screen now writes them. No `schemaVersion` bump.
+
+#### 6. What a person will see
+
+At 360×800, opened from the `!N` badge in the header. States: full (cards), partly made (a card with "Chosen" and fewer left), empty ("Nothing is left to choose."), refused (the alert line). Keys in `choices.json`:
+
+| Key | Text |
+|---|---|
+| `title` | What needs choosing |
+| `close` | Close |
+| `empty` | Nothing is left to choose. |
+| `left` | {{count}} left to choose |
+| `chosen` | Chosen |
+| `options` | Options |
+| `remove` | Remove {{name}} |
+| `choose` | Choose {{name}} |
+| `pattern` | Raise by |
+| `kind.*` | Skills, Saving throws, Armor, Weapons, Tools, Languages, Weapon mastery, Feat, Ability scores, Size |
+| `missing` | Missing: {{id}} |
+| `noOptions` | Nothing can be offered for this choice. |
+| `refused` | This choice could not be saved: the character changed since. |
+
+#### 7. Tests
+
+- `apps/web/test/choices.test.tsx` — `choiceRows` on golden B and A with `choices: {}` (7 and 4 rows), a partly made choice, a size not chosen (golden B without `species.size`); `choiceEntry`'s changes; the panel's markup; a write through `changeCharacter` on `fake-indexeddb`, then its undo; a refused write.
+- `packages/system-5e/test/choices.test.ts` — the two functions.
+- `apps/web/e2e/sheet.spec.ts` — golden B with `choices: {}`: tap `!7`, pick a skill, `!6`, Undo, `!7`; screenshot at 360×800.
+- Control numbers from: the goldens of SPEC §6.7 (the counts are `pendingChoices.length` measured in §2, option counts from the SRD packs: the soldier's tools 4, Fighter skills 8).
+
+#### 8. Checked against the source
+
+Nothing to check against a rules source: this ticket stores what the person picks and adds no rule. The rule facts it displays come from the pack's grants (SRD 5.2.1 Soldier background: ability scores +2/+1 or +1/+1/+1; Fighter: two skills of eight), read through `compute()`.
+
+#### 9. Not in this ticket
+
+- Changing an answer already made: that is the edit mode of the Features tab (SHEET-48) and the level-up wizard (phase 4).
+- Names for tools, which have no entries in the packs: they read from the key until content gives them entries.
+- The overlay shared by Rest and Actions: each of those rows draws its own until a third copy makes the shared piece worth a ticket.
+- A prerequisite warning on an option (SPEC §8.2): prerequisites warn on the Features tab.
+
+#### 10. Rake check
+
+- Engine stays pure: the screen reads `Computed` and writes through `changeCharacter`; no rule is decided in the panel. The size path and the category-to-type map are in `system-5e`, and the core imports nothing of it.
+- No look in a component and no string literal: tokens and `Part`/`Slot`, every text through `choices` and `toast`.
+- Missing is not broken: an option that is not found reads "Missing: <id>" and is not offered as a button that stores nothing.
+- Stored shape: no change, so no migration.
+- Open license: no rules text is added.
+
+#### 11. What came out of it
+
+Measured: `pnpm lint` clean (358 files); `pnpm typecheck` clean in 6 packages; `pnpm test` 98 files,
+1267 passed, 0 failed, 20.6 s, system-5e and engine coverage 99.9 % of lines, speed project 2
+passed; `pnpm e2e` 41 passed, 0 failed, 23.0 s. New: 24 tests in `apps/web/test/choices.test.tsx`,
+2 in `packages/system-5e/test/choices.test.ts`, 2 in `apps/web/e2e/sheet.spec.ts`. Screenshots at
+360×800 were shown in the chat; none is committed.
+
+Differences from §3 and why:
+- A card for a size has no title: `pendingKeys` names a path and its options, not the entity that
+  gives it, so the card carries only its kind ("Size").
+- The toast's text for a size names the option ("Small chosen"), for a grant's choice the source
+  ("Choice made for Fighter"): a toast reads "<name> chosen" best for a size, and a skill list has
+  no one name.
+- Tools (`masonsTools`, `playingCards`) read from the key ("Masons tools", "Playing cards"): they
+  have no entries. §3 item 7 said so; the measured option lists on golden A and B confirm it.
+
+Changed outside the hat, because this ticket needed it: `ToastHost` sits at `z-20`, above the
+sheet's panels at `z-10`. Without it the panel covered the toast and "Undo" could not be tapped
+(found by the e2e test: the tap was intercepted by the panel). `toast.test.tsx` expects the new
+class and lists the two new actions; `sheet.test.tsx` no longer lists `ChoicesPanel` among the
+empty panels.
+
+Found, not fixed:
+- The class line in the header is cut to "Fig…" at 360 px while the `!7` badge shows; the badge and
+  the edition chip take its room (SHEET-30's layout, seen in the screenshot).
+- The overlay (scrim, bottom sheet, Escape, X) is now drawn in two places, `DiceSheet` and
+  `ChoicesPanel`; the Rest and Actions panels would make a third and fourth. A shared piece is
+  worth its own row when SHEET-45 or SHEET-58 starts.
+- The toast covers the bottom of a panel for its 5 s; a card under it cannot be tapped until it
+  goes.
+- Tools have no entries in the packs, so they have no Russian name (`name.ru`) either.
+
+Changelog: "The choices badge opens What needs choosing: every pending choice of a class,
+background, species or feat as a card with its options; each answer is stored at once with Undo,
+and the badge's count goes down."
