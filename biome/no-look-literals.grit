@@ -78,7 +78,7 @@ or {
     }
   },
   // A colour or font in an attribute: an SVG paint, an icon's colour, an SVG text's font.
-  JsxAttribute(name=$name, initializer=JsxAttributeInitializerClause(value=$value)) where {
+  JsxAttribute(name=$name, initializer=JsxAttributeInitializerClause(value=$value)) as $attribute where {
     $value <: or {
       JsxString() as $given,
       JsxExpressionAttributeValue(expression=or {
@@ -88,13 +88,24 @@ or {
     },
     or {
       and {
-        $name <: or {
-          `fill`,
-          `stroke`,
-          `color`,
-          `stopColor`,
-          `floodColor`,
-          `lightingColor`
+        or {
+          $name <: or {
+            `stroke`,
+            `color`,
+            `stopColor`,
+            `floodColor`,
+            `lightingColor`
+          },
+          // SHEET-67: a component's `fill`, such as <Part fill="card">, names a skin slot, not a
+          // paint. On any other element, <path> or <motion.path>, `fill` stays a colour. The
+          // `until` keeps a <path> written inside a component's prop checked.
+          and {
+            $name <: `fill`,
+            $attribute <: not within or {
+              JsxOpeningElement(name=JsxReferenceIdentifier()),
+              JsxSelfClosingElement(name=JsxReferenceIdentifier())
+            } until JsxExpressionAttributeValue()
+          }
         },
         $given <: not r"['\x22`](?:currentColor|currentcolor|transparent|inherit|none|var\(--[^)]*\)|url\(#[^)]*\))['\x22`]",
         register_diagnostic(span=$given, message="SHEET-02: a colour is written in a component. Use currentColor with a theme colour class, or var(--token). ADR 015 item 4.")

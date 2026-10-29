@@ -18,9 +18,6 @@ import { Page } from '../shell/Page';
 import { paths } from '../shell/routes';
 import { Part } from '../theme/Part';
 
-// A const, not a string in place: SHEET-02's check reads any `fill="…"` as an SVG colour.
-const cardFill = 'card';
-
 const tile = 'flex h-32 flex-col justify-end gap-1 p-3.5';
 
 interface Section {
@@ -58,11 +55,11 @@ export function PlayerSections({ characters }: { characters: number | undefined 
           </>
         );
         return to === undefined ? (
-          <Part key={key} name="card" fill={cardFill} className={`${tile} text-muted`}>
+          <Part key={key} name="card" fill="card" className={`${tile} text-muted`}>
             {content}
           </Part>
         ) : (
-          <Part key={key} as={Link} name="card" fill={cardFill} to={to} className={tile}>
+          <Part key={key} as={Link} name="card" fill="card" to={to} className={tile}>
             {content}
           </Part>
         );

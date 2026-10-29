@@ -12,9 +12,6 @@ import { paths } from '../shell/routes';
 import { Part } from '../theme/Part';
 import { Slot } from '../theme/Slot';
 
-// A const, not a string in place: SHEET-02's check reads any `fill="…"` as an SVG colour.
-const cardFill = 'card';
-
 const square =
   'flex aspect-[1/1.1] grow basis-0 flex-col items-center justify-center gap-2.5 p-4 text-center';
 
@@ -53,14 +50,14 @@ export function StartPage() {
         </Part>
       </div>
       <div className="flex shrink-0 gap-3 px-4 pb-12">
-        <Part as={Link} name="card" fill={cardFill} to={paths.player} className={square}>
+        <Part as={Link} name="card" fill="card" to={paths.player} className={square}>
           <SquareContent
             icon={ShieldPlus}
             title={t('player.title')}
             line={<span className="text-12 text-muted">{t('player.hint')}</span>}
           />
         </Part>
-        <Part name="card" fill={cardFill} className={`${square} text-muted`}>
+        <Part name="card" fill="card" className={`${square} text-muted`}>
           <SquareContent
             icon={Crown}
             title={t('dm.title')}

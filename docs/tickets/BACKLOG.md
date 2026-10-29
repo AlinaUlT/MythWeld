@@ -195,7 +195,7 @@ chats never claim one version number.
 | SHEET-04 | Each part takes its style from a fixed menu | M | ✅ 2026-10-29 |
 | SHEET-05 | Animations are presets that stop for reduced motion | S | ✅ 2026-10-29 |
 | SHEET-06 | The app's fonts ship inside it, each licence read | S | ✅ 2026-10-29 |
-| SHEET-67 | A part names its fill slot without a lint finding | XS | 🔲 |
+| SHEET-67 | A part names its fill slot without a lint finding | XS | ✅ 2026-10-29 |
 | **On the device** | **tables, the mini-pack, saved characters** | | |
 | SHEET-07 | Phase 2's device tables arrive in one database version | XS | ✅ 2026-10-28 |
 | SHEET-08 | The phase 1 fixtures ship as the built-in mini-pack | M | ✅ 2026-10-29 |
@@ -442,10 +442,6 @@ chats never claim one version number.
   Undoing a change that later changes touched is decided in the row.
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
-- **SHEET-67** — found by SHEET-11: SHEET-02's lint (`biome/no-look-literals.grit`) fails any
-  `fill="…"` attribute as an SVG colour, so `<Part fill="card">` (SHEET-04) cannot be written as a
-  string; `StartPage.tsx` passes a constant. The check keeps `fill` on SVG elements and lets a
-  component's `fill` name a slot.
 
 ---
 

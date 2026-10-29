@@ -3959,3 +3959,48 @@ Found, not fixed: nothing.
 
 Changelog: "The player page shows six sections: Characters, with how many are saved, opens the
 list; Sources, Library, Dice roll, Quick rules and Bookmarks are marked as coming later."
+
+---
+
+### SHEET-67 A part names its fill slot without a lint finding · XS
+
+**Hat:** the look check reads a component's `fill` as a slot name
+**Where:** `biome/no-look-literals.grit` (the attribute branch); `apps/web/src/pages/StartPage.tsx`,
+`PlayerPage.tsx`
+**Depends on:** SHEET-02, SHEET-04, SHEET-11, SHEET-12
+**Screen:** No
+
+**Now (measured, `3b027bd`):** the attribute branch fails any `fill="…"` that is not `currentColor`,
+`transparent`, `inherit`, `none`, `var(--…)` or `url(#…)`, on any element. `<Part fill="card">`
+(SHEET-04's slot name) is one finding, so `StartPage.tsx` and SHEET-12's `PlayerPage.tsx` pass
+`fill={cardFill}` through a const.
+
+**How:** `fill` is checked as a colour unless its attribute sits on an element whose name is a
+`JsxReferenceIdentifier` (a capitalised component, such as `Part`). The search for that element
+stops at a `JsxExpressionAttributeValue`, so a `<path fill="…">` written inside a component's prop
+is still checked. `stroke`, `color` and the other paints stay checked on every element. A member
+name such as `<motion.path>` is not exempt. The colour-in-any-string branch still fails a hex or a
+colour function in a component's `fill`. Both pages write `fill="card"` in place.
+
+**What it should look like when done:**
+1. `<Part name="card" fill="card">` and `<Part as="svg" name="chip" fill={'surface'} />` give no
+   finding.
+2. `<Part fill="#fff" />`, `<Part render={<path fill="tomato" />}>`, `<path fill="black" />` inside a
+   `<Part>`, and `<motion.path fill="tomato" />` each give one finding.
+3. SHEET-02's samples give the same findings as before: `[3, 3, 3, 4, 5, 6, 7, 8, 8, 9, 9, 9, 10,
+   12, 14, 15, 16, 17, 18, 19, 20]` and none.
+4. Neither `StartPage.tsx` nor `PlayerPage.tsx` has a `cardFill` const; `pnpm lint` passes on both.
+
+**Tests:** `apps/web/test/no-look-literals.test.ts` (`SHEET-67`), control numbers: the sample
+lines, counted in the samples themselves.
+**What came out of it:** Quality gate, 2026-10-29, on `376135f` (SHEET-12): `pnpm lint` 266
+files, no fixes; `pnpm typecheck` no errors; `pnpm test` 83 files, 1109 passed, 0 failed, 24.0 s,
+then the speed project 1 file, 2 passed (the SHEET-67 file: 5 tests, 3 before); `pnpm e2e` 21
+passed (18.1 s). With the
+grit change undone, the passing SHEET-67 test fails (1 failed, 4 passed in the file), so the test
+reads the change. Items 1 to 4 hold as written.
+
+Differs from the row: SHEET-12 landed while this ran and wrote the same const in `PlayerPage.tsx`;
+it is removed here too. Nothing found, not fixed.
+
+Nothing for the changelog.
