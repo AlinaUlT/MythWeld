@@ -47,8 +47,15 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    * first (ENG-14: a fifth-edition item's `@equipped`); `dormant`, when the character has it only
    * in part (ENG-44). `find` looks an id up as gathering will (ENG-44: an item's category);
    * `findKey`, an entry by its type and key (ENG-62: the condition a rule gives by its key).
+   * SHEET-64: `without`, the ids this pass leaves out (`withheldEntities`), when what the module
+   * names depends on them (a fifth-edition character immune to the exhaustion that would kill it).
    */
-  entities(character: C, find: EntityFinder<E>, findKey: KeyFinder<E>): readonly NamedEntity[];
+  entities(
+    character: C,
+    find: EntityFinder<E>,
+    findKey: KeyFinder<E>,
+    without: ReadonlySet<string>,
+  ): readonly NamedEntity[];
   /**
    * What a stat takes when it lacks the field, for this character (ENG-54: a fifth-edition house
    * rule gives its highest score).
@@ -250,14 +257,15 @@ function computeOnce<C extends CharacterCore<E>, E extends GatherableEntity>(
   const grantsOf = system.grantsOf;
   const find = finderOf(character, index);
   const findKey = keyFinderOf(character, index);
+  const left = new Set(without);
   const had = gather(
     character,
     index,
     level,
-    system.entities(character, find, findKey),
+    system.entities(character, find, findKey, left),
     grantsOf === undefined ? ownGrants : (entity) => grantsOf(character, entity, find),
     system.namedIds,
-    new Set(without),
+    left,
   );
   const defaults = system.statDefaults(character);
   // The stats are the stat entities had; suppressing an effect changes none of them.

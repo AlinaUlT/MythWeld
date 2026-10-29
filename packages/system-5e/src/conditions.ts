@@ -1,14 +1,14 @@
 import {
   type ActionResult,
   type ContentIndex,
-  finderOf,
   type LogStamp,
   setCondition,
 } from '@grimoire/engine';
 import { deathChanges, settled } from './actions';
 import type { FifthEditionCharacter } from './character';
-import { isDead } from './death-saves';
+import { applyingFinderOf } from './dead';
 import type { FifthEditionEntity } from './entity-types';
+import { isDead } from './unconscious';
 
 // ENG-69: fifth edition sets a condition's level through the core's `setCondition`, and a level
 // that kills (exhaustion at its highest, ENG-67) ends every attunement in the same entry, as
@@ -29,8 +29,12 @@ export function setConditionLevel(
 ): ActionResult<FifthEditionCharacter> {
   const set = setCondition(character, index, ask, stamp);
   if (!set.ok) return set;
-  const find = finderOf(character, index);
-  if (isDead(character, find) || !isDead(set.character, find)) return set;
+  if (
+    isDead(character, applyingFinderOf(character, index)) ||
+    !isDead(set.character, applyingFinderOf(set.character, index))
+  ) {
+    return set;
+  }
   const { action, subject, label, changes } = set.entry;
   return settled(
     character,

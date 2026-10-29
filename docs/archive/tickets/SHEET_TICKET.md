@@ -2484,3 +2484,74 @@ Found, not fixed:
 - Exhaustion at its highest level kills a character immune to it (SHEET-64).
 
 Nothing for the changelog.
+
+### SHEET-64 Exhaustion the character is immune to does not kill · XS
+
+**Hat:** death by exhaustion reads the immunity
+**Where:** `packages/system-5e/src/dead.ts` (new), `unconscious.ts`, the actions that refuse the
+dead; `packages/engine/src/compute.ts` (`entities` gets the ids a pass leaves out)
+**Depends on:** SHEET-61, ENG-67
+**Screen:** No
+
+**Now (measured, `13c1f2d`):** `isDead` asks `fatalExhaustion` (`exhaustion.ts`), which reads the
+stored level through the plain finder. A stored exhaustion the character is immune to is withheld by
+`compute()` (SHEET-61), but the finder still finds it, so at its highest level the character is dead:
+every action refuses `dead`, and `compute()`'s own `entities` hook (`unconsciousNamed`) names no
+Unconscious condition at 0 hit points.
+
+**How:** the immunity comes from `compute()`, and `compute()` asks `isDead`, so the answer is a fixed
+point, as SHEET-61's withheld ids are.
+- The core passes each pass's `without` ids to the module's `entities` hook (game-free: "the ids this
+  pass leaves out"). The module reads the dead and the down through a finder that does not find those
+  ids, so the first pass (nothing withheld) finds the character dead, the next one (the exhaustion
+  withheld) finds it alive, and that pass settles.
+- An action reads the dead through `applyingFinderOf(character, index)` (`dead.ts`): one `compute()`,
+  and a finder that does not find what it withheld. A withheld entry is "not found" only for this
+  question; `fatalExhaustion` already skips an id it does not find.
+- To keep the module free of an import loop (`dead.ts` imports the module), `isDead` moves from
+  `death-saves.ts` and `isKnockedOut` from `knock-out.ts` into `unconscious.ts`, which the module
+  reads. Their names and signatures stay; `index.ts` still exports them.
+
+**What it should look like when done:**
+1. Golden B (2024, 12 hit points) with the 2024 exhaustion at 6 and a feat of its own immune to
+   `exhaustion`: not dead through `applyingFinderOf`; dead through the plain finder (the stored
+   level, unchanged).
+2. That character at 0 hit points computes `conditions.unconscious.level` 1 with the Unconscious
+   entry in reach, and `conditions.exhaustion.level` 0; at 6 hit points, 5 damage leaves 1 hit point
+   (6 - 5), not `dead`.
+3. At 0 hit points a death save of 10 is one success, not `dead`; `stabilize` happens; knocked out at
+   1 hit point, `firstAid` happens; a short and a long rest are not refused `dead`; `revive` is
+   refused `notDead`.
+4. Setting that exhaustion to 6 through `setConditionLevel` on the immune character ends no
+   attunement: its entry is the core's `setCondition` entry.
+5. With the feat's effect switched off (an override of `defenses.conditionImmune.exhaustion` to 0),
+   the same character is dead again and every action above refuses `dead`.
+6. A Tales module's `entities` hook gets the ids each pass leaves out: an empty set, then the ids.
+
+**Tests:** `packages/system-5e/test/exhaustion.test.ts` (`SHEET-64`) and
+`packages/engine/test/compute.test.ts` (`SHEET-64`), control numbers: golden B's 12 hit points
+(SPEC §6.7) and the hand subtraction above; the rules are SHEET-61 §8's (immunity: "it doesn't
+affect you in any way") and ENG-67 §8's (level 6 is death).
+**What came out of it:** Quality gate, 2026-10-29, on `d4bee2f`: `pnpm lint` 234 files, no fixes;
+`pnpm typecheck` 6 projects, no errors; `pnpm test` 76 files, 1036 passed, 0 failed, 24.0 s, then the
+speed project 1 file, 2 passed. Against 1030 before (+6: 5 module, 1 core). Coverage: statements
+99.47 % (3392/3410), lines 99.89 % (2975/2978). Not `apps/web`, so no `pnpm e2e`. With
+`applyingFinder` made to return the plain finder, 4 of the 5 module tests fail (the fifth, the
+immunity ended, passes either way, as it should).
+
+Differences from §3: a short rest that spends no Hit Die is refused `unchanged`, not done; item 3
+asked only that it not be refused `dead`, and the test names it. The core's `entities` gets
+`without` as a required fourth argument, so five Tales test modules in `compute.test.ts` and
+`phases.test.ts` and one call in `module.test.ts` pass it through.
+
+No import loop: the module's imports (`module.ts` and every file it reaches) include none of
+`dead.ts`, `death-saves.ts`, `knock-out.ts`, `conditions.ts`, `rests.ts`, `hit-points.ts`.
+
+Found, not fixed:
+- Every action that refuses the dead now runs one more `compute()` (`applyingFinderOf`), two for
+  `setConditionLevel` and `revive` (before and after). No speed test times actions; none failed.
+- `isDead`, `isStable`, `isDown` and `isKnockedOut` still take any finder: one given the plain
+  `finderOf` reads immune exhaustion as death. Every caller in `src` passes `applyingFinderOf` or,
+  inside `compute()`, the pass's `without`.
+
+Nothing for the changelog.

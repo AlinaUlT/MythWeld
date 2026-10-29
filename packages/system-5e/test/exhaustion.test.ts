@@ -13,6 +13,7 @@ import type { z } from 'zod';
 import {
   applyDamage,
   applyHealing,
+  applyingFinderOf,
   EXHAUSTION_CONDITION,
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
@@ -963,5 +964,124 @@ describe('ENG-69 dying of exhaustion ends attunement', () => {
     expect(result.ok && result.entry.changes.length).toBe(2);
     expect(ice).toEqual(copy);
     expect(ask).toEqual({ id: EXHAUSTION_2024, level: 6 });
+  });
+});
+
+// SHEET-64: exhaustion the character is immune to does not kill (SHEET-61 §8: immunity "doesn't
+// affect you in any way"; ENG-67 §8: level 6 is death). Golden B (12 hit points) with a feat of
+// its own immune to exhaustion, made up, no text of a book. Every value was worked out by hand in
+// SHEET-64's ticket from golden B and the 2024 table.
+
+const TIRELESS = 'character:feat/tireless';
+
+/** A made-up feat: immune to the condition `exhaustion`. */
+const tireless: OwnEntity = {
+  id: TIRELESS,
+  type: 'feat',
+  ruleset: 'any',
+  name: { en: 'tireless' },
+  source: { pack: 'character' },
+  effects: [
+    {
+      id: 'no-exhaustion',
+      target: 'defenses.conditionImmune',
+      op: 'append',
+      value: EXHAUSTION_CONDITION,
+    },
+  ],
+} as OwnEntity;
+
+/** Golden B taking `tireless`; with `ended`, its immunity overridden to 0. */
+const tirelessB = (ended = false): CharacterInput => ({
+  ...goldenB,
+  systemData: { ...goldenB.systemData, feats: [{ id: TIRELESS }] },
+  overrides: ended ? [{ path: 'defenses.conditionImmune.exhaustion', value: 0 }] : [],
+});
+
+/** Golden B taking `tireless`, the 2024 exhaustion at 6, and `trackers` set. */
+const immune = (trackers: Trackers = {}, ended = false) =>
+  resting(tirelessB(ended), trackers, [{ id: EXHAUSTION_2024, level: 6 }], [tireless]);
+
+/** The refusal codes of every action the dead are refused, on the immune character. */
+function deadRefusals(ended: boolean) {
+  const code = (result: { ok: boolean; code?: string }) => (result.ok ? 'done' : result.code);
+  const up = immune({ current: 6 }, ended);
+  const down = immune({ current: 0 }, ended);
+  const out = immune({ current: 1, knockedOut: 'resting' }, ended);
+  return [
+    code(applyDamage(up, with2024, { amount: 5 }, restStamp)),
+    code(applyHealing(up, with2024, { amount: 5 }, restStamp)),
+    code(setTempHp(up, with2024, { amount: 5 }, restStamp)),
+    code(shortRest(up, with2024, {}, restStamp)),
+    code(longRest(up, with2024, restStamp)),
+    code(rollDeathSave(down, with2024, { natural: 10 }, restStamp)),
+    code(stabilize(down, with2024, restStamp)),
+    code(firstAid(out, with2024, restStamp)),
+  ];
+}
+
+describe('SHEET-64 exhaustion the character is immune to does not kill', () => {
+  it('is not dead through what applies; the stored level is unchanged', () => {
+    const character = immune({ current: 6 });
+    expect(character.state.conditions).toEqual([{ id: EXHAUSTION_2024, level: 6 }]);
+    expect(isDead(character, applyingFinderOf(character, with2024))).toBe(false);
+    expect(isDead(character, findIn(character))).toBe(true);
+    expect(fatalExhaustion(character, applyingFinderOf(character, with2024))).toBeUndefined();
+  });
+
+  it('is unconscious at 0 hit points, the exhaustion at level 0', () => {
+    const result = compute(immune({ current: 0 }), with2024, fifthEditionModule);
+    expect(result.values['conditions.unconscious.level']).toBe(1);
+    expect(result.values['conditions.exhaustion.level']).toBe(0);
+    expect(result.entities.some(({ entity }) => entity.id === UNCONSCIOUS_2024)).toBe(true);
+    expect(result.withheld?.map(({ entity }) => entity.id)).toEqual([EXHAUSTION_2024]);
+
+    // Without an Unconscious entry in reach, it warns of none, beside the immunity.
+    const rules = compute(immune({ current: 0 }), index2024, fifthEditionModule).warnings.flatMap(
+      (warning) => (warning.code === 'characterRule' ? [warning.rule] : []),
+    );
+    expect(rules).toEqual(['noUnconsciousCondition', 'immuneCondition']);
+  });
+
+  it('takes damage, death saves, first aid and rests as the living do', () => {
+    // A short rest that spends no Hit Die changes nothing: refused as `unchanged`, never `dead`.
+    expect(deadRefusals(false)).toEqual([
+      'done',
+      'done',
+      'done',
+      'unchanged',
+      'done',
+      'done',
+      'done',
+      'done',
+    ]);
+    const up = immune({ current: 6 });
+    const hit = done(up, applyDamage(up, with2024, { amount: 5 }, restStamp));
+    expect(hit.entry.changes).toEqual([{ path: HP, before: 6, after: 1 }]);
+    const down = immune({ current: 0 });
+    const save = done(down, rollDeathSave(down, with2024, { natural: 10 }, restStamp));
+    expect(save.outcome).toEqual({ successes: 1, failures: 0, hp: 0, status: 'dying' });
+    expect(refused(revive(up, with2024, { hp: 1 }, restStamp))).toEqual({ code: 'notDead' });
+  });
+
+  it('setting it to 6 ends no attunement', () => {
+    const golden = tirelessB();
+    const five = carryingWith(golden, [{ id: EXHAUSTION_2024, level: 5 }], { current: 6 }, true, [
+      tireless,
+    ]);
+    const ask = { id: EXHAUSTION_2024, level: 6 };
+    const set = done(five, setConditionLevel(five, index2024, ask, restStamp));
+    expect(set).toEqual(setCondition(five, index2024, ask, restStamp));
+    expect(set.entry.changes).toEqual([conditionChange(EXHAUSTION_2024, 5, 6)]);
+    expect(set.character.systemData.inventory).toEqual(rowsOf(golden, true));
+  });
+
+  it('kills again once the immunity ends', () => {
+    const character = immune({ current: 6 }, true);
+    expect(isDead(character, applyingFinderOf(character, with2024))).toBe(true);
+    expect(deadRefusals(true)).toEqual(Array.from({ length: 8 }, () => 'dead'));
+    const result = compute(immune({ current: 0 }, true), with2024, fifthEditionModule);
+    expect(result.values['conditions.unconscious.level']).toBe(0);
+    expect(result).not.toHaveProperty('withheld');
   });
 });

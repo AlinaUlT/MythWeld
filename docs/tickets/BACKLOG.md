@@ -214,7 +214,7 @@ chats never claim one version number.
 | SHEET-61 | A condition the character is immune to has no effect | S | ✅ 2026-10-29 |
 | SHEET-62 | Gaining the Incapacitated condition ends concentration | XS | 🔲 |
 | SHEET-63 | Attuning two copies of one item gives a warning | XS | 🔲 |
-| SHEET-64 | Exhaustion the character is immune to does not kill | XS | 🔲 |
+| SHEET-64 | Exhaustion the character is immune to does not kill | XS | ✅ 2026-10-29 |
 | **Characters** | **the list, the file, the manual form** | | |
 | SHEET-23 | An undo toast reverses the last change | S | 🔲 |
 | SHEET-24 | My characters lists the saved characters | S | 🔲 |
@@ -306,10 +306,6 @@ chats never claim one version number.
   *ring of protection* at a time." Nothing checks two attuned rows of one `itemId`. SRD 5.2.1's
   Rules Glossary entry (SHEET-18 §8) does not say it; the row reads SRD 5.2.1's magic items
   chapter before building. A warning beside `attunementLimit` (`attunement.ts`), never a block.
-- **SHEET-64** — found by SHEET-61: a condition the character is immune to has no effect, but
-  `isDead` (`fatalExhaustion`, `exhaustion.ts`) reads the stored exhaustion level without
-  `compute()`, so exhaustion at its highest level kills a character immune to it. `compute()`
-  itself asks `isDead` (`unconsciousNamed`), so the immunity cannot come from a full compute.
 - **SHEET-23** — SPEC §7.2: an "Undo" toast after every change, and the last 50 states kept in
   the history table; an entry is ENG-30's log entry.
 - **SHEET-24** — ADR 008 item 4, BRIEF P2, board `V3-Characters`; an empty state with "+" and

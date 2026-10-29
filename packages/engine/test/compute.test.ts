@@ -719,9 +719,9 @@ describe('ENG-44 the module looks up ids', () => {
     const found: Record<string, (string | undefined)[]> = {};
     const looking: SystemModule<TalesCharacter, TalesEntity> = {
       ...talesModule,
-      entities: (character, find, findKey) => {
+      entities: (character, find, findKey, without) => {
         found.entities = lookedUp.map((id) => find(id)?.name.en);
-        return talesModule.entities(character, find, findKey);
+        return talesModule.entities(character, find, findKey, without);
       },
       derive: (input) => {
         found.derive = lookedUp.map((id) => input.find(id)?.name.en);
@@ -799,9 +799,9 @@ describe("ENG-49 ids a module's grant names, looked up once", () => {
     ]);
     const dormant: SystemModule<TalesCharacter, TalesEntity> = {
       ...talesModule,
-      entities: (character, find, findKey) =>
+      entities: (character, find, findKey, without) =>
         talesModule
-          .entities(character, find, findKey)
+          .entities(character, find, findKey, without)
           .map((entity) =>
             entity.id === 'character:talent/wish' ? { ...entity, dormant: true } : entity,
           ),
@@ -953,10 +953,10 @@ describe('ENG-62 an entry by its type and key', () => {
   it("gives the module's `entities` the finder: an entry it names by key is had", () => {
     const naming: SystemModule<TalesCharacter, TalesEntity> = {
       ...talesModule,
-      entities: (character, find, findKey) => {
+      entities: (character, find, findKey, without) => {
         const lost = findKey('condition', 'lost');
         return [
-          ...talesModule.entities(character, find, findKey),
+          ...talesModule.entities(character, find, findKey, without),
           ...(lost === undefined ? [] : [{ id: lost.id }]),
         ];
       },
@@ -1098,5 +1098,22 @@ describe('SHEET-61 entities a module withholds', () => {
     // Passes 2, 4, 6 and 8 run without weary.
     expect(withheldOf(result)).toEqual([[weary, ['character']]]);
     expect(codes(result).at(-1)).toEqual({ code: 'withheldUnsettled', ids: [weary] });
+  });
+});
+
+describe('SHEET-64 the entities hook gets what a pass leaves out', () => {
+  it('gets none on the first pass, then the ids withheld', () => {
+    const weary = 'tales-core:condition/weary';
+    const seen: string[][] = [];
+    const system: SystemModule<TalesCharacter, TalesEntity> = {
+      ...talesModule,
+      entities: (character, find, findKey, without) => {
+        seen.push([...without]);
+        return talesModule.entities(character, find, findKey, without);
+      },
+      withheldEntities: () => [weary],
+    };
+    computed(ash, system);
+    expect(seen).toEqual([[], [weary]]);
   });
 });

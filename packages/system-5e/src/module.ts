@@ -154,7 +154,7 @@ function classSteps({
 export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditionEntity> = {
   level: characterLevel,
 
-  entities: (character, find, findKey) => {
+  entities: (character, find, findKey, without) => {
     const data = character.systemData;
     return [
       ...[data.species, data.background].flatMap((entry) => (entry ? [{ id: entry.id }] : [])),
@@ -167,7 +167,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
       // and of those only what the rules let count (ENG-44).
       ...equipmentOf(character, find).named,
       // The condition the 0 hit points, or a knock-out, give (ENG-62, ENG-65).
-      ...unconsciousNamed(character, find, findKey),
+      ...unconsciousNamed(character, find, findKey, without),
     ];
   },
 
