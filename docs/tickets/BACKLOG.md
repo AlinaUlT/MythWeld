@@ -237,7 +237,7 @@ chats never claim one version number.
 | SHEET-34 | A manual edit overrides a number | S | 🔲 |
 | SHEET-35 | The AC breakdown pins its base calculation | XS | 🔲 |
 | SHEET-36 | The choices badge opens every pending choice | M | 🔲 |
-| SHEET-37 | Rolls are kept in the roll log | S | 🔲 |
+| SHEET-37 | Rolls are kept in the roll log | S | ✅ 2026-10-29 |
 | SHEET-38 | The dice panel rolls any formula fairly | M | 🔲 |
 | SHEET-39 | Tapping a number rolls it in the roll dialog | M | 🔲 |
 | SHEET-40 | The number pad changes the hit points | M | 🔲 |
@@ -362,16 +362,13 @@ chats never claim one version number.
   `Computed.pendingKeys` (`{ path, options }`); the answer is written to
   `systemData.species.size`, not to `choices`. A stored size the species does not offer warns
   `stepRule` `sizeNotOffered`.
-- **SHEET-37** — SPEC §6.5: the last 100 rolls of a character. Found by ENG-26: the roll log
-  keeps `RollRecord`s, built with `recordRoll`. `rollRecordSchema` refuses an unknown field and
-  carries no version of its own, so the table that keeps the log gives each record one; the table
-  link does the same for what it sends.
 - **SHEET-38** — ADR 009 item 1, ADR 010 items 4 and 5, boards `V3-SheetDice` and `V3-Dice`: the
   half-screen panel on the sheet, and the dice page; any count of dice; custom dice. Found by
   ENG-08: the engine has no random source of its own (lint refuses `Math.random` in it). The panel
   passes `fairDie(randomSourceOf((a) => crypto.getRandomValues(a)))` to `rollFormula`; "I roll
   myself" (SPEC §6.5) passes the faces the person typed as the die. The throw that looks real and
-  dice skins are the dice phase's.
+  dice skins are the dice phase's. Found by SHEET-37: each roll goes to `logRoll`
+  (`apps/web/src/db/rollLog.ts`), and the panel's "History" reads `readRollLog`.
 - **SHEET-39** — BRIEF P5 sheet 1, board `V3-Roll`. Found by ENG-34: each d20 test's roll mode is
   a number path, 1 advantage, −1 disadvantage, 0 neither, with a step per source:
   `checks.<stat>.mode`, `abilities.<stat>.saveMode`, `skills.<key>.mode`, `init.mode`,
@@ -383,7 +380,8 @@ chats never claim one version number.
   rolls `criticalDamage` of the damage dice. ENG-20's concentration save is the Constitution save:
   its mode is `abilities.con.saveMode`. "Send to DM" waits for the table link. Found by SHEET-19:
   after each initiative roll it calls `rollInitiative` (`knock-out.ts`), which interrupts a
-  knock-out's short rest; its `unchanged` refusal is the usual answer and is not shown.
+  knock-out's short rest; its `unchanged` refusal is the usual answer and is not shown. Found by
+  SHEET-37: each roll goes to `logRoll` with the character as `by.actorId`.
 - **SHEET-40** — ADR 010 item 6, ADR 013 item 1, boards `V3-Keypad` and `V3-TempHP`. Found by
   ENG-20: damage returns the concentration save's DC (`outcome.concentrationDc`); the screen rolls
   it and calls `endConcentration` on a failure. Found by ENG-65: the pad offers knocking out

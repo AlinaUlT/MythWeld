@@ -27,8 +27,11 @@ export interface SettingRow {
   key: string;
 }
 
-/** One roll, keyed by its record's id; `characterId` is absent for a roll made off a sheet. */
-export interface RollLogRow {
+/**
+ * One roll, keyed by its record's id, at whatever version it was logged (SHEET-37, `rollLog.ts`);
+ * `characterId` is absent for a roll made off a sheet.
+ */
+export interface RollLogRow extends StoredObject {
   id: string;
   characterId?: string;
   rolledAt: string;

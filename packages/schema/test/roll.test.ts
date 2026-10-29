@@ -1,4 +1,12 @@
-import { type RollRecord, rollEntrySchema, rollRecordSchema } from '@grimoire/schema';
+import {
+  openRollLogRow,
+  ROLL_LOG_SCHEMA_VERSION,
+  type RollRecord,
+  rollEntrySchema,
+  rollLogRowOf,
+  rollLogRowSchema,
+  rollRecordSchema,
+} from '@grimoire/schema';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 
@@ -158,5 +166,63 @@ describe('ENG-26 the roll record', () => {
     ]);
     expect(refused({ breakdown: [sneak, { ...charm, own: 'yes' }] })).toEqual(['breakdown.1.own']);
     expect(refused({ total: Number.POSITIVE_INFINITY })).toEqual(['total']);
+  });
+});
+
+describe('SHEET-37 the roll log row', () => {
+  it("keeps a record at the log's version, keyed by its id, roller and time", () => {
+    expect(ROLL_LOG_SCHEMA_VERSION).toBe(1);
+    expect(rollLogRowOf(record as RollRecord)).toEqual({
+      schemaVersion: 1,
+      id: '6ba7b810-9dad-41d1-80b4-00c04fd430c8',
+      characterId: '0f8fad5b-d9cb-469f-a165-70867728950e',
+      rolledAt: '2026-10-01T18:30:00.000Z',
+      record,
+    });
+    // A roll by no character has no `characterId`; a time with no fraction gains `.000`.
+    expect(rollLogRowOf(minimal as RollRecord)).toEqual({
+      schemaVersion: 1,
+      id: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
+      rolledAt: '2026-10-01T18:31:00.000Z',
+      record: minimal,
+    });
+    for (const each of [record, minimal]) {
+      const row = rollLogRowOf(each as RollRecord);
+      expect(openRollLogRow(row)).toEqual({ ok: true, value: row, from: { schemaVersion: 1 } });
+    }
+  });
+
+  it("refuses a key that is not the record's", () => {
+    const row = rollLogRowOf(record as RollRecord);
+    const rowRefused = (change: Record<string, unknown>) =>
+      issuePaths(rollLogRowSchema, { ...row, ...change });
+    expect(rowRefused({})).toEqual([]);
+    expect(rowRefused({ id: minimal.id })).toEqual(['id']);
+    expect(rowRefused({ characterId: undefined })).toEqual(['characterId']);
+    expect(rowRefused({ characterId: minimal.id })).toEqual(['characterId']);
+    expect(rowRefused({ rolledAt: '2026-10-01T18:30:00Z' })).toEqual(['rolledAt']);
+    expect(rowRefused({ rolledAt: '2026-10-01T18:30:01.000Z' })).toEqual(['rolledAt']);
+    const off = rollLogRowOf(minimal as RollRecord);
+    expect(issuePaths(rollLogRowSchema, { ...off, characterId: record.by.actorId })).toEqual([
+      'characterId',
+    ]);
+  });
+
+  it('refuses an unknown field, a record that does not add up, and a newer version', () => {
+    const row = rollLogRowOf(record as RollRecord);
+    expect(issuePaths(rollLogRowSchema, { ...row, extra: 1 })).toEqual(['']);
+    expect(issuePaths(rollLogRowSchema, { ...row, record: { ...record, total: 25 } })).toEqual([
+      'record.total',
+    ]);
+    expect(issuePaths(rollLogRowSchema, { ...row, schemaVersion: undefined })).toEqual([
+      'schemaVersion',
+    ]);
+    expect(openRollLogRow({ ...row, schemaVersion: 2 })).toMatchObject({
+      ok: false,
+      code: 'newer',
+      field: 'schemaVersion',
+      found: 2,
+      current: 1,
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { formulaSchema } from './formula';
 import { computedPathSchema, entityIdSchema, uuidSchema } from './ids';
+import { type Migration, openerOf } from './migration';
 import { visibleTextSchema } from './text';
 
 // ENG-26: a roll as the table link will send it (ADR 005 item 5.6): who rolled, what for, the dice,
@@ -133,3 +134,60 @@ export const rollRecordSchema = z
     }
   });
 export type RollRecord = z.infer<typeof rollRecordSchema>;
+
+// SHEET-37: a roll as the device's roll log keeps it (SPEC §6.5). The record carries no version
+// of its own (ENG-26), so the log's row does: the record as it was rolled, at the log's version.
+
+/** The roll log's stored shape. A change to it bumps this and adds a step to the chain. */
+export const ROLL_LOG_SCHEMA_VERSION = 1;
+
+/** The steps to `ROLL_LOG_SCHEMA_VERSION`: step N takes version N + 1 to N + 2. */
+const ROLL_LOG_MIGRATIONS: readonly Migration[] = [];
+
+/**
+ * One row of the roll log. `id`, `characterId` and `rolledAt` repeat the record's id, its roller's
+ * `actorId` and its time, as the table's keys; `rolledAt` is the time as `toISOString` writes it,
+ * so text order is time order.
+ */
+export const rollLogRowSchema = z
+  .strictObject({
+    schemaVersion: z.literal(ROLL_LOG_SCHEMA_VERSION),
+    id: uuidSchema,
+    characterId: uuidSchema.optional(),
+    rolledAt: z.iso.datetime(),
+    record: rollRecordSchema,
+  })
+  .superRefine((row, ctx) => {
+    const keys = {
+      id: row.record.id,
+      characterId: row.record.by.actorId,
+      rolledAt: new Date(row.record.rolledAt).toISOString(),
+    };
+    for (const [field, value] of Object.entries(keys)) {
+      if (row[field as keyof typeof keys] !== value) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [field],
+          message: `${JSON.stringify(row[field as keyof typeof keys])} is not the record's ${JSON.stringify(value)}.`,
+        });
+      }
+    }
+  });
+export type RollLogRow = z.infer<typeof rollLogRowSchema>;
+
+/** The row the roll log keeps for `record`. */
+export function rollLogRowOf(record: RollRecord): RollLogRow {
+  const { actorId } = record.by;
+  return {
+    schemaVersion: ROLL_LOG_SCHEMA_VERSION,
+    id: record.id,
+    ...(actorId !== undefined && { characterId: actorId }),
+    rolledAt: new Date(record.rolledAt).toISOString(),
+    record,
+  };
+}
+
+/** The migration frame for the roll log's rows. */
+export const openRollLogRow = openerOf(rollLogRowSchema, [
+  { field: 'schemaVersion', migrations: ROLL_LOG_MIGRATIONS },
+]);
