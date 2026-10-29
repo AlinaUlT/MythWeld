@@ -3,6 +3,7 @@ import { goldenA } from '../../../packages/system-5e/test/golden/characters-2014
 import { goldenB } from '../../../packages/system-5e/test/golden/characters-2024.ts';
 import { DB_NAME } from '../src/db/db';
 import { en } from '../src/i18n/namespaces';
+import { LONG_PRESS_MS } from '../src/sheet/SheetNumber';
 
 // SHEET-30: the goldens of SPEC §6.7 are saved into the app's own database, then their sheet
 // opens. Golden B is a human fighter 1 (AC 17, initiative +3, speed 30, proficiency +2, passive
@@ -202,4 +203,76 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   await page.goto(`characters/${goldenB.id}`);
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
+});
+
+// SHEET-33: a long press of 500 ms on a number opens its breakdown.
+async function longPress(page: Page, path: string) {
+  const box = await number(page, path).boundingBox();
+  await page.mouse.move(
+    (box?.x ?? 0) + (box?.width ?? 0) / 2,
+    (box?.y ?? 0) + (box?.height ?? 0) / 2,
+  );
+  await page.mouse.down();
+  await page.waitForTimeout(LONG_PRESS_MS + 100);
+  await page.mouse.up();
+}
+
+test("SHEET-33 a long press on armor class opens golden A's breakdown, and Close ends it", async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenA]);
+  await page.goto(`characters/${goldenA.id}`);
+  await longPress(page, 'ac.total');
+  const dialog = page.getByRole('dialog', { name: en.breakdown.title });
+  await expect(dialog).toBeVisible();
+  // Golden A's armor class is 18: chain mail 16 and a shield 2.
+  await expect(dialog.getByTestId('breakdown-total')).toHaveText('18');
+  await expect(dialog.getByRole('listitem')).toHaveText([
+    'Base armor class+16',
+    'Armor class bonus+2',
+    'Total18',
+  ]);
+  await expect(dialog).not.toContainText(en.breakdown.manual);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('breakdown-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('breakdown-light.png') });
+  await dialog.getByRole('button', { name: en.breakdown.close }).first().tap();
+  await expect(dialog).toHaveCount(0);
+
+  // A short press does not open it, and Escape closes it.
+  await number(page, 'ac.total').tap();
+  await expect(dialog).toHaveCount(0);
+  await longPress(page, 'ac.total');
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+});
+
+test('SHEET-33 a long press on the hit points opens the maximum’s breakdown', async ({ page }) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  await longPress(page, 'hp.max');
+  const dialog = page.getByRole('dialog', { name: en.breakdown.title });
+  await expect(dialog).toContainText('Hit point maximum');
+  await expect(dialog.getByTestId('breakdown-total')).toHaveText('12');
+});
+
+test('SHEET-33 a manual edit is labelled, and a distance follows the units of Settings', async ({
+  page,
+}) => {
+  await saveRows(page, [
+    { ...goldenB, overrides: [{ path: 'ac.total', value: 20, note: 'Ring' }] },
+  ]);
+  await page.goto('settings');
+  await page.getByText(en.settings.units.sq, { exact: true }).tap();
+  await page.goto(`characters/${goldenB.id}`);
+  await longPress(page, 'ac.total');
+  const dialog = page.getByRole('dialog', { name: en.breakdown.title });
+  await expect(dialog.getByTestId('breakdown-total')).toHaveText('20');
+  await expect(dialog).toContainText(en.breakdown.manual);
+  await expect(dialog.getByRole('listitem').nth(-2)).toHaveText('Manual editRing+3');
+  await dialog.getByRole('button', { name: en.breakdown.close }).first().tap();
+  await longPress(page, 'speed.walk');
+  await expect(dialog.getByRole('listitem')).toHaveText(['Human6 sq', 'Total6 sq']);
 });

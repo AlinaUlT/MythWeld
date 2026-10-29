@@ -5458,3 +5458,111 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-33 A long press opens a number's breakdown
+
+**Hat:** Show the steps that made a number
+**Depends on:** SHEET-30
+**Size:** S
+**Screen:** Yes — BRIEF Part 5 P5 sheet 2, board `V3-Roll`
+**SPEC:** §6.1 step 7, §6.2, §7.2, §7.5
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/shared/BreakdownSheet.tsx` — changes (SHEET-11 made it empty).
+- `apps/web/src/shared/breakdown.ts` — new. The pure part: a path's name, one line per step.
+- `apps/web/src/locales/en/breakdown.json` — the words (its namespace was empty).
+- `apps/web/test/breakdown.test.tsx` — new. `apps/web/e2e/sheet.spec.ts` — three tests added.
+- `apps/web/test/navigation.test.tsx` — the "pieces made empty" test no longer lists the breakdown.
+
+#### 2. What is missing now
+
+`SheetPage` mounts `<BreakdownSheet path onClose />` on a long press (SHEET-30), and the piece
+returns `null`: `rg "return null" apps/web/src/shared/BreakdownSheet.tsx` finds it, and
+`breakdown.json` is `{}`. A long press on the AC does nothing a person can see.
+
+#### 3. What it should look like when done
+
+1. A long press (500 ms) or the context menu on a sheet number opens a bottom sheet titled
+   "Where this number comes from"; a short tap does not; Escape and Close end it.
+2. It names the number and its value, then one line per step of `Computed.breakdown[path]`:
+   what it is, where it came from, and the signed amount it moved the number by, then a Total.
+3. Golden B's initiative +3 reads: DEX check total +1, Initiative bonus +2, Total +3. Golden A's
+   AC 18 reads: Base armor class +16, Armor class bonus +2, Total 18.
+4. A step that moved nothing and is only a modifier the character has none of (a `path` step with
+   change 0) is not a line.
+5. When a manual edit decided the number, a "Manual edit" label shows beside it and its line
+   carries the person's note (SPEC §6.1 step 7). The editor itself is SHEET-34.
+6. The screen reads only own fields of `Computed` (ENG-40): `toString`, `constructor` and
+   `__proto__` give an empty breakdown and no value, never a function.
+7. A distance (speed) is written in the units of Settings; its steps are stored in feet (§7.5).
+
+#### 4. How to do it
+
+1. `breakdownOf(computed, path, t)` reads `Computed.breakdown` and `Computed.values` through
+   `Object.hasOwn`, drops zero-change `path` steps, and names each step by its kind.
+2. `pathName` names a fixed path from `names.<path with _ for .>`; `<group>.<key>.<field>` from
+   the key's entry in `Computed.byKey` (a stat's abbreviation first) and `fields.<field>`; any
+   other path as it is. A rule with no words of its own reads "Rule: <name>".
+3. The sheet is the same bottom sheet part as the Actions list, over a dimmed screen.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+A bottom sheet at 360×800: the title, Close, the number's name with its value and, when edited, a
+"Manual edit" chip; the lines; the Total. A number nothing adds to says "Nothing adds to this
+number." Keys: `breakdown.title`, `close`, `total`, `manual`, `empty`, `subjectField`, `step.*`,
+`names.*`, `fields.*`, `rules.*`.
+
+#### 7. Tests
+
+- `apps/web/test/breakdown.test.tsx` — golden B's initiative, golden A's AC and base AC, golden
+  B's speed 30, a manual edit with its note, own fields only, path names, an unknown rule.
+- `apps/web/e2e/sheet.spec.ts` — long press, short tap, Escape, Close at 360×800 with no
+  sideways scroll; the hit points' long press; a manual edit and a distance in squares.
+- Control numbers from: SPEC §6.7 goldens (initiative +3, AC 17 and 18, speed 30).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact. The rule names come from the steps the modules give today.
+
+#### 9. Not in this ticket
+
+- The "Override by hand" field and its note: SHEET-34.
+- The AC calculation pin on the AC breakdown: SHEET-35.
+- The roll dialog: SHEET-39. Naming a key path's steps (a skill's stat): SHEET-32.
+- Words for a step's effect kind (a roll mode's advantage): later.
+
+#### 10. Rake check
+
+- **`compute()` is the only source:** the sheet adds nothing; it names and signs what is there.
+- **Manual overrides win and are labelled:** the override step is shown as "Manual edit".
+- **No look in a component / no visible literal:** tokens and the `sheet` part; every string is
+  a `breakdown` or `sheet` key.
+- **Missing is not broken:** an unknown path, key or rule shows as itself; none throws.
+- **Stored units are feet:** the conversion is made on screen only.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-29, on `30f4382` plus this ticket: `pnpm lint` 356 files, no fixes;
+`pnpm typecheck` clean; `pnpm test` 97 files, 1249 passed, 0 failed (8 new), 25.1 s, then the
+speed project 1 file, 2 passed; coverage statements 99.45 % (3478/3497), lines 99.9 %
+(3051/3054); `pnpm e2e` 42 passed, 0 failed, 38.2 s (3 new). Screenshots at 360×800, dark and
+light, were shown in the chat.
+
+Differences from §3 and the board:
+- The board's "Override by hand" field is not drawn: SHEET-34 owns it.
+- `navigation.test.tsx` listed the breakdown among the pieces made empty; it lists the roll
+  dialog alone now.
+
+Found, not fixed: nothing.
+
+Changelog: "A long press on a number opens where it comes from: each step with its source and
+amount, a Total, and a Manual edit label when it was changed by hand."

@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-33 · A long press on a number opens where it comes from: each step with its
+  source and amount, a Total, and a Manual edit label when it was changed by hand.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.
