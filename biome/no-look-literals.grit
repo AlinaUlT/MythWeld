@@ -37,6 +37,16 @@ or {
     $text <: r"(?s)(?:.*[\s'\x22`:!])?animate-(?:spin|ping|pulse|bounce|\[).*",
     register_diagnostic(span=$text, message="SHEET-02: an animation is written in a component. Animations are the app's presets (ADR 015 item 8), never written in place. ADR 015 item 4.")
   },
+  // SHEET-05: a transition in a class: Tailwind's transition, duration, easing and delay classes.
+  // `transition-none` stays allowed, like `animate-none`.
+  or {
+    JsStringLiteralExpression(),
+    JsxString(),
+    JsTemplateChunkElement()
+  } as $text where {
+    $text <: r"(?s)(?:.*[\s'\x22`:!])?(?:transition(?:-(?:all|colors|opacity|shadow|transform|discrete))?|(?:transition|duration|ease|delay)-\[[^\s'\x22`]*|duration-[0-9]+|delay-[0-9]+|ease-(?:linear|in|out|in-out))(?:[\s'\x22`].*)?",
+    register_diagnostic(span=$text, message="SHEET-05: a motion is written in a component. Wear one of the app's presets with <Motion> or motionStyle() (ADR 015 item 8), never a transition class. ADR 015 item 4.")
+  },
   // A colour, font or animation in an inline style object.
   JsPropertyObjectMember(name=$name, value=$value) where {
     $value <: within JsxAttribute(name=`style`) ,

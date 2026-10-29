@@ -1,0 +1,28 @@
+/* SHEET-05: the loops' keyframes, one per loop preset in motions.ts, each named `motion-<preset>`.
+   Each moves only position, size or opacity, and uses the individual `translate`, `rotate` and
+   `scale` properties, so an element's own transform stays. A skin's size reaches them through
+   `--theme-motion-<preset>-size`. */
+@keyframes motion-pulse {
+  to {
+    opacity: var(--theme-motion-pulse-size);
+  }
+}
+
+@keyframes motion-float {
+  to {
+    translate: 0 calc(-1 * var(--theme-motion-float-size));
+  }
+}
+
+@keyframes motion-spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
+/* Off screen or in the background, a loop holds where it is (watchOnScreen in motions.ts). The
+   preset's inline `animation` shorthand sets the play state too, so only `!important` wins. */
+[data-motion-paused] {
+  /* biome-ignore lint/complexity/noImportantStyles: it must beat the preset's inline shorthand */
+  animation-play-state: paused !important;
+}

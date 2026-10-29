@@ -194,3 +194,110 @@ test('SHEET-04 every part takes its base style in the built app, and a skin re-p
   }, raised);
   expect(shadow).toBe('rgba(0, 0, 0, 0.12) 0px 1px 3px 0px');
 });
+
+test('SHEET-05 the motion presets move in the built app, and stop for reduced motion', async ({
+  page,
+}, testInfo) => {
+  await page.goto('./');
+  // No screen moves anything yet, so the test draws one element per preset the way <Motion> does,
+  // ten of each loop, on screen.
+  await page.evaluate(() => {
+    const add = (id: string, property: string, value: string) => {
+      const el = document.createElement('div');
+      el.id = id;
+      el.style.cssText = 'position:fixed;top:8px;left:8px;width:8px;height:8px';
+      el.style.setProperty(property, value);
+      document.body.append(el);
+    };
+    add('turn', 'transition', 'var(--theme-motion-turn)');
+    for (const loop of ['pulse', 'float', 'spin']) {
+      for (let i = 0; i < 10; i++) add(`${loop}-${i}`, 'animation', `var(--theme-motion-${loop})`);
+    }
+  });
+  const look = () =>
+    page.evaluate(() => {
+      const style = (id: string) => getComputedStyle(document.getElementById(id) as Element);
+      const turn = style('turn');
+      return {
+        turn: `${turn.transitionProperty} ${turn.transitionDuration} ${turn.transitionTimingFunction}`,
+        pulse: `${style('pulse-0').animationName} ${style('pulse-0').animationDuration}`,
+        float: `${style('float-0').animationName} ${style('float-0').animationDuration}`,
+        spin: `${style('spin-0').animationName} ${style('spin-0').animationDuration}`,
+        running: document.getAnimations().length,
+      };
+    });
+  expect(await look()).toEqual({
+    turn: 'transform 0.2s ease',
+    pulse: 'motion-pulse 2s',
+    float: 'motion-float 3s',
+    spin: 'motion-spin 8s',
+    running: 30,
+  });
+
+  // The loops move, the skin's size reaching the keyframes, and the frames are measured.
+  const moved = await page.evaluate(async () => {
+    const frames: number[] = [];
+    const start = performance.now();
+    await new Promise<void>((done) => {
+      const tick = (now: number) => {
+        frames.push(now);
+        if (now - start < 2000) requestAnimationFrame(tick);
+        else done();
+      };
+      requestAnimationFrame(tick);
+    });
+    const gaps = frames.slice(1).map((time, i) => time - (frames[i] ?? time));
+    const style = (id: string) => getComputedStyle(document.getElementById(id) as Element);
+    return {
+      opacity: Number(style('pulse-0').opacity),
+      translate: style('float-0').translate,
+      rotate: style('spin-0').rotate,
+      frames: frames.length,
+      longest: Math.max(...gaps),
+    };
+  });
+  expect(moved.opacity).toBeLessThan(1);
+  expect(moved.opacity).toBeGreaterThanOrEqual(0.6);
+  expect(moved.translate).toMatch(/^0px -[\d.]+px$/);
+  expect(moved.rotate).toMatch(/deg$/);
+  testInfo.annotations.push({
+    type: 'SHEET-05 frames',
+    description: `${moved.frames} frames in 2 s with 30 loops; longest gap ${moved.longest.toFixed(1)} ms`,
+  });
+  console.log(testInfo.annotations.at(-1)?.description);
+
+  // The phone's reduced motion stops every preset.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const still = {
+    turn: 'none 0s ease',
+    pulse: 'none 0s',
+    float: 'none 0s',
+    spin: 'none 0s',
+    running: 0,
+  };
+  expect(await look()).toEqual(still);
+
+  // So does the app's switch, with the phone's setting off.
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  expect((await look()).running).toBe(30);
+  await page.evaluate(() => {
+    document.documentElement.dataset.motion = 'still';
+  });
+  expect(await look()).toEqual(still);
+
+  // A paused loop holds where it is.
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.motion;
+    document.getElementById('spin-0')?.setAttribute('data-motion-paused', '');
+  });
+  const paused = await page.evaluate(async () => {
+    const el = document.getElementById('spin-0') as Element;
+    const before = getComputedStyle(el).rotate;
+    await new Promise((done) => setTimeout(done, 300));
+    return {
+      state: getComputedStyle(el).animationPlayState,
+      same: before === getComputedStyle(el).rotate,
+    };
+  });
+  expect(paused).toEqual({ state: 'paused', same: true });
+});

@@ -2,7 +2,7 @@
 // index.css maps each Tailwind theme variable to `--theme-<key>`; applyTheme() fills those from
 // the data, so a skin later replaces values without touching a component (ADR 015).
 import { colors } from './colors';
-import { motion } from './motion';
+import { motion, STILL_SELECTOR } from './motions';
 import type { ThemePart } from './part';
 import { parts } from './parts';
 import { shape } from './shape';
@@ -15,11 +15,16 @@ export interface Theme {
   light: Record<string, string>;
   dark: Record<string, string>;
   shared: Record<string, string>;
+  still: Record<string, string>;
 }
 
 export function mergeParts(list: readonly ThemePart[]): Theme {
-  const theme: Theme = { light: {}, dark: {}, shared: {} };
+  const theme: Theme = { light: {}, dark: {}, shared: {}, still: {} };
   for (const part of list) {
+    for (const [key, value] of Object.entries(part.still ?? {})) {
+      if (key in theme.still) throw new Error(`Theme key ${key} is filled twice`);
+      theme.still[key] = value;
+    }
     for (const mode of ['light', 'dark', 'shared'] as const) {
       for (const [key, value] of Object.entries(part[mode] ?? {})) {
         // A key is filled once per mode, and never both per mode and shared.
@@ -30,6 +35,10 @@ export function mergeParts(list: readonly ThemePart[]): Theme {
         theme[mode][key] = value;
       }
     }
+  }
+  // A still value replaces a shared one; a key that is never filled has nothing to replace.
+  for (const key of Object.keys(theme.still)) {
+    if (!(key in theme.shared)) throw new Error(`Theme key ${key} is stopped but never filled`);
   }
   return theme;
 }
@@ -42,9 +51,13 @@ function block(selector: string, values: Record<string, string>): string {
 }
 
 // Light and shared values sit on :root; dark values on `.dark`, the class index.html puts on
-// <html> (dark is the default, SPEC §7.2).
+// <html> (dark is the default, SPEC §7.2). Still values come last, so they win while the phone asks
+// for reduced motion or the app's switch stops it (SHEET-05).
 export function themeCss(theme: Theme): string {
-  return `${block(':root', { ...theme.shared, ...theme.light })}\n${block('.dark', theme.dark)}\n`;
+  const css = `${block(':root', { ...theme.shared, ...theme.light })}\n${block('.dark', theme.dark)}\n`;
+  if (Object.keys(theme.still).length === 0) return css;
+  const still = block(':root', theme.still).replace(/^/gm, '  ');
+  return `${css}@media (prefers-reduced-motion: reduce) {\n${still}\n}\n${block(STILL_SELECTOR, theme.still)}\n`;
 }
 
 export function applyTheme(theme: Theme, doc: Document = document): void {
