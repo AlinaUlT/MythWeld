@@ -157,7 +157,10 @@ page) and ADR 015 (the skin layer comes first). Each phase 1 note that named pha
 note of the row that takes it. A screen row builds from its boards in `docs/design/mockups/` and
 its row in BRIEF Part 5 (OPS-22). It draws the backgrounds, the header, the dock, cards, buttons,
 the portrait, the token frame and the dice with `<Slot>` (SHEET-03), and the shape of buttons,
-icon buttons, cards, panels, chips, sheets and toasts with `<Part>` (SHEET-04). BRIEF's prompts
+icon buttons, cards, panels, chips, sheets and toasts with `<Part>` (SHEET-04). It moves an
+element only with `<Motion>` and a preset (SHEET-05); a motion the presets lack joins
+`apps/web/src/theme/motions.ts`, moves only position, size or opacity, and is measured on the
+Pixel 7 profile (ADR 015 item 9). BRIEF's prompts
 still hold text that later ADRs replaced, so a screen row reads its prompt with the ADRs, and the
 ADRs win (OPS-27 §11).
 
@@ -190,7 +193,7 @@ chats never claim one version number.
 | SHEET-02 | Lint fails on a colour, font or animation written in a component | S | ✅ 2026-10-28 |
 | SHEET-03 | Screens draw named slots the base theme fills | S | ✅ 2026-10-28 |
 | SHEET-04 | Each part takes its style from a fixed menu | M | ✅ 2026-10-29 |
-| SHEET-05 | Animations are presets that stop for reduced motion | S | 🔲 |
+| SHEET-05 | Animations are presets that stop for reduced motion | S | ✅ 2026-10-29 |
 | SHEET-06 | The app's fonts ship inside it, each licence read | S | ✅ 2026-10-29 |
 | **On the device** | **tables, the mini-pack, saved characters** | | |
 | SHEET-07 | Phase 2's device tables arrive in one database version | XS | ✅ 2026-10-28 |
@@ -256,10 +259,6 @@ chats never claim one version number.
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
-- **SHEET-05** — ADR 015 items 8 and 9: the phone's "reduce motion" and an app switch (shown by
-  SHEET-13) turn the presets into still pictures; animations stop off screen. Found by SHEET-01:
-  the presets fill `apps/web/src/theme/motion.ts`, made empty for this row; the boards' one
-  motion is `transition: transform 0.2s ease`, on 10 elements.
 - **SHEET-08** — SPEC §12 stage 2: "a mini-pack of the stage 1 fixtures". The goldens' SRD
   fixtures (`packages/system-5e/test/golden/srd-2014.ts`, `srd-2024.ts`) become the app's
   built-in packs, with their CC-BY-4.0 metadata; the tests keep reading the same data. If the row
@@ -288,8 +287,9 @@ chats never claim one version number.
   rules and Bookmarks open with phase 3, and Dice roll with SHEET-38; until then each shows as
   coming later. No "2 of 3": no limit applies before the payment phase (ADR 005 item 2).
 - **SHEET-13** — SPEC §7.5, BRIEF P10 (not drawn yet; the row draws it from SHEET-04's parts). The
-  theme (dark by default, light), the motion switch (SHEET-05), the units (feet or metres, pounds
-  or kilograms; stored units stay feet and pounds), "I roll myself" (SPEC §6.5). Language, backup,
+  theme (dark by default, light), the motion switch (SHEET-05's `setMotionStill`; this row keeps
+  the choice and sets it at start), the units (feet or metres, pounds or kilograms; stored units
+  stay feet and pounds), "I roll myself" (SPEC §6.5). Language, backup,
   packs, AI and purchases come with their phases.
 - **SHEET-22** — found by ENG-17: a stored switch (`state.toggles`) stays after its entity is
   removed and warns `toggleGone` on every compute. Found by ENG-47: a pin that does not apply
@@ -464,7 +464,8 @@ chats never claim one version number.
   one does `inspiration.use` (advantage in 2014, a reroll of one die in 2024).
 - **SHEET-56** — ADR 009 item 6, ADR 015 item 2, board `V3-Token`: the person's image, an animated
   picture or a short video included, kept in the blobs table on the device (ADR 005 item 10); the
-  token is the image in a round frame (SHEET-03's slot).
+  token is the image in a round frame (SHEET-03's slot). Found by SHEET-05: CSS cannot stop an
+  animated picture or a video, so while `motionIsStill()` is true the token shows a still frame.
 - **SHEET-57** — ADR 009 items 7 and 8, board `V3-Add`: Mounts, Pets, Familiars, Notes or any
   named list, each entry free text; a companion is such an entry with its small stat block as text.
   A companion with a sheet of its own waits for the table link (ADR 014 item 9). A stored-shape

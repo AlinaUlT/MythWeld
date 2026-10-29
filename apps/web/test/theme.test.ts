@@ -113,20 +113,22 @@ describe('SHEET-01 base theme tokens', () => {
     });
   }
 
-  // Slot and part keys are read by <Slot> and <Part> themselves, not by a Tailwind utility
-  // (SHEET-03, SHEET-04).
+  // Slot, part and motion keys are read by <Slot>, <Part> and <Motion> themselves, not by a
+  // Tailwind utility (SHEET-03, SHEET-04, SHEET-05).
   it('maps every key in index.css once, and nothing else', () => {
     const block = indexCss.slice(indexCss.indexOf('@theme inline'));
     const mapped = [...block.matchAll(/--([a-z0-9-]+): var\(--theme-([a-z0-9-]+)\);/g)];
     for (const [, key, source] of mapped) expect(source).toBe(key);
     const keys = Object.keys({ ...baseTheme.shared, ...baseTheme.light }).filter(
-      (key) => !key.startsWith('slot-') && !key.startsWith('part-'),
+      (key) => !key.startsWith('slot-') && !key.startsWith('part-') && !key.startsWith('motion-'),
     );
     expect(mapped.map((match) => match[1]).sort()).toEqual(keys.sort());
   });
 
   it('clears the colours Tailwind brings, so a utility paints only with a token', () => {
     expect(indexCss).toContain('--color-*: initial;');
+    expect(indexCss).toContain('--ease-*: initial;');
+    expect(indexCss).toContain('--animate-*: initial;');
   });
 
   it('gives the manifest the dark page colour', () => {

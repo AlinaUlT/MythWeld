@@ -2484,3 +2484,157 @@ Found, not fixed:
 - Exhaustion at its highest level kills a character immune to it (SHEET-64).
 
 Nothing for the changelog.
+
+---
+
+### SHEET-05 Animations are presets that stop for reduced motion
+
+**Hat:** the motion presets, stopped for reduced motion
+**Depends on:** SHEET-01, SHEET-02
+**Size:** S
+**Screen:** No — no screen moves anything yet; the one motion the boards draw is the step
+chevron's turn in `V3-Create` and `V3-Conflict`
+**SPEC:** ADR 015 items 1, 8, 9 and 13
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/theme/motions.ts` — new name of SHEET-01's empty `motion.ts`: the
+presets, their theme keys, their still values, the app's switch, the style an element wears, and
+the off-screen pause.
+- `apps/web/src/theme/Motion.tsx` — new: the component a screen moves an element with.
+- `apps/web/src/theme/motion.css` — new: the loops' keyframes and the paused rule.
+- `apps/web/src/theme/part.ts`, `theme.ts` — change: a theme part may hold `still` values, written
+  under `prefers-reduced-motion: reduce` and under the app's switch.
+- `apps/web/src/index.css` — changes: imports `motion.css`; clears Tailwind's easings and
+  animations.
+- `biome/no-look-literals.grit` — changes: SHEET-02's check also fails on Tailwind's transition,
+  duration, easing and delay classes.
+- `apps/web/test/motion.test.tsx` — new. `apps/web/test/theme.test.ts`,
+  `no-look-literals.test.ts`, `apps/web/e2e/theme.spec.ts` — change.
+
+#### 2. What is missing now
+
+- `apps/web/src/theme/motion.ts` is `export const motion: ThemePart = {};`.
+- A screen can still write `className="transition duration-200"`: SHEET-02's check fails only on
+  Tailwind's four animations and on an inline `transition` or `animation`.
+- Nothing reads the phone's "reduce motion" setting, and the app has no switch for it.
+- The boards' motion, counted with `grep -o "transition[^;\"]*"`: `transition: transform 0.2s ease`,
+  4 times in `V3-Conflict.dc.html` and 6 in `V3-Create.dc.html`; from `turn_arrow()` in
+  `docs/design/mockups/generator/gen13.py`, the chevron of a creation step (ADR 013).
+
+#### 3. What it should look like when done
+
+1. 4 presets: `turn` (a transition of `transform`, the boards' 200 ms `ease`), and the loops
+   `pulse` (opacity), `float` (position) and `spin` (rotation).
+2. Each preset fills `motion-<preset>-duration` (its speed), a loop with a size fills
+   `motion-<preset>-size`, and `motion-<preset>` holds the value an element wears, built from
+   them. No other `motion-` key.
+3. Every keyframe sets only `opacity`, `translate`, `rotate` or `scale`; a transition moves only
+   `transform` or `opacity`.
+4. Under the phone's reduced motion, and under `data-motion="still"` on `<html>`
+   (`setMotionStill(true)`), every `motion-<preset>` is `none`: in the built app the turn computes
+   to `none 0s ease` and each loop to `none 0s`, with 0 running animations.
+5. `<Motion preset as>` wears `transition` or `animation` from the preset's key, with
+   `data-skin-motion`; a style the screen passes cannot override it. A loop is watched: off
+   screen, or with the app in the background, it gets `data-motion-paused` and holds still.
+6. `motionIsStill()` says whether motion is stopped now, for what CSS cannot stop.
+7. The lint fails on `transition`, `transition-colors`, `duration-200`, `ease-in-out`,
+   `delay-[50ms]` in a component, and passes `transition-none`.
+
+#### 4. How to do it
+
+1. `motionPresets` lists the presets with their kind, easing and base settings. `motionTheme()`
+   writes the shared keys and a `still` key per preset, `none`; `motion = motionTheme()` joins the
+   base theme as before.
+2. `ThemePart` and `Theme` gain `still`. `mergeParts` refuses a still key filled twice, or one no
+   concern fills. `themeCss` writes the still values last: once in
+   `@media (prefers-reduced-motion: reduce) { :root { … } }`, once on
+   `:root[data-motion='still']`, so they win over `:root`.
+3. The loops' keyframes are fixed by the app, in `motion.css`, named `motion-<preset>`; they read
+   the skin's size through `var(--theme-motion-<preset>-size)`, and use the individual
+   `translate` and `rotate` properties, so an element's own `transform` stays.
+4. `watchOnScreen(el)` puts `data-motion-paused` on the element from an `IntersectionObserver` and
+   the page's `visibilitychange`; `motion.css` turns it into `animation-play-state: paused`.
+5. The lint gets one more pattern in the same file, with its own message.
+
+#### 5. Stored data
+
+Nothing stored changes. The app's switch is a page attribute; keeping the choice is SHEET-13's.
+
+#### 6. What a person will see
+
+Not a screen: nothing moves yet. The first screen to move an element (the creation steps'
+chevron, SHEET-27) wears `turn` with `<Motion>`.
+
+#### 7. Tests
+
+- `apps/web/test/motion.test.tsx` — the 4 names; the turn against the `V3-Create` and
+  `V3-Conflict` boards, read by the test; every key filled and no other; the keyframes' properties;
+  the still blocks in `themeCss`; `mergeParts` refusing a bad still key; `motionStyle`; the switch
+  and `motionIsStill` on a fake page; `watchOnScreen` with a fake observer, off screen, hidden,
+  stopped; `<Motion>` rendered to HTML.
+- `apps/web/test/no-look-literals.test.ts` — three more bad lines, two more good samples.
+- `apps/web/test/theme.test.ts` — the mapping check leaves out motion keys; Tailwind's easings and
+  animations are cleared.
+- `apps/web/e2e/theme.spec.ts` — the presets computed in the built app; the loops move; the
+  phone's setting and the app's switch stop them; a paused loop holds; the frames measured.
+- Control values from: the boards (§2).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact.
+
+#### 9. Not in this ticket
+
+- Glow, sparkle and gradient shift (ADR 015 item 8): glow and sparkle need a layer or a picture
+  over the element, and a shifting gradient moves a background, which a phone does not draw
+  cheaply (item 9). They come with the animated frames and backgrounds of the skins' sale phase
+  (item 16), which measures them.
+- Which slot a skin animates with which loop, and a preset's colour setting: the skin file and its
+  schema, the theme editor's phase (item 14). No loop has a colour yet.
+- Dice effects for roll, land and critical: the dice phase (item 15).
+- An animated picture or a video stopped for reduced motion: CSS cannot do it; the portrait row
+  reads `motionIsStill()` (new note under SHEET-56).
+- The switch on the settings page, and keeping the choice: SHEET-13.
+
+#### 10. Rake check
+
+- **No look is written in a component:** `Motion.tsx` names no duration or easing; every value is
+  theme data; the lint now also fails on Tailwind's transition classes.
+- **A skin is data, never code:** a skin sets a preset's speed and size through keys; the
+  keyframes and the presets' list are the app's.
+- **No user-facing string literal:** no new text.
+- **Nothing invisible:** no zero-width character, byte-order mark or non-breaking space in the
+  changed files (checked with a Python scan).
+
+#### 11. What came out of it
+
+**Measured on 2026-10-29, on top of OPS-28 (`d4bee2f`):**
+
+- `pnpm lint`: `Checked 236 files in 381ms. No fixes applied.`
+- `pnpm typecheck`: every project `Done`, exit 0.
+- `pnpm test`: unit `Test Files 77 passed (77)`, `Tests 1040 passed (1040)` (1030 before, plus 10
+  in `motion.test.tsx`), 16.88 s; speed `Tests 2 passed (2)`, 2.68 s.
+- `pnpm e2e`: `19 passed (16.4s)` on `pixel-7`, with the new `SHEET-05` test.
+- Measured in the built app: the turn `transform 0.2s ease`; `motion-pulse 2s`,
+  `motion-float 3s`, `motion-spin 8s`; 30 loops running. Reduced motion, then the app's switch:
+  `none 0s ease`, `none 0s` each, 0 running.
+- Frames on the Pixel 7 profile with 30 loops on screen, three runs: 122 frames in 2 s, longest
+  gap 16.8 ms; 121, 33.2 ms; 121, 16.8 ms.
+- Differs from the row: the paused rule needs `!important`. The preset's inline `animation`
+  shorthand sets the play state to `running`, which beat the plain rule in the first e2e run
+  (`state: 'running'`). The suppression of Biome's `noImportantStyles` carries the reason.
+- Differs from the row: `motion.ts` is now `motions.ts`. Beside `Motion.tsx`, an import of
+  `./Motion` could open `motion.ts` on a disk that ignores case (macOS); the plural matches
+  `slots.ts` and `parts.ts`.
+- The e2e test draws the presets by hand, as SHEET-04's does, because no screen moves anything.
+  The real `IntersectionObserver` path is covered by the unit test's fake, and the paused rule by
+  the e2e test; the first screen with a loop shows the two together.
+- In Chromium, `transition: none` computes to `none 0s ease`, not to `all 0s ease`.
+
+**Found, not fixed:** an animated picture or a video keeps playing under reduced motion, because
+CSS cannot stop it; written into the SHEET-56 note, with `motionIsStill()` for it.
+
+**Changelog:** nothing for the changelog; nothing on screen moves yet.

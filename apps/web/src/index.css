@@ -2,9 +2,11 @@
    fonts, text sizes, line heights, corners and shadows are cleared, so a utility can only paint
    with a token. Each token reads `--theme-<name>`, which src/theme/ fills from data at start
    (applyTheme), so a skin changes a value without touching a component (ADR 015). Dark is the
-   default: index.html puts the `dark` class on <html>. */
+   default: index.html puts the `dark` class on <html>. SHEET-05: Tailwind's easings and
+   animations are cleared too; motion is the presets of theme/motions.ts. */
 @import "tailwindcss";
 @import "./theme/fonts.css";
+@import "./theme/motion.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -15,6 +17,8 @@
   --leading-*: initial;
   --radius-*: initial;
   --shadow-*: initial;
+  --ease-*: initial;
+  --animate-*: initial;
 }
 
 @theme inline {
