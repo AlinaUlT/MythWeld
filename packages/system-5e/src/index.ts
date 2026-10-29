@@ -28,6 +28,7 @@ export * from './knock-out';
 export * from './languages';
 export * from './level-up';
 export * from './list-line';
+export * from './manual';
 export * from './module';
 export * from './origin';
 export * from './pack';

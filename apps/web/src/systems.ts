@@ -2,13 +2,21 @@
 // system, and the app finds that module's opener here; no other code asks which system it is.
 // SHEET-09: a pack file names its system too, and opens through that module's pack opener.
 // SHEET-24: what My characters names under a character's name is its module's too.
+// SHEET-27: the manual form makes a character through its system's maker, with its rules bases.
+import type { ContentIndex } from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
+  EDITION_RULES,
+  type EditionTerms,
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
   type FifthEditionPack,
   fifthEditionListLine,
   type ListLinePart,
+  MAX_LEVEL,
+  type MadeByHand,
+  type ManualCharacterAsk,
+  madeByHand,
   openFifthEditionCharacter,
   openFifthEditionPack,
 } from '@grimoire/system-5e';
@@ -64,3 +72,31 @@ export function listLineOf(character: AppCharacter): readonly ListLinePart[] {
     : undefined;
   return line === undefined ? [] : line(character);
 }
+
+/** A rules base a system's characters may have. */
+export type AppRuleset = AppCharacter['ruleset'];
+
+/** SHEET-27: what the manual form needs of a system: its rules bases, their words, its maker. */
+export interface ManualFormSystem {
+  system: string;
+  rulesets: readonly AppRuleset[];
+  /** The highest level a character reaches, its classes' levels added up. */
+  maxLevel: number;
+  /** The words a rules base uses where the editions differ: each an i18n key's last part. */
+  terms: (ruleset: AppRuleset) => EditionTerms;
+  /** The character the form describes, at full hit points, and its numbers. */
+  make: (ask: ManualCharacterAsk, index: ContentIndex<AppPack['entities'][number]>) => MadeByHand;
+}
+
+/** The systems the manual form offers; one for now (BRIEF P3 step 1). */
+export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
+  {
+    system: FIFTH_EDITION_SYSTEM,
+    rulesets: Object.keys(EDITION_RULES) as AppRuleset[],
+    maxLevel: MAX_LEVEL,
+    terms: (ruleset) => EDITION_RULES[ruleset].terms,
+    make: madeByHand,
+  },
+];
+
+export type { MadeByHand, ManualCharacterAsk };

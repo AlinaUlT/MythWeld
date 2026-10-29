@@ -39,6 +39,7 @@ describe('SHEET-04 each part takes its style from a fixed menu', () => {
       'chip',
       'sheet',
       'toast',
+      'field',
     ]);
   });
 

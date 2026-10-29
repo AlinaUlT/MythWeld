@@ -17,7 +17,7 @@ const back = (page: Page) => page.getByRole('link', { name: en.common.back });
 const gear = (page: Page) => page.getByRole('link', { name: en.common.settings });
 
 async function expectControlSize(page: Page, name: string) {
-  const box = await page.getByRole('main').getByLabel(name).boundingBox();
+  const box = await page.getByRole('main').getByLabel(name, { exact: true }).boundingBox();
   expect(box?.width).toBeGreaterThanOrEqual(44);
   expect(box?.height).toBeGreaterThanOrEqual(44);
 }

@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-27 · New character makes a character by hand: rules base and packs, name,
+  race or species, background, classes and levels, and any ability scores, with the live AC, hit
+  points and initiative pinned at the bottom; warnings show in amber and never block Create.
 - 2026-10-29 · SHEET-38 · The dice page rolls any count of any die, a modifier, or any formula
   typed with d or к, fairly; it keeps the person's own dice, shows the last roll's faces and the
   earlier rolls, and with "I roll myself" on counts the faces the person types.

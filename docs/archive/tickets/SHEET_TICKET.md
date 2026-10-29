@@ -4933,3 +4933,172 @@ Found, not fixed:
 Changelog: "The dice page rolls any count of any die, a modifier, or any formula typed with d or
 к, fairly; it keeps the person's own dice, shows the last roll's faces and the earlier rolls, and
 with "I roll myself" on counts the faces the person types."
+
+---
+
+### SHEET-27 The manual form makes a character
+
+**Hat:** The manual form makes a character
+**Depends on:** SHEET-09, SHEET-10, SHEET-11, ENG-19, ENG-56
+**Size:** M
+**Screen:** Yes — P3 New character; boards `V3-Create` (and `V2-Create` for the live bar) in
+`docs/design/mockups/`; BRIEF Part 5 row "P3 Character creation"
+**SPEC:** §7.4 (manual mode), §8.2, §5.8
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/pages/NewCharacterPage.tsx` — changes (was SHEET-11's empty page).
+- `packages/system-5e/src/manual.ts` — new: `manualCharacter`, `madeByHand`, `manualHitPoints`.
+- `apps/web/src/pages/create/` — new, one file per step: `RulesStep`, `NameStep`, `OriginStep`,
+  `ClassesStep`, `AbilitiesStep`, and the empty `EquipmentStep` (SHEET-28) and
+  `AbilityBonusWindow` (SHEET-29); `Fields.tsx` the shared pieces; `draft.ts` the form's state;
+  `warnings.ts` which warning shows under which pick.
+- `apps/web/src/systems.ts` — `MANUAL_FORM_SYSTEMS`: a system's rules bases, words, highest level
+  and maker.
+- `apps/web/src/theme/parts.ts` — a `field` part for text fields and pickers.
+- `apps/web/src/content/packs.ts` — `contentOf` takes any system id and pack list.
+- `apps/web/src/locales/en/create.json` — the form's words.
+
+#### 2. What is missing now
+
+`/characters/new` showed only the header "New character" (SHEET-11: "empty until SHEET-27 fills
+it"). `grep -rn "compute(" apps/web/src` found nothing: no screen computed a character. No
+function in `packages/` built a new character: `grep -rn "DEFAULT_HOUSE_RULES" packages/*/src`
+found only its definition.
+
+#### 3. What it should look like when done
+
+1. `/characters/new` shows one scrolling form in BRIEF P3's order: Rules (system "5E compatible",
+   rules base 2014 / 2024, the content packs, "My packs" coming later, "Mix editions"), Name,
+   Origin (Race on 2014, Species on 2024; Background), Classes and levels, Ability scores,
+   Equipment (coming later, SHEET-28).
+2. A new form is on 2024 rules with SRD 5.2.1 ticked, mixing off, and every score 10.
+3. A bar pinned at the bottom shows AC, HP and Init from `compute()`, changed at each keystroke,
+   and "Create".
+4. Golden B's inputs (human, Soldier, fighter 1, 15 13 14 8 12 10) give HP 12, AC 11, Init +1;
+   fighter 4 gives HP 36.
+5. A pick of the other edition, a prerequisite not met, or a pick no ticked pack holds shows an
+   amber line under that pick. Nothing blocks "Create"; an empty name is saved as "Unnamed
+   character".
+6. "Create" saves the character at full hit points and opens its sheet's address; My characters
+   then lists it ("Human · Fighter 1", 2024).
+7. The stats are the packs' (D3): none are named in the form's code.
+
+#### 4. How to do it
+
+1. Module: `manualCharacter(ask)` writes the core and `systemData` from what was typed:
+   `DEFAULT_HOUSE_RULES`, the edition's `abilityBonusSource` and `languageSource` (ENG-19,
+   ENG-56), no choices, items or coins, `mode: 'manual'`, score method `manual`, advancement by
+   milestone with 0 XP. `manualHitPoints` writes the first class's level 1 as `max`, every other
+   level as `avg` (§8). `madeByHand(ask, index)` computes the maximum, writes it as the current
+   hit points, and computes again.
+2. App: `MANUAL_FORM_SYSTEMS` gives the form its system through `systems.ts`, the only file that
+   imports a module.
+3. `draft.ts` holds the form; a rules base change without mixing takes that base's packs; a pick
+   that is no longer offered stays, shown by name or as `Missing: <id>`, and warns.
+4. The stats come from the engine's own key finder (`keyFinderOf`, `keysOfTypeOf`) on the ticked
+   packs.
+5. `warningsAbout(computed, id)` turns `missing`, `otherRuleset`, `unmetPrerequisite` and
+   `noStartingLanguages` about a picked id into i18n keys.
+6. A `field` part (outlined, underlined, window) shapes inputs and pickers, so a skin re-picks it.
+
+#### 5. Stored data
+
+Nothing stored changes. The form writes a character of the current versions (core 2, fifth
+edition 9) through `saveCharacter`, which opens it through its schema first.
+
+#### 6. What a person will see
+
+From My characters' "+": the form above, at 360×800, dark and light. States: empty (AC 10, HP 0,
+Init 0); filled with Iren (AC 11, HP 12, Init +1); a warning shown (a 2014 dwarf and wizard on 2024
+rules with mixing on). Keys in `create.json`: `rules.*`, `name.*`, `origin.race|species|background`,
+`classes.*`, `abilities.*`, `bar.*`, `warn.*`, `create` ("Create"), `failed` ("The character could
+not be saved on this device. Nothing was saved; try again."), `unnamed` ("Unnamed character").
+
+#### 7. Tests
+
+- `packages/system-5e/test/manual.test.ts` — `describe('SHEET-27 the manual form makes a
+  character')`: the goldens' hit point entries (A, B, B4, C 2014 and 2024); house rules and
+  sides; nothing picked for the person; full hit points (B 12, B4 36); golden B with its picks and
+  gear: HP 12, AC 17, Init +3; golden A: HP 12, AC 18, Init +0.
+- `apps/web/test/create.test.ts` — `describe('SHEET-27 the manual form')`: the new form, packs per
+  rules base, options per edition, subclasses, stats in order, score parsing, the level total,
+  golden B's inputs, each warning under its pick.
+- `apps/web/e2e/create.spec.ts` — the empty form, golden B typed in and created, the warning state.
+- Control numbers from: SPEC §6.7 goldens A, B, B4; unarmored AC 10 + Dex modifier and level 1 hit
+  points, §8.
+
+#### 8. Checked against the source
+
+Source: foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`,
+`packs/_source/rules/chapter-6-customization-options.yml` (SRD 5.1) and
+`packs/_source/content24/chapter-2/character-creation.yml` (SRD 5.2.1), CC-BY-4.0.
+
+- SRD 5.1, Multiclassing, "Hit Points and Hit Dice": "You gain the hit points from your new class
+  as described for levels after 1st. You gain the 1st-level hit points for a class only when you
+  are a 1st-level character."
+- SRD 5.2.1, Multiclassing, "Hit Points and Hit Point Dice": "You gain the Hit Points from your new
+  class as described for levels after 1. You gain the level 1 Hit Points for a class only when your
+  total character level is 1."
+- SRD 5.2.1, character creation: level 1 hit points are "shown on the Level 1 Hit Points by Class
+  table"; on later levels, "Instead of rolling, you can use the fixed value shown in the Fixed Hit
+  Points by Class table."
+- So the first class's level 1 is `max` and every other level `avg` (dnd5e's fixed value), as the
+  goldens already store them (A, B, B4, C).
+
+#### 9. Not in this ticket
+
+- The equipment step: SHEET-28 (its file is here, empty).
+- The window for ability score increases from two editions: SHEET-29 (its file is here, empty).
+- Grant picks (skills, a lineage, a feat, a size): the choices badge, SHEET-36; phase 4's wizard.
+- The portrait picker of BRIEF P3 step 4: the round token, SHEET-56.
+- Steps that open and close, score methods, the roll calculator: phase 4 (ADR 010, ADR 013).
+- The sheet the created character opens to: SHEET-30.
+- Hit points per level typed by hand: a manual edit of the maximum, SHEET-34.
+
+#### 10. Rake check
+
+- **Everything is data**: the score fields are the packs' stats, found by the engine's key
+  finder; no stat or skill is named in the form.
+- **The core names no game; each system's rules live in its module**: the new character is built
+  in `system-5e`; the app reaches it only through `systems.ts`. No `if (ruleset === …)`: the words
+  come from `terms`, the sides from `rulesOf`.
+- **compute() is pure; the UI reads only Computed**: the bar reads `ac.total`, `hp.max`,
+  `init.total`, each with a breakdown; the ability lines read `abilities.<key>.score` and `.mod`.
+- **Missing is not broken; warnings never block**: a pick no pack holds shows `Missing: <id>`;
+  "Create" is always on.
+- **No look in a component / no visible literal**: tokens and parts only; every string is a
+  `create` key; SHEET-02's and SETUP-05's checks pass.
+- **A stored-shape change needs a migration**: nothing stored changes (§5).
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on `536ce1b` (SHEET-38, the base it landed on):
+
+- Whole gate (`lint && typecheck && test && e2e`): exit 0, 73 s.
+- `pnpm lint`: `Checked 300 files`, no fixes. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: 93 files, 1200 passed, 0 failed, 22.0 s, then the speed project 2 passed. Lines
+  covered 99.9 % (3041 / 3044). New: `manual.test.ts` 10 tests, `create.test.ts` 10 tests.
+- `pnpm e2e`: 30 passed, 0 failed, 25.2 s; `create.spec.ts` adds 3.
+- The bar, measured in Chromium: empty form `10 · 0 · 0`; golden B's inputs `11 · 12 · +1`;
+  fighter 4 `11 · 36 · +1`.
+
+Differences from §3: none. Beyond the row: a subclass picker per class, since golden A's cleric
+takes its subclass at level 1 and the form must be able to enter it.
+
+Changed outside the hat, because this ticket broke it: `navigation.spec.ts` found "Back" by a
+partial label, which now also matched the "Background" picker (`exact: true` added);
+`theme.spec.ts` lists every part's base style, so it lists `field`; `parts.test.tsx` lists the new
+part.
+
+Found, not fixed:
+- On 2024 rules a 2014 race and a 2024 background that both raise scores stay silent in this form
+  until SHEET-29 draws its window; `compute()` already gives `abilityBonusConflict`.
+- A long class name with its edition ("Wizard · 2014") is cut short in the class picker at
+  360 px. Nothing to do now; phase 3's longer names may need the row laid out on two lines.
+
+Changelog: "New character makes a character by hand: rules base and packs, name, race or species,
+background, classes and levels, and any ability scores, with the live AC, hit points and
+initiative pinned at the bottom; warnings show in amber and never block Create."

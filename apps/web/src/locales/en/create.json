@@ -1,3 +1,72 @@
 {
-  "title": "New character"
+  "title": "New character",
+  "unnamed": "Unnamed character",
+  "none": "None",
+  "separator": ", ",
+  "withEdition": "{{name}} · {{ruleset}}",
+  "create": "Create",
+  "failed": "The character could not be saved on this device. Nothing was saved; try again.",
+  "rules": {
+    "title": "Rules",
+    "system": "System",
+    "systems": {
+      "5e": "5E compatible"
+    },
+    "ruleset": "Rules base",
+    "rulesetName": "{{ruleset}} rules",
+    "packs": "Content packs",
+    "myPacks": "My packs",
+    "mix": "Mix editions",
+    "mixHint": "Offer content from both editions. A mix that may not fit gives a warning."
+  },
+  "name": {
+    "title": "Name",
+    "label": "Character name",
+    "placeholder": "Unnamed character"
+  },
+  "origin": {
+    "title": "Origin",
+    "race": "Race",
+    "species": "Species",
+    "background": "Background"
+  },
+  "classes": {
+    "title": "Classes and levels",
+    "row": "Class {{number}}",
+    "class": "Class",
+    "level": "Level",
+    "subclass": "Subclass",
+    "remove": "Remove class {{number}}",
+    "first": "Add a class",
+    "another": "Add another class",
+    "pick": "Pick a class",
+    "total": "Character level {{level}} of {{max}}"
+  },
+  "abilities": {
+    "title": "Ability scores",
+    "none": "No ticked pack holds ability scores. Tick a content pack above.",
+    "result": "{{score}} · {{mod, number(signDisplay: exceptZero)}}",
+    "untyped": "Not a whole number: {{names}}. Each counts as {{score}} until you type one."
+  },
+  "equipment": {
+    "title": "Equipment"
+  },
+  "bar": {
+    "label": "Live numbers",
+    "ac": "AC",
+    "hp": "HP",
+    "init": "Init",
+    "none": "–",
+    "plain": "{{value, number}}",
+    "signed": "{{value, number(signDisplay: exceptZero)}}"
+  },
+  "warn": {
+    "missing": "Missing: {{id}}",
+    "otherRuleset": "From the {{ruleset}} rules, not this character's rules base. It may not fit.",
+    "otherRulesetNotMixing": "From the {{ruleset}} rules, and mixing editions is off. It may not fit.",
+    "prerequisite": "A prerequisite is not met.",
+    "prerequisiteNamed": "Needs {{label}}.",
+    "prerequisiteScore": "Needs {{stat}} {{min}}.",
+    "noStartingLanguages": "From another edition: this character gets no starting languages from its origin."
+  }
 }

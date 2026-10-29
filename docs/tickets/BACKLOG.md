@@ -227,7 +227,7 @@ chats never claim one version number.
 | SHEET-24 | My characters lists the saved characters | S | ✅ 2026-10-29 |
 | SHEET-25 | A character's Actions copy, export or delete it | S | 🔲 |
 | SHEET-26 | A character file imports through its checks | S | 🔲 |
-| SHEET-27 | The manual form makes a character | M | 🔲 |
+| SHEET-27 | The manual form makes a character | M | ✅ 2026-10-29 |
 | SHEET-28 | The manual form's equipment step adds items | S | 🔲 |
 | SHEET-29 | The manual form shows the ability bonus window | S | 🔲 |
 | **The sheet** | **the frame, the tabs, trackers, rolls** | | |
@@ -269,14 +269,6 @@ chats never claim one version number.
   character's rolls and changes (`rollLog`, `history`).
 - **SHEET-26** — SPEC §5.8, §12 stage 2: an older file migrates; a file that fails its checks is
   refused with the reason, and nothing of it is saved.
-- **SHEET-27** — SPEC §7.4 (manual mode), BRIEF P3 steps 1–8, board `V3-Create`: one scrolling
-  form, a pinned bar with the live AC, hit points and initiative; warnings never block "Create".
-  Found by ENG-19: where the editions use different words, the screens read
-  `rulesOf(character).terms` (race or species, subrace or lineage, inspiration or heroic
-  inspiration), each an i18n key's last part; a new character is written with
-  `DEFAULT_HOUSE_RULES` and its edition's `abilityBonusSource` and `languageSource` (ENG-56).
-  Score methods, steps that open and close, and the roll calculator are phase 4's (ADR 010 items
-  11 and 12, ADR 013 items 7 and 8). The row gives each step its own empty file.
 - **SHEET-28** — BRIEF P3 step 9. Found by ENG-49: a spell or item a grant names (a `spell` or
   `item` grant's `fixed` ids, and its chosen ones) is looked up, not gathered, so one of the other
   edition gets no `otherRuleset` warning, which a gathered entity gets. The starting inventory

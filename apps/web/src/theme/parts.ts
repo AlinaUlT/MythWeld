@@ -70,6 +70,12 @@ export const partStyles = {
     flat: style('none', token('radius-button'), 'none'),
     raised: style('none', token('radius-button'), token('shadow-float')),
   },
+  // SHEET-27: a text field or a picker the person types or picks in (the manual form).
+  field: {
+    outlined: style(line('1px', 'solid', 'muted'), token('radius-field'), 'none'),
+    underlined: style('none', '0', `inset 0 -1px 0 ${token('color-muted')}`),
+    window: style(line('1px', 'solid', 'strong'), '0', `inset 2px 2px 0 ${token('color-muted')}`),
+  },
 } as const satisfies Record<string, Record<string, PartStyle>>;
 
 export type PartName = keyof typeof partStyles;
@@ -85,6 +91,7 @@ export const basePicks: PartPicks = {
   chip: 'flat',
   sheet: 'floating',
   toast: 'flat',
+  field: 'outlined',
 };
 
 // The theme keys `part-<part>-<property>` a set of picks fills. A pick the menu lacks throws, so a

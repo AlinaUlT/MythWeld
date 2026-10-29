@@ -6,7 +6,7 @@
 import { BUILT_IN_PACKS } from '@grimoire/content';
 import { type LoadedContent, loadContentIndex } from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
-import { type AppCharacter, type AppPack, packOpenerOf } from '../systems';
+import { type AppPack, packOpenerOf } from '../systems';
 
 /** Where an installed pack came from. Local and community packs come with their phases. */
 export type PackOrigin = 'builtIn';
@@ -90,7 +90,7 @@ export function installedPacks(): InstalledPacks {
  * the device is left out and listed in `notInstalled`; its entries look up as `missing`.
  */
 export function contentOf(
-  character: Pick<AppCharacter, 'system' | 'packs'>,
+  character: { readonly system: string; readonly packs: readonly string[] },
   packs: readonly InstalledPack[] = installed.packs,
 ): CharacterContent {
   const toLoad: AppPack[] = [];

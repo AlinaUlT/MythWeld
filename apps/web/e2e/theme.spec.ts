@@ -170,6 +170,8 @@ test('SHEET-04 every part takes its base style in the built app, and a skin re-p
   }, names);
   expect(look).toEqual({
     button: { border: '0px none rgb(28, 29, 32)', radius: '12px 12px', shadow: 'none' },
+    // SHEET-27: a field is outlined in `muted` with the field corner (`radius-field`, 10 px).
+    field: { border: '1px solid rgb(94, 98, 105)', radius: '10px 10px', shadow: 'none' },
     'button-secondary': {
       border: '1px solid rgb(94, 98, 105)',
       radius: '12px 12px',
