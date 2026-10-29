@@ -1,6 +1,7 @@
 import type { EntityPartId, Prerequisite } from '@grimoire/schema';
 import type { ContentIndex } from './content-index';
 import {
+  type Candidate,
   type ComputedKey,
   computeDerived,
   type DerivedStep,
@@ -140,6 +141,11 @@ export interface Computed<E extends GatherableEntity> extends Omit<Gathered<E>, 
   values: Readonly<Record<string, FormulaValue>>;
   /** Computed path → the steps that made its value (SPEC §6.2). */
   breakdown: Readonly<Record<string, readonly BreakdownStep[]>>;
+  /**
+   * SHEET-21: computed path → the numbers its value is chosen from, each with its key, value and
+   * steps, as its step gave them. A path whose step gives none is not here.
+   */
+  candidates: Readonly<Record<string, readonly Candidate[]>>;
   /** Key path → its key and the steps that chose it. A path with no key is not here. */
   keys: Readonly<Record<string, ComputedKey>>;
   /**
@@ -246,6 +252,7 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
     ...gathered,
     values: derived.values,
     breakdown: derived.breakdown,
+    candidates: derived.candidates,
     keys: derived.keys,
     pendingKeys: derived.pendingKeys,
     warnings: [

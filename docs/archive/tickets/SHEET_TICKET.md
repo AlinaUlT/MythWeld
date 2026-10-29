@@ -2167,3 +2167,158 @@ sentence is quoted in the note of the new row). SRD 5.2.1's Rules Glossary entry
 A new row in `BACKLOG.md`: SHEET-63.
 
 **Changelog:** nothing; no screen changes.
+
+---
+
+### SHEET-21 Every base AC calculation is computed for the pin
+
+**Hat:** Every base AC calculation is computed for the pin
+**Depends on:** ENG-47 (`systemData.acCalc`, the pinned candidate), ENG-14 (`ac.base`,
+`appendedNumbers`), ENG-28 (the module's steps)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.1 step 5 (AC: the candidates, then the best one or the one the person pins); §6.1
+(the UI reads only `Computed` and its breakdown); §6.2 (the breakdown); ENG-47 §11 puts the row
+here
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/combat.ts` — changes: `armorClassBase` gives every
+candidate it chose from, with its key, value and steps.
+- `packages/engine/src/derived.ts` — new `Candidate`; `Derived.candidates`;
+  `DerivedValues.candidates`.
+- `packages/engine/src/compute.ts` — `Computed.candidates`.
+- `packages/engine/test/derived.test.ts` — a `SHEET-21` block, on Tales.
+- `packages/system-5e/test/combat.test.ts` — a `SHEET-21` block.
+
+#### 2. What is missing now
+
+Measured on `main` at `2da9707`:
+- `grep -rn "candidates" packages/engine/src`: nothing. `Computed` has `values`, `breakdown`,
+  `keys`, `pendingKeys`, `warnings` and what gathering gives; no field lists a path's candidates.
+- `armorClassBase` (`combat.ts`) builds every candidate (`Candidate`: `key`, `value`, `steps`)
+  and returns only the chosen one's value and steps. Golden B without armor, with feats appending
+  `10 + DEX + CON` (13) and `13 + DEX` (14): `ac.base` 14, its breakdown one step, the 14's. The
+  module's own 11 and the 13 are in no part of `Computed`, so SHEET-35's control cannot offer them.
+- `pnpm test`: `Test Files 75 passed (75)`, `Tests 1011 passed (1011)`; speed `2 passed`.
+
+#### 3. What it should look like when done
+
+1. **The core.** A module's step may give `candidates`, each `{ key, value, steps }`; `compute()`
+   gives them as `Computed.candidates[path]`, in the step's order, as the step gave them. A path
+   whose step gives none is not in `Computed.candidates`. The path's value and breakdown are the
+   step's, then its effects and override, as before; neither changes a candidate.
+2. **The base AC's candidates** are `Computed.candidates['ac.base']`: the module's own first,
+   key `equipment` (the worn armor's, else 10 + DEX), then each number an `ac.formulas` effect
+   appends now, key its part id, in `appendedNumbers`' order. A candidate's steps are its own,
+   with no `acCalcChosen`, and add up to its value. Its name is its steps': the armor's entity
+   step, the `unarmoredAC` rule step, or the effect's step and its label.
+3. **The list does not depend on the pin.** Pinned or not, pinned to one that applies or not, the
+   list is the same; a pin that does not apply is not in it (its warning, ENG-47's, says so).
+4. **Made-up variants of golden B** (DEX +1, CON +2, chain mail 16; ENG-47's feats `guarded` 10 +
+   DEX + CON when no armor is worn, `plated` 13 + DEX, `stance` 12 + DEX switched off by default):
+
+   | Worn | Feats | `acCalc` | Candidates (key: value) | `ac.base` |
+   |---|---|---|---|---|
+   | nothing | guarded, plated | none | `equipment`: 11, guarded's: 13, plated's: 14 | 14 |
+   | nothing | guarded, plated | `equipment` | the same three | 11 |
+   | chain mail | guarded, plated | none | `equipment`: 16, plated's: 14 | 16 |
+   | chain mail | guarded, plated | guarded's | `equipment`: 16, plated's: 14 | 16 |
+   | nothing | stance, off | stance's | `equipment`: 11 | 11 |
+   | nothing | stance, switched on | stance's | `equipment`: 11, stance's: 13 | 13 |
+
+5. **An override does not change the list:** chain mail, plated pinned, an override of `ac.base`
+   20: the candidates are `equipment` 16 and plated's 14; `ac.base` 20.
+6. **Goldens:** each golden's one candidate is `equipment`, its value the golden's `ac.base` and
+   its steps the golden's `ac.base` breakdown. No golden value changes.
+7. `compute()` stays pure: frozen inputs give equal results, candidates included.
+8. The quality gate is green. No file in `apps/web` changes, so no `pnpm e2e`.
+
+#### 4. How to do it
+
+1. `derived.ts`: `Candidate`; `Derived.candidates`; `computeDerived` keeps each step's candidates
+   by path and gives them in its result, in the order of the paths.
+2. `compute.ts`: `Computed.candidates` from `computeDerived`'s.
+3. `combat.ts`: `armorClassBase` uses the core's `Candidate` and returns `candidates` from both
+   of its returns.
+4. Tests (§7), then the gate.
+
+Technical choices (ADR 002):
+- **A core field, not paths.** An effect's candidate is keyed by its part id
+  (`<entityId>#<effectId>`), which is not a computed path step (camelCase only), so no stable
+  `ac.calc.<key>` path can hold it; a path by position would move when an effect comes or goes.
+  "A number chosen from several, each worked out" names no game, so the core carries it, as it
+  carries `pendingKeys` for a key still to choose.
+- **The step gives the list; the core never re-evaluates.** The formulas run once, inside
+  `compute()`, read by their parts; a screen reads the list and decides nothing.
+- **No name field.** Every number on screen is named by its breakdown; a candidate's steps already
+  name its armor, its rule or its effect's entity, so a second name could only disagree.
+- **No "chosen" flag.** The chosen one is the path's breakdown (`acCalcChosen` when pinned); the
+  pin is the character's `systemData.acCalc`. A flag would repeat both.
+- **Only the candidates that apply now.** A pin that does not apply warns (ENG-47); SHEET-35 shows
+  it from that warning, not from a candidate with no value.
+
+#### 5. Stored data
+
+Nothing stored changes. The candidates are computed; the pin is ENG-47's field.
+
+#### 6. What a person will see
+
+Not a screen. SHEET-35's control reads `Computed.candidates['ac.base']`; its note in `BACKLOG.md`
+says so.
+
+#### 7. Tests
+
+- `packages/engine/test/derived.test.ts` — `describe('SHEET-21 the candidates a path is chosen
+  from')`: §3 item 1, on Tales.
+- `packages/system-5e/test/combat.test.ts` — `describe('SHEET-21 every base AC calculation,
+  computed for the pin')`: §3 items 2–7.
+- Control numbers from: golden B's data and ENG-47's feats, worked out by hand in ENG-47 §3 and
+  above; the goldens' `ac.base` from SPEC §6.7, unchanged.
+
+#### 8. Checked against the source
+
+Nothing new to check. The rule is ENG-47's (§8 there: SRD 5.2.1, "you choose which calculation to
+use"; SRD 5.1 silent; dnd5e keeps a set of calculations); this ticket only gives the candidates
+the step already works out.
+
+#### 9. Not in this ticket
+
+- The control that pins a calculation, its words, and how it shows a pin that does not apply:
+  SHEET-35.
+- Dropping a pin whose entity is removed: SHEET-22.
+- Unarmored Defense, Mage Armor, Draconic Resilience as mechanics: phase 3.
+
+#### 10. Rake check
+
+- **The engine names no game.** `Candidate` is a key, a value and steps; tested on Tales; the AC
+  is the module's.
+- **`compute()` is pure.** The list is built inside the step, from what it reads; the purity test
+  runs it frozen.
+- **A number with no breakdown entry is a bug.** Each candidate carries its own steps, which add
+  up to its value.
+- **Manual overrides always win.** An override changes `ac.base`, not the list (§3 item 5).
+- **The golden tests are the truth.** No expected value changes; item 6 reads them.
+- **A stored-shape change needs a migration.** Nothing stored changes.
+- **Licensing.** The feats are made up (`character:`).
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-29, on `main` at `2da9707`:
+- Before: `pnpm test` `Test Files 75 passed (75)`, `Tests 1011 passed (1011)`; speed `2 passed`.
+- After: `pnpm lint` `Checked 232 files`, no fixes; `pnpm typecheck` exit 0; `pnpm test`
+  `Test Files 75 passed (75)`, `Tests 1018 passed (1018)`, speed `2 passed`; the whole gate
+  42.6 s. 7 tests are new: 2 in `derived.test.ts`, 5 in `combat.test.ts`. No file in `apps/web`
+  changed, so no `pnpm e2e`.
+- Every row of §3 item 4 is met, and items 1–3, 5–7. The golden tests pass unchanged.
+- The tests catch mistakes. 4 breaks, each made alone, then `derived.test.ts` and
+  `combat.test.ts` run (53 tests), the files restored and compared equal after each: no list when
+  a pin applies, 4 failed; the candidates reversed, 6; the core dropping a step's candidates, 7;
+  the core listing every path, 2.
+- Differs from §4: ENG-47's made-up feats, pins and expected steps in `combat.test.ts` moved from
+  inside its `describe` to the file's top level, unchanged, so the SHEET-21 block reads them too.
+- Found, not fixed: nothing.
+- Nothing for the changelog: no screen reads it yet.

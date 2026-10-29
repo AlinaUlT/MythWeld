@@ -209,7 +209,7 @@ chats never claim one version number.
 | SHEET-18 | Attunement past the limit gives a warning | XS | ✅ 2026-10-29 |
 | SHEET-19 | Rolling initiative interrupts a knock-out's rest | XS | ✅ 2026-10-28 |
 | SHEET-20 | A use's recovery amount is computed with a breakdown | S | ✅ 2026-10-29 |
-| SHEET-21 | Every base AC calculation is computed for the pin | S | 🔲 |
+| SHEET-21 | Every base AC calculation is computed for the pin | S | ✅ 2026-10-29 |
 | SHEET-22 | Removing an entity drops what was stored for it | S | 🔲 |
 | SHEET-61 | A condition the character is immune to has no effect | S | 🔲 |
 | SHEET-62 | Gaining the Incapacitated condition ends concentration | XS | 🔲 |
@@ -290,10 +290,6 @@ chats never claim one version number.
   theme (dark by default, light), the motion switch (SHEET-05), the units (feet or metres, pounds
   or kilograms; stored units stay feet and pounds), "I roll myself" (SPEC §6.5). Language, backup,
   packs, AI and purchases come with their phases.
-- **SHEET-21** — found by ENG-47: the pinned base AC calculation is `systemData.acCalc`:
-  `equipment` (the armor worn, else 10 + DEX) or an `ac.formulas` effect's part id; without it the
-  highest counts. The control that pins one (SHEET-35) needs each candidate's key, name and value,
-  and `Computed` gives only the chosen one's breakdown (`acCalcChosen` first when pinned).
 - **SHEET-22** — found by ENG-17: a stored switch (`state.toggles`) stays after its entity is
   removed and warns `toggleGone` on every compute. Found by ENG-47: a pin that does not apply
   warns `stepRule` `acCalcNotApplying` on every compute. Removing an entity drops both.
@@ -371,7 +367,9 @@ chats never claim one version number.
   ENG-43: an override of a skill's stat applies only when its value is one of its keys (a stat's
   key, `overrideNotAKey` otherwise), so the editor stores a stat's key there. An override of a
   roll mode is a manual edit of it (ENG-34).
-- **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates.
+- **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates:
+  `Computed.candidates['ac.base']`, each `{ key, value, steps }`; a pin that does not apply is not
+  among them and warns `acCalcNotApplying`.
 - **SHEET-36** — SPEC §7.2, "What needs choosing": the grants' `pendingChoices` and
   `Computed.pendingKeys`, each answered from the list. Found by ENG-48: a size not chosen is in
   `Computed.pendingKeys` (`{ path, options }`); the answer is written to

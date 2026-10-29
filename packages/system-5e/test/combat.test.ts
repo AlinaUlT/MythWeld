@@ -698,74 +698,74 @@ describe("ENG-45 heavy armor's Strength requirement", () => {
   });
 });
 
+// ENG-47's made-up feats and pins, which SHEET-21 reads too. Golden B: DEX +1, CON +2, chain mail 16, Defense +1 in armor. Worked out by hand: `guarded`
+// 10 + 1 + 2 = 13, only without armor; `plated` 13 + 1 = 14; `plain` 10 + 1 = 11; `stance`
+// 12 + 1 = 13, switched off until the person switches it on. The module's own: 16 in chain mail,
+// 10 + 1 = 11 without armor.
+const guarded = feat('guarded', [
+  {
+    id: 'unarmored',
+    target: 'ac.formulas',
+    op: 'append',
+    value: '10 + @abilities.dex.mod + @abilities.con.mod',
+    when: '!@armor.worn',
+  },
+]);
+const plated = feat('plated', [
+  { id: 'plates', target: 'ac.formulas', op: 'append', value: '13 + @abilities.dex.mod' },
+]);
+const plain = feat('plain', [
+  { id: 'same', target: 'ac.formulas', op: 'append', value: '10 + @abilities.dex.mod' },
+]);
+const stance = feat('stance', [
+  {
+    id: 'stance',
+    target: 'ac.formulas',
+    op: 'append',
+    value: '12 + @abilities.dex.mod',
+    toggle: { label: { en: 'Stance' }, default: false },
+  },
+]);
+const GUARDED = 'character:feat/guarded#unarmored';
+const PLATES = 'character:feat/plated#plates';
+const SAME = 'character:feat/plain#same';
+const STANCE = 'character:feat/stance#stance';
+const GONE = 'character:feat/gone#plates';
+
+const chosen = { kind: 'rule', rule: 'acCalcChosen', value: 0, change: 0 };
+const unarmored = [
+  { kind: 'rule', rule: 'unarmoredAC', value: 10, change: 10 },
+  { kind: 'path', path: 'abilities.dex.mod', value: 1, change: 1 },
+];
+const inChainMail = [
+  { kind: 'entity', source: chainMail, label: { en: 'Chain Mail' }, value: 16, change: 16 },
+];
+
+/** The step of the candidate a made-up feat's effect `part` appends, worth `value`. */
+function appended(part: `character:feat/${string}#${string}`, value: number) {
+  const [source = ''] = part.split('#');
+  const label = { en: source.slice('character:feat/'.length) };
+  return { kind: 'effect', part, source, label, op: 'append', value, change: value };
+}
+
+/** The warning of a pin that applies nowhere. */
+function notApplying(calc: string) {
+  return { code: 'stepRule', path: 'ac.base', rule: 'acCalcNotApplying', data: { calc } };
+}
+
+/** Golden B with these feats, armor or none, and a pin or none. */
+function pinned(
+  own: EntityInput[],
+  armored: boolean,
+  acCalc?: CharacterInput['systemData']['acCalc'],
+): CharacterInput {
+  return goldenBWith(own, {
+    ...(!armored && { inventory: [] }),
+    ...(acCalc !== undefined && { acCalc }),
+  });
+}
+
 describe('ENG-47 the base AC calculation the person picks', () => {
-  // Golden B: DEX +1, CON +2, chain mail 16, Defense +1 in armor. Worked out by hand: `guarded`
-  // 10 + 1 + 2 = 13, only without armor; `plated` 13 + 1 = 14; `plain` 10 + 1 = 11; `stance`
-  // 12 + 1 = 13, switched off until the person switches it on. The module's own: 16 in chain mail,
-  // 10 + 1 = 11 without armor.
-  const guarded = feat('guarded', [
-    {
-      id: 'unarmored',
-      target: 'ac.formulas',
-      op: 'append',
-      value: '10 + @abilities.dex.mod + @abilities.con.mod',
-      when: '!@armor.worn',
-    },
-  ]);
-  const plated = feat('plated', [
-    { id: 'plates', target: 'ac.formulas', op: 'append', value: '13 + @abilities.dex.mod' },
-  ]);
-  const plain = feat('plain', [
-    { id: 'same', target: 'ac.formulas', op: 'append', value: '10 + @abilities.dex.mod' },
-  ]);
-  const stance = feat('stance', [
-    {
-      id: 'stance',
-      target: 'ac.formulas',
-      op: 'append',
-      value: '12 + @abilities.dex.mod',
-      toggle: { label: { en: 'Stance' }, default: false },
-    },
-  ]);
-  const GUARDED = 'character:feat/guarded#unarmored';
-  const PLATES = 'character:feat/plated#plates';
-  const SAME = 'character:feat/plain#same';
-  const STANCE = 'character:feat/stance#stance';
-  const GONE = 'character:feat/gone#plates';
-
-  const chosen = { kind: 'rule', rule: 'acCalcChosen', value: 0, change: 0 };
-  const unarmored = [
-    { kind: 'rule', rule: 'unarmoredAC', value: 10, change: 10 },
-    { kind: 'path', path: 'abilities.dex.mod', value: 1, change: 1 },
-  ];
-  const inChainMail = [
-    { kind: 'entity', source: chainMail, label: { en: 'Chain Mail' }, value: 16, change: 16 },
-  ];
-
-  /** The step of the candidate a made-up feat's effect `part` appends, worth `value`. */
-  function appended(part: `character:feat/${string}#${string}`, value: number) {
-    const [source = ''] = part.split('#');
-    const label = { en: source.slice('character:feat/'.length) };
-    return { kind: 'effect', part, source, label, op: 'append', value, change: value };
-  }
-
-  /** The warning of a pin that applies nowhere. */
-  function notApplying(calc: string) {
-    return { code: 'stepRule', path: 'ac.base', rule: 'acCalcNotApplying', data: { calc } };
-  }
-
-  /** Golden B with these feats, armor or none, and a pin or none. */
-  function pinned(
-    own: EntityInput[],
-    armored: boolean,
-    acCalc?: CharacterInput['systemData']['acCalc'],
-  ): CharacterInput {
-    return goldenBWith(own, {
-      ...(!armored && { inventory: [] }),
-      ...(acCalc !== undefined && { acCalc }),
-    });
-  }
-
   it('takes the pinned calculation over the highest, without armor', () => {
     const none = computed(pinned([guarded, plated], false));
     expect(valuesOf(none, ['ac.base', 'ac.total'])).toEqual({ 'ac.base': 14, 'ac.total': 14 });
@@ -867,6 +867,98 @@ describe('ENG-47 the base AC calculation the person picks', () => {
     deepFreeze(index);
     const result = compute(character, index, fifthEditionModule);
     expect(result.values['ac.base']).toBe(13);
+    expect(compute(character, index, fifthEditionModule)).toEqual(result);
+  });
+});
+
+describe('SHEET-21 every base AC calculation, computed for the pin', () => {
+  /** A candidate of `ac.base`: its key, value and steps. */
+  function candidate(key: string, value: number, steps: readonly unknown[]) {
+    return { key, value, steps };
+  }
+  const own11 = candidate('equipment', 11, unarmored);
+  const own16 = candidate('equipment', 16, inChainMail);
+
+  /** The candidates of `ac.base`; each one's steps add up to its value. */
+  function candidatesOf(result: Computed<FifthEditionEntity>) {
+    const listed = result.candidates['ac.base'] ?? [];
+    for (const { key, value, steps } of listed) {
+      expect(
+        steps.reduce((sum, step) => sum + step.change, 0),
+        key,
+      ).toBe(value);
+    }
+    return listed;
+  }
+
+  it("lists the module's own, then each appended one, whatever is pinned", () => {
+    const all = [
+      own11,
+      candidate(GUARDED, 13, [appended(GUARDED, 13)]),
+      candidate(PLATES, 14, [appended(PLATES, 14)]),
+    ];
+    const none = computed(pinned([guarded, plated], false));
+    expect(none.values['ac.base']).toBe(14);
+    expect(candidatesOf(none)).toEqual(all);
+    const own = computed(pinned([guarded, plated], false, 'equipment'));
+    expect(own.values['ac.base']).toBe(11);
+    expect(candidatesOf(own)).toEqual(all);
+  });
+
+  it('lists only the ones that apply now; a pin that does not is not listed', () => {
+    const plates = candidate(PLATES, 14, [appended(PLATES, 14)]);
+    const none = computed(pinned([guarded, plated], true));
+    expect(none.values['ac.base']).toBe(16);
+    expect(candidatesOf(none)).toEqual([own16, plates]);
+    const off = computed(pinned([guarded, plated], true, GUARDED));
+    expect(off.values['ac.base']).toBe(16);
+    expect(candidatesOf(off)).toEqual([own16, plates]);
+    expect(codes(off)).toEqual([notApplying(GUARDED)]);
+
+    const switchedOff = computed(pinned([stance], false, STANCE));
+    expect(switchedOff.values['ac.base']).toBe(11);
+    expect(candidatesOf(switchedOff)).toEqual([own11]);
+    const on = pinned([stance], false, STANCE);
+    const switchedOn = computed({ ...on, state: { ...on.state, toggles: { [STANCE]: true } } });
+    expect(switchedOn.values['ac.base']).toBe(13);
+    expect(candidatesOf(switchedOn)).toEqual([
+      own11,
+      candidate(STANCE, 13, [appended(STANCE, 13)]),
+    ]);
+  });
+
+  it('keeps the list when an override changes the base AC', () => {
+    const result = computed({
+      ...pinned([guarded, plated], true, PLATES),
+      overrides: [{ path: 'ac.base', value: 20 }],
+    });
+    expect(result.values['ac.base']).toBe(20);
+    expect(candidatesOf(result)).toEqual([own16, candidate(PLATES, 14, [appended(PLATES, 14)])]);
+  });
+
+  it("gives each golden one candidate, the module's own, as its base AC", () => {
+    for (const golden of [goldenA, goldenB, goldenB4, goldenC2014, goldenD]) {
+      const result = computed(golden);
+      const [only, ...more] = candidatesOf(result);
+      expect(more, golden.name).toEqual([]);
+      expect(only?.key, golden.name).toBe('equipment');
+      expect(only?.value, golden.name).toBe(result.values['ac.base']);
+      expect(only?.steps, golden.name).toEqual(result.breakdown['ac.base']);
+    }
+  });
+
+  it('stays pure: frozen inputs give equal candidates', () => {
+    const character = deepFreeze(
+      opened(openFifthEditionCharacter(pinned([guarded, plated], false, GUARDED))),
+    );
+    const { index } = index2024;
+    deepFreeze(index);
+    const result = compute(character, index, fifthEditionModule);
+    expect(result.candidates['ac.base']?.map(({ key }) => key)).toEqual([
+      'equipment',
+      GUARDED,
+      PLATES,
+    ]);
     expect(compute(character, index, fifthEditionModule)).toEqual(result);
   });
 });

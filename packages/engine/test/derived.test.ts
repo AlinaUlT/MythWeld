@@ -624,3 +624,30 @@ describe('SHEET-15 what a step finds by key, and whether an effect applies', () 
     ]);
   });
 });
+
+describe('SHEET-21 the candidates a path is chosen from', () => {
+  const low = { kind: 'rule', rule: 'low', value: 2, change: 2 } as const;
+  const high = { kind: 'rule', rule: 'high', value: 5, change: 5 } as const;
+  const candidates = [
+    { key: 'low', value: 2, steps: [low] },
+    { key: 'high', value: 5, steps: [high] },
+  ];
+  /** A guard of the higher candidate, giving both. */
+  const system = withSteps(() => ({
+    guard: () => ({ value: 5, steps: [high], candidates }),
+  }));
+
+  it("gives a step's candidates by its path, in its order; a path with none is not there", () => {
+    const result = computed(ash, system);
+    expect(result.values.guard).toBe(5);
+    expect(result.candidates).toEqual({ guard: candidates });
+    expect(computed(ash).candidates).toEqual({});
+  });
+
+  it('keeps them as the step gave them when an override changes the value', () => {
+    const result = computed(variant(ash, { overrides: [{ path: 'guard', value: 9 }] }), system);
+    expect(result.values.guard).toBe(9);
+    expect(result.breakdown.guard?.at(-1)).toMatchObject({ kind: 'override', value: 9 });
+    expect(result.candidates).toEqual({ guard: candidates });
+  });
+});

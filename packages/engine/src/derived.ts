@@ -18,6 +18,8 @@ import { type BreakdownStep, type KeyStep, STAT_TYPE, type Stats } from './stats
 // one through `readKey`; it is finished when first read, in the same loop check as a number.
 // ENG-48: a key path given with no key of its own is a choice still to make: it is pending, with
 // its keys as the options, and has a key only when an effect or an override sets one.
+// SHEET-21: a step whose value is chosen from several numbers gives each as a candidate, worked
+// out, so the screen can offer each one; the path's value stays the step's.
 
 /** The path of the character's level (SPEC §5.6 `@level`). */
 export const LEVEL_PATH = 'level';
@@ -63,6 +65,16 @@ export interface RuleWarning {
   readonly message: string;
 }
 
+/**
+ * One of the numbers a path's value is chosen from (a fifth-edition base AC calculation), by its
+ * key: its value and the steps that made it, which also name it.
+ */
+export interface Candidate {
+  readonly key: string;
+  readonly value: number;
+  readonly steps: readonly BreakdownStep[];
+}
+
 /** A number a step gives, and the steps that made it (SPEC §6.2). */
 export interface Derived {
   readonly value: number;
@@ -76,6 +88,8 @@ export interface Derived {
    * as it is, once however many paths meet it.
    */
   readonly effectWarnings?: readonly EffectWarning[];
+  /** The numbers its value is chosen from, each as it was worked out, in the step's order. */
+  readonly candidates?: readonly Candidate[];
 }
 
 /** A computed path's value, computed first when it is not yet. A path nothing gives reads 0. */
@@ -173,12 +187,13 @@ export type DerivedWarning =
     ));
 
 /**
- * Each path's value and breakdown, in the order of `computeDerived`; each key path's key, and the
- * key paths still to choose.
+ * Each path's value and breakdown, in the order of `computeDerived`, and the candidates of each
+ * path whose step gives them; each key path's key, and the key paths still to choose.
  */
 export interface DerivedValues {
   values: Record<string, number>;
   breakdown: Record<string, readonly BreakdownStep[]>;
+  candidates: Record<string, readonly Candidate[]>;
   keys: Record<string, ComputedKey>;
   pendingKeys: PendingKey[];
   warnings: DerivedWarning[];
@@ -382,6 +397,7 @@ export function computeDerived<E extends GatherableEntity>(input: {
   // what read it; a path read again closes a loop, named from that path to the read that closed it.
   const computing = new Map<string, LoopLink>();
   const warnedEffects = new Set<string>();
+  const candidates = new Map<string, readonly Candidate[]>();
 
   /** Whether reading `path` now closes a loop; if it does, the loop is warned, `used` in it. */
   function closesLoop(path: string, readFor: string, link: LoopLink, used: string): boolean {
@@ -441,6 +457,7 @@ export function computeDerived<E extends GatherableEntity>(input: {
       warnedEffects.add(key);
       warnings.push(warning);
     }
+    if (own.candidates !== undefined) candidates.set(path, own.candidates);
     const result = finish(path, own, readBy);
     computing.delete(path);
     values.set(path, result.value);
@@ -468,10 +485,19 @@ export function computeDerived<E extends GatherableEntity>(input: {
     return result;
   }
 
-  const out: DerivedValues = { values: {}, breakdown: {}, keys: {}, pendingKeys: [], warnings };
+  const out: DerivedValues = {
+    values: {},
+    breakdown: {},
+    candidates: {},
+    keys: {},
+    pendingKeys: [],
+    warnings,
+  };
   for (const path of order) {
     out.values[path] = valueAt(path, path);
     out.breakdown[path] = breakdown.get(path) ?? [];
+    const listed = candidates.get(path);
+    if (listed !== undefined) out.candidates[path] = listed;
   }
   for (const [path, own] of keyPaths) {
     const key = keyAt(path, path);

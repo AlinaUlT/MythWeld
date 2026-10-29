@@ -2,6 +2,7 @@ import {
   activeEffects,
   appendedNumbers,
   type BreakdownStep,
+  type Candidate,
   type DerivedStep,
   type DeriveInput,
   type EffectWarning,
@@ -22,7 +23,8 @@ import { shieldWithoutAC, UNTRAINED_RULES, untrainedOf } from './training';
 // effect may set to 0 (the SRD 5.1 dwarf, ENG-45 §8). ENG-47: the base AC calculation the person
 // pins counts over the highest while it applies; one that does not apply warns. ENG-46: a shield
 // worn without training whose edition takes its AC away adds no magic bonus; `ac.bonus` names the
-// rule (its effects on `ac.*` are suppressed, `training.ts`).
+// rule (its effects on `ac.*` are suppressed, `training.ts`). SHEET-21: `ac.base` gives every
+// candidate that applies, worked out, so the screen can offer each one to pin.
 
 /**
  * The stats the rules name: initiative and AC read Dexterity, hit points Constitution (ENG-14 §8);
@@ -173,17 +175,11 @@ function hitPoints({
   };
 }
 
-/** A base AC calculation that applies, by its key: `EQUIPMENT_AC_CALC` or an effect's part. */
-interface Candidate {
-  readonly key: string;
-  readonly value: number;
-  readonly steps: readonly BreakdownStep[];
-}
-
 /**
  * The base AC: the candidate pinned in `acCalc` when it applies (ENG-47), else the highest of the
  * module's own (the worn armor's, else 10 + DEX) and each number an effect appends to
- * `ac.formulas`, the first of equal ones.
+ * `ac.formulas`, the first of equal ones. Each candidate that applies is given, keyed
+ * `EQUIPMENT_AC_CALC` or by its effect's part, the module's own first (SHEET-21).
  */
 function armorClassBase(
   { character, gathered }: DeriveInput<FifthEditionCharacter, FifthEditionEntity>,
@@ -237,7 +233,7 @@ function armorClassBase(
         { kind: 'rule', rule: 'acCalcChosen', value: 0, change: 0 },
         ...chosen.steps,
       ];
-      return { value: chosen.value, steps, effectWarnings };
+      return { value: chosen.value, steps, effectWarnings, candidates };
     }
     const best = candidates.reduce((high, each) => (each.value > high.value ? each : high));
     const ruleWarnings: RuleWarning[] =
@@ -250,7 +246,7 @@ function armorClassBase(
               message: `The base AC calculation "${pinned}" is pinned but does not apply now; the highest one counts.`,
             },
           ];
-    return { value: best.value, steps: best.steps, effectWarnings, ruleWarnings };
+    return { value: best.value, steps: best.steps, effectWarnings, ruleWarnings, candidates };
   };
 }
 
