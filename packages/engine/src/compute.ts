@@ -121,6 +121,18 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    * unmet is warned as `unmetPrerequisite`; the entity applies all the same.
    */
   prerequisitesOf?(character: C, entity: E): readonly Prerequisite[];
+  /**
+   * SHEET-22: the places in the module's part of the character that name an effect by its part (a
+   * fifth-edition pinned AC calculation). An action that takes an entity from the character drops
+   * each that names one of that entity's effects, as it drops the entity's stored switches.
+   */
+  storedParts?(character: C): readonly StoredPart[];
+}
+
+/** SHEET-22: a place in a character that names an effect by its part, `<entityId>#<effectId>`. */
+export interface StoredPart {
+  readonly path: readonly string[];
+  readonly part: string;
 }
 
 /**

@@ -9,6 +9,7 @@ import {
   finderOf,
   type LogStamp,
   recoveredOn,
+  withDropped,
 } from '@grimoire/engine';
 import type { LogChange, LogEntry } from '@grimoire/schema';
 import {
@@ -140,19 +141,28 @@ function numberAt(computed: Computed<FifthEditionEntity>, path: string): number 
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
-/** The changes, the entry and the outcome of a rest, or `unchanged` when nothing changes. */
+/**
+ * The changes, the entry and the outcome of a rest, or `unchanged` when nothing changes. SHEET-22:
+ * a condition the rest takes to level 0 leaves nothing stored for it (`withDropped`).
+ */
 function rested(
   character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
   stamp: LogStamp,
   action: string,
   changes: LogChange[],
   outcome: RestOutcome,
 ): RestResult {
-  const result = settled<RestRefusal>(
+  const result = withDropped(
     character,
-    stamp,
-    { action, subject: 'rest', changes },
-    'The rest gives back nothing: nothing is spent or lost.',
+    settled<RestRefusal>(
+      character,
+      stamp,
+      { action, subject: 'rest', changes },
+      'The rest gives back nothing: nothing is spent or lost.',
+    ),
+    index,
+    fifthEditionModule,
   );
   return result.ok ? { ...result, outcome } : result;
 }
@@ -214,6 +224,7 @@ export function shortRest(
   const eased = conditionsRecoveredOn(character, computed, REST_EVENTS.short);
   return rested(
     character,
+    index,
     stamp,
     'shortRest',
     [
@@ -274,6 +285,7 @@ export function longRest(
   const inspired = inspirationGiven(character, computed.values[INSPIRATION_LONG_REST_PATH]);
   return rested(
     character,
+    index,
     stamp,
     'longRest',
     [

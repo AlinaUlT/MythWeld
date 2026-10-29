@@ -552,7 +552,13 @@ describe('ENG-19 goldens: golden D', () => {
     expect(tired.values).toEqual(d.values);
     expect(tired.breakdown).toEqual(d.breakdown);
 
-    const removed = removeCondition(given.character, index, { id: exhaustion }, stamp);
+    const removed = removeCondition(
+      given.character,
+      index,
+      fifthEditionModule,
+      { id: exhaustion },
+      stamp,
+    );
     if (!removed.ok) throw new Error(removed.message);
     const rested = compute(removed.character, index, fifthEditionModule);
     expect(rested.values).toEqual(b.values);

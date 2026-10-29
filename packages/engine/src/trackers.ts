@@ -1,5 +1,5 @@
 import type { EntityId, L10n, LogChange, LogEntry, Roller, UsesDef } from '@grimoire/schema';
-import type { Computed } from './compute';
+import { type Computed, compute, type StoredPart, type SystemModule } from './compute';
 import type { ContentIndex, Lookup } from './content-index';
 import { recoveryPath } from './derived';
 import { evaluateNumber, type FormulaReader, type FormulaWarning } from './formula';
@@ -26,6 +26,8 @@ import {
 // SHEET-20: a resource's amount on an event is computed (`recoveryPath`), with its breakdown,
 // effects and overrides; `recoveryOf` gives it to the screen, and `recoveredOn` gives it back.
 // ENG-61: `conditionsRecoveredOn` does the same for the levels a condition's `recovery` takes away.
+// SHEET-22: an action that takes an entity from the character ends with `withDropped`, so neither
+// the entity's stored switches nor a module's place naming one of its effects is left behind.
 
 /**
  * Who makes a change, when, and the new entry's id. The caller gives them, as it gives a roll's
@@ -134,6 +136,63 @@ function done<C>(character: C, stamp: LogStamp, made: MadeChanges): ActionResult
   const applied: Applied<C> = applyEntry(character, entry);
   return applied.ok ? { ok: true, character: applied.character, entry } : applied;
 }
+
+/** The parts of the effects of every entity a computed character has or withholds (SHEET-61). */
+function effectParts<E extends GatherableEntity>(computed: Computed<E>): Set<string> {
+  const met = [...computed.entities, ...(computed.withheld ?? [])];
+  return new Set(
+    met.flatMap(({ entity }) => (entity.effects ?? []).map(({ id }) => `${entity.id}#${id}`)),
+  );
+}
+
+/**
+ * SHEET-22: the changes that drop, from `after`, what it keeps for the entities an action took
+ * from `before`: each stored switch (`state.toggles`) and each of the module's `storedParts`
+ * whose part names an effect of an entity `before` has or withholds and `after` does not. What
+ * names an effect neither has, or one both have (an item put away, a switch off), stays.
+ */
+export function droppedChanges<C extends CharacterCore<E>, E extends GatherableEntity>(
+  before: C,
+  after: C,
+  index: ContentIndex<E>,
+  system: SystemModule<C, E>,
+): LogChange[] {
+  const had = effectParts(compute(before, index, system));
+  const has = effectParts(compute(after, index, system));
+  const places: StoredPart[] = [
+    ...Object.keys(after.state.toggles).map((part) => ({ path: [...TOGGLES, part], part })),
+    ...(system.storedParts?.(after) ?? []),
+  ];
+  return places
+    .filter(({ part }) => had.has(part) && !has.has(part))
+    .map(({ path }) => changeTo(after, path, undefined));
+}
+
+/**
+ * SHEET-22: what an action on `before` gives, with the `droppedChanges` of the character after it
+ * added to its entry and applied. A refusal, or a result that leaves nothing behind, is given as
+ * it is.
+ */
+export function withDropped<
+  C extends CharacterCore<E>,
+  E extends GatherableEntity,
+  T extends { ok: true; character: C; entry: LogEntry } | { ok: false },
+>(before: C, result: T, index: ContentIndex<E>, system: SystemModule<C, E>): T | EntryFailure {
+  if (!result.ok) return result;
+  const { character, entry } = result as T & { ok: true; character: C; entry: LogEntry };
+  const changes = droppedChanges(before, character, index, system);
+  if (changes.length === 0) return result;
+  const applied = applyEntry(character, { ...entry, changes });
+  if (!applied.ok) return applied;
+  return {
+    ...result,
+    character: applied.character,
+    entry: { ...entry, changes: [...entry.changes, ...changes] },
+  };
+}
+
+/** A log entry that did not apply. */
+type EntryFailure = { ok: false } & EntryRefusal;
 
 /** The uses spent of `key` the trackers hold: 0 when none are stored. */
 function spentOf(character: unknown, key: string): number {
@@ -438,10 +497,14 @@ export function setCondition<C extends TrackedCharacter<E>, E extends Gatherable
   });
 }
 
-/** Takes the condition `id` from the character, whether or not a pack still has its entry. */
+/**
+ * Takes the condition `id` from the character, whether or not a pack still has its entry, and
+ * drops what was stored for it (`withDropped`): `system` is the character's module.
+ */
 export function removeCondition<C extends TrackedCharacter<E>, E extends GatherableEntity>(
   character: C,
   index: ContentIndex<E>,
+  system: SystemModule<C, E>,
   ask: { id: string },
   stamp: LogStamp,
 ): ActionResult<C> {
@@ -452,12 +515,13 @@ export function removeCondition<C extends TrackedCharacter<E>, E extends Gathera
   }
   const found = lookUp(character, index, id);
   const after = conditions.filter((each) => each.id !== id);
-  return done(character, stamp, {
+  const removed = done(character, stamp, {
     action: 'removeCondition',
     subject: id,
     label: found.ok ? found.entity.name : undefined,
     changes: [changeTo(character, CONDITIONS, copyJson(after))],
   });
+  return withDropped(character, removed, index, system);
 }
 
 /**

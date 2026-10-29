@@ -10,6 +10,7 @@ import {
   keyFinderOf,
   type LogStamp,
   type MadeChanges,
+  withDropped,
 } from '@grimoire/engine';
 import { type EntityId, entityKeySchema, type LogChange, type LogEntry } from '@grimoire/schema';
 import {
@@ -361,16 +362,22 @@ export function revive(
   const max = maxIn(computed);
   const current = Math.max(1, hp === 'max' ? max : Math.min(max, hp));
   const eased = conditionsRecoveredOn(character, computed, REVIVE_EVENTS);
-  const result = settled<HitPointRefusal>(
+  // SHEET-22: a condition the revival takes to level 0 leaves nothing stored for it.
+  const result = withDropped(
     character,
-    stamp,
-    hitPoints('revive', [
-      changeTo(character, HP_CURRENT_PATH, current),
-      ...deathSavesReset(character),
-      ...eased.changes,
-      ...knockOutEnded(character),
-    ]),
-    'The revival changes nothing.',
+    settled<HitPointRefusal>(
+      character,
+      stamp,
+      hitPoints('revive', [
+        changeTo(character, HP_CURRENT_PATH, current),
+        ...deathSavesReset(character),
+        ...eased.changes,
+        ...knockOutEnded(character),
+      ]),
+      'The revival changes nothing.',
+    ),
+    index,
+    fifthEditionModule,
   );
   // A revival that changes nothing leaves the character as it was.
   const fatal = fatalExhaustion(result.ok ? result.character : character, find);

@@ -14,7 +14,7 @@ import { attunementWarnings } from './attunement';
 import type { FifthEditionCharacter } from './character';
 import { checkSteps, skillKeys } from './checks';
 import { characterLevel, classesOf, prerequisitesOf } from './classes';
-import { combatSteps } from './combat';
+import { acCalcParts, combatSteps } from './combat';
 import {
   defenseSteps,
   defenseWarnings,
@@ -235,4 +235,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
 
   // An entity's own prerequisites; a class of a character with two or more, its multiclass ones.
   prerequisitesOf,
+
+  // The pinned base AC calculation, dropped with the entity whose effect it names.
+  storedParts: acCalcParts,
 };

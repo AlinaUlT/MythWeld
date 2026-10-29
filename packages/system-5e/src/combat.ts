@@ -7,6 +7,7 @@ import {
   type DeriveInput,
   type EffectWarning,
   type RuleWarning,
+  type StoredPart,
 } from '@grimoire/engine';
 import type { FifthEditionCharacter } from './character';
 import type { FifthEditionEntity, ItemDef, LineageDef, SpeciesDef } from './entity-types';
@@ -24,7 +25,8 @@ import { shieldWithoutAC, UNTRAINED_RULES, untrainedOf } from './training';
 // pins counts over the highest while it applies; one that does not apply warns. ENG-46: a shield
 // worn without training whose edition takes its AC away adds no magic bonus; `ac.bonus` names the
 // rule (its effects on `ac.*` are suppressed, `training.ts`). SHEET-21: `ac.base` gives every
-// candidate that applies, worked out, so the screen can offer each one to pin.
+// candidate that applies, worked out, so the screen can offer each one to pin. SHEET-22: a pin
+// naming an effect's part is one of the module's `storedParts`, dropped with its entity.
 
 /**
  * The stats the rules name: initiative and AC read Dexterity, hit points Constitution (ENG-14 §8);
@@ -248,6 +250,17 @@ function armorClassBase(
           ];
     return { value: best.value, steps: best.steps, effectWarnings, ruleWarnings, candidates };
   };
+}
+
+/** SHEET-22: where the pinned base AC calculation is kept. */
+export const AC_CALC_PATH = ['systemData', 'acCalc'];
+
+/** The pinned base AC calculation, when it names an effect's part: the module's own does not. */
+export function acCalcParts({ systemData }: FifthEditionCharacter): StoredPart[] {
+  const { acCalc } = systemData;
+  return acCalc === undefined || acCalc === EQUIPMENT_AC_CALC
+    ? []
+    : [{ path: AC_CALC_PATH, part: acCalc }];
 }
 
 /** The feet the armor worn takes from every speed: 10 when its Strength requirement is not met. */

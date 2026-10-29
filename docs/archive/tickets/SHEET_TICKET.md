@@ -2886,3 +2886,130 @@ Nothing to check: no rules fact.
 CSS cannot stop it; written into the SHEET-56 note, with `motionIsStill()` for it.
 
 **Changelog:** nothing for the changelog; nothing on screen moves yet.
+
+---
+
+### SHEET-22 Removing an entity drops what was stored for it
+
+**Hat:** Removing an entity drops what was stored for it
+**Depends on:** ENG-17 (stored switches), ENG-47 and SHEET-21 (the pinned base AC calculation)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.8 (`state.toggles`), §6.1 step 5 (the AC pin), §8.2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/trackers.ts` — changes: `droppedChanges`, `withDropped`;
+`removeCondition` takes the module and ends with `withDropped`.
+- `packages/engine/src/compute.ts` — `SystemModule.storedParts`, `StoredPart`.
+- `packages/system-5e/src/combat.ts` — `AC_CALC_PATH`, `acCalcParts`.
+- `packages/system-5e/src/module.ts` — `storedParts: acCalcParts`.
+- `packages/system-5e/src/rests.ts`, `hit-points.ts` — a rest and a revival end with `withDropped`.
+
+#### 2. What is missing now
+
+Measured on `d4bee2f`:
+- A stored switch stays after its entity is removed; `phases.ts` warns `toggleGone` for it on every
+  compute (ENG-17 §11).
+- A pin (`systemData.acCalc`) naming an effect of a removed entity stays; `combat.ts` warns
+  `stepRule` `acCalcNotApplying` on every compute (ENG-47 §11).
+- No action drops either. The actions that take an entity away today: the core's
+  `removeCondition`, and fifth edition's `shortRest`, `longRest` and `revive`, which take a
+  condition to level 0 through `conditionsRecoveredOn`.
+
+#### 3. What it should look like when done
+
+1. `droppedChanges(before, after, index, system)` gives one removal change per stored switch, then
+   one per module `storedParts` place, whose part names an effect of an entity `before` has or
+   withholds and `after` does not.
+2. What names an effect neither side has, or one both have, stays: a switch no entity ever had; an
+   item's effect while the item is carried but not equipped (fifth edition names only equipped
+   items to `compute()`).
+3. `withDropped(before, result, index, system)` adds those changes to the entry and applies them.
+   A refusal, or a result with nothing to drop, is returned as the same object.
+4. Tales: Brook under a made-up condition Spellbound (a switched `daze`, wits -1; a grant of Night
+   Warden). Stored on: `charm`, `daze`, `glow`, and a switch of `gone-missing`. Before: grit 7,
+   wits 7. `removeCondition` gives the conditions change, then `daze` and `glow` dropped; `charm`
+   and the `gone-missing` switch stay; grit 6, wits 8 (ENG-27's Brook); `toggleGone` only for
+   `gone-missing`, as before. Reversing the entry gives the character back.
+5. Fifth edition: golden B under a made-up condition Braced (`brace`, switched, appends 13 + DEX to
+   `ac.formulas`; ends on `long` and `revive`), `brace` on and pinned. Before: `ac.base` 14,
+   `ac.total` 15. `removeCondition`, `longRest` and `revive` each end their entry with the switch
+   and the pin dropped: `ac.base` 16, `ac.total` 17, no `acCalcNotApplying`.
+6. A pin of a carried, unequipped item's effect stays when Braced is removed (it warns
+   `acCalcNotApplying` before and after, as ENG-47 says a pin that does not apply does).
+
+#### 4. How to do it
+
+1. `compute.ts`: `StoredPart { path, part }`; optional `SystemModule.storedParts(character)`.
+2. `trackers.ts`: `effectParts(computed)` (entities and `withheld`); `droppedChanges` computes both
+   sides and compares; `withDropped` wraps a result. `removeCondition(character, index, system,
+   ask, stamp)`.
+3. Fifth edition: `acCalcParts` gives the pin unless it is absent or `equipment`; `rested` and
+   `revive` wrap `settled` in `withDropped`.
+4. Callers of `removeCondition` in the tests pass the module; no expected value changes.
+
+Why a before/after comparison and not "names no effect the character has": fifth edition names
+only equipped items to `compute()`, so the plain rule would drop the switches and the pin of an
+item put away, which the person still carries.
+
+#### 5. Stored data
+
+Nothing stored changes. The changes remove a key of `state.toggles` and the optional
+`systemData.acCalc`; both shapes stay valid.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/engine/test/trackers.test.ts` — `describe('SHEET-22 removing an entity drops what was
+  stored for it')`: §3 items 1–4, on Tales; a module place (`notes.pin`) through a Tales module
+  with `storedParts`.
+- `packages/system-5e/test/dropped.test.ts` — the same `describe`: §3 items 5 and 6.
+- Control numbers from: ENG-27's Brook (grit 6, wits 8) and Tales' rules; golden B (SPEC §6.7:
+  `ac.base` 16, `ac.total` 17) and ENG-47's `plated` in chain mail (14, 15), worked out by hand.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts. What is kept for an entity is the app's own data.
+
+#### 9. Not in this ticket
+
+- Actions that will take other entities away (an inventory row, a feat, a custom entry): their
+  rows end them with `withDropped`. Noted on SHEET-50 and SHEET-52.
+- Deleting a character, with its rolls and history: SHEET-25 (SHEET-07 §9 named this row too).
+- Choices (`choices`, keyed by a grant's part) of a removed entity stay stored. Nothing warns on
+  them, and they come back if the entity comes back. No change.
+
+#### 10. Rake check
+
+- **The core names no game:** switches and `storedParts` are game-free; the AC pin is the
+  module's. Tested on Tales.
+- **`compute()` is pure:** it is not changed; the actions call it on their inputs and outputs.
+- **Missing is not broken:** a switch of an entity no pack has is kept and still warns
+  `toggleGone`; nothing throws.
+- **A stored-shape change needs a migration:** none changes (§5).
+- **Undo:** the dropped changes are part of the action's one entry, so one undo brings them back.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-29, on `main` at `64cf0fc` (SHEET-62, SHEET-63 and SHEET-05 landed while
+this ran): `pnpm lint` 238 files, no fixes; `pnpm typecheck` 6 projects, no errors; `pnpm test` 79
+files, 1064 passed, 0 failed, 17.6 s, then the speed project 1 file, 2 passed. Coverage:
+statements 99.44 % (3422/3441), lines 99.9 % (3002/3005). Before the rebase, on `d4bee2f`: 1038
+passed, against 1030 without this ticket's tests (+8: engine 291 → 295, fifth edition 544 → 548).
+Not `apps/web`, so no `pnpm e2e`.
+
+Differences from the row: the row said "removing an entity" with no action to remove one. The
+removal actions that exist (§2) now drop; the rule is one function the later removals call.
+
+Found, not fixed:
+- `toggleGone` reads `gathered.entities` only (`phases.ts`), so a stored switch of a condition
+  withheld by immunity (SHEET-61) warns while it is withheld. No row: no SRD condition has a
+  switch.
+
+Nothing for the changelog.

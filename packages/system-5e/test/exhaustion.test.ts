@@ -158,7 +158,13 @@ describe('ENG-19 exhaustion is data in both editions', () => {
 
   it("2014: removing it gives golden A's values and breakdowns back", () => {
     const tired = exhausted(goldenA, EXHAUSTION_2014, 4);
-    const removed = removeCondition(tired, index2014, { id: EXHAUSTION_2014 }, stamp);
+    const removed = removeCondition(
+      tired,
+      index2014,
+      fifthEditionModule,
+      { id: EXHAUSTION_2014 },
+      stamp,
+    );
     if (!removed.ok) throw new Error(removed.message);
     const after = compute(removed.character, index2014, fifthEditionModule);
     const before = compute(exhausted(goldenA, EXHAUSTION_2014, 0), index2014, fifthEditionModule);

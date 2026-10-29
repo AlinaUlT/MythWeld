@@ -2,6 +2,7 @@ import {
   type ActionResult,
   applyEntry,
   compute,
+  droppedChanges,
   type LogStamp,
   loadContentIndex,
   regainResource,
@@ -11,6 +12,7 @@ import {
   setCondition,
   setToggle,
   useResource,
+  withDropped,
 } from '@grimoire/engine';
 import { type LogEntry, logEntrySchema } from '@grimoire/schema';
 import { describe, expect, it } from 'vitest';
@@ -267,7 +269,7 @@ describe('ENG-30 tracker actions', () => {
   });
 
   it('takes a condition away, its entry found or not', () => {
-    const rested = changed(removeCondition(ash, index, { id: WEARY }, stamp));
+    const rested = changed(removeCondition(ash, index, talesModule, { id: WEARY }, stamp));
     expect(made(rested.entry)).toEqual({
       action: 'removeCondition',
       subject: WEARY,
@@ -276,7 +278,7 @@ describe('ENG-30 tracker actions', () => {
     });
     // wits mod 2 + 2 × knack 1 + `shadow` 1
     expect(computed(rested.character).values['skills.sneak.total']).toBe(5);
-    expect(refusal(removeCondition(ash, index, { id: LOST }, stamp))).toEqual({
+    expect(refusal(removeCondition(ash, index, talesModule, { id: LOST }, stamp))).toEqual({
       ok: false,
       code: 'unchanged',
     });
@@ -285,7 +287,7 @@ describe('ENG-30 tracker actions', () => {
     const haunted = opened(
       openTalesCharacter({ ...ash, state: { ...ash.state, conditions: [{ id: gone }] } }),
     );
-    const cleared = changed(removeCondition(haunted, index, { id: gone }, stamp));
+    const cleared = changed(removeCondition(haunted, index, talesModule, { id: gone }, stamp));
     expect(made(cleared.entry)).toEqual({
       action: 'removeCondition',
       subject: gone,
@@ -336,7 +338,7 @@ describe('ENG-30 tracker actions', () => {
       ['regain', ash, regainResource(ash, computed(ash), { key: 'luck', amount: 'all' }, stamp)],
       ['level', ash, setCondition(ash, index, { id: WEARY, level: 3 }, stamp)],
       ['add', ash, setCondition(ash, index, { id: LOST }, stamp)],
-      ['remove', brook, removeCondition(brook, index, { id: LOST }, stamp)],
+      ['remove', brook, removeCondition(brook, index, talesModule, { id: LOST }, stamp)],
       ['on', ash, setToggle(ash, computed(ash), { part: GLOW, on: true }, stamp)],
       ['off', brook, setToggle(brook, computed(brook), { part: CHARM, on: false }, stamp)],
     ];
@@ -443,7 +445,7 @@ describe('ENG-30 tracker actions', () => {
       regainResource(ashNow, ashComputed, { key: 'luck', amount: 1 }, stampNow),
       setCondition(ashNow, index, { id: WEARY, level: 2 }, stampNow),
       setCondition(ashNow, index, { id: LOST }, stampNow),
-      removeCondition(ashNow, index, { id: WEARY }, stampNow),
+      removeCondition(ashNow, index, talesModule, { id: WEARY }, stampNow),
       setToggle(ashNow, ashComputed, { part: GLOW, on: true }, stampNow),
       setToggle(brookNow, brookComputed, { part: CHARM, on: false }, stampNow),
     ];
@@ -460,5 +462,121 @@ describe('ENG-30 tracker actions', () => {
     expect(ashComputed).toEqual(computed(ash));
     expect(brookComputed).toEqual(computed(brook));
     expect(stampNow).toEqual(stamp);
+  });
+});
+
+// SHEET-22: Brook under a made-up condition of its own, Spellbound, whose `daze` (wits -1) has a
+// switch and whose `gift` gives Night Warden. Stored: Brook's `charm`, `daze`, Night Warden's
+// `glow`, all on, and a switch of `gone-missing`, which no pack has. Worked out by hand: grit 5 +
+// `charm` 1 + `glow` 1 = 7, wits 6 + seeker `keen` 2 - `daze` 1 = 7; without the condition,
+// ENG-27's Brook: grit 6, wits 8.
+const SPELLBOUND = 'character:condition/spellbound';
+const DAZE = `${SPELLBOUND}#daze`;
+const GONE_SWITCH = 'tales-core:talent/gone-missing#spark';
+const spellbound = opened(
+  openTalesCharacter({
+    ...brookFile,
+    state: {
+      ...brookFile.state,
+      conditions: [...brookFile.state.conditions, { id: SPELLBOUND }],
+      toggles: { [CHARM]: true, [DAZE]: true, [GLOW]: true, [GONE_SWITCH]: true },
+    },
+    localEntities: [
+      ...brookFile.localEntities,
+      {
+        id: SPELLBOUND,
+        type: 'condition',
+        ruleset: 'any',
+        name: { en: 'Spellbound' },
+        effects: [
+          {
+            id: 'daze',
+            target: 'abilities.wits.score',
+            op: 'add',
+            value: -1,
+            toggle: { label: { en: 'Dazed' }, default: false },
+          },
+        ],
+        grants: [{ id: 'gift', kind: 'entity', fixed: ['tales-core:talent/night-warden'] }],
+        source: { pack: 'character' },
+      },
+    ],
+  }),
+);
+
+/** The toggles a computed character warns are gone. */
+function gone(character: TalesCharacter) {
+  return computed(character).warnings.flatMap((warning) =>
+    warning.code === 'toggleGone' ? [warning.part] : [],
+  );
+}
+
+describe('SHEET-22 removing an entity drops what was stored for it', () => {
+  it('drops the switches of the condition taken away, and of what it gave', () => {
+    const before = computed(spellbound).values;
+    expect([before['abilities.grit.score'], before['abilities.wits.score']]).toEqual([7, 7]);
+    expect(gone(spellbound)).toEqual([GONE_SWITCH]);
+
+    const freed = changed(
+      removeCondition(spellbound, index, talesModule, { id: SPELLBOUND }, stamp),
+    );
+    expect(made(freed.entry)).toEqual({
+      action: 'removeCondition',
+      subject: SPELLBOUND,
+      label: { en: 'Spellbound' },
+      changes: [
+        {
+          path: ['state', 'conditions'],
+          before: [{ id: LOST }, { id: SPELLBOUND }],
+          after: [{ id: LOST }],
+        },
+        { path: ['state', 'toggles', DAZE], before: true },
+        { path: ['state', 'toggles', GLOW], before: true },
+      ],
+    });
+    // Brook's own `charm` stays, and so does the switch no entity of the character ever had.
+    expect(freed.character.state.toggles).toEqual({ [CHARM]: true, [GONE_SWITCH]: true });
+    const after = computed(freed.character).values;
+    expect([after['abilities.grit.score'], after['abilities.wits.score']]).toEqual([6, 8]);
+    expect(gone(freed.character)).toEqual([GONE_SWITCH]);
+
+    const back = reverseEntry(freed.character, freed.entry);
+    expect(back.ok && back.character).toEqual(spellbound);
+  });
+
+  it("drops a module's place that names an effect of the entity taken away", () => {
+    const pinning = { ...talesModule, storedParts: () => [{ path: ['notes', 'pin'], part: DAZE }] };
+    const pinned = { ...spellbound, notes: { ...spellbound.notes, pin: DAZE } };
+    const freed = changed(removeCondition(pinned, index, pinning, { id: SPELLBOUND }, stamp));
+    expect(freed.entry.changes.slice(1)).toEqual([
+      { path: ['state', 'toggles', DAZE], before: true },
+      { path: ['state', 'toggles', GLOW], before: true },
+      { path: ['notes', 'pin'], before: DAZE },
+    ]);
+    expect(freed.character.notes).toEqual(brook.notes);
+  });
+
+  it('keeps what names an effect both sides have, or neither', () => {
+    expect(droppedChanges(spellbound, spellbound, index, talesModule)).toEqual([]);
+    // Night Warden stays given by the calling's choice once the condition is gone.
+    const warden = {
+      ...spellbound,
+      systemData: {
+        ...spellbound.systemData,
+        talents: [...spellbound.systemData.talents, 'tales-core:talent/night-warden'],
+      },
+    };
+    const freed = changed(removeCondition(warden, index, talesModule, { id: SPELLBOUND }, stamp));
+    expect(freed.entry.changes.slice(1)).toEqual([
+      { path: ['state', 'toggles', DAZE], before: true },
+    ]);
+  });
+
+  it('gives a refusal, or a result that leaves nothing behind, as it is', () => {
+    const refused = removeCondition(brook, index, talesModule, { id: SPELLBOUND }, stamp);
+    expect(refusal(refused)).toEqual({ ok: false, code: 'unchanged' });
+    expect(withDropped(brook, refused, index, talesModule)).toBe(refused);
+    const lost = removeCondition(brook, index, talesModule, { id: LOST }, stamp);
+    expect(withDropped(brook, lost, index, talesModule)).toBe(lost);
   });
 });

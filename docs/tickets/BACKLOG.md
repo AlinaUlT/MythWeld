@@ -213,7 +213,7 @@ chats never claim one version number.
 | SHEET-19 | Rolling initiative interrupts a knock-out's rest | XS | ✅ 2026-10-28 |
 | SHEET-20 | A use's recovery amount is computed with a breakdown | S | ✅ 2026-10-29 |
 | SHEET-21 | Every base AC calculation is computed for the pin | S | ✅ 2026-10-29 |
-| SHEET-22 | Removing an entity drops what was stored for it | S | 🔲 |
+| SHEET-22 | Removing an entity drops what was stored for it | S | ✅ 2026-10-29 |
 | SHEET-61 | A condition the character is immune to has no effect | S | ✅ 2026-10-29 |
 | SHEET-62 | Gaining the Incapacitated condition ends concentration | XS | ✅ 2026-10-29 |
 | SHEET-63 | Attuning two copies of one item gives a warning | XS | ✅ 2026-10-29 |
@@ -292,9 +292,6 @@ chats never claim one version number.
   the choice and sets it at start), the units (feet or metres, pounds or kilograms; stored units
   stay feet and pounds), "I roll myself" (SPEC §6.5). Language, backup,
   packs, AI and purchases come with their phases.
-- **SHEET-22** — found by ENG-17: a stored switch (`state.toggles`) stays after its entity is
-  removed and warns `toggleGone` on every compute. Found by ENG-47: a pin that does not apply
-  warns `stepRule` `acCalcNotApplying` on every compute. Removing an entity drops both.
 - **SHEET-64** — found by SHEET-61: a condition the character is immune to has no effect, but
   `isDead` (`fatalExhaustion`, `exhaustion.ts`) reads the stored exhaustion level without
   `compute()`, so exhaustion at its highest level kills a character immune to it. `compute()`
@@ -313,7 +310,8 @@ chats never claim one version number.
   shows its reason, not a crash.
 - **SHEET-25** — ADR 008 item 4: a swipe or "⋯" opens Actions. Copy, Export (a JSON file, SPEC
   §12 stage 2) and Delete (with Undo) work; Link for DM and Transfer wait for the table link's
-  phase and show as coming later.
+  phase and show as coming later. Found by SHEET-22: SHEET-07 §9 gives this row the deleted
+  character's rolls and changes (`rollLog`, `history`).
 - **SHEET-26** — SPEC §5.8, §12 stage 2: an older file migrates; a file that fails its checks is
   refused with the reason, and nothing of it is saved.
 - **SHEET-27** — SPEC §7.4 (manual mode), BRIEF P3 steps 1–8, board `V3-Create`: one scrolling
@@ -443,11 +441,14 @@ chats never claim one version number.
   is typed twice. It fills out as phase 3 adds content.
 - **SHEET-50** — SPEC §7.2: worn and attuned change AC and attacks at once (ENG-44); weight;
   containers. Found by ENG-63: the inventory sets a row's `attuned` by hand; death clears every one
-  (`deathChanges`, `actions.ts`); SHEET-18 warns past the limit, SHEET-63 of two copies.
+  (`deathChanges`, `actions.ts`); SHEET-18 warns past the limit, SHEET-63 of two copies. Found by
+  SHEET-22: an action that takes a row away ends with `withDropped` (`trackers.ts`), so its
+  switches and an AC pin go too.
 - **SHEET-51** — SPEC §7.2: cp, sp, ep, gp, pp with + and −.
 - **SHEET-52** — SPEC §12 stage 2 ("custom item", "custom feature" with text), ADR 009 item 7
   (free text now; with effects in phase 5), board `V3-Add`. The stored shape has both already: an
-  inventory row's `custom`, and the character's own entities (`localEntities`).
+  inventory row's `custom`, and the character's own entities (`localEntities`). Found by SHEET-22:
+  removing one ends with `withDropped` (`trackers.ts`).
 - **SHEET-53** — ADR 009 item 3, board `V3-About`: background, alignment, languages, armor, weapon
   and tool proficiencies. Found by ENG-48: the size shown is `Computed.keys.size`, with steps
   naming the species or lineage, each effect and a manual edit. The stored character has no
