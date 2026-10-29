@@ -79,8 +79,8 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    * The system's derived values (SPEC §6.1 step 5): computed path → its step. A step reads any
    * other path, the core's or the module's; a pack's formula of an entity part is read through
    * `readBy(part)`, so a loop it closes names the part. The core gives `level`, each stat's
-   * `abilities.<key>.score`, `.max` and `.mod`, each resource's `resources.<key>.max`, and each
-   * condition's `conditions.<key>.level`. Effects and overrides apply to a step's result (ENG-17).
+   * `abilities.<key>.score`, `.max` and `.mod`, each resource's `resources.<key>.max` and
+   * `recoveryPath`s, and each condition's `conditions.<key>.level`. Effects and overrides apply to a step's result (ENG-17).
    */
   derive(input: DeriveInput<C, E>): Readonly<Record<string, DerivedStep>>;
   /**

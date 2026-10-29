@@ -378,14 +378,15 @@ describe('ENG-21 rests', () => {
     const odd = rallying({ resources: { odd: 2 }, current: 3 });
     const rest = done(odd, long(odd));
     expect(rest.entry.changes).toEqual([{ path: HP, before: 3, after: 12 }]);
-    expect(rest.outcome.warnings).toMatchObject([
-      {
-        code: 'recoveryFormula',
-        key: 'odd',
-        part: 'character:feat/rally#odd',
-        warning: { code: 'missingPath', path: 'nope' },
-      },
-    ]);
+    // SHEET-20: what the amount's formula meets is `compute()`'s warning, not the rest's.
+    expect(rest.outcome.warnings).toEqual([]);
+    expect(compute(odd, indexOf(odd), fifthEditionModule).warnings).toContainEqual(
+      expect.objectContaining({
+        code: 'missingPath',
+        path: 'nope',
+        for: 'resources.odd.recovery.long',
+      }),
+    );
   });
 
   it('keeps hit points above the maximum, and refuses a rest with nothing to give back', () => {

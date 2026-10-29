@@ -208,7 +208,7 @@ chats never claim one version number.
 | SHEET-17 | Casting warns of what forbids it | S | ✅ 2026-10-28 |
 | SHEET-18 | Attunement past the limit gives a warning | XS | 🔲 |
 | SHEET-19 | Rolling initiative interrupts a knock-out's rest | XS | ✅ 2026-10-28 |
-| SHEET-20 | A use's recovery amount is computed with a breakdown | S | 🔲 |
+| SHEET-20 | A use's recovery amount is computed with a breakdown | S | ✅ 2026-10-29 |
 | SHEET-21 | Every base AC calculation is computed for the pin | S | 🔲 |
 | SHEET-22 | Removing an entity drops what was stored for it | S | 🔲 |
 | SHEET-61 | A condition the character is immune to has no effect | S | 🔲 |
@@ -297,9 +297,6 @@ chats never claim one version number.
 - **SHEET-18** — found by ENG-63: nothing counts the attuned rows; both SRDs allow "no more than
   three magic items at a time" (ENG-63's ticket quotes both). A warning, never a block (§8.2),
   computed by the module, not the screen.
-- **SHEET-20** — found by ENG-21: a use's label ("1 back on a short rest, all on a long rest")
-  reads `Computed.resources[].uses.recovery`; an amount that is a formula has no computed value
-  with a breakdown, so this row computes it. Game-free: tested on the made-up system.
 - **SHEET-21** — found by ENG-47: the pinned base AC calculation is `systemData.acCalc`:
   `equipment` (the armor worn, else 10 + DEX) or an `ac.formulas` effect's part id; without it the
   highest counts. The control that pins one (SHEET-35) needs each candidate's key, name and value,
@@ -450,7 +447,8 @@ chats never claim one version number.
   happens, its `outcome.warnings` the same list.
 - **SHEET-48** — ADR 009 item 2, board `V3-Features`: grouped under the species, the class (its
   subclass on the line below), the background, the feats; each with its uses, their recovery label
-  (SHEET-20) and its switches (`state.toggles`, ENG-17).
+  and its switches (`state.toggles`, ENG-17). Found by SHEET-20: the label reads
+  `recoveryOf(computed, key)`, each event's `all` or count; a count's breakdown is its `path`.
 - **SHEET-49** — ADR 010 item 8, board `V3-Turn`: built from each feature's `activation`; nothing
   is typed twice. It fills out as phase 3 adds content.
 - **SHEET-50** — SPEC §7.2: worn and attuned change AC and attacks at once (ENG-44); weight;

@@ -1721,3 +1721,152 @@ Found, not fixed:
   `apps/web/src/systems.ts` (note added to its row).
 
 Nothing for the changelog.
+
+---
+
+### SHEET-20 A use's recovery amount is computed with a breakdown
+
+**Hat:** A use's recovery amount is computed with a breakdown
+**Depends on:** ENG-21 (`recoveredOn`), ENG-29 (`resources.<key>.max`), ENG-17 (effects and
+overrides on a derived path)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.1 (the UI reads only `Computed` and its breakdown), §6.2 (the breakdown); ENG-21 §11
+puts the row here
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/engine/src/derived.ts` — changes: new `recoveryPath`; each resource's
+recovery amounts become derived paths; new warning `recoveryFormula` in `DerivedWarning`.
+- `packages/engine/src/trackers.ts` — new `recoveryOf`, `ResourceRecovery`; `recoveredOn` reads
+  the computed amounts; `RecoveryWarning` and `Recovered.warnings` are removed.
+- `packages/engine/src/compute.ts` — the `derive` doc names the new core paths.
+- `packages/system-5e/src/rests.ts` — `RestOutcome.warnings` holds the conditions' warnings only.
+- `packages/engine/test/recovery.test.ts` — the SHEET-20 tests; two ENG-21 tests follow the
+  moved warning.
+- `packages/engine/test/resources.test.ts`, `packages/system-5e/test/rests.test.ts` — follow the
+  new paths and the moved warning.
+
+#### 2. What is missing now
+
+Measured on `main` at `3977c50`:
+- `git show HEAD:packages/engine/src/derived.ts | grep -c recovery`: `0`. No computed path holds a
+  recovery amount.
+- `recoveredOn` (`trackers.ts`) evaluates each amount's formula itself, at rest time, on
+  `computed.values`. So the amount a label shows ("2 back on a session") has no value in
+  `Computed.values` and no entry in `Computed.breakdown`, and an effect or a manual edit cannot
+  change it.
+- `pnpm test`: unit `Tests 955 passed (955)`, 13.98 s; speed `2 passed`.
+
+#### 3. What it should look like when done
+
+All on the made-up system Tales (ENG-27): Brook's seeker gives `focus`, `2` back on `session`;
+Ash's warden gives `luck`, `all` back on `scene`; Ash's nerve modifier is 1; a test spark (a
+talent of Ash's own) has maximum `3`.
+1. Brook: `values['resources.focus.recovery.session']` is 2; its breakdown is one step `{ kind:
+   'grant', part: 'tales-core:calling/seeker#focus', source: 'tales-core:calling/seeker', label:
+   { en: 'Seeker' }, formula: '2', value: 2, change: 2 }`. `recoveryOf(computed, 'focus')` is
+   `[{ on: 'session', amount: 2, path: 'resources.focus.recovery.session' }]`.
+2. Ash: no path holds `.recovery.`; `recoveryOf(computed, 'luck')` is `[{ on: 'scene', amount:
+   'all' }]`; a key no grant gives: `[]`.
+3. A spark `1` on `scene`, `all` on `session`: `recoveryOf` lists `scene` (1) then `session`
+   (`all`), in the grant's order. Two sparks, `1` and `all` on `scene`: `scene` is `all`; the path
+   still has the `1` grant's step.
+4. Two sparks, `1` and `@abilities.nerve.mod + 1` on `scene`: the path is 2, steps (1, change 1)
+   and (2, change 1), as ENG-29's maximum.
+5. Counted as a rest gives it: `1.5` → 1; `-1` → 0; `@resources.spark.max` → 3.
+6. `@nope`: the path is 0, and `compute()` warns `missingPath` `nope` for
+   `resources.spark.recovery.scene`.
+7. An effect `add 1` on `resources.spark.recovery.scene` of a `1` amount: the path is 2, the
+   effect a step; with 3 spent, `recoveredOn(['scene'])` gives 3 → 1.
+8. A manual edit of the path to 3: the path is 3, its last step `override`; with 3 spent,
+   `recoveredOn(['scene'])` gives 3 → 0.
+9. Every ENG-21 and ENG-61 count stays as it was; a rest's outcome no longer carries a uses'
+   formula warning, `compute()` does.
+
+#### 4. How to do it
+
+1. `derived.ts`: the ENG-29 step for "the highest of every grant of a key" becomes one function,
+   `highest`; the maximum and each `recoveryPath(key, on)` use it. A grant's amount `all` gives
+   no step.
+2. `trackers.ts`: `countAt` (rounded down, never below 0) of a computed path; `recoveryOf` for the
+   screen; `recoveredOn` takes `all` as every use and anything else as `countAt` of its path.
+3. `rests.ts`: drop the uses' warnings from the outcome.
+4. Tests (§7), then the gate.
+
+Technical choices (ADR 002):
+- **A path, not a field on `Computed.resources`.** Every number on screen lives in
+  `Computed.values` with its breakdown, and a path gets effects and overrides from ENG-17 for
+  free. Its name, `resources.<key>.recovery.<event>`, sits beside `resources.<key>.max`.
+- **The rest reads the path.** Otherwise an effect or a manual edit would change the label and
+  not the rest. So the formula runs once, in `compute()`, and its warning is `compute()`'s: the
+  sheet shows a broken formula all the time, not only after a rest.
+- **`all` is no number.** It stays the grant's own `all`; `recoveryOf` gives it as `'all'`, above
+  any count, as `recoveredOn` already did. A screen reads `recoveryOf` and decides nothing.
+- **A key's amount is the highest of its grants on that event.** `recoveredOn` keeps ENG-21's
+  "each grant by the first of its events" and reads the key's amount on that event. This differs
+  from ENG-21 only when two grants of one key name the same event with different amounts and
+  one of them gives less on a later event than on an earlier one; no content does.
+
+#### 5. Stored data
+
+Nothing stored changes. The paths are computed; an override names a path, as every override does.
+
+#### 6. What a person will see
+
+Not a screen. The features tab's recovery label (SHEET-48) reads `recoveryOf`; its note in
+`BACKLOG.md` says so.
+
+#### 7. Tests
+
+- `packages/engine/test/recovery.test.ts` — `describe('SHEET-20 a recovery amount computed with a
+  breakdown')`: items 1–8, 8 tests.
+- The ENG-21 tests in the same file and in `packages/system-5e/test/rests.test.ts`: item 9.
+- Control values from: Tales' content (`packages/schema/test/tales/content.ts`), worked out by
+  hand above; no golden value is read or changed.
+
+#### 8. Checked against the source
+
+Nothing to check. The ticket is game-free and adds no rule: what comes back on which event is
+still each pack's data and ENG-21's order of events.
+
+#### 9. Not in this ticket
+
+- The label's words ("1 back on a short rest, all on a long rest"): SHEET-48.
+- Overriding `all` into a number: an `all` amount has no path. Nothing asks for it.
+- A condition's recovery amount (ENG-61): `conditionsRecoveredOn` still evaluates it at rest
+  time; no screen shows it.
+
+#### 10. Rake check
+
+- **The engine names no game.** Tested on Tales only; the paths are built from each grant's
+  `key` and `on`, never a list of events.
+- **`compute()` is pure.** The steps run inside `computeDerived`, read through `readBy(part)`,
+  so a loop names the part.
+- **A number shown with no breakdown is a bug.** The amount now has one; `all` is not a number.
+- **Manual overrides win.** Item 8: the override wins on the sheet and in the rest.
+- **Missing is not broken.** A missing path reads 0 with a warning (item 6).
+- **A stored-shape change needs a migration.** None changes (§5).
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-29, on `main` at `3977c50`:
+- Before: `pnpm test` unit `Tests 955 passed (955)`, 13.98 s; speed `2 passed`.
+- After: `pnpm lint` `Checked 222 files`, no fixes; `pnpm typecheck` green; `pnpm test`
+  `Test Files 70 passed (70)`, `Tests 963 passed (963)`, and `2 passed` in the speed project; the
+  whole gate 31.3 s. 8 tests are new, all in `recovery.test.ts`. No file in `apps/web` changed, so
+  no `pnpm e2e`.
+- Again on top of SHEET-10 (`6561bb6`), after `git pull --rebase`: `Checked 229 files`, no fixes;
+  typecheck green; `Test Files 73 passed (73)`, `Tests 992 passed (992)`, speed `2 passed`; the
+  whole gate 29.5 s.
+- The tests catch mistakes. 3 breaks, each made alone, then `recovery.test.ts` run, the file
+  restored and compared equal after each: `all` not above a count in `recoveryOf`, 1 failed; no
+  rounding in `countAt`, 2; no recovery path computed, 11.
+- Differs from §3: a missing path warns `missingPath` (ENG-28's warning, naming the path), not
+  `recoveryFormula`, as a resource's maximum does. `recoveryFormula` stays for any other warning
+  a formula gives.
+- Found, not fixed: nothing.
+- Nothing for the changelog: no screen reads it yet.

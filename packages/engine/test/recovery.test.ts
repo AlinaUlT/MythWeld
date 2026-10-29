@@ -1,4 +1,10 @@
-import { compute, conditionsRecoveredOn, loadContentIndex, recoveredOn } from '@grimoire/engine';
+import {
+  compute,
+  conditionsRecoveredOn,
+  loadContentIndex,
+  recoveredOn,
+  recoveryOf,
+} from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 import {
   ash as ashFile,
@@ -86,11 +92,8 @@ function frozen<T>(value: T): T {
 
 describe('ENG-21 resources back on recovery events', () => {
   it("gives back a resource's uses on the events its grant names", () => {
-    expect(recovered(ash, ['scene'])).toEqual({
-      changes: [{ path: LUCK, before: 1, after: 0 }],
-      warnings: [],
-    });
-    expect(recovered(ash, ['session'])).toEqual({ changes: [], warnings: [] });
+    expect(recovered(ash, ['scene'])).toEqual({ changes: [{ path: LUCK, before: 1, after: 0 }] });
+    expect(recovered(ash, ['session'])).toEqual({ changes: [] });
     expect(recovered(spending(brook, { focus: 5 }), ['session']).changes).toEqual([
       { path: FOCUS, before: 5, after: 3 },
     ]);
@@ -137,18 +140,9 @@ describe('ENG-21 resources back on recovery events', () => {
       recovered(ashWithSparks([[{ on: 'scene', amount: formula }]], 2), ['scene']);
     expect(amount('@abilities.nerve.mod').changes).toEqual([{ path: SPARK, before: 2, after: 1 }]);
     expect(amount('1.5').changes).toEqual([{ path: SPARK, before: 2, after: 1 }]);
-    expect(amount('-1')).toEqual({ changes: [], warnings: [] });
-    const missing = amount('@nope');
-    expect(missing.changes).toEqual([]);
-    expect(missing.warnings).toMatchObject([
-      {
-        code: 'recoveryFormula',
-        key: 'spark',
-        part: 'character:talent/spark-1#uses',
-        warning: { code: 'missingPath', path: 'nope' },
-      },
-    ]);
-    expect(missing.warnings[0]?.message).toMatch(/\S/);
+    expect(amount('-1')).toEqual({ changes: [] });
+    // SHEET-20: a formula's warning is `compute()`'s, not the recovery's.
+    expect(amount('@nope')).toEqual({ changes: [] });
   });
 
   it('leaves a key no grant gives, and a key with none spent', () => {
@@ -167,6 +161,167 @@ describe('ENG-21 resources back on recovery events', () => {
       { path: LUCK, before: 1, after: 0 },
     ]);
     expect(character).toEqual(ash);
+  });
+});
+
+// SHEET-20: the amount a resource gets back on a recovery event is a computed path, with a
+// breakdown, effects and overrides; a rest gives back what it says. Every value is worked out by
+// hand in SHEET-20 §3 from Tales' content: Ash's nerve mod is 1, a spark's maximum is 3.
+
+const SCENE = 'resources.spark.recovery.scene';
+
+/** Ash's own sparks (`ashWithSparks`) with these effects on the first, and these overrides. */
+function ashWithChanges(
+  recoveries: Recovery[],
+  spent: number,
+  effects: NonNullable<TalesEntity['effects']>,
+  overrides: TalesCharacter['overrides'] = [],
+): TalesCharacter {
+  const sparks = ashWithSparks(recoveries, spent);
+  const [first, ...rest] = sparks.localEntities;
+  if (first === undefined) throw new Error('No spark.');
+  return opened(
+    openTalesCharacter({ ...sparks, localEntities: [{ ...first, effects }, ...rest], overrides }),
+  );
+}
+
+/** The step a spark's grant gives its amount. */
+function sparkStep(at: number, formula: string, value: number, change: number) {
+  return {
+    kind: 'grant',
+    part: `character:talent/spark-${at}#uses`,
+    source: `character:talent/spark-${at}`,
+    label: { en: `Spark ${at}` },
+    formula,
+    value,
+    change,
+  };
+}
+
+describe('SHEET-20 a recovery amount computed with a breakdown', () => {
+  it("computes a grant's amount on each event it names, with its step", () => {
+    const computed = compute(brook, index, talesModule);
+    expect(computed.values['resources.focus.recovery.session']).toBe(2);
+    expect(computed.breakdown['resources.focus.recovery.session']).toEqual([
+      {
+        kind: 'grant',
+        part: 'tales-core:calling/seeker#focus',
+        source: 'tales-core:calling/seeker',
+        label: { en: 'Seeker' },
+        formula: '2',
+        value: 2,
+        change: 2,
+      },
+    ]);
+    expect(recoveryOf(computed, 'focus')).toEqual([
+      { on: 'session', amount: 2, path: 'resources.focus.recovery.session' },
+    ]);
+  });
+
+  it('gives every use, and no path, for an amount of all', () => {
+    const computed = compute(ash, index, talesModule);
+    expect(Object.keys(computed.values).filter((path) => path.includes('.recovery.'))).toEqual([]);
+    expect(recoveryOf(computed, 'luck')).toEqual([{ on: 'scene', amount: 'all' }]);
+    expect(recoveryOf(computed, 'nope')).toEqual([]);
+  });
+
+  it('lists the events in the order the grants name them, all above any count', () => {
+    const both = compute(
+      ashWithSparks(
+        [
+          [
+            { on: 'scene', amount: '1' },
+            { on: 'session', amount: 'all' },
+          ],
+        ],
+        0,
+      ),
+      index,
+      talesModule,
+    );
+    expect(recoveryOf(both, 'spark')).toEqual([
+      { on: 'scene', amount: 1, path: SCENE },
+      { on: 'session', amount: 'all' },
+    ]);
+    const mixed = compute(
+      ashWithSparks([[{ on: 'scene', amount: '1' }], [{ on: 'scene', amount: 'all' }]], 0),
+      index,
+      talesModule,
+    );
+    expect(recoveryOf(mixed, 'spark')).toEqual([{ on: 'scene', amount: 'all' }]);
+    expect(mixed.breakdown[SCENE]).toEqual([sparkStep(1, '1', 1, 1)]);
+  });
+
+  it('gives a key two grants give the highest amount, each grant a step', () => {
+    const twice = compute(
+      ashWithSparks(
+        [[{ on: 'scene', amount: '1' }], [{ on: 'scene', amount: '@abilities.nerve.mod + 1' }]],
+        3,
+      ),
+      index,
+      talesModule,
+    );
+    expect(twice.values[SCENE]).toBe(2);
+    expect(twice.breakdown[SCENE]).toEqual([
+      sparkStep(1, '1', 1, 1),
+      sparkStep(2, '@abilities.nerve.mod + 1', 2, 1),
+    ]);
+    expect(recoveryOf(twice, 'spark')).toEqual([{ on: 'scene', amount: 2, path: SCENE }]);
+  });
+
+  it('counts an amount rounded down and never below 0, as a rest gives it', () => {
+    const counted = (formula: string) =>
+      recoveryOf(
+        compute(ashWithSparks([[{ on: 'scene', amount: formula }]], 2), index, talesModule),
+        'spark',
+      );
+    expect(counted('1.5')).toEqual([{ on: 'scene', amount: 1, path: SCENE }]);
+    expect(counted('-1')).toEqual([{ on: 'scene', amount: 0, path: SCENE }]);
+    expect(counted('@resources.spark.max')).toEqual([{ on: 'scene', amount: 3, path: SCENE }]);
+  });
+
+  it('warns a path an amount reads that is missing, on compute', () => {
+    const computed = compute(
+      ashWithSparks([[{ on: 'scene', amount: '@nope' }]], 2),
+      index,
+      talesModule,
+    );
+    expect(computed.values[SCENE]).toBe(0);
+    expect(computed.warnings).toContainEqual(
+      expect.objectContaining({ code: 'missingPath', path: 'nope', for: SCENE }),
+    );
+  });
+
+  it('applies an effect on the amount, and a rest gives back what it says', () => {
+    const more = ashWithChanges([[{ on: 'scene', amount: '1' }]], 3, [
+      { id: 'more', target: SCENE, op: 'add', value: 1 },
+    ]);
+    const computed = compute(more, index, talesModule);
+    expect(computed.values[SCENE]).toBe(2);
+    expect(computed.breakdown[SCENE]).toMatchObject([
+      sparkStep(1, '1', 1, 1),
+      { kind: 'effect', part: 'character:talent/spark-1#more', value: 1, change: 1 },
+    ]);
+    expect(recoveryOf(computed, 'spark')).toEqual([{ on: 'scene', amount: 2, path: SCENE }]);
+    expect(recoveredOn(more, computed, ['scene']).changes).toEqual([
+      { path: SPARK, before: 3, after: 1 },
+    ]);
+  });
+
+  it('lets a manual edit win, and a rest gives back what it says', () => {
+    const edited = ashWithChanges(
+      [[{ on: 'scene', amount: '1' }]],
+      3,
+      [],
+      [{ path: SCENE, value: 3 }],
+    );
+    const computed = compute(edited, index, talesModule);
+    expect(computed.values[SCENE]).toBe(3);
+    expect(computed.breakdown[SCENE]?.at(-1)).toMatchObject({ kind: 'override', value: 3 });
+    expect(recoveryOf(computed, 'spark')).toEqual([{ on: 'scene', amount: 3, path: SCENE }]);
+    expect(recoveredOn(edited, computed, ['scene']).changes).toEqual([
+      { path: SPARK, before: 3, after: 0 },
+    ]);
   });
 });
 

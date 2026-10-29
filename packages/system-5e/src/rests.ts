@@ -8,7 +8,6 @@ import {
   conditionsRecoveredOn,
   finderOf,
   type LogStamp,
-  type RecoveryWarning,
   recoveredOn,
 } from '@grimoire/engine';
 import type { LogChange, LogEntry } from '@grimoire/schema';
@@ -82,8 +81,11 @@ export interface SpentHitDie {
 export interface RestOutcome {
   /** Each hit die the rest spent, in the order asked. */
   hitDice: SpentHitDie[];
-  /** What the formulas of the uses given back, and of the condition levels lowered, met. */
-  warnings: (RecoveryWarning | ConditionRecoveryWarning)[];
+  /**
+   * What the formulas of the condition levels lowered met. A formula of the uses given back is
+   * computed with the character, so `compute()` warns what it meets (SHEET-20).
+   */
+  warnings: ConditionRecoveryWarning[];
   /**
    * ENG-64: the inspiration a long rest gave past the house rules' maximum, which the character
    * does not keep (SRD 5.2.1: lost unless given to a player character who lacks it). Only when
@@ -225,7 +227,7 @@ export function shortRest(
       ...eased.changes,
       ...knockOutRested(character, current),
     ],
-    { hitDice: spent, warnings: [...recovered.warnings, ...eased.warnings] },
+    { hitDice: spent, warnings: eased.warnings },
   );
 }
 
@@ -292,7 +294,7 @@ export function longRest(
     ],
     {
       hitDice: [],
-      warnings: [...recovered.warnings, ...eased.warnings],
+      warnings: eased.warnings,
       ...(inspired.over > 0 && { inspirationOver: inspired.over }),
     },
   );

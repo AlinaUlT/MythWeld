@@ -28,6 +28,14 @@ const SCORE_PATH = 'score';
 /** The first step of a condition's level, `conditions.<key>.level` (SPEC §5.6). */
 const CONDITIONS_PATH = 'conditions';
 
+/**
+ * SHEET-20: the path of the amount a resource gets back on a recovery event,
+ * `resources.<key>.recovery.<event>`.
+ */
+export function recoveryPath(key: string, on: string): string {
+  return `resources.${key}.recovery.${on}`;
+}
+
 /** What a stat takes from its system when it lacks the field (SPEC §5.3). */
 export interface StatDefaults {
   /** The highest a score can be: what a stat without its own `defaultMax` takes. */
@@ -145,6 +153,13 @@ export type DerivedWarning =
   | ({ message: string } & (
       | { code: 'modFormula'; key: string; of: 'stat' | 'system'; warning: FormulaWarning }
       | { code: 'resourceFormula'; key: string; part: EntityPartId; warning: FormulaWarning }
+      | {
+          code: 'recoveryFormula';
+          key: string;
+          on: string;
+          part: EntityPartId;
+          warning: FormulaWarning;
+        }
       | { code: 'stepFormula'; path: string; warning: FormulaWarning }
       | {
           code: 'stepRule';
@@ -194,10 +209,10 @@ export function statsOf<E extends GatherableEntity>(
 
 /**
  * Computes the derived values: `level`, each stat's score and maximum (the base phase's, `base`),
- * its `abilities.<key>.mod`, each resource's `resources.<key>.max`, each condition's
- * `conditions.<key>.level`, then each path the module's `steps` give. `finish` runs on each path
- * but `level` after its own step (ENG-17); without it, a path is its step's. Then each of the
- * module's `keys`, `finishKey` after its own key; one with no own key is pending. Pure.
+ * its `abilities.<key>.mod`, each resource's `resources.<key>.max` and its `recoveryPath`s, each
+ * condition's `conditions.<key>.level`, then each path the module's `steps` give. `finish` runs on
+ * each path but `level` after its own step (ENG-17); without it, a path is its step's. Then each
+ * of the module's `keys`, `finishKey` after its own key; one with no own key is pending. Pure.
  */
 export function computeDerived<E extends GatherableEntity>(input: {
   level: number;
@@ -256,29 +271,17 @@ export function computeDerived<E extends GatherableEntity>(input: {
   // ENG-29: each resource's maximum, from every `resource` grant of its key. A key is one
   // resource, so two grants give the highest of their maximums, whatever their order; each grant
   // is a step, its change what it adds above the highest before it.
+  // SHEET-20: so is each amount a resource gets back on a recovery event, from every grant of its
+  // key giving a formula on that event. A grant giving `all` gives no step (`recoveryOf`).
   const names = new Map(gathered.entities.map(({ entity }) => [entity.id, entity.name]));
-  const byKey = new Map<string, { part: EntityPartId; source: EntityId; formula: string }[]>();
-  for (const { part, source, grant } of gathered.grants) {
-    if (!isCoreKind(grant, 'resource')) continue;
-    const given = byKey.get(grant.key) ?? [];
-    byKey.set(grant.key, given);
-    given.push({ part, source, formula: grant.uses.max });
-  }
-  for (const [key, given] of byKey) {
-    const path = `resources.${key}.max`;
-    steps.set(path, (_, readBy) => {
+  type Given = { part: EntityPartId; source: EntityId; formula: string };
+  const highest =
+    (given: readonly Given[], warn: (part: EntityPartId, warning: FormulaWarning) => void) =>
+    (_: ValueReader, readBy: PartReader): Derived => {
       let max: number | undefined;
       const parts = given.map(({ part, source, formula }): BreakdownStep => {
         const result = evaluateNumber(formula, readBy(part));
-        for (const warning of result.warnings) {
-          warnings.push({
-            code: 'resourceFormula',
-            key,
-            part,
-            warning,
-            message: `${warning.message} (the maximum of the resource "${key}", given by ${part}).`,
-          });
-        }
+        for (const warning of result.warnings) warn(part, warning);
         const value = result.value;
         const change = max === undefined ? value : Math.max(value - max, 0);
         max = max === undefined ? value : Math.max(max, value);
@@ -286,8 +289,52 @@ export function computeDerived<E extends GatherableEntity>(input: {
         return { kind: 'grant', part, source, label, formula, value, change };
       });
       return { value: max ?? 0, steps: parts };
-    });
+    };
+  const byKey = new Map<string, { max: Given[]; recovery: Map<string, Given[]> }>();
+  for (const { part, source, grant } of gathered.grants) {
+    if (!isCoreKind(grant, 'resource')) continue;
+    const given = byKey.get(grant.key) ?? { max: [], recovery: new Map<string, Given[]>() };
+    byKey.set(grant.key, given);
+    given.max.push({ part, source, formula: grant.uses.max });
+    for (const { on, amount } of grant.uses.recovery) {
+      if (amount === 'all') continue;
+      const onEvent = given.recovery.get(on) ?? [];
+      given.recovery.set(on, onEvent);
+      onEvent.push({ part, source, formula: amount });
+    }
+  }
+  for (const [key, { max, recovery }] of byKey) {
+    const path = `resources.${key}.max`;
+    steps.set(
+      path,
+      highest(max, (part, warning) => {
+        warnings.push({
+          code: 'resourceFormula',
+          key,
+          part,
+          warning,
+          message: `${warning.message} (the maximum of the resource "${key}", given by ${part}).`,
+        });
+      }),
+    );
     order.push(path);
+    for (const [on, given] of recovery) {
+      const at = recoveryPath(key, on);
+      steps.set(
+        at,
+        highest(given, (part, warning) => {
+          warnings.push({
+            code: 'recoveryFormula',
+            key,
+            on,
+            part,
+            warning,
+            message: `${warning.message} (the uses of "${key}" ${part} gives back on "${on}").`,
+          });
+        }),
+      );
+      order.push(at);
+    }
   }
 
   // Each condition's level, as gathering found it (ENG-11): 0, with no step, when not had.

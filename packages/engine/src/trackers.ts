@@ -1,14 +1,7 @@
-import type {
-  EntityId,
-  EntityPartId,
-  L10n,
-  LogChange,
-  LogEntry,
-  Roller,
-  UsesDef,
-} from '@grimoire/schema';
+import type { EntityId, L10n, LogChange, LogEntry, Roller, UsesDef } from '@grimoire/schema';
 import type { Computed } from './compute';
 import type { ContentIndex, Lookup } from './content-index';
+import { recoveryPath } from './derived';
 import { evaluateNumber, type FormulaReader, type FormulaWarning } from './formula';
 import { type CharacterCore, CONDITION_TYPE, type GatherableEntity, maxLevelOf } from './gather';
 import {
@@ -30,6 +23,8 @@ import {
 // builds its entry as these do.
 // ENG-21: `recoveredOn` gives the changes that give uses back on a system's recovery events, for
 // a module's rest to make part of its own entry.
+// SHEET-20: a resource's amount on an event is computed (`recoveryPath`), with its breakdown,
+// effects and overrides; `recoveryOf` gives it to the screen, and `recoveredOn` gives it back.
 // ENG-61: `conditionsRecoveredOn` does the same for the levels a condition's `recovery` takes away.
 
 /**
@@ -229,20 +224,18 @@ export function regainResource<C extends TrackedCharacter<E>, E extends Gatherab
   });
 }
 
-/** A recovery amount's formula met something: it gave back what its number says (ENG-21). */
-export interface RecoveryWarning {
-  readonly code: 'recoveryFormula';
-  readonly key: string;
-  readonly part: EntityPartId;
-  readonly warning: FormulaWarning;
-  readonly message: string;
-}
-
-/** The changes to the uses spent that `recoveredOn` gives, and what their formulas met. */
+/** The changes to the uses spent that `recoveredOn` gives. */
 export interface Recovered {
   changes: LogChange[];
-  warnings: RecoveryWarning[];
 }
+
+/**
+ * What a resource gets back on one recovery event (SHEET-20): every use, or a count, whose
+ * computed path holds its breakdown.
+ */
+export type ResourceRecovery =
+  | { readonly on: string; readonly amount: 'all' }
+  | { readonly on: string; readonly amount: number; readonly path: string };
 
 /** A condition's recovery amount met something: it took away what its number says (ENG-61). */
 export interface ConditionRecoveryWarning {
@@ -285,6 +278,36 @@ function recoveryCount(
   return { count, warnings: result.warnings };
 }
 
+/** The count a computed recovery amount gives: rounded down and never below 0. */
+function countAt(values: Computed<GatherableEntity>['values'], path: string): number {
+  const value = values[path];
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+}
+
+/**
+ * What resource `key` gets back on each recovery event its grants name, in the order they first
+ * name them: every use when a grant gives `all` on it, else the count of its `recoveryPath`. An
+ * empty list for a key no grant gives.
+ */
+export function recoveryOf<E extends GatherableEntity>(
+  computed: Pick<Computed<E>, 'values' | 'resources'>,
+  key: string,
+): ResourceRecovery[] {
+  const amounts = new Map<string, 'all' | 'count'>();
+  for (const resource of computed.resources) {
+    if (resource.key !== key) continue;
+    for (const { on, amount } of resource.uses.recovery) {
+      if (amount === 'all') amounts.set(on, 'all');
+      else if (!amounts.has(on)) amounts.set(on, 'count');
+    }
+  }
+  return [...amounts].map(([on, amount]) => {
+    if (amount === 'all') return { on, amount };
+    const path = recoveryPath(key, on);
+    return { on, amount: countAt(computed.values, path), path };
+  });
+}
+
 /** A reader of the computed values: a path no step gave is missing. */
 function readerOf(values: Computed<GatherableEntity>['values']): FormulaReader {
   return (path) => (Object.hasOwn(values, path) ? values[path] : undefined);
@@ -293,27 +316,24 @@ function readerOf(values: Computed<GatherableEntity>['values']): FormulaReader {
 /**
  * The uses each resource gets back on `events`, a system's recovery events in the order they
  * happen (a fifth-edition long rest: `long`, then `short`). Each grant of a key recovers by its
- * first recovery whose event comes first in `events`; a key two grants give gets back the most
- * either gives, `all` above any count. An amount's formula reads the computed values, rounded
- * down and never below 0. A key no grant gives keeps its count. One change per key whose uses
- * spent go down, in the order of `computed.resources`; nothing is applied.
+ * first recovery whose event comes first in `events`: every use for `all`, else the count of the
+ * key's computed amount on that event (`recoveryOf`); a key two grants give gets back the most
+ * either gives. A key no grant gives keeps its count. One change per key whose uses spent go
+ * down, in the order of `computed.resources`; nothing is applied.
  */
 export function recoveredOn<E extends GatherableEntity>(
   character: TrackedCharacter<E>,
   computed: Pick<Computed<E>, 'values' | 'resources'>,
   events: readonly string[],
 ): Recovered {
-  const read = readerOf(computed.values);
   const back = new Map<string, number>();
-  const warnings: RecoveryWarning[] = [];
-  for (const { key, uses, from: part } of computed.resources) {
+  for (const { key, uses } of computed.resources) {
     const recovery = firstRecovery(uses.recovery, events);
     if (recovery === undefined) continue;
-    const { count, warnings: met } = recoveryCount(recovery, read);
-    for (const warning of met) {
-      const message = `${warning.message} (the uses of "${key}" ${part} gives back on "${recovery.on}").`;
-      warnings.push({ code: 'recoveryFormula', key, part, warning, message });
-    }
+    const count =
+      recovery.amount === 'all'
+        ? Number.POSITIVE_INFINITY
+        : countAt(computed.values, recoveryPath(key, recovery.on));
     back.set(key, Math.max(back.get(key) ?? 0, count));
   }
   const changes: LogChange[] = [];
@@ -322,7 +342,7 @@ export function recoveredOn<E extends GatherableEntity>(
     const after = Math.max(0, spent - count);
     if (after < spent) changes.push(changeTo(character, resourceSpentPath(key), after));
   }
-  return { changes, warnings };
+  return { changes };
 }
 
 /** A condition's recoveries (ENG-61): none when its entry has no `recovery`. */
