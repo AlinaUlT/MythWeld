@@ -179,7 +179,7 @@ chats never claim one version number.
 | 1 | SHEET-01, 02, 07, 14, 15, 17, 19 | Phase 1 is closed |
 | 2 | SHEET-03, 04, 05, 06, 08, 10, 16, 18, 20, 21, 61 | Wave 1 is closed |
 | 3 | SHEET-09, 11, 22, 62, 63, 64 | Wave 2 is closed |
-| 4 | SHEET-12, 13, 23, 24, 37, 65 | Wave 3 is closed |
+| 4 | SHEET-12, 13, 23, 24, 37, 65, 66 | Wave 3 is closed |
 | 5 | SHEET-25, 27, 30, 31, 38 | Wave 4 is closed |
 | 6 | SHEET-26, 28, 32, 33, 36, 39, 46, 48, 50, 53, 54, 55, 56 | Wave 5 is closed |
 | 7 | SHEET-29, 34, 40, 41, 42, 43, 44, 45, 47, 49, 51, 52, 57, 58 | Wave 6 is closed |
@@ -197,7 +197,7 @@ chats never claim one version number.
 | SHEET-06 | The app's fonts ship inside it, each licence read | S | ✅ 2026-10-29 |
 | **On the device** | **tables, the mini-pack, saved characters** | | |
 | SHEET-07 | Phase 2's device tables arrive in one database version | XS | ✅ 2026-10-28 |
-| SHEET-08 | The phase 1 fixtures ship as the built-in mini-pack | M | 🔲 |
+| SHEET-08 | The phase 1 fixtures ship as the built-in mini-pack | M | ✅ 2026-10-29 |
 | SHEET-09 | Built-in packs load into the content index at start | S | 🔲 |
 | SHEET-10 | Characters are saved on the device, migrated as they open | S | ✅ 2026-10-29 |
 | **Navigation** | **ADR 008, ADR 013** | | |
@@ -219,6 +219,7 @@ chats never claim one version number.
 | SHEET-63 | Attuning two copies of one item gives a warning | XS | ✅ 2026-10-29 |
 | SHEET-64 | Exhaustion the character is immune to does not kill | XS | 🔲 |
 | SHEET-65 | Dying ends concentration | XS | 🔲 |
+| SHEET-66 | An effect may set the size to any size the packs hold | S | 🔲 |
 | **Characters** | **the list, the file, the manual form** | | |
 | SHEET-23 | An undo toast reverses the last change | S | 🔲 |
 | SHEET-24 | My characters lists the saved characters | S | 🔲 |
@@ -260,22 +261,16 @@ chats never claim one version number.
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
-- **SHEET-08** — SPEC §12 stage 2: "a mini-pack of the stage 1 fixtures". The goldens' SRD
-  fixtures (`packages/system-5e/test/golden/srd-2014.ts`, `srd-2024.ts`) become the app's
-  built-in packs, with their CC-BY-4.0 metadata; the tests keep reading the same data. If the row
-  makes `content` import the module, the ENG-31 note under phase 3 applies to it.
-  Found by ENG-32: some fifth-edition keys have no entity type to give their name on screen: a
-  spell's `school`, a species' `size` and `creatureType`, an item's `rarity`, a spell area's
-  `shape`, a feat's `category`, a rule's `topic` and `icon`. This row gives them names (a simple
-  entity type each, or the module's i18n keys), so the wave 6 tabs only show them. Found by
-  ENG-48: the key path `size` takes only the species' own sizes, so an effect or an override
-  naming another warns and is not applied (SRD 5.2.1's goliath, Large Form: "you can change your
-  size to Large"). A size type would give every size as its keys.
 - **SHEET-09** — found by ENG-25: a character's active pack that is not installed on the device
   never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
   on each of its entries. The row starts the load from `apps/web/src/main.tsx`, which SHEET-11, in
   the same wave, leaves alone. Found by SHEET-10: an installed pack opens through its system's
-  frame; its opener joins the table in `apps/web/src/systems.ts`, beside the character's.
+  frame; its opener joins the table in `apps/web/src/systems.ts`, beside the character's. Found by
+  SHEET-08: the built-in packs (`BUILT_IN_PACKS`, `@grimoire/content`) have no
+  `license.attribution`. SPEC Appendix В's two texts are `[ПРОВЕРИТЬ]` against each SRD PDF's
+  legal page, and the cloud container cannot reach the PDFs (`media.wizards.com`,
+  `media.dndbeyond.com`: 403, measured 2026-10-29). Loading the packs puts them in the public
+  build, so the row fills each pack's `attribution` from the checked text first.
 - **SHEET-11** — found by OPS-08: ADR 008 replaces the SETUP-04 bottom bar with a start page, a
   player page and My characters. Player and DM are two squares (ADR 013 item 16, board
   `V3-Start`); the DM square shows as coming later (ADR 008 item 2). Every page has a back arrow
@@ -301,6 +296,13 @@ chats never claim one version number.
   attunement but not `state.concentration`. Measured: golden B at exhaustion 5, concentrating, set
   to 6 by `setConditionLevel`: dead, and the concentration stays. The death save's third failure
   (`death-saves.ts`) also calls `deathChanges`. Wave 4: SHEET-64 touches the death check meanwhile.
+- **SHEET-66** — found by SHEET-08, from ENG-48: the key path `size` takes only the species' own
+  sizes (`sizeKeys`, `size.ts`), so an effect or an override naming another warns and is not
+  applied (SRD 5.2.1's goliath, Large Form). The built-in packs now hold every size as a `size`
+  entry (SHEET-08), but a derived step sees entries only through `findKey(type, key)`, which
+  finds one entry and lists none. The row gives the derived step the keys of a type, as the
+  character finds them, and makes every size one of `size`'s keys; the stored choice stays among
+  the species' sizes.
 - **SHEET-23** — SPEC §7.2: an "Undo" toast after every change, and the last 50 states kept in
   the history table; an entry is ENG-30's log entry.
 - **SHEET-24** — ADR 008 item 4, BRIEF P2, board `V3-Characters`; an empty state with "+" and
@@ -493,13 +495,6 @@ chats never claim one version number.
   are one `spell` grant per spell, each with its `atLevel`, its `uses` and a `key`.
 - **Phase 3** — found by ENG-02: 11 of 4,428 5e-database slugs do not fit the entity id's slug
   pattern; the import maps them. ENG-02 §11 lists them.
-- **Phase 3** — found by ENG-31: a core file may climb into a sibling package other than a
-  module (`../../content/src/index.ts` passes lint, measured). The row that first makes
-  `content`, `pdf` or `foundry` import the module also refuses that climb in `packages/schema/src`
-  and `packages/engine/src`, or the core reaches the module through it with no error. Found by
-  ENG-41: a module file climbs the same way (`../../content/src/index.ts`,
-  `../../system-tales/src/index.ts` pass lint in `packages/system-5e/src`, measured); that row
-  refuses it in `packages/system-*/src` too.
 - **Phase 3** — found by ENG-32: SRD values the fifth-edition schemas cannot hold yet, measured
   at 5e-database `e6edf9a` (ENG-32 §8, §11): 2014's `mounts-and-vehicles` equipment (40 entries)
   has no `ItemDef.category`; 2024's "Until dispelled or triggered" (2 spells) has no place for

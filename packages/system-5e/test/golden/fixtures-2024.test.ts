@@ -15,7 +15,7 @@ import { goldenB, goldenB4, goldenC2024, goldenD, srd2024 } from './index.ts';
 // ENG-10: the 2024 golden data is whole, agrees with itself, and gives what SPEC §6.7 says goldens
 // B, B4 and D have. Expected counts are ENG-10 §8's; scores, sources and numbers are SPEC §6.7's.
 
-const FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 8 };
+const FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 9 };
 
 const pack: FifthEditionPack = opened(openFifthEditionPack(srd2024));
 const entities: readonly FifthEditionEntity[] = pack.entities;
@@ -71,7 +71,7 @@ describe('ENG-10 2024 fixtures', () => {
     expect(openFifthEditionPack(srd2024)).toEqual({ ok: true, value: srd2024, from: FROM_CURRENT });
     expect(refused).toEqual([]);
     expect(warnings).toEqual([]);
-    expect(index.entities).toHaveLength(57);
+    expect(index.entities).toHaveLength(66);
   });
 
   it('holds the counts the SRD has', () => {
@@ -91,6 +91,9 @@ describe('ENG-10 2024 fixtures', () => {
       damageType: 1,
       weaponProperty: 3,
       weaponMastery: 2,
+      size: 6,
+      creatureType: 1,
+      featCategory: 2,
     });
     expect(entities.every((entity) => entity.ruleset === '2024')).toBe(true);
     expect(entities.every((entity) => entity.source.pack === 'srd-2024')).toBe(true);
@@ -106,7 +109,7 @@ describe('ENG-10 2024 fixtures', () => {
     expect(entities.flatMap(idsNamedBy)).toHaveLength(13);
   });
 
-  it('names only its own stats, skills, classes, damage types, properties and masteries', () => {
+  it('names only its own stats, skills, classes, damage types, properties, masteries and simple types', () => {
     const missing = entities.flatMap((entity) =>
       keysNamedBy(entity)
         .filter((named) => {
@@ -116,7 +119,7 @@ describe('ENG-10 2024 fixtures', () => {
         .map((named) => `${named} (named by ${entity.id})`),
     );
     expect(missing).toEqual([]);
-    expect(entities.flatMap(keysNamedBy)).toHaveLength(81);
+    expect(entities.flatMap(keysNamedBy)).toHaveLength(89);
   });
 
   it('holds formulas that parse', () => {

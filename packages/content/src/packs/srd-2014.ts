@@ -1,5 +1,5 @@
+import type { fifthEditionEntitySchema, fifthEditionPackSchema } from '@grimoire/system-5e';
 import type { z } from 'zod';
-import type { fifthEditionEntitySchema, fifthEditionPackSchema } from '../../src/index.ts';
 
 // ENG-09: the SRD 5.1 entities goldens A and C need (SPEC §6.7, ADR 016), written by hand. Every
 // value was read from 5e-database at `e6edf9a` (ENG-09 §8); ids keep its slugs, keys are the
@@ -553,6 +553,47 @@ const items: Of<'item'>[] = [
   },
 ];
 
+// --- Sizes (SHEET-08: `5e-SRD-Monsters.json`, every `size`, §8) ---------------------------------
+
+/** Every creature size, smallest first: an effect may make a creature any of them. */
+const SIZES: readonly [string, string][] = [
+  ['tiny', 'Tiny'],
+  ['small', 'Small'],
+  ['medium', 'Medium'],
+  ['large', 'Large'],
+  ['huge', 'Huge'],
+  ['gargantuan', 'Gargantuan'],
+];
+
+const sizes = SIZES.map(
+  ([key, name]): Of<'size'> => ({
+    id: `srd-2014:size/${key}`,
+    type: 'size',
+    key,
+    ruleset,
+    name: { en: name },
+    source,
+  }),
+);
+
+// --- Schools of magic (SHEET-08: `5e-SRD-Magic-Schools.json`, §8): the two the spells name -------
+
+const schools = (
+  [
+    ['enchantment', 'Enchantment'],
+    ['evocation', 'Evocation'],
+  ] as const
+).map(
+  ([key, name]): Of<'spellSchool'> => ({
+    id: `srd-2014:spellSchool/${key}`,
+    type: 'spellSchool',
+    key,
+    ruleset,
+    name: { en: name },
+    source,
+  }),
+);
+
 const bludgeoning: Of<'damageType'> = {
   id: 'srd-2014:damageType/bludgeoning',
   type: 'damageType',
@@ -577,7 +618,7 @@ export const srd2014 = {
   version: '0.1.0',
   schemaVersion: 2,
   system: '5e',
-  systemSchemaVersion: 8,
+  systemSchemaVersion: 9,
   title: { en: 'SRD 5.1' },
   ruleset,
   // The attribution text is checked against the SRD's legal page by the import (ENG-09 §4).
@@ -606,5 +647,7 @@ export const srd2014 = {
     ...items,
     bludgeoning,
     versatile,
+    ...sizes,
+    ...schools,
   ],
 } satisfies z.input<typeof fifthEditionPackSchema>;

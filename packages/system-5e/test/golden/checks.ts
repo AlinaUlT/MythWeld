@@ -3,7 +3,9 @@ import type { FifthEditionCharacter, FifthEditionEntity } from '../../src/index.
 // ENG-09's checks of a golden pack and its characters, shared by both editions' tests (ENG-10).
 // ENG-10 widened them for 2024: a weapon's mastery is a key; a `formula` prerequisite and a
 // recovery amount are formulas. No 2014 entity has any of these. ENG-16 removed the stand-ins
-// ENG-13 kept here: the module gives every path the goldens' mechanics read.
+// ENG-13 kept here: the module gives every path the goldens' mechanics read. SHEET-08 widened
+// them to the keys its simple types name: sizes, creature types, schools, rarities, area shapes,
+// feat categories and rule topics.
 
 /** A file opened, or the test fails with why it did not open. */
 export function opened<T>(result: { ok: true; value: T } | { ok: false; message: string }): T {
@@ -53,6 +55,13 @@ export function keysNamedBy(entity: FifthEditionEntity): string[] {
       const type = KEYED_CATEGORIES[grant.category];
       if (type === undefined) continue;
       for (const key of [...(grant.fixed ?? []), ...listed(grant.choose)]) named.push([type, key]);
+    } else if (grant.kind === 'entity') {
+      const filter = grant.choose?.from;
+      if (filter !== undefined && !Array.isArray(filter) && 'type' in filter) {
+        if (filter.type === 'feat' && filter.category !== undefined) {
+          named.push(['featCategory', filter.category]);
+        }
+      }
     } else if (grant.kind === 'abilityScore') {
       for (const key of grant.mode === 'fixed' ? Object.keys(grant.values) : grant.from) stat(key);
     }
@@ -70,9 +79,22 @@ export function keysNamedBy(entity: FifthEditionEntity): string[] {
   }
   if (entity.type === 'subclass') named.push(['class', entity.classKey]);
   if (entity.type === 'skill') stat(entity.ability);
+  if (entity.type === 'species' || entity.type === 'lineage') {
+    for (const size of entity.size ?? []) named.push(['size', size]);
+    if (entity.creatureType !== undefined) named.push(['creatureType', entity.creatureType]);
+  }
+  if (entity.type === 'feat' && entity.category !== undefined) {
+    named.push(['featCategory', entity.category]);
+  }
+  if (entity.type === 'rule') named.push(['ruleTopic', entity.topic]);
   if (entity.type === 'spell') {
+    named.push(['spellSchool', entity.school]);
+    if (entity.range.area !== undefined) named.push(['areaShape', entity.range.area.shape]);
     if (entity.save !== undefined) stat(entity.save);
     for (const damage of entity.damage ?? []) named.push(['damageType', damage.type]);
+  }
+  if (entity.type === 'item' && entity.magic !== undefined) {
+    named.push(['itemRarity', entity.magic.rarity]);
   }
   if (entity.type === 'item' && entity.weapon !== undefined) {
     if (entity.weapon.damage !== undefined) named.push(['damageType', entity.weapon.damage.type]);

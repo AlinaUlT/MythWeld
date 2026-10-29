@@ -70,6 +70,8 @@ export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
   (file) => ({ ...file }),
   // 7 → 8 (ENG-66): an own entity's recovery may name `revive`, which no version 7 file names.
   (file) => ({ ...file }),
+  // 8 → 9 (SHEET-08): seven simple entity types are new, and no version 8 file has one.
+  (file) => ({ ...file }),
 ];
 
 /** The successes, or the failures, that end a run of death saves (ENG-33 §8). */

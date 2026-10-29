@@ -14,7 +14,7 @@ import { goldenA, goldenC2014, srd2014 } from './index.ts';
 // ENG-09: the 2014 golden data is whole, agrees with itself, and gives what SPEC §6.7 says golden
 // A has. Expected counts are ENG-09 §8's; golden A's scores and sources are SPEC §6.7's.
 
-const FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 8 };
+const FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 9 };
 
 const pack: FifthEditionPack = opened(openFifthEditionPack(srd2014));
 const entities: readonly FifthEditionEntity[] = pack.entities;
@@ -32,7 +32,7 @@ describe('ENG-09 2014 fixtures', () => {
     expect(openFifthEditionPack(srd2014)).toEqual({ ok: true, value: srd2014, from: FROM_CURRENT });
     expect(refused).toEqual([]);
     expect(warnings).toEqual([]);
-    expect(index.entities).toHaveLength(66);
+    expect(index.entities).toHaveLength(74);
   });
 
   it('holds the counts the SRD has', () => {
@@ -52,6 +52,8 @@ describe('ENG-09 2014 fixtures', () => {
       item: 3,
       damageType: 1,
       weaponProperty: 1,
+      size: 6,
+      spellSchool: 2,
     });
     expect(entities.every((entity) => entity.ruleset === '2014')).toBe(true);
     expect(entities.every((entity) => entity.source.pack === 'srd-2014')).toBe(true);
@@ -67,7 +69,7 @@ describe('ENG-09 2014 fixtures', () => {
     expect(entities.flatMap(idsNamedBy)).toHaveLength(15);
   });
 
-  it('names only its own stats, skills, languages, damage types and properties', () => {
+  it('names only its own stats, skills, languages, damage types, properties and simple types', () => {
     const missing = entities.flatMap((entity) =>
       keysNamedBy(entity)
         .filter((named) => {
@@ -77,7 +79,7 @@ describe('ENG-09 2014 fixtures', () => {
         .map((named) => `${named} (named by ${entity.id})`),
     );
     expect(missing).toEqual([]);
-    expect(entities.flatMap(keysNamedBy)).toHaveLength(60);
+    expect(entities.flatMap(keysNamedBy)).toHaveLength(63);
   });
 
   it('holds formulas that parse', () => {

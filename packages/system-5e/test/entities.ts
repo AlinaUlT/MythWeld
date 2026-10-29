@@ -304,6 +304,13 @@ export const damageType = named('damageType', 'glare', 'glare');
 export const weaponProperty = named('weaponProperty', 'long-haft', 'longHaft');
 export const weaponMastery = named('weaponMastery', 'nudge', 'nudge');
 export const toolKind = named('toolKind', 'wick-kit', 'wickKit');
+export const size = named('size', 'pocket', 'pocket');
+export const creatureType = named('creatureType', 'lamplit', 'lamplit');
+export const spellSchool = named('spellSchool', 'glimmercraft', 'glimmercraft');
+export const itemRarity = named('itemRarity', 'oddment', 'oddment');
+export const areaShape = named('areaShape', 'ring', 'ring');
+export const featCategory = named('featCategory', 'hearth-trick', 'hearthTrick');
+export const ruleTopic = named('ruleTopic', 'environment', 'environment');
 
 export const rule = {
   id: 'hb-test:rule/dim-light',
@@ -336,5 +343,12 @@ export const everyEntity = [
   weaponProperty,
   weaponMastery,
   toolKind,
+  size,
+  creatureType,
+  spellSchool,
+  itemRarity,
+  areaShape,
+  featCategory,
+  ruleTopic,
   rule,
 ];

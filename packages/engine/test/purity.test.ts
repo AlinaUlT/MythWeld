@@ -132,8 +132,9 @@ describe('ENG-01 engine purity', () => {
     expect(result.status).toBe(1);
     // react (1), react-dom (2), dexie (3), node:http (4), a type from axios (5),
     // a re-export from ws (6), a dynamic import of the app (7), a relative path into the app's
-    // Dexie file (8), a relative path into node_modules (9).
-    expect(result.imports).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    // Dexie file (8), a relative path into node_modules (9). SHEET-08 refuses 8 and 9 again, as
+    // climbs out of the package.
+    expect(result.imports).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 9]);
   });
 
   it('fails lint on DOM, storage and network globals', () => {
@@ -235,6 +236,29 @@ describe('ENG-31 the core cannot import a system module', () => {
     expect(refused(file, moduleImports, 'ENG-31').lines).toEqual([1, 2, 3, 4, 5, 6, 7]);
     // A name not on the engine's list (1–4) and a path into node_modules (7) break ENG-01 too.
     expect(refused(file, moduleImports, 'ENG-01').lines).toEqual([1, 2, 3, 4, 7]);
+  });
+});
+
+// SHEET-08: content imports the module, so a core or module file that climbed into content would
+// reach the module, or another package, with no error (the ENG-31 note).
+const climbs = `import { packs } from '../../content/src/index.ts';
+import { fill } from '../../pdf/src/index.ts';
+import { schema } from '../../schema/src/index.ts';
+import { srd } from '../../../packages/content/src/packs/srd-2014.ts';
+import { own } from './own.ts';
+import { up } from '../shared.ts';
+export const all = [packs, fill, schema, srd, own, up];
+`;
+
+describe('SHEET-08 a core or module file never climbs out of its package', () => {
+  it('fails lint on a climb from the schema package, the engine or a module', () => {
+    for (const pkg of ['schema', 'engine', 'system-5e']) {
+      const result = refused(`packages/${pkg}/src/Sample.ts`, climbs, 'SHEET-08');
+      expect(result.status, pkg).toBe(1);
+      // Into content (1), pdf (2), the schema package (3), content again by a deeper climb (4).
+      // Its own file (5) and a file of its own package (6) stay allowed.
+      expect(result.lines, pkg).toEqual([1, 2, 3, 4]);
+    }
   });
 });
 

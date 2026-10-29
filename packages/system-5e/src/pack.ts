@@ -29,6 +29,8 @@ export const FIFTH_EDITION_PACK_MIGRATIONS: readonly Migration[] = [
   (file) => ({ ...file }),
   // 7 → 8: ENG-66: a recovery may name `revive`, which no version 7 pack names.
   (file) => ({ ...file }),
+  // 8 → 9: SHEET-08: seven simple entity types are new, and no version 8 pack has one.
+  (file) => ({ ...file }),
 ];
 
 /** A fifth-edition content pack: its entities are fifth edition's union (ENG-32). */

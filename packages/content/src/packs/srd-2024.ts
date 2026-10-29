@@ -1,5 +1,5 @@
+import type { fifthEditionEntitySchema, fifthEditionPackSchema } from '@grimoire/system-5e';
 import type { z } from 'zod';
-import type { fifthEditionEntitySchema, fifthEditionPackSchema } from '../../src/index.ts';
 
 // ENG-10: the SRD 5.2.1 entities goldens B, B4, C and D need (SPEC §6.7), written by hand. Every
 // value was read from 5e-database at `e6edf9a`, and from dnd5e at `7bfb3f1` where 5e-database is
@@ -663,6 +663,61 @@ const slashing: Of<'damageType'> = {
   source,
 };
 
+// --- Sizes (SHEET-08: `5e-SRD-Monsters.json`, every `size`, §8) ---------------------------------
+
+/** Every creature size, smallest first: an effect may make a creature any of them. */
+const SIZES: readonly [string, string][] = [
+  ['tiny', 'Tiny'],
+  ['small', 'Small'],
+  ['medium', 'Medium'],
+  ['large', 'Large'],
+  ['huge', 'Huge'],
+  ['gargantuan', 'Gargantuan'],
+];
+
+const sizes = SIZES.map(
+  ([key, name]): Of<'size'> => ({
+    id: `srd-2024:size/${key}`,
+    type: 'size',
+    key,
+    ruleset,
+    name: { en: name },
+    source,
+  }),
+);
+
+// --- The human's creature type (SHEET-08: `5e-SRD-Species.json`, `type`, §8) ---------------------
+
+const humanoid: Of<'creatureType'> = {
+  id: 'srd-2024:creatureType/humanoid',
+  type: 'creatureType',
+  key: 'humanoid',
+  ruleset,
+  name: { en: 'Humanoid' },
+  source,
+};
+
+// --- Feat categories (SHEET-08: `5e-SRD-Feats.json`, `type`, §8): the two the feats name ---------
+
+const featCategories: Of<'featCategory'>[] = [
+  {
+    id: 'srd-2024:featCategory/origin',
+    type: 'featCategory',
+    key: 'origin',
+    ruleset,
+    name: { en: 'Origin' },
+    source,
+  },
+  {
+    id: 'srd-2024:featCategory/fighting-style',
+    type: 'featCategory',
+    key: 'fightingStyle',
+    ruleset,
+    name: { en: 'Fighting Style' },
+    source,
+  },
+];
+
 const weaponProperties: Of<'weaponProperty'>[] = [
   {
     id: 'srd-2024:weaponProperty/heavy',
@@ -715,7 +770,7 @@ export const srd2024 = {
   version: '0.1.0',
   schemaVersion: 2,
   system: '5e',
-  systemSchemaVersion: 8,
+  systemSchemaVersion: 9,
   title: { en: 'SRD 5.2.1' },
   ruleset,
   // The attribution text is checked against the SRD's legal page by the import (ENG-09 §4).
@@ -743,5 +798,8 @@ export const srd2024 = {
     slashing,
     ...weaponProperties,
     ...masteries,
+    ...sizes,
+    humanoid,
+    ...featCategories,
   ],
 } satisfies z.input<typeof fifthEditionPackSchema>;

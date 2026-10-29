@@ -398,6 +398,58 @@ export const toolKindDefSchema = base.safeExtend({
 });
 export type ToolKindDef = z.infer<typeof toolKindDefSchema>;
 
+// SHEET-08: the keys fields of other types name, given a simple type each so the screen shows the
+// entry's name for the key. A rule's `icon` names a picture, which the skin draws (ADR 015).
+
+/** A creature size, named by key in a species' or lineage's `size`. */
+export const sizeDefSchema = base.safeExtend({
+  type: z.literal('size'),
+  key: entityKeySchema,
+});
+export type SizeDef = z.infer<typeof sizeDefSchema>;
+
+/** A creature type, named by key in a species' or lineage's `creatureType`. */
+export const creatureTypeDefSchema = base.safeExtend({
+  type: z.literal('creatureType'),
+  key: entityKeySchema,
+});
+export type CreatureTypeDef = z.infer<typeof creatureTypeDefSchema>;
+
+/** A school of magic, named by key in a spell's `school`. */
+export const spellSchoolDefSchema = base.safeExtend({
+  type: z.literal('spellSchool'),
+  key: entityKeySchema,
+});
+export type SpellSchoolDef = z.infer<typeof spellSchoolDefSchema>;
+
+/** A magic item's rarity, named by key in an item's `magic.rarity`. */
+export const itemRarityDefSchema = base.safeExtend({
+  type: z.literal('itemRarity'),
+  key: entityKeySchema,
+});
+export type ItemRarityDef = z.infer<typeof itemRarityDefSchema>;
+
+/** The shape of an area of effect, named by key in a spell's `range.area.shape`. */
+export const areaShapeDefSchema = base.safeExtend({
+  type: z.literal('areaShape'),
+  key: entityKeySchema,
+});
+export type AreaShapeDef = z.infer<typeof areaShapeDefSchema>;
+
+/** A category of feats, named by key in a feat's `category` and in a choice's filter. */
+export const featCategoryDefSchema = base.safeExtend({
+  type: z.literal('featCategory'),
+  key: entityKeySchema,
+});
+export type FeatCategoryDef = z.infer<typeof featCategoryDefSchema>;
+
+/** A topic of Quick rules, named by key in a rule's `topic`. */
+export const ruleTopicDefSchema = base.safeExtend({
+  type: z.literal('ruleTopic'),
+  key: entityKeySchema,
+});
+export type RuleTopicDef = z.infer<typeof ruleTopicDefSchema>;
+
 /** A rule, shown in Quick rules under its topic, with an icon when it has one (ADR 014 item 5). */
 export const ruleDefSchema = base.safeExtend({
   type: z.literal('rule'),
@@ -422,6 +474,13 @@ export const fifthEditionEntitySchema = systemEntitySchemaOf(fifthEdition, [
   weaponPropertyDefSchema,
   weaponMasteryDefSchema,
   toolKindDefSchema,
+  sizeDefSchema,
+  creatureTypeDefSchema,
+  spellSchoolDefSchema,
+  itemRarityDefSchema,
+  areaShapeDefSchema,
+  featCategoryDefSchema,
+  ruleTopicDefSchema,
   ruleDefSchema,
 ]);
 export type FifthEditionEntity = z.infer<typeof fifthEditionEntitySchema>;

@@ -3013,3 +3013,181 @@ Found, not fixed:
   switch.
 
 Nothing for the changelog.
+
+---
+
+### SHEET-08 The phase 1 fixtures ship as the built-in mini-pack
+
+**Hat:** The phase 1 fixtures ship as the built-in mini-pack
+**Depends on:** ENG-09, ENG-10, ENG-31, ENG-41
+**Size:** M
+**Screen:** No
+**SPEC:** §12 stage 2 ("a mini-pack of the stage 1 fixtures"), §3, §5.3, §5.7; ADR 003, ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/index.ts` — changes: `BUILT_IN_PACKS`, `srd2014`,
+`srd2024`. The other files it touches:
+
+- `packages/content/src/packs/srd-2014.ts`, `srd-2024.ts` — moved (`git mv`) from
+  `packages/system-5e/test/golden/`; they gain the simple-type entries of §4 step 3.
+- `packages/content/package.json` — `@grimoire/system-5e` and `zod` join `dependencies` (types
+  only); `@grimoire/engine` and `@types/node` join `devDependencies`, for the test.
+- `packages/content/test/built-in.test.ts`, `test/tsconfig.json` — new.
+- `packages/system-5e/src/entity-types.ts` — seven simple entity types.
+- `packages/system-5e/src/system.ts`, `character.ts`, `pack.ts` — version 9, one step each.
+- `packages/system-5e/test/golden/index.ts` — re-exports the two packs from `content`.
+- `packages/system-5e/test/golden/checks.ts` — `keysNamedBy` reads the new keys.
+- `biome.json`, `packages/engine/test/purity.test.ts` — the climb rule (§4 step 5).
+- `apps/web/public/schema/5e/pack.schema.json` — rewritten by its test (ENG-38).
+
+#### 2. What is missing now
+
+Measured on 2026-10-29, at `d4bee2f`:
+
+- `packages/content/src/index.ts` is `export {};`. The SRD fixtures live only in
+  `packages/system-5e/test/golden/srd-2014.ts` and `srd-2024.ts`, which no package exports.
+- A spell's `school`, a species' `size` and `creatureType`, an item's `magic.rarity`, a spell
+  area's `shape`, a feat's `category` and a rule's `topic` are keys with no entity type, so
+  nothing gives their name on screen (ENG-32's note). The module has 18 entity types.
+- A file in `packages/schema/src`, `packages/engine/src` or `packages/system-5e/src` (and
+  `src/rulesets/`) that imports `../../content/src/index.ts` passes `biome lint`: 0 diagnostics
+  on four such sample files.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/content` exports `BUILT_IN_PACKS`, equal to `[srd2014, srd2024]`. Each opens through
+   `openFifthEditionPack` as it is, `from: { schemaVersion: 2, systemSchemaVersion: 9 }`.
+2. Each carries `spdx: 'CC-BY-4.0'`, the CC legal-code URL and `redistributable: true`; each
+   entity's id and `source.pack` name its own pack, and its `ruleset` is the pack's.
+3. Both load into one content index: nothing refused, no warning, 140 entries (74 + 66).
+4. The golden tests read these two files, through `test/golden/index.ts`; every golden value
+   test passes unchanged.
+5. The module has 25 entity types; the seven new ones (`size`, `creatureType`, `spellSchool`,
+   `itemRarity`, `areaShape`, `featCategory`, `ruleTopic`) need a `key`.
+6. SRD 5.1's pack holds the six sizes and the schools `enchantment` and `evocation`; SRD 5.2.1's
+   holds the six sizes, `humanoid`, and the feat categories `origin` and `fightingStyle`. Every
+   such key a fixture entity names has its entry (`keysNamedBy`: 63 keys in 2014, 89 in 2024).
+7. `FIFTH_EDITION_SCHEMA_VERSION` is 9; a character or pack of version 8 opens as it is.
+8. Lint refuses `../../…` in a file of `packages/schema/src`, `packages/engine/src` or
+   `packages/system-*/src`, with a message naming SHEET-08.
+
+#### 4. How to do it
+
+1. **The packs move, the tests follow.** `git mv` both fixtures into `packages/content/src/packs/`.
+   `test/golden/index.ts` re-exports `srd2014` and `srd2024` from
+   `../../../content/src/index.ts`, so the tests and the app read one file. Technical choice
+   (ADR 002): a relative path from a test, as `apps/web/test/characters.test.ts` already reaches
+   the goldens, not a `devDependency` on `@grimoire/content`, which would make
+   `content → system-5e → content` a workspace cycle. Lint does not cover test files.
+2. **`content` imports the module, as types only.** The packs keep
+   `satisfies z.input<typeof fifthEditionPackSchema>`; they are data, opened by the app through
+   the module's opener when SHEET-09 loads them. `BUILT_IN_PACKS` is `readonly unknown[]`: a file
+   is unknown until it is opened. That a pack is built-in is this list's to say, never the file's
+   (ADR 003).
+3. **The keys get names from simple types.** Technical choice (ADR 002): a simple entity type
+   each, not the module's i18n keys, because these are content, which a pack, a homebrew pack and
+   a translation overlay give (D3: everything is data), as `language` and `damageType` already
+   are. A rule's `icon` gets no type: it names a picture, and every picture comes from the skin
+   (ADR 015), not from a name on screen. The packs get only the entries their entities name, plus
+   every size, which SHEET-66 needs.
+4. **Version 9.** A version 8 file has none of the new types, so each step returns it as it is;
+   a version 9 file that has one is refused as newer by a version 8 app, as ENG-66 did for
+   `revive`.
+5. **The climb.** Each of the three `noRestrictedImports` overrides gains the group `../../**`.
+   From `src/` that leaves the package; from `src/rulesets/` it reaches the package root, which
+   `src` never imports. No file in those folders imports `../../` today (`grep`, measured).
+
+#### 5. Stored data
+
+The module's stored shape changes: `FIFTH_EDITION_SCHEMA_VERSION` 8 → 9, one step in
+`FIFTH_EDITION_CHARACTER_MIGRATIONS` and one in `FIFTH_EDITION_PACK_MIGRATIONS`, each returning a
+copy of the file. Tested in `packages/system-5e/test/character.test.ts`, `SHEET-08 the simple
+types that name keys are stored`. The core's `schemaVersion` (2) and Dexie's version do not
+change.
+
+#### 6. What a person will see
+
+Not a screen. The packs reach the app with SHEET-09; the names show on the wave 6 tabs.
+
+#### 7. Tests
+
+- `packages/content/test/built-in.test.ts` — `SHEET-08 the built-in mini-pack`: §3 items 1–3, 6.
+- `packages/system-5e/test/golden/fixtures-2014.test.ts`, `fixtures-2024.test.ts` — the counts
+  and keys of §3 item 6, read through the moved files (item 4).
+- `packages/system-5e/test/entity-types.test.ts` — item 5; `character.test.ts` — item 7;
+  `packages/engine/test/purity.test.ts` — `SHEET-08 a core or module file never climbs out of its
+  package`: item 8.
+- Control numbers from: ENG-09 §8 and ENG-10 §8 (66 and 57 entities, 60 and 81 keys), plus the
+  entries this ticket adds, counted by hand: 6 + 2 entities and 1 + 2 keys in 2014; 6 + 1 + 2
+  entities and 2 + 1 + 3 + 2 keys in 2024 (the human's two sizes, its creature type, three feats'
+  categories, two choices filtered by category).
+
+#### 8. Checked against the source
+
+5e-bits/5e-srd-api at `e6edf9a` (the commit ENG-02 measured),
+`packages/5e-database/src/{2014,2024}/en/`:
+
+- Sizes: `5e-SRD-Monsters.json`, every `size`: Tiny, Small, Medium, Large, Huge, Gargantuan in
+  both editions (2024 also has "Medium or small", two of these).
+- Schools: `5e-SRD-Magic-Schools.json`, eight in each edition, the same `index` and `name`;
+  `enchantment` "Enchantment" and `evocation` "Evocation" are the two the 2014 spells name.
+- Creature type: 2024 `5e-SRD-Species.json`, the human: `"type": "Humanoid"`.
+- Feat categories: 2024 `5e-SRD-Feats.json`, `type`: `origin` (4 feats), `fighting-style` (4),
+  `general` (2), `epic-boon` (7). Alert and Savage Attacker are `origin`, Defense
+  `fighting-style`. The name is the slug's words: "Origin", "Fighting Style".
+- The attribution texts of SPEC Appendix В are `[ПРОВЕРИТЬ]` against each PDF's legal page. Not
+  reachable: `media.wizards.com` and `media.dndbeyond.com` answer 403 through the container's
+  proxy; the 5e-srd-api repository holds neither text. So `license.attribution` stays out, as
+  ENG-09 left it (§11).
+
+#### 9. Not in this ticket
+
+- Loading the built-in packs into the content index at start: SHEET-09.
+- Every size as a key the `size` path takes: SHEET-66.
+- The other schools, creature types, rarities, area shapes, feat categories and rule topics:
+  the SRD import, phase 3.
+- Showing the names: the wave 6 tabs.
+
+#### 10. Rake check
+
+- **Only openly licensed content**: the packs are SRD 5.1 and 5.2.1 (CC-BY-4.0), names only; no
+  rules text is added.
+- **A pack with `redistributable: false` never enters the public build**: the test refuses a
+  built-in pack that is not `redistributable: true`.
+- **Everything is data**: the new names are entries a pack gives, not literals in code.
+- **A stored-shape change needs a migration**: version 9, a step in each list, tested.
+- **Each system's rules live in its own module; the core never imports one**: the core imports
+  nothing new, and lint now also refuses a climb out of a core or module package.
+- **Golden tests are the truth**: no golden value changed; only fixture counts grew by the
+  entries added.
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on top of SHEET-22 (`36886de`):
+
+- `pnpm lint`: `Checked 240 files`, 0 errors. `pnpm typecheck`: exit 0.
+- `pnpm test`: `Test Files 80 passed (80)`, `Tests 1072 passed (1072)` (1064 before, 8 new:
+  5 in `content`, 2 for version 9, 1 for the climb); lines covered 99.9 % (3011/3014). The
+  second suite (`Tests 2 passed (2)`) is unchanged. 31.7 s.
+- `pnpm e2e`: `19 passed (22.7s)`.
+- The tests are live: with SRD 5.2.1's feat categories left out of its pack, `5 failed | 64
+  passed (69)` in `content` and the golden tests.
+- Build: JS 500.82 kB (159.97 kB gzip), the same file (`index-DWdAgn4f.js`) as before: the app
+  imports nothing from `content` yet, so no pack is in the public build until SHEET-09.
+- Differs from the row: ENG-48's note (a size type gives every size as the `size` path's keys)
+  needs the core to list a type's keys, which a derived step cannot do today; re-cut as
+  SHEET-66. A rule's `icon` gets no type (§4 step 3). The ENG-31 note under phase 3 is done here
+  and is deleted from the backlog.
+
+Found, not fixed:
+
+- The built-in packs have no `license.attribution` (§8); SHEET-09, which puts them in the public
+  build, fills it from the checked texts first (note added to its row).
+- A schema file can still name `@grimoire/content` by package name: its lint override refuses
+  only the modules by name. It does not resolve (the schema package lists no such dependency), so
+  typecheck fails instead of lint: `TS2307: Cannot find module '@grimoire/content'`, measured.
+
+Nothing for the changelog.

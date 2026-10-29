@@ -20,21 +20,28 @@ import {
   spellGrantSchema,
 } from '../src/index.ts';
 import {
+  areaShape,
   armor,
   background,
   cantrip,
   column,
+  creatureType,
   damageType,
   everyEntity,
   feat,
+  featCategory,
   feature,
   gear,
+  itemRarity,
   klass,
   language,
   rule,
+  ruleTopic,
+  size,
   source,
   species,
   spell,
+  spellSchool,
   subclass,
   toolKind,
   weapon,
@@ -78,7 +85,7 @@ function without<T extends object>(entity: T, field: keyof T & string): Omit<T, 
 }
 
 describe('ENG-32 fifth-edition entity types', () => {
-  it('parses every type to an equal object, chosen among 18 types', () => {
+  it('parses every type to an equal object, chosen among 25 types', () => {
     for (const entity of everyEntity) {
       expect(fifthEditionEntitySchema.parse(entity), entity.id).toEqual(entity);
     }
@@ -100,6 +107,13 @@ describe('ENG-32 fifth-edition entity types', () => {
       'weaponProperty',
       'weaponMastery',
       'toolKind',
+      'size',
+      'creatureType',
+      'spellSchool',
+      'itemRarity',
+      'areaShape',
+      'featCategory',
+      'ruleTopic',
       'rule',
     ]);
     expect(issuePaths(fifthEditionEntitySchema, { ...rule, type: 'monster' })).toEqual(['type']);
@@ -369,6 +383,13 @@ describe('ENG-32 fifth-edition entity types', () => {
       weaponProperty,
       weaponMastery,
       toolKind,
+      size,
+      creatureType,
+      spellSchool,
+      itemRarity,
+      areaShape,
+      featCategory,
+      ruleTopic,
     ]) {
       expect(issuePaths(fifthEditionEntitySchema, without(entity, 'key')), entity.type).toEqual([
         'key',
@@ -453,6 +474,13 @@ describe('ENG-32 fifth-edition entity types', () => {
       | 'weaponProperty'
       | 'weaponMastery'
       | 'toolKind'
+      | 'size'
+      | 'creatureType'
+      | 'spellSchool'
+      | 'itemRarity'
+      | 'areaShape'
+      | 'featCategory'
+      | 'ruleTopic'
       | 'rule'
     >();
     expectTypeOf<FifthEditionEntity['ruleset']>().toEqualTypeOf<'2014' | '2024' | 'any'>();
@@ -472,7 +500,7 @@ describe('ENG-32 fifth-edition entity types', () => {
     const json = z.toJSONSchema(fifthEditionEntitySchema) as unknown as {
       oneOf: { additionalProperties: unknown; properties: { ruleset: { enum: unknown } } }[];
     };
-    expect(json.oneOf).toHaveLength(18);
+    expect(json.oneOf).toHaveLength(25);
     for (const option of json.oneOf) {
       expect(option.additionalProperties).toBe(false);
       expect(option.properties.ruleset.enum).toEqual(['2014', '2024', 'any']);

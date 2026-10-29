@@ -83,6 +83,10 @@
                   {
                     "group": ["@grimoire/system-*", "**/system-*/**"],
                     "message": "ENG-31: the core knows no game (ADR 004 item 2). @grimoire/schema and @grimoire/engine never import a system module (@grimoire/system-<id>, in packages/system-<id>/), by name or by a relative path. The module imports the core, never the other way."
+                  },
+                  {
+                    "group": ["../../**"],
+                    "message": "SHEET-08: a core or module file imports another package by its name, never by a relative path out of its own package (the ENG-31 note). A climb such as ../../content/src/index.ts reaches a package lint does not let it name."
                   }
                 ]
               }
@@ -114,6 +118,10 @@
                   {
                     "group": ["@grimoire/system-*", "**/system-*/**"],
                     "message": "ENG-31: the core knows no game (ADR 004 item 2). @grimoire/schema and @grimoire/engine never import a system module (@grimoire/system-<id>, in packages/system-<id>/), by name or by a relative path. The module imports the core, never the other way."
+                  },
+                  {
+                    "group": ["../../**"],
+                    "message": "SHEET-08: a core or module file imports another package by its name, never by a relative path out of its own package (the ENG-31 note). A climb such as ../../content/src/index.ts reaches a package lint does not let it name."
                   }
                 ]
               }
@@ -143,6 +151,10 @@
                       "**/node_modules/**"
                     ],
                     "message": "ENG-41: a system module is pure TypeScript, as the engine is (ENG-01, ADR 004 item 1). It imports only its own files, @grimoire/schema, @grimoire/engine and zod: no React, DOM, Dexie or network library, no other package, and no path into apps/ or node_modules/. A new pure dependency is added to this list in biome.json."
+                  },
+                  {
+                    "group": ["../../**"],
+                    "message": "SHEET-08: a core or module file imports another package by its name, never by a relative path out of its own package (the ENG-31 note). A climb such as ../../content/src/index.ts reaches a package lint does not let it name."
                   }
                 ]
               }
