@@ -182,3 +182,50 @@ export function defensesOf(values: Readonly<Record<string, FormulaValue>>): Defe
   }
   return lists;
 }
+
+// SHEET-16: damage of a type meets the defenses in the order both SRDs give: immunity takes it
+// all, else resistance halves it, rounded down, then vulnerability doubles it (SHEET-16 §8). The
+// amount it starts from is the damage after every other change: the person types it.
+
+/** The lists damage of a type meets, in the order it meets them. */
+export const DAMAGE_DEFENSES = [
+  'immune',
+  'resist',
+  'vuln',
+] as const satisfies readonly DefenseList[];
+export type DamageDefense = (typeof DAMAGE_DEFENSES)[number];
+
+/**
+ * A defense that changed damage: its list, its path, whose breakdown names its sources, and the
+ * damage after it.
+ */
+export interface DefenseStep {
+  list: DamageDefense;
+  path: string;
+  amount: number;
+}
+
+/** What the defenses made of damage of a type. */
+export interface DefendedDamage {
+  /** The damage dealt, before the defenses. */
+  dealt: number;
+  /** The damage type's key. */
+  type: string;
+  /** Each defense that applied, in order. */
+  steps: DefenseStep[];
+  /** The damage taken. */
+  amount: number;
+}
+
+/** What `dealt` damage of `type` comes to against `defenses` (`defensesOf`). */
+export function defendedDamage(dealt: number, type: string, defenses: Defenses): DefendedDamage {
+  const steps: DefenseStep[] = [];
+  let amount = dealt;
+  for (const list of DAMAGE_DEFENSES) {
+    if (!defenses[list].includes(type)) continue;
+    amount = list === 'immune' ? 0 : list === 'resist' ? Math.floor(amount / 2) : amount * 2;
+    steps.push({ list, path: defensePath(list, type), amount });
+    if (amount === 0) break;
+  }
+  return { dealt, type, steps, amount };
+}

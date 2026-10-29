@@ -1870,3 +1870,152 @@ Measured on 2026-10-29, on `main` at `3977c50`:
   a formula gives.
 - Found, not fixed: nothing.
 - Nothing for the changelog: no screen reads it yet.
+
+---
+
+### SHEET-16 Damage applies the character's defenses by its type
+
+**Hat:** Damage applies the character's defenses by its type
+**Depends on:** ENG-20 (`applyDamage`), SHEET-15 (`defensesOf`)
+**Size:** S
+**Screen:** No
+**SPEC:** §6.4 (`applyDamage`), §5.4 (the `defenses.*` targets), §8.2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/defenses.ts` — changes: `defendedDamage`, the three lists
+damage meets, in their order.
+- `packages/system-5e/src/hit-points.ts` — `DamageAsk.type`, the refusals `badType` and
+  `noDamage`, `DamageOutcome.defended`; `applyDamage` takes the damage after the defenses.
+
+#### 2. What is missing now
+
+Measured on `main` at `3977c50`, 2026-10-29:
+- `DamageAsk` is `{ amount, critical?, knockOut? }`; its `amount` is documented as "the damage
+  taken, resistance, vulnerability and immunity applied" (`hit-points.ts` line 71). The person
+  works the defenses out in their head.
+- `grep -n "defenses" packages/system-5e/src/hit-points.ts` finds nothing: `applyDamage` never
+  reads `defensesOf`.
+
+#### 3. What it should look like when done
+
+1. Damage with no `type` changes as it does today; its outcome has no `defended`.
+2. `type` is a damage type's key. A `type` that is not a key is refused: `badType`, with the type.
+3. With a type, the character's defenses of that type apply to `amount`, in this order: immunity
+   gives 0 and nothing else applies; else resistance halves it, rounded down; then vulnerability
+   doubles it. Everything after takes the damage that is left: the temporary hit points, the hit
+   points, massive damage, the death save failures, the concentration DC, a knock-out.
+4. The outcome's `defended` gives `dealt` (the amount asked), `type`, `steps` (each defense that
+   applied: its list, its path, whose breakdown names its sources, and the damage after it),
+   `amount` (what the character takes), and `missing` (no entry of type `damageType` has the
+   key). A key with no entry still meets the defenses that name it, as SHEET-15 counts it.
+5. Defenses that leave 0 change nothing: refused as `noDamage`, with `defended`.
+6. A defense switched off, or overridden to 0, does not apply: `applyDamage` reads the computed
+   values, so the breakdown's winner is the one used.
+7. Control values, worked out by hand from §8:
+   - 2014, resistance to bludgeoning, 7 bludgeoning at 12 of 12: takes 3, left at 9.
+   - 2024, resistance and vulnerability to slashing, 23 slashing at 40 of 40 (SRD 5.2.1's example
+     after its aura): 11, then 22; left at 18.
+   - 2014, vulnerability to bludgeoning, 9 bludgeoning at 6 of 12: 18, so 12 left over at 0, equal
+     to the maximum: dead. Without the type: 3 left over, down.
+   - Concentrating, resistance, 44 at 50 of 50: takes 22, DC 11 (44 and DC 22 without the type).
+   - Resistance, 1 damage: 0, `noDamage`. Immunity with resistance and vulnerability: 0, one step.
+
+#### 4. How to do it
+
+1. `defenses.ts`: `DAMAGE_DEFENSES = ['immune', 'resist', 'vuln']`, the order damage meets them;
+   `defendedDamage(dealt, type, defenses)` walks them and gives the steps and the amount. Pure,
+   no compute.
+2. `applyDamage`: refuse a bad amount, a dead character, a bad type; then one `compute()` gives
+   the maximum and `defensesOf(values)`; `noDamage` at 0; then the knock-out check and the rest of
+   ENG-20's steps on the amount left. The concentration DC takes the amount left too.
+3. No edition difference: both SRDs (and dnd5e's one code for both) give the same order and the
+   same rounding, so nothing goes in `rulesets/`.
+
+#### 5. Stored data
+
+Nothing stored changes. `DamageAsk` is an argument, not stored.
+
+#### 6. What a person will see
+
+Not a screen. The number pad (SHEET-40) passes the type when the person picks one.
+
+#### 7. Tests
+
+- `packages/system-5e/test/damage-defenses.test.ts` — `describe('SHEET-16 damage by its type')`:
+  §3 items 1–7, on golden A (2014, `bludgeoning`) and golden B (2024, `slashing`), hit point
+  maximum 12 (SPEC §6.7), with made-up feats.
+- Control numbers from: §3 item 7, worked out by hand from §8; SRD 5.2.1's example (28 − 5 = 23,
+  11, 22). No golden value is read or changed.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-29, the commits SHEET-15 read: SRD 5.1 as 5e-bits/5e-srd-api quotes it at
+`e6edf9a51fad4b59a7e9561fad6c15232caed214` (`packages/5e-database/src/2014/en/5e-SRD-Rules.json`,
+"Damage Resistance and Vulnerability"); SRD 5.2.1 as foundryvtt/dnd5e at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` quotes it
+(`packs/_source/content24/chapter-1/damage-and-healing.yml`); dnd5e's code at the same commit
+(`module/documents/actor/actor.mjs`, `calculateDamage`). CC-BY-4.0 for the SRDs.
+
+**Order.** SRD 5.1: "Resistance and then vulnerability are applied after all other modifiers to
+damage." SRD 5.2.1 (Order of Application): "adjustments such as bonuses, penalties, or
+multipliers are applied first; Resistance is applied second; and Vulnerability is applied
+third." The amount asked is the damage after the other modifiers: the person types it.
+
+**Rounding.** SRD 5.2.1: "damage of that type is halved against you (round down)", and its
+example: "If it takes 28 Fire damage, the damage is first reduced by 5 (to 23), then halved for
+the creature's Resistance (and rounded down to 11), then doubled for its Vulnerability (to 22)."
+SRD 5.1's text says only "halved"; its example is even (25 − 5 = 20, "takes 10"). dnd5e uses one
+code for both editions: `appliedDamage = Math.trunc(appliedDamage / 2)`, then `appliedDamage *= 2`
+for vulnerability, so 2014 rounds down too.
+
+**Immunity.** SRD 5.2.1: "Immunity to a damage type means you don't take damage of that type".
+dnd5e: a type with immunity gets `d.value = 0` and skips resistance and vulnerability; it does so
+for both editions. SRD 5.1's rules text has no immunity paragraph.
+
+**Concentration.** SRD 5.1: "The DC equals 10 or half the damage you take". So the DC takes the
+damage after the defenses.
+
+#### 9. Not in this ticket
+
+- One hit of two types (slashing and fire from one weapon) is one source of damage, so one
+  concentration save. The ask takes one type; dnd5e takes a list of parts. A row adds parts when
+  a screen asks for them.
+- Picking the type on the number pad: SHEET-40.
+- "Resistance to all damage" and the 2014 qualified kinds: SHEET-15 §9.
+- Damage threshold: a property of objects, not of characters.
+
+#### 10. Rake check
+
+- **Everything is data:** no damage type is named in code; `type` is any key, and the defenses are
+  SHEET-15's paths.
+- **No number without a breakdown:** each step names the path whose breakdown gives its sources.
+- **Manual overrides always win:** the defenses are read from the computed values, after the
+  overrides (§3 item 6).
+- **Each system's rules in its module:** the order lives in `system-5e/src/defenses.ts`; the core
+  is not touched; no edition check, since both editions agree.
+- **Missing is not broken:** a key with no entry is applied, with `missing: true`; nothing throws.
+- **No rules text without an open license:** the test feats are made up; the quotes are
+  CC-BY-4.0 SRD text, and dnd5e's code is quoted for its arithmetic only.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-29, on `main` at `b06c63f` (SHEET-04, 06, 10, 20 landed while this ran):
+`pnpm lint` 230 files, no fixes; `pnpm typecheck` 6 projects, no errors; `pnpm test` 74 files, 996
+passed, 0 failed, 20.6 s, then the speed project 1 file, 2 passed. Before the rebase, on
+`3977c50`: 967 passed, against 955 without this ticket (+12, the new file). Coverage: statements
+99.51 % (3316/3332), lines 99.93 % (2913/2915). Not `apps/web`, so no `pnpm e2e`.
+
+Differences from §3: the concentration case of item 7 was first written at 40 of 40; 44 damage
+without the type drops 40 to 0 and ends concentration, so there is no DC to compare. The test
+found it; the case is now 50 of 50. Item 3, made exact: any defense that leaves 0 ends the walk,
+so resistance taking 1 to 0 gives one step, not a vulnerability step of 0 after it.
+
+The existing damage tests (ENG-20, ENG-58, ENG-65, ENG-67) pass unchanged: an ask with no type
+gives the same changes and the same outcome as before.
+
+Found, not fixed: nothing.
+
+Nothing for the changelog.
