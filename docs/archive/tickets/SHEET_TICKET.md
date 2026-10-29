@@ -3834,3 +3834,56 @@ Found, not fixed:
   inside `compute()`, the pass's `without`.
 
 Nothing for the changelog.
+
+---
+
+### SHEET-65 Dying ends concentration · XS
+
+**Hat:** death ends the concentration
+**Where:** `packages/system-5e/src/actions.ts` (`deathChanges`); `conditions.ts`
+(`setConditionLevel`) and `hit-points.ts` (`applyDamage`) stop listing the change themselves when
+the character dies
+**Depends on:** SHEET-62, SHEET-64, ENG-63
+**Screen:** No
+
+**Now (measured, `3b027bd`):** `deathChanges` changes only `systemData.inventory`. Its three
+callers: `rollDeathSave` (the third failure), `applyDamage`, `setConditionLevel` (exhaustion at its
+highest level). `applyDamage` already ends concentration at 0 hit points, so a death by damage ends
+it; the other two keep it. The new tests, run without the source change: 3 of 7 fail (the third
+death save in both editions, and exhaustion 6).
+
+**How:** `deathChanges` returns the concentration's change first, then the inventory's. A caller
+that also ends concentration for its own reason (`applyDamage` at 0 hit points or a knock-out,
+`setConditionLevel` while incapacitated) does so only when the character does not die, so an entry
+never lists the same path twice. The rule is one in both editions, as ENG-20 §8 quotes them: SRD
+5.1 "You lose concentration on a spell if you are incapacitated or if you die"; SRD 5.2.1 "Your
+Concentration ends if you have the Incapacitated condition or you die". So nothing goes in
+`rulesets/`.
+
+**What it should look like when done:** golden A (2014) concentrates on Bless, golden B (2024) on
+the made-up `ward`; both carry ENG-63's charm and stone attuned.
+1. Each golden at 0 hit points with 2 failures, a death save of 5: changes `failure` 2 → 3, then
+   `concentration` with `before` the spell and no `after`, then the inventory unattuned.
+2. Each golden at 6 hit points, 18 damage (6 to 0, 12 left over, the maximum 12): `hp` 6 → 0,
+   `failure` 0 → 3, `concentration` once, the inventory. At 0 hit points with 2 failures, 1 damage:
+   `failure` 2 → 3, `concentration` once, the inventory.
+3. Each golden at 0 hit points, a death save of 5: only `failure` 0 → 1; the concentration stays.
+4. Golden B at the 2024 exhaustion 5, concentrating, set to 6 through `setConditionLevel`: the
+   conditions, `concentration`, the inventory, in that order.
+5. SHEET-62's item 5 (incapacitated and killed by the same set) still lists `concentration` once.
+
+**Tests:** `packages/system-5e/test/death.test.ts` (`SHEET-65`): items 1–4; item 5 is SHEET-62's
+test, unchanged. Control numbers: golden B's 12 hit points (SPEC §6.7) and the hand arithmetic
+above; the rule from ENG-20 §8.
+**What came out of it:** Quality gate, 2026-10-29, on `3b027bd`: `pnpm lint` 265 files, no fixes;
+`pnpm typecheck` 6 projects, no errors; `pnpm test` 82 files, 1108 passed, 0 failed, 19.7 s, then
+the speed project 1 file, 2 passed. 1101 before this ticket's 7 tests. Coverage: statements 99.45 %
+(3448/3467), lines 99.9 % (3024/3027). Not `apps/web`, so no `pnpm e2e`. With the source change
+stashed, 3 of the 7 fail (items 1 and 4); the damage tests (item 2) pass either way, since damage
+already ended concentration at 0, and they now guard against the change being listed twice.
+
+Differences from the row: none. The row's measured case (exhaustion 6) is item 4.
+
+Found, not fixed: nothing.
+
+Nothing for the changelog.

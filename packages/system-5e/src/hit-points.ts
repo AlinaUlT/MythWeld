@@ -227,14 +227,14 @@ function hitPoints(action: string, changes: LogChange[]): MadeChanges {
  * temporary hit points first, then the hit points, never below 0. Dropped to 0 with damage left
  * over equal to the maximum or more, it dies; already at 0, damage past the temporary hit points
  * gives a failure, two from a critical hit, and kills when it is the maximum or more. Damage
- * past the temporary hit points ends stable. At 0 concentration ends. Death ends every attunement
- * (`deathChanges`). ENG-65: with `knockOut`, the damage that would drop the character to 0 leaves
- * it at 1, knocked out (`resting`), with no failure and no massive damage, and concentration ends;
- * any other damage to a knocked-out character interrupts its rest (`interrupted`). SHEET-16: with
- * `ask.type`, the damage is first what the character's defenses make of it (`defended`). Refused
- * for an amount that is not a whole number from 1, for a dead character, for a type that is not a
- * key, for damage the defenses leave at 0, and for a knock-out the edition does not have or the
- * damage does not give.
+ * past the temporary hit points ends stable. At 0 concentration ends. Death ends the
+ * concentration and every attunement (`deathChanges`). ENG-65: with `knockOut`, the damage that
+ * would drop the character to 0 leaves it at 1, knocked out (`resting`), with no failure and no
+ * massive damage, and concentration ends; any other damage to a knocked-out character interrupts
+ * its rest (`interrupted`). SHEET-16: with `ask.type`, the damage is first what the character's
+ * defenses make of it (`defended`). Refused for an amount that is not a whole number from 1, for a
+ * dead character, for a type that is not a key, for damage the defenses leave at 0, and for a
+ * knock-out the edition does not have or the damage does not give.
  */
 export function applyDamage(
   character: FifthEditionCharacter,
@@ -270,8 +270,9 @@ export function applyDamage(
   } else if (through > 0) {
     failure = through >= max ? DEATH_SAVES : Math.min(DEATH_SAVES, failure + (critical ? 2 : 1));
   }
-  const ends = (current === 0 || knockOut) && concentration !== undefined;
   const dies = current === 0 && failure >= DEATH_SAVES;
+  // Death ends the concentration itself (`deathChanges`).
+  const ends = (current === 0 || knockOut) && concentration !== undefined && !dies;
   // A knock-out starts its short rest; any other damage interrupts the one it started.
   const mark = knockOut ? 'resting' : knockedOut === undefined ? undefined : 'interrupted';
 

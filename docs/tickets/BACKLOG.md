@@ -219,7 +219,7 @@ chats never claim one version number.
 | SHEET-62 | Gaining the Incapacitated condition ends concentration | XS | ✅ 2026-10-29 |
 | SHEET-63 | Attuning two copies of one item gives a warning | XS | ✅ 2026-10-29 |
 | SHEET-64 | Exhaustion the character is immune to does not kill | XS | ✅ 2026-10-29 |
-| SHEET-65 | Dying ends concentration | XS | 🔲 |
+| SHEET-65 | Dying ends concentration | XS | ✅ 2026-10-29 |
 | SHEET-66 | An effect may set the size to any size the packs hold | S | ✅ 2026-10-29 |
 | **Characters** | **the list, the file, the manual form** | | |
 | SHEET-23 | An undo toast reverses the last change | S | 🔲 |
@@ -270,11 +270,6 @@ chats never claim one version number.
   the choice and sets it at start), the units (feet or metres, pounds or kilograms; stored units
   stay feet and pounds), "I roll myself" (SPEC §6.5). Language, backup,
   packs, AI and purchases come with their phases.
-- **SHEET-65** — found by SHEET-62: SRD 5.1 (Concentration): "You lose concentration on a spell
-  if you are incapacitated or if you die" (SHEET-17 §8). `deathChanges` (`actions.ts`) ends every
-  attunement but not `state.concentration`. Measured: golden B at exhaustion 5, concentrating, set
-  to 6 by `setConditionLevel`: dead, and the concentration stays. The death save's third failure
-  (`death-saves.ts`) also calls `deathChanges`. Wave 4: SHEET-64 touches the death check meanwhile.
 - **SHEET-23** — SPEC §7.2: an "Undo" toast after every change, and the last 50 states kept in
   the history table; an entry is ENG-30's log entry.
 - **SHEET-24** — ADR 008 item 4, BRIEF P2, board `V3-Characters`; an empty state with "+" and

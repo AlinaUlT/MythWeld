@@ -27,7 +27,8 @@ import { isDead } from './unconscious';
  * Gives the character the condition `ask.id` at `ask.level` (1 when not given), or sets the level
  * of one it has: the core's `setCondition`, with its refusals. When the character it gives is
  * incapacitated and concentrates, the entry also ends the concentration. When that level kills a
- * character that was alive, the entry also ends every attunement (`deathChanges`).
+ * character that was alive, the entry also ends the concentration and every attunement
+ * (`deathChanges`).
  */
 export function setConditionLevel(
   character: FifthEditionCharacter,
@@ -38,12 +39,14 @@ export function setConditionLevel(
   const set = setCondition(character, index, ask, stamp);
   if (!set.ok) return set;
   const concentrating = character.systemData.state.concentration !== undefined;
-  const ends =
-    concentrating &&
-    incapacitatedBy(compute(set.character, index, fifthEditionModule)) !== undefined;
   const dies =
     !isDead(character, applyingFinderOf(character, index)) &&
     isDead(set.character, applyingFinderOf(set.character, index));
+  // Death ends the concentration itself (`deathChanges`).
+  const ends =
+    concentrating &&
+    !dies &&
+    incapacitatedBy(compute(set.character, index, fifthEditionModule)) !== undefined;
   if (!ends && !dies) return set;
   const { action, subject, label, changes } = set.entry;
   return settled(

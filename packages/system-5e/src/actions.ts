@@ -19,6 +19,8 @@ import type { FifthEditionCharacter } from './character';
 // writes it through `deathSavesReset`, so `stable` is never left behind.
 // ENG-63: every action that kills (the third failure, from damage or a death save) adds
 // `deathChanges`, so no row of the inventory stays attuned (both SRDs; ENG-58 §11).
+// SHEET-65: `deathChanges` also ends the concentration, so an action that kills never lists that
+// change itself.
 // ENG-65: every action that gives hit points back adds `knockOutEnded`, so the knock-out's mark is
 // never left behind above 0 hit points.
 
@@ -103,13 +105,17 @@ export function deathSavesReset(character: FifthEditionCharacter, stable = false
 }
 
 /**
- * The changes death makes beside the third failure: every row of the inventory no longer attuned
- * (SRD 5.1 "if the creature dies"; SRD 5.2.1, Dead, "it is no longer attuned to them"), each
- * other field and the order kept. With no attuned row it changes nothing.
+ * The changes death makes beside the third failure: the concentration ended (SRD 5.1 "or if you
+ * die"; SRD 5.2.1 "or you die"), then every row of the inventory no longer attuned (SRD 5.1 "if
+ * the creature dies"; SRD 5.2.1, Dead, "it is no longer attuned to them"), each other field and
+ * the order kept. Each one changes nothing when there is nothing to end.
  */
 export function deathChanges(character: FifthEditionCharacter): LogChange[] {
   const rows = character.systemData.inventory.map((row) => ({ ...row, attuned: false }));
-  return [changeTo(character, INVENTORY_PATH, rows)];
+  return [
+    changeTo(character, CONCENTRATION_PATH, undefined),
+    changeTo(character, INVENTORY_PATH, rows),
+  ];
 }
 
 /**
