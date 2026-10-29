@@ -4,11 +4,15 @@ import type { FifthEditionEntity, LineageDef, SpeciesDef } from './entity-types'
 
 // ENG-48: the character's size, the key path `size`, one rule in both editions (ENG-48 §8). Its
 // sizes are a gathered lineage's own, else the species'. Of one size, that size; of several, the
-// one stored in `species.size`, else it is pending. An effect or an override may set it to any of
-// them (ENG-43).
+// one stored in `species.size`, else it is pending. SHEET-66: an effect or an override may set it
+// to any size the character finds, each a `size` entry (SRD 5.2.1's goliath grows to Large); the
+// choice stays among the species' own.
 
 /** The character's size: a key, not a number. */
 export const SIZE_PATH = 'size';
+
+/** The entity type each size is an entry of (`sizeDefSchema`). */
+const SIZE_TYPE = 'size';
 
 /** The sizes the character's species offers: a gathered lineage's own, else the species'. */
 function sizeGiver({
@@ -27,7 +31,8 @@ function sizeGiver({
 /**
  * The size key path: the size of a species with one, else the one chosen in `species.size`, each
  * with a step naming the species or lineage; with none chosen, no key. A stored size it does not
- * offer is warned and not used. Nothing when the character has no species.
+ * offer is warned and not used. Its keys are every size, then any of the species' no entry names;
+ * its options, the species'. Nothing when the character has no species.
  */
 export function sizeKeys(
   input: DeriveInput<FifthEditionCharacter, FifthEditionEntity>,
@@ -50,7 +55,8 @@ export function sizeKeys(
     [SIZE_PATH]: {
       ...(key !== undefined && { key }),
       steps: key === undefined ? [] : [{ kind: 'entity', source, label, key }],
-      keys: sizes,
+      keys: [...new Set([...input.keysOf(SIZE_TYPE), ...sizes])],
+      options: sizes,
       ...(ruleWarnings.length > 0 && { ruleWarnings }),
     },
   };

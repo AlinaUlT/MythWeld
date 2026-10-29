@@ -548,6 +548,65 @@ describe('ENG-48 a key path with no key of its own', () => {
   });
 });
 
+describe('SHEET-66 the keys of a type, and a choice among fewer', () => {
+  /** A skill of Ash's own, of this rules base. */
+  const skill = (key: string, ruleset: TalesEntity['ruleset']): TalesEntity => ({
+    id: `character:skill/${key}`,
+    type: 'skill',
+    key,
+    ruleset,
+    name: { en: key },
+    ability: 'wits',
+    source,
+  });
+
+  it("lists a type's keys once each, the packs' then the character's, as it finds them", () => {
+    const listed: (readonly string[])[] = [];
+    const system = withSteps(({ keysOf }) => {
+      listed.push(keysOf('skill'), keysOf('none'));
+      return {};
+    });
+    computed(ash, system);
+    // `climb` has an entry in each edition; Ash is first-age.
+    expect(listed).toEqual([['climb', 'sneak', 'steady'], []]);
+
+    listed.length = 0;
+    const own = variant(ash, {
+      localEntities: [skill('leap', 'any'), skill('drift', 'second-age')],
+    });
+    computed(own, system);
+    expect(listed).toEqual([['climb', 'sneak', 'steady', 'leap'], []]);
+
+    listed.length = 0;
+    computed(variant(own, { allowMixedRulesets: true }), system);
+    expect(listed).toEqual([['climb', 'sneak', 'steady', 'leap', 'drift'], []]);
+  });
+
+  it('is pending with its options in place of its keys; an effect may set any of its keys', () => {
+    const system: Module = {
+      ...talesModule,
+      keys: (input) => ({
+        ...talesModule.keys?.(input),
+        'tally.pose': { steps: [], keys: ['bold', 'calm', 'wary'], options: ['bold', 'wary'] },
+      }),
+    };
+    const result = computed(ash, system);
+    expect(result.pendingKeys).toEqual([{ path: 'tally.pose', options: ['bold', 'wary'] }]);
+    expect(result.keys['tally.pose']).toBeUndefined();
+
+    const calm = computed(
+      variant(ash, { overrides: [{ path: 'tally.pose', value: 'calm' }] }),
+      system,
+    );
+    expect(calm.keys['tally.pose']).toEqual({
+      key: 'calm',
+      steps: [{ kind: 'override', key: 'calm' }],
+    });
+    expect(calm.pendingKeys).toEqual([{ path: 'tally.pose', options: ['bold', 'wary'] }]);
+    expect(calm.warnings).toEqual([]);
+  });
+});
+
 describe("ENG-14 a step's own warnings", () => {
   it('warns each rule warning as `stepRule`, naming its path; effect warnings pass as they are', () => {
     const notAppended: EffectWarning = {

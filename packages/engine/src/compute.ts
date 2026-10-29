@@ -26,6 +26,7 @@ import {
   gather,
   type KeyFinder,
   keyFinderOf,
+  keysOfTypeOf,
   type NamedEntity,
   ownGrants,
 } from './gather';
@@ -262,6 +263,7 @@ function computeOnce<C extends CharacterCore<E>, E extends GatherableEntity>(
   const grantsOf = system.grantsOf;
   const find = finderOf(character, index);
   const findKey = keyFinderOf(character, index);
+  const keysOf = keysOfTypeOf(character, index, findKey);
   const had = gather(
     character,
     index,
@@ -276,7 +278,7 @@ function computeOnce<C extends CharacterCore<E>, E extends GatherableEntity>(
   const stats = statsOf(had, defaults);
   const gathered = suppressed(
     had,
-    system.suppressedEffects?.({ character, gathered: had, stats, find, findKey }) ?? [],
+    system.suppressedEffects?.({ character, gathered: had, stats, find, findKey, keysOf }) ?? [],
   );
   const basePhase: BasePhase = {
     read: (path) => (path === LEVEL_PATH ? level : system.basePath?.(character, path, gathered)),
@@ -284,7 +286,7 @@ function computeOnce<C extends CharacterCore<E>, E extends GatherableEntity>(
     ...(defaults.maxRule !== undefined && { maxRule: defaults.maxRule }),
   };
   const base = computeStats(character, gathered, basePhase);
-  const input: DeriveInput<C, E> = { character, gathered, stats, find, findKey };
+  const input: DeriveInput<C, E> = { character, gathered, stats, find, findKey, keysOf };
   const steps = system.derive(input);
   const keys = system.keys?.(input) ?? {};
   const rules: CharacterRuleWarning[] = (system.ruleWarnings?.(input) ?? []).map(

@@ -220,7 +220,7 @@ chats never claim one version number.
 | SHEET-63 | Attuning two copies of one item gives a warning | XS | ✅ 2026-10-29 |
 | SHEET-64 | Exhaustion the character is immune to does not kill | XS | 🔲 |
 | SHEET-65 | Dying ends concentration | XS | 🔲 |
-| SHEET-66 | An effect may set the size to any size the packs hold | S | 🔲 |
+| SHEET-66 | An effect may set the size to any size the packs hold | S | ✅ 2026-10-29 |
 | **Characters** | **the list, the file, the manual form** | | |
 | SHEET-23 | An undo toast reverses the last change | S | 🔲 |
 | SHEET-24 | My characters lists the saved characters | S | 🔲 |
@@ -289,13 +289,6 @@ chats never claim one version number.
   attunement but not `state.concentration`. Measured: golden B at exhaustion 5, concentrating, set
   to 6 by `setConditionLevel`: dead, and the concentration stays. The death save's third failure
   (`death-saves.ts`) also calls `deathChanges`. Wave 4: SHEET-64 touches the death check meanwhile.
-- **SHEET-66** — found by SHEET-08, from ENG-48: the key path `size` takes only the species' own
-  sizes (`sizeKeys`, `size.ts`), so an effect or an override naming another warns and is not
-  applied (SRD 5.2.1's goliath, Large Form). The built-in packs now hold every size as a `size`
-  entry (SHEET-08), but a derived step sees entries only through `findKey(type, key)`, which
-  finds one entry and lists none. The row gives the derived step the keys of a type, as the
-  character finds them, and makes every size one of `size`'s keys; the stored choice stays among
-  the species' sizes.
 - **SHEET-23** — SPEC §7.2: an "Undo" toast after every change, and the last 50 states kept in
   the history table; an entry is ENG-30's log entry.
 - **SHEET-24** — ADR 008 item 4, BRIEF P2, board `V3-Characters`; an empty state with "+" and

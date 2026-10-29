@@ -164,6 +164,28 @@ export function keyFinderOf<E extends GatherableEntity>(
   };
 }
 
+/** SHEET-66: the keys of a type's entries, as the character finds them, each once. */
+export type KeysOfType = (type: string) => readonly string[];
+
+/**
+ * SHEET-66: how a character lists the keys of a type: each key of its packs' entries in load
+ * order, then of its own, once, kept only when `findKey` finds it (its rules base, else any when
+ * it mixes rulesets).
+ */
+export function keysOfTypeOf<E extends GatherableEntity>(
+  character: CharacterCore<E>,
+  index: ContentIndex<E>,
+  findKey: KeyFinder<E>,
+): KeysOfType {
+  return (type) => {
+    const keys = new Set<string>();
+    for (const entity of [...index.entities, ...character.localEntities]) {
+      if (entity.type === type && entity.key !== undefined) keys.add(entity.key);
+    }
+    return [...keys].filter((key) => findKey(type, key) !== undefined);
+  };
+}
+
 /** A grant that applies, with the items chosen for it (none when it is not a choice). */
 export interface ReachedGrant<E extends GatherableEntity> {
   part: EntityPartId;

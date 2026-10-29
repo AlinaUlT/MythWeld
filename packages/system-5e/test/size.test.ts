@@ -174,7 +174,10 @@ describe('ENG-48 the size comes from the species', () => {
     });
   });
 
+  // SHEET-66: an effect or an override may name any size a `size` entry holds, not only the
+  // species'. The packs' six, in their order (SHEET-08 §8).
   describe('an effect or an override', () => {
+    const SIZES = ['tiny', 'small', 'medium', 'large', 'huge', 'gargantuan'];
     const shrink: EntityInput = {
       id: 'character:feat/shrink',
       type: 'feat',
@@ -183,9 +186,17 @@ describe('ENG-48 the size comes from the species', () => {
       source,
       effects: [
         { id: 'small', target: SIZE_PATH, op: 'set', value: 'small' },
-        { id: 'large', target: SIZE_PATH, op: 'set', value: 'large' },
+        { id: 'colossal', target: SIZE_PATH, op: 'set', value: 'colossal' },
         { id: 'add', target: SIZE_PATH, op: 'add', value: 1 },
       ],
+    };
+    const grow: EntityInput = {
+      id: 'character:feat/grow',
+      type: 'feat',
+      ruleset: 'any',
+      name: { en: 'Grow' },
+      source,
+      effects: [{ id: 'large', target: SIZE_PATH, op: 'set', value: 'large' }],
     };
     const part = (id: string) => `${shrink.id}#${id}`;
     const setSmall = {
@@ -195,16 +206,23 @@ describe('ENG-48 the size comes from the species', () => {
       label: { en: 'Shrink' },
       key: 'small',
     };
-    /** Golden B with the feat, its species entry and its overrides. */
-    const shrunk = (species: Species, overrides: CharacterInput['overrides'] = []) =>
+    /** A golden with a feat, its species entry and its overrides. */
+    const withFeat = (
+      golden: CharacterInput,
+      feat: EntityInput,
+      species: Species,
+      overrides: CharacterInput['overrides'] = [],
+    ) =>
       computed({
-        ...goldenB,
-        localEntities: [shrink],
+        ...golden,
+        localEntities: [feat],
         overrides,
-        systemData: { ...goldenB.systemData, species, feats: [{ id: shrink.id }] },
+        systemData: { ...golden.systemData, species, feats: [{ id: feat.id }] },
       });
+    const shrunk = (species: Species, overrides: CharacterInput['overrides'] = []) =>
+      withFeat(goldenB, shrink, species, overrides);
 
-    it("sets one of the species' sizes; another, or a number, warns", () => {
+    it('sets a size a pack holds; one no pack holds, or a number, warns', () => {
       const result = shrunk({ id: HUMAN, size: 'medium' });
       expect(result.keys[SIZE_PATH]).toEqual({
         key: 'small',
@@ -213,21 +231,44 @@ describe('ENG-48 the size comes from the species', () => {
       expect(codes(result)).toEqual([
         {
           code: 'unknownKey',
-          part: part('large'),
+          part: part('colossal'),
           target: SIZE_PATH,
-          key: 'large',
-          keys: ['medium', 'small'],
+          key: 'colossal',
+          keys: SIZES,
         },
         { code: 'notAKey', part: part('add'), op: 'add', target: SIZE_PATH },
       ]);
 
-      // With no size chosen, the effect gives one, and the choice stays to make.
+      // With no size chosen, the effect gives one, and the choice stays among the species'.
       const none = shrunk({ id: HUMAN });
       expect(none.keys[SIZE_PATH]).toEqual({ key: 'small', steps: [setSmall] });
       expect(none.pendingKeys).toEqual([{ path: SIZE_PATH, options: ['medium', 'small'] }]);
     });
 
-    it("wins when it names one of the species' sizes; another warns", () => {
+    it('sets a size the species does not offer, in both editions', () => {
+      const setLarge = {
+        kind: 'effect',
+        part: `${grow.id}#large`,
+        source: grow.id,
+        label: { en: 'Grow' },
+        key: 'large',
+      };
+      const human = withFeat(goldenB, grow, { id: HUMAN, size: 'medium' });
+      expect(human.keys[SIZE_PATH]).toEqual({
+        key: 'large',
+        steps: [given(HUMAN, 'Human', 'medium'), setLarge],
+      });
+      expect(human.warnings).toEqual([]);
+
+      const dwarf = withFeat(goldenA, grow, { id: DWARF });
+      expect(dwarf.keys[SIZE_PATH]).toEqual({
+        key: 'large',
+        steps: [given(DWARF, 'Dwarf', 'medium'), setLarge],
+      });
+      expect(dwarf.warnings).toEqual([]);
+    });
+
+    it('wins when it names a size a pack holds; one no pack holds warns', () => {
       const result = shrunk({ id: HUMAN, size: 'small' }, [
         { path: SIZE_PATH, value: 'medium', note: 'Grown' },
       ]);
@@ -241,12 +282,47 @@ describe('ENG-48 the size comes from the species', () => {
       });
 
       const large = shrunk({ id: HUMAN, size: 'medium' }, [{ path: SIZE_PATH, value: 'large' }]);
-      expect(large.keys[SIZE_PATH]?.key).toBe('small');
-      expect(codes(large)).toContainEqual({
+      expect(large.keys[SIZE_PATH]?.key).toBe('large');
+      expect(codes(large).map(({ code }) => code)).toEqual(['unknownKey', 'notAKey']);
+
+      const colossal = shrunk({ id: HUMAN, size: 'medium' }, [
+        { path: SIZE_PATH, value: 'colossal' },
+      ]);
+      expect(colossal.keys[SIZE_PATH]?.key).toBe('small');
+      expect(codes(colossal)).toContainEqual({
         code: 'overrideNotAKey',
         path: SIZE_PATH,
-        value: 'large',
-        keys: ['medium', 'small'],
+        value: 'colossal',
+        keys: SIZES,
+      });
+    });
+
+    it("lists a size of the species' that no entry names after the packs' sizes", () => {
+      const kin: EntityInput = {
+        id: 'character:species/kin',
+        type: 'species',
+        ruleset: 'any',
+        name: { en: 'Kin' },
+        source,
+        size: ['medium', 'wee'],
+        speed: { walk: 30 },
+      };
+      const result = computed({
+        ...goldenC2024,
+        localEntities: [kin, shrink],
+        systemData: {
+          ...goldenC2024.systemData,
+          species: { id: kin.id, size: 'wee' },
+          feats: [{ id: shrink.id }],
+        },
+      });
+      expect(result.keys[SIZE_PATH]?.key).toBe('small');
+      expect(codes(result)).toContainEqual({
+        code: 'unknownKey',
+        part: part('colossal'),
+        target: SIZE_PATH,
+        key: 'colossal',
+        keys: [...SIZES, 'wee'],
       });
     });
   });

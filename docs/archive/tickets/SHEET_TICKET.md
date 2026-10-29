@@ -3479,3 +3479,134 @@ Found, not fixed:
   unlikely; nothing to do now.
 
 Nothing for the changelog.
+
+---
+
+### SHEET-66 An effect may set the size to any size the packs hold
+
+**Hat:** the size path takes every size the packs hold
+**Depends on:** ENG-48, SHEET-08
+**Size:** S
+**Screen:** No
+**SPEC:** §5.4 (key paths), §6.1 steps 6–8, §8.2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/size.ts` — changes: the size path's keys are every size.
+- `packages/engine/src/gather.ts` — new: `KeysOfType` and `keysOfTypeOf`, the keys of a type as
+  the character finds them.
+- `packages/engine/src/derived.ts` — `DeriveInput` gains `keysOf`; `KeyPath` gains `options`,
+  the keys a pending choice is made among; `computeDerived` lists them as the pending options.
+- `packages/engine/src/compute.ts` — builds `keysOf` and passes it with `find` and `findKey`.
+- `packages/engine/test/derived.test.ts`, `packages/system-5e/test/size.test.ts` — the tests.
+
+#### 2. What is missing now
+
+Measured on `84f423c`:
+- `sizeKeys` (`size.ts`) gives `keys: sizes`, the species' or lineage's own sizes. Golden B (the
+  2024 human, `['medium', 'small']`) with an effect `set` `large` warns `unknownKey` with
+  `keys: ['medium', 'small']` and keeps `small` (`size.test.ts`, "sets one of the species'
+  sizes"). An override `large` warns `overrideNotAKey` the same way.
+- The built-in packs hold all six sizes as `size` entries (SHEET-08), but `DeriveInput` gives a
+  step only `find(id)` and `findKey(type, key)`: one entry each, never a list.
+- `KeyPath.keys` is both what an effect may set and what a pending choice offers
+  (`computeDerived`, `pendingKeys.push({ path, options: own.keys })`), so widening the keys would
+  widen the choice too.
+
+#### 3. What it should look like when done
+
+1. `DeriveInput.keysOf(type)` gives each key of the type's entries, each once: the packs' in load
+   order, then the character's own, only those `findKey(type, key)` finds (its rules base, or any
+   when it mixes rulesets). Ash (Tales, `first-age`): `keysOf('skill')` is
+   `['climb', 'sneak', 'steady']`; with an own `skill` `leap` (`any`) and `drift` (`second-age`),
+   `['climb', 'sneak', 'steady', 'leap']`; mixing rulesets adds `drift`; a type with no entry
+   gives `[]`.
+2. `KeyPath.options`, when given, are a pending path's options in place of `keys`. A path without
+   it is pending with its `keys`, as before (ENG-48's test unchanged).
+3. The `size` path's `keys` are the sizes `keysOf('size')` gives, then any size of the species or
+   lineage not among them. On SRD 5.2.1's pack that is `['tiny', 'small', 'medium', 'large',
+   'huge', 'gargantuan']`; its `options` are the species' or lineage's own sizes.
+4. Golden B with an effect `set` `large`: the size is `large`, with no warning. An override
+   `large` wins the same way. A size no pack holds (`colossal`) still warns `unknownKey` /
+   `overrideNotAKey`, listing the six.
+5. The stored choice stays among the species' sizes: golden B storing `large` still warns
+   `sizeNotOffered` and is pending with `['medium', 'small']`.
+6. Every golden's values, keys and warnings are as before.
+
+#### 4. How to do it
+
+1. `gather.ts`: `export type KeysOfType = (type: string) => readonly string[]` and
+   `keysOfTypeOf(character, index, findKey)`: walk `index.entities`, then
+   `character.localEntities`, collect each key of the type once, keep those `findKey` finds.
+   Technical choice (ADR 002): read `index.entities` rather than add a method to `ContentIndex`;
+   the list is built once per call, and the size path calls it once per pass.
+2. `derived.ts`: `DeriveInput.keysOf: KeysOfType`; `KeyPath.options?: readonly string[]`;
+   `pendingKeys.push({ path, options: own.options ?? own.keys })`.
+3. `compute.ts`: `const keysOf = keysOfTypeOf(character, index, findKey)`, added to the input of
+   `suppressedEffects` and to `DeriveInput`.
+4. `size.ts`: `keys: [...new Set([...input.keysOf(SIZE_TYPE), ...sizes])]`, `options: sizes`. The
+   type name `size` is the module's (`sizeDefSchema`), named once in `size.ts`.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen. The size shows on the wave 6 tabs.
+
+#### 7. Tests
+
+- `packages/engine/test/derived.test.ts` — `SHEET-66 the keys of a type, and a choice among
+  fewer`: §3 items 1–2.
+- `packages/system-5e/test/size.test.ts` — the ENG-48 effect and override tests change to §3
+  item 4; a new test for item 3; the stored-size test (item 5) is unchanged.
+- Control numbers from: the Tales data (`tales/content.ts`: the three skill keys, `climb` once per
+  edition); SHEET-08 §8 (the six sizes, in the packs' order); ENG-48 §8 (golden B's sizes).
+
+#### 8. Checked against the source
+
+- ENG-48 §8: SRD 5.2.1's goliath, Large Form, changes the character's size to Large, a size its
+  species does not offer; so an effect must be able to name every size, not only the species'.
+- SHEET-08 §8: six sizes in both editions, Tiny to Gargantuan, which the packs hold.
+- ENG-48 §8: the size chosen with the species is one of the species' sizes; so the choice keeps
+  its own list.
+
+#### 9. Not in this ticket
+
+- The goliath and its Large Form as content: the SRD import, phase 3.
+- An effect one size larger or smaller (Enlarge/Reduce): ENG-48 §9.
+- What a size changes (carrying capacity, space): ENG-48 §9.
+- The screen that shows or asks for the size: the wave 6 tabs.
+
+#### 10. Rake check
+
+- **Everything is data**: the sizes come from the packs' `size` entries, not a list in code.
+- **The core names no game**: `keysOf` takes any type; only `size.ts` names `size`.
+- **`compute()` is pure**: `keysOf` reads the character and the index and changes neither; the
+  frozen-input test still runs.
+- **Missing is not broken**: a size no pack holds warns and is not applied; it never throws.
+- **Golden tests are the truth**: no golden value changes (§3 item 6).
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on top of SHEET-37 (`b80ee14`):
+
+- `pnpm lint`: `Checked 262 files`, 0 errors. `pnpm typecheck`: exit 0.
+- `pnpm test`: `Test Files 80 passed (80)`, `Tests 1088 passed (1088)` (1084 before, 4 new: 2 in
+  `derived.test.ts`, 2 in `size.test.ts`; 2 ENG-48 tests in `size.test.ts` rewritten to §3
+  item 4); lines covered 99.9 % (3018/3021). The second suite (`Tests 2 passed (2)`) is
+  unchanged. 18.7 s.
+- No `pnpm e2e`: nothing in `apps/web` changed.
+- The tests are live: with the size's keys put back to the species' own, `4 failed | 5 passed
+  (9)` in `size.test.ts`; with the pending options put back to `keys`, `5 failed | 25 passed
+  (30)` in `derived.test.ts` and `size.test.ts`.
+- §3 as written. One test more than §7 named: a species size no entry names (`wee`) is listed
+  after the packs' six.
+- No golden value changed.
+
+Found, not fixed: nothing.
+
+Nothing for the changelog: not a screen.

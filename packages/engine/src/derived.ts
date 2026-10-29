@@ -7,6 +7,7 @@ import {
   type Gathered,
   isCoreKind,
   type KeyFinder,
+  type KeysOfType,
 } from './gather';
 import { type BreakdownStep, type KeyStep, STAT_TYPE, type Stats } from './stats';
 
@@ -120,6 +121,11 @@ export interface KeyPath {
   readonly key?: string;
   readonly steps: readonly KeyStep[];
   readonly keys: readonly string[];
+  /**
+   * SHEET-66: the keys its choice is made among, when fewer than `keys` (a species' sizes, of
+   * every size an effect may set); without it, `keys`.
+   */
+  readonly options?: readonly string[];
   /** What a rule of its system met in giving it; each is warned as `stepRule` (ENG-48). */
   readonly ruleWarnings?: readonly RuleWarning[];
 }
@@ -159,6 +165,8 @@ export interface DeriveInput<C, E extends GatherableEntity> {
   readonly find: EntityFinder<E>;
   /** Any entry by its type and key, as the character finds it (SHEET-15: a damage type). */
   readonly findKey: KeyFinder<E>;
+  /** Every key of a type, as the character finds them (SHEET-66: every size). */
+  readonly keysOf: KeysOfType;
 }
 
 /** Something the derived step met. `code` and its data are for the screen; `message` is for logs. */
@@ -502,7 +510,7 @@ export function computeDerived<E extends GatherableEntity>(input: {
   for (const [path, own] of keyPaths) {
     const key = keyAt(path, path);
     if (key !== undefined) out.keys[path] = key;
-    if (own.key === undefined) out.pendingKeys.push({ path, options: own.keys });
+    if (own.key === undefined) out.pendingKeys.push({ path, options: own.options ?? own.keys });
   }
   return out;
 }
