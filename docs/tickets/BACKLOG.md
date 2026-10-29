@@ -213,7 +213,7 @@ chats never claim one version number.
 | SHEET-22 | Removing an entity drops what was stored for it | S | 🔲 |
 | SHEET-61 | A condition the character is immune to has no effect | S | ✅ 2026-10-29 |
 | SHEET-62 | Gaining the Incapacitated condition ends concentration | XS | ✅ 2026-10-29 |
-| SHEET-63 | Attuning two copies of one item gives a warning | XS | 🔲 |
+| SHEET-63 | Attuning two copies of one item gives a warning | XS | ✅ 2026-10-29 |
 | SHEET-64 | Exhaustion the character is immune to does not kill | XS | 🔲 |
 | SHEET-65 | Dying ends concentration | XS | 🔲 |
 | **Characters** | **the list, the file, the manual form** | | |
@@ -295,11 +295,6 @@ chats never claim one version number.
 - **SHEET-22** — found by ENG-17: a stored switch (`state.toggles`) stays after its entity is
   removed and warns `toggleGone` on every compute. Found by ENG-47: a pin that does not apply
   warns `stepRule` `acCalcNotApplying` on every compute. Removing an entity drops both.
-- **SHEET-63** — found by SHEET-18: SRD 5.1 (Attunement, SHEET-18 §8's file): "a creature can't
-  attune to more than one copy of an item. For example, a creature can't attune to more than one
-  *ring of protection* at a time." Nothing checks two attuned rows of one `itemId`. SRD 5.2.1's
-  Rules Glossary entry (SHEET-18 §8) does not say it; the row reads SRD 5.2.1's magic items
-  chapter before building. A warning beside `attunementLimit` (`attunement.ts`), never a block.
 - **SHEET-64** — found by SHEET-61: a condition the character is immune to has no effect, but
   `isDead` (`fatalExhaustion`, `exhaustion.ts`) reads the stored exhaustion level without
   `compute()`, so exhaustion at its highest level kills a character immune to it. `compute()`
@@ -448,7 +443,7 @@ chats never claim one version number.
   is typed twice. It fills out as phase 3 adds content.
 - **SHEET-50** — SPEC §7.2: worn and attuned change AC and attacks at once (ENG-44); weight;
   containers. Found by ENG-63: the inventory sets a row's `attuned` by hand; death clears every one
-  (`deathChanges`, `actions.ts`); SHEET-18 warns past the limit.
+  (`deathChanges`, `actions.ts`); SHEET-18 warns past the limit, SHEET-63 of two copies.
 - **SHEET-51** — SPEC §7.2: cp, sp, ep, gp, pp with + and −.
 - **SHEET-52** — SPEC §12 stage 2 ("custom item", "custom feature" with text), ADR 009 item 7
   (free text now; with effects in phase 5), board `V3-Add`. The stored shape has both already: an

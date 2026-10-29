@@ -1,4 +1,5 @@
 import { type Computed, compute } from '@grimoire/engine';
+import type { EntityId } from '@grimoire/schema';
 import { describe, expect, it } from 'vitest';
 import {
   ATTUNEMENT_LIMIT,
@@ -152,6 +153,104 @@ describe('SHEET-18 attunement past the limit gives a warning', () => {
     const copy = structuredClone(one);
     const result = compute(frozen(one), indexOf(one), fifthEditionModule);
     expect(limitWarnings(result)).toEqual([PAST(4)]);
+    expect(one).toEqual(copy);
+  });
+});
+
+// SHEET-63: two copies of one item attuned warn (both SRDs, SHEET-63 §8). A copy is a row of the
+// same `itemId`; gathering names each entity once, so the copies' charm gives its +1 AC once.
+
+/** A row of `itemId`, attuned and equipped unless said otherwise, its `uid` from `n`. */
+const copyRow = (n: number, itemId: EntityId, attuned = true, equipped = true): Row => ({
+  uid: `e1000000-0000-4000-8000-00000000001${n}`,
+  itemId,
+  qty: 1,
+  equipped,
+  attuned,
+});
+
+const CHARM_1 = charmOf(1).id;
+const CHARM_2 = charmOf(2).id;
+
+/** The copy warnings, without their log message. */
+const copyWarnings = (result: Computed<FifthEditionEntity>) =>
+  result.warnings.flatMap(({ message: _, ...warning }) =>
+    warning.code === 'characterRule' && warning.rule === 'attunementCopies' ? [warning] : [],
+  );
+
+const COPIES = (itemId: EntityId, attuned: number) => ({
+  code: 'characterRule',
+  rule: 'attunementCopies',
+  data: { itemId, attuned },
+});
+
+describe('SHEET-63 attuning two copies of one item gives a warning', () => {
+  it('warns of two copies attuned, and the charm still works, in both editions', () => {
+    for (const golden of GOLDENS) {
+      const none = computed(golden);
+      const two = computed(carrying(golden, [copyRow(1, CHARM_1), copyRow(2, CHARM_1)]));
+      expect(copyWarnings(two)).toEqual([COPIES(CHARM_1, 2)]);
+      expect(limitWarnings(two)).toEqual([]);
+      // Never a block: the charm gives its +1 AC, once.
+      expect(Number(two.values['ac.total']) - Number(none.values['ac.total'])).toBe(1);
+      const message = two.warnings.find(
+        (warning) => warning.code === 'characterRule' && warning.rule === 'attunementCopies',
+      )?.message;
+      expect(message).toBe(
+        'The character is attuned to 2 copies of character:item/charm-1; no more than one copy of an item.',
+      );
+    }
+  });
+
+  it('gives no warning for one copy attuned and one not, or one row of two', () => {
+    const one = [copyRow(1, CHARM_1), copyRow(2, CHARM_1, false)];
+    expect(copyWarnings(computed(carrying(goldenB, one)))).toEqual([]);
+    const pair: Row = { ...copyRow(3, CHARM_1), qty: 2 };
+    expect(copyWarnings(computed(carrying(goldenA, [pair])))).toEqual([]);
+  });
+
+  it('counts a copy not equipped, and a missing item by its id', () => {
+    const three = [copyRow(1, CHARM_1), copyRow(2, CHARM_1, true, false), copyRow(3, CHARM_1)];
+    expect(copyWarnings(computed(carrying(goldenA, three)))).toEqual([COPIES(CHARM_1, 3)]);
+    const lost: EntityId = 'character:item/lost';
+    const missing = [copyRow(1, lost, true, false), copyRow(2, lost, true, false)];
+    expect(copyWarnings(computed(carrying(goldenB, missing)))).toEqual([COPIES(lost, 2)]);
+  });
+
+  it('takes two custom rows of one name for no copies', () => {
+    const stone = (n: number): Row => ({
+      uid: `e1000000-0000-4000-8000-00000000001${n}`,
+      custom: { name: 'Lucky stone' },
+      qty: 1,
+      equipped: false,
+      attuned: true,
+    });
+    expect(copyWarnings(computed(carrying(goldenA, [stone(1), stone(2)])))).toEqual([]);
+  });
+
+  it('warns of each item in the order of its first row, after the limit', () => {
+    const rows = [
+      copyRow(1, CHARM_2),
+      copyRow(2, CHARM_1),
+      copyRow(3, CHARM_2),
+      copyRow(4, CHARM_1),
+    ];
+    const result = computed(carrying(goldenB, rows));
+    expect(copyWarnings(result)).toEqual([COPIES(CHARM_2, 2), COPIES(CHARM_1, 2)]);
+    expect(limitWarnings(result)).toEqual([PAST(4)]);
+    const rules = result.warnings.flatMap((warning) =>
+      warning.code === 'characterRule' && warning.rule.startsWith('attunement')
+        ? [warning.rule]
+        : [],
+    );
+    expect(rules).toEqual(['attunementLimit', 'attunementCopies', 'attunementCopies']);
+  });
+
+  it('neither throws nor changes a frozen character', () => {
+    const one = open(carrying(goldenA, [copyRow(1, CHARM_1), copyRow(2, CHARM_1)]));
+    const copy = structuredClone(one);
+    const result = compute(frozen(one), indexOf(one), fifthEditionModule);
+    expect(copyWarnings(result)).toEqual([COPIES(CHARM_1, 2)]);
     expect(one).toEqual(copy);
   });
 });

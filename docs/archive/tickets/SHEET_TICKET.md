@@ -2601,3 +2601,130 @@ Found, not fixed:
   `character:spell/ward`. New row SHEET-65 (XS), wave 4.
 
 Nothing for the changelog.
+
+---
+
+### SHEET-63 Attuning two copies of one item gives a warning
+
+**Hat:** Attuning two copies of one item gives a warning
+**Depends on:** SHEET-18 (`attunementWarnings`, the charms of its tests), ENG-33 (a row's
+`itemId`, `attuned`)
+**Size:** XS
+**Screen:** No
+**SPEC:** §8.2 (limits warn, never block); SHEET-18 §11 put the row here
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/attunement.ts` — changes: `attunementWarnings` also warns
+`attunementCopies`.
+- `packages/system-5e/src/module.ts` — changes: two comments name the new warning.
+- `packages/system-5e/test/attunement.test.ts` — changes: the SHEET-63 tests.
+
+#### 2. What is missing now
+
+Measured on 2026-10-29 at `d4bee2f`:
+- `attunement.ts` counts the attuned rows; `grep -n "itemId" packages/system-5e/src/attunement.ts`
+  finds nothing. Two attuned rows of one item give no warning.
+- `pnpm test`: unit `Test Files 76 passed (76)`, `Tests 1030 passed (1030)`, 11.84 s.
+
+#### 3. What it should look like when done
+
+The charms are SHEET-18's (`character:item/charm-1`, `charm-2`: each needs attunement, +1 AC).
+1. Golden A and golden B, each with two rows of charm 1 equipped and attuned: one warning,
+   `{ code: 'characterRule', rule: 'attunementCopies', data: { itemId: 'character:item/charm-1',
+   attuned: 2 } }`, message "The character is attuned to 2 copies of character:item/charm-1; no
+   more than one copy of an item."; no `attunementLimit`. AC is 1 higher than the golden's own:
+   gathering names each entity once, so the charm gives +1 once.
+2. One copy attuned and one not: no warning. One row of `qty: 2`, attuned: no warning.
+3. Three rows of charm 1, one of them not equipped: `attuned: 3`. Two rows of an item no pack has
+   (`character:item/lost`), not equipped: `{ itemId: 'character:item/lost', attuned: 2 }`.
+4. Two custom rows, both "Lucky stone", attuned: no warning.
+5. Rows charm 2, charm 1, charm 2, charm 1, all attuned: `attunementLimit` (4), then
+   `attunementCopies` for charm 2, then for charm 1.
+6. A frozen character with two copies: nothing throws, nothing changes, the same warning.
+7. The quality gate is green.
+
+#### 4. How to do it
+
+1. `attunement.ts`: after the limit, count the attuned rows by `itemId`; one warning for each id
+   counted twice or more, in the order of its first row.
+2. Tests (§7), then the gate.
+
+Technical choices (ADR 002):
+- **A copy is a row of the same `itemId`.** The id is what makes two rows one item, found or
+  missing (a missing item still names its id). A custom row names no item: two of one name may be
+  two different things, so it is no one's copy.
+- **A row is one attunement**, as in SHEET-18: `qty` is not read, equipped or not counts.
+- **In the same function as the limit**, after it: one pass over the attuned rows, both warnings
+  about the same flag.
+- **Never a block.** No row's `attuned` is changed or refused; what the copies give is gathering's
+  (each entity once), unchanged.
+- **One rule in both editions** (§8), so no ruleset file.
+- **`data` carries `itemId` and `attuned`**, so the screen writes the item's name itself.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen. The Gear tab (SHEET-50) shows the warning; its note in `BACKLOG.md` says so.
+
+#### 7. Tests
+
+- `packages/system-5e/test/attunement.test.ts` — `describe('SHEET-63 attuning two copies of one
+  item gives a warning')`: items 1–6.
+- Control values from: the SRD text of §8; the charm's +1 AC, counted by hand, once by the rule in
+  `gather.ts` ("Each entity once").
+
+#### 8. Checked against the source
+
+Read on 2026-10-29. CC-BY-4.0.
+- SRD 5.1, 5e-bits/5e-srd-api `e6edf9a51fad4b59a7e9561fad6c15232caed214`,
+  `packages/5e-database/src/2014/en/5e-SRD-Rules.json` (Attunement): "a creature can't attune to
+  more than one copy of an item. For example, a creature can't attune to more than one *ring of
+  protection* at a time."
+- SRD 5.2.1, foundryvtt/dnd5e `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`,
+  `packs/_source/content24/chapter-6/magic-items.yml` (Attunement, "No More Than Three Items"):
+  "Additionally, you can't attune to more than one copy of an item. For example, you can't attune
+  to more than one Ring of Protection at a time."
+- So the rule is one in both. The row's note said SRD 5.2.1 does not say it; that was its Rules
+  Glossary entry only. The magic items chapter does.
+
+#### 9. Not in this ticket
+
+- The warning on screen, and the item's name in it: SHEET-50.
+- Whether a second copy's effects apply twice: gathering names each entity once (ENG engine
+  rule); not changed here.
+
+#### 10. Rake check
+
+- **A rule lives in the module, never in a component:** `attunement.ts`.
+- **The core names no game:** the engine is unchanged.
+- **Prerequisites warn, never block (§8.2):** nothing is refused; the charm's AC applies (§3
+  item 1).
+- **No ruleset check:** one rule in both editions.
+- **`compute()` is pure:** the warning reads only the character; the frozen test (§3 item 6).
+- **No rules text without an open license:** the quotes are CC-BY-4.0; the charms are made up.
+
+#### 11. What came out of it
+
+- `pnpm lint`: `Checked 233 files`, no fixes. `pnpm typecheck`: 6 of 6 `Done`.
+- `pnpm test`: unit `Test Files 76 passed (76)`, `Tests 1036 passed (1036)`, 11.57 s (1030
+  before, plus 6 in `attunement.test.ts`). No file in `apps/web` changed, so no `pnpm e2e`.
+- The tests catch mistakes. Each change made alone, then `attunement.test.ts` run (13 tests), then
+  undone (the file compared equal to its copy after): two copies not enough (`< 3` for `< 2`),
+  4 failed; only equipped rows counted, 1 failed; custom rows counted by name, 1 failed; the copy
+  warning never given, 4 failed.
+- Rebased onto SHEET-62, which a parallel chat pushed meanwhile. On top of it: `pnpm lint`
+  `Checked 234 files`, no fixes; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`: unit `Test Files 77
+  passed (77)`, `Tests 1046 passed (1046)`, 11.88 s; the speed pass `2 passed`.
+
+Differences from §3: none. From the row: SRD 5.2.1 does say the rule (§8), so it is one rule in
+both editions, not a 2014 one.
+
+**Found, not fixed:** nothing.
+
+**Changelog:** nothing; no screen changes.
