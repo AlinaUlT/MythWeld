@@ -6,7 +6,6 @@ import {
   changeTo,
   compute,
   conditionsRecoveredOn,
-  finderOf,
   type LogStamp,
   recoveredOn,
   withDropped,
@@ -28,13 +27,14 @@ import {
 } from './actions';
 import type { FifthEditionCharacter } from './character';
 import { RULE_STATS } from './combat';
-import { isDead } from './death-saves';
+import { applyingFinderOf } from './dead';
 import type { FifthEditionEntity } from './entity-types';
 import { hitDicePath } from './hit-dice';
 import { INSPIRATION_LONG_REST_PATH, inspirationGiven } from './inspiration';
 import { fifthEditionModule } from './module';
 import { rulesOf } from './rulesets';
 import { HIT_DIE_SIZES, MAX_SPELL_LEVEL } from './system';
+import { isDead } from './unconscious';
 
 // ENG-21: fifth edition's rests (SPEC §6.4), each one log entry (ADR 014 item 10), so one undo
 // takes the whole rest back. A short rest spends the hit dice the person rolled, each giving its
@@ -115,7 +115,7 @@ function restRefusal(
   index: ContentIndex<FifthEditionEntity>,
   min: number,
 ): ({ ok: false } & RestRefusal) | undefined {
-  if (isDead(character, finderOf(character, index))) {
+  if (isDead(character, applyingFinderOf(character, index))) {
     return { ok: false, code: 'dead', message: 'The character is dead: a rest gives it nothing.' };
   }
   const hp = character.systemData.state.hp.current;

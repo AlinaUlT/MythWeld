@@ -1,15 +1,9 @@
-import {
-  type ActionResult,
-  type ContentIndex,
-  changeTo,
-  type EntityFinder,
-  finderOf,
-  type LogStamp,
-} from '@grimoire/engine';
+import { type ActionResult, type ContentIndex, changeTo, type LogStamp } from '@grimoire/engine';
 import { KNOCKED_OUT_PATH, knockOutEnded, settled, type Unchanged } from './actions';
 import type { FifthEditionCharacter } from './character';
-import { isDead } from './death-saves';
+import { applyingFinderOf } from './dead';
 import type { FifthEditionEntity } from './entity-types';
+import { isDead, isKnockedOut } from './unconscious';
 
 // ENG-65: SRD 5.2.1's knocking out (ENG-65 §8). Damage that would drop a creature to 0 hit points
 // with a melee attack may leave it at 1 instead, with the Unconscious condition (`applyDamage`'s
@@ -22,14 +16,6 @@ import type { FifthEditionEntity } from './entity-types';
 /** Why first aid did not happen. `code` is for the screen. */
 export type FirstAidRefusal = { message: string } & ({ code: 'dead' } | { code: 'notKnockedOut' });
 
-/** The character is knocked out, and alive: the dead have no condition (ENG-62). */
-export function isKnockedOut(
-  character: FifthEditionCharacter,
-  find: EntityFinder<FifthEditionEntity>,
-): boolean {
-  return character.systemData.state.knockedOut !== undefined && !isDead(character, find);
-}
-
 /**
  * The knocked-out character after someone administers first aid to it, a successful DC 10 Wisdom
  * (Medicine) check the screen records, and the entry: the knock-out ends. At 0 hit points the
@@ -41,7 +27,7 @@ export function firstAid(
   index: ContentIndex<FifthEditionEntity>,
   stamp: LogStamp,
 ): ActionResult<FifthEditionCharacter, FirstAidRefusal | Unchanged> {
-  const find = finderOf(character, index);
+  const find = applyingFinderOf(character, index);
   if (isDead(character, find)) {
     return { ok: false, code: 'dead', message: 'The character is dead.' };
   }
@@ -70,7 +56,7 @@ export function rollInitiative(
   index: ContentIndex<FifthEditionEntity>,
   stamp: LogStamp,
 ): ActionResult<FifthEditionCharacter, InitiativeRefusal | Unchanged> {
-  if (isDead(character, finderOf(character, index))) {
+  if (isDead(character, applyingFinderOf(character, index))) {
     return { ok: false, code: 'dead', message: 'The character is dead.' };
   }
   const mark = character.systemData.state.knockedOut;

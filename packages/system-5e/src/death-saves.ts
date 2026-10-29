@@ -3,7 +3,6 @@ import {
   type ContentIndex,
   changeTo,
   type EntityFinder,
-  finderOf,
   type LogStamp,
 } from '@grimoire/engine';
 import type { LogChange, LogEntry } from '@grimoire/schema';
@@ -19,8 +18,9 @@ import {
   type Unchanged,
 } from './actions';
 import { DEATH_SAVES, type FifthEditionCharacter } from './character';
+import { applyingFinderOf } from './dead';
 import type { FifthEditionEntity } from './entity-types';
-import { fatalExhaustion } from './exhaustion';
+import { isDead } from './unconscious';
 
 // ENG-58: fifth edition's death saves (both SRDs, one rule; ENG-58 §8), each one log entry. The
 // person rolls the d20 and the action takes the face it kept and the total with its bonuses: a 1
@@ -74,22 +74,6 @@ export type DeathSaveResult =
   | { ok: true; character: FifthEditionCharacter; entry: LogEntry; outcome: DeathSaveOutcome }
   | Extract<ActionResult<FifthEditionCharacter, DeathSaveRefusal | Unchanged>, { ok: false }>;
 
-/**
- * The character is dead: at 0 hit points with 3 death save failures (ENG-20), or with exhaustion
- * at its highest level, whatever its hit points (ENG-67). `find` looks its stored conditions up.
- * ENG-62 moved it here from `hit-points.ts`, so the module reads it without an import loop.
- */
-export function isDead(
-  character: FifthEditionCharacter,
-  find: EntityFinder<FifthEditionEntity>,
-): boolean {
-  const { hp, deathSaves } = character.systemData.state;
-  return (
-    (hp.current === 0 && deathSaves.failure >= DEATH_SAVES) ||
-    fatalExhaustion(character, find) !== undefined
-  );
-}
-
 /** The character is stable: at 0 hit points, alive, and making no death saves. */
 export function isStable(
   character: FifthEditionCharacter,
@@ -104,7 +88,7 @@ function notDying(
   character: FifthEditionCharacter,
   index: ContentIndex<FifthEditionEntity>,
 ): ({ ok: false } & DeathSaveRefusal) | undefined {
-  if (isDead(character, finderOf(character, index))) {
+  if (isDead(character, applyingFinderOf(character, index))) {
     return { ok: false, code: 'dead', message: 'The character is dead.' };
   }
   const hp = character.systemData.state.hp.current;

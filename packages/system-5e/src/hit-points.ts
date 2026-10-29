@@ -6,7 +6,6 @@ import {
   changeTo,
   compute,
   conditionsRecoveredOn,
-  finderOf,
   keyFinderOf,
   type LogStamp,
   type MadeChanges,
@@ -28,12 +27,13 @@ import {
   type Unchanged,
 } from './actions';
 import { DEATH_SAVES, type FifthEditionCharacter } from './character';
-import { isDead } from './death-saves';
+import { applyingFinderOf } from './dead';
 import { DAMAGE_TYPE, type DefendedDamage, defendedDamage, defensesOf } from './defenses';
 import type { FifthEditionEntity } from './entity-types';
 import { fatalExhaustion } from './exhaustion';
 import { fifthEditionModule } from './module';
 import { rulesOf } from './rulesets';
+import { isDead } from './unconscious';
 
 // ENG-20: fifth edition's hit point actions (SPEC §6.4), each one log entry (ADR 014 item 10).
 // Damage takes the temporary hit points first, then the hit points, down to 0; what is left over
@@ -190,7 +190,7 @@ function refusal(
     const message = `${amount} is not a whole number of hit points from ${min}.`;
     return { ok: false, code: 'badAmount', amount, message };
   }
-  if (isDead(character, finderOf(character, index))) {
+  if (isDead(character, applyingFinderOf(character, index))) {
     return { ok: false, code: 'dead', message: 'The character is dead: it has no hit points.' };
   }
   return undefined;
@@ -354,8 +354,7 @@ export function revive(
     const message = `${hp} is not a whole number of hit points from 1.`;
     return { ok: false, code: 'badAmount', amount: hp, message };
   }
-  const find = finderOf(character, index);
-  if (!isDead(character, find)) {
+  if (!isDead(character, applyingFinderOf(character, index))) {
     return { ok: false, code: 'notDead', message: 'The character is not dead.' };
   }
   const computed = compute(character, index, fifthEditionModule);
@@ -380,7 +379,8 @@ export function revive(
     fifthEditionModule,
   );
   // A revival that changes nothing leaves the character as it was.
-  const fatal = fatalExhaustion(result.ok ? result.character : character, find);
+  const after = result.ok ? result.character : character;
+  const fatal = fatalExhaustion(after, applyingFinderOf(after, index));
   if (fatal !== undefined) {
     const message = `The revival leaves "${fatal}" at its highest level: the character is still dead.`;
     return { ok: false, code: 'stillDead', condition: fatal, message };

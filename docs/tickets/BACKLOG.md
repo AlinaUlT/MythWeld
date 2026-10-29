@@ -218,7 +218,7 @@ chats never claim one version number.
 | SHEET-61 | A condition the character is immune to has no effect | S | ✅ 2026-10-29 |
 | SHEET-62 | Gaining the Incapacitated condition ends concentration | XS | ✅ 2026-10-29 |
 | SHEET-63 | Attuning two copies of one item gives a warning | XS | ✅ 2026-10-29 |
-| SHEET-64 | Exhaustion the character is immune to does not kill | XS | 🔲 |
+| SHEET-64 | Exhaustion the character is immune to does not kill | XS | ✅ 2026-10-29 |
 | SHEET-65 | Dying ends concentration | XS | 🔲 |
 | SHEET-66 | An effect may set the size to any size the packs hold | S | ✅ 2026-10-29 |
 | **Characters** | **the list, the file, the manual form** | | |
@@ -270,10 +270,6 @@ chats never claim one version number.
   the choice and sets it at start), the units (feet or metres, pounds or kilograms; stored units
   stay feet and pounds), "I roll myself" (SPEC §6.5). Language, backup,
   packs, AI and purchases come with their phases.
-- **SHEET-64** — found by SHEET-61: a condition the character is immune to has no effect, but
-  `isDead` (`fatalExhaustion`, `exhaustion.ts`) reads the stored exhaustion level without
-  `compute()`, so exhaustion at its highest level kills a character immune to it. `compute()`
-  itself asks `isDead` (`unconsciousNamed`), so the immunity cannot come from a full compute.
 - **SHEET-65** — found by SHEET-62: SRD 5.1 (Concentration): "You lose concentration on a spell
   if you are incapacitated or if you die" (SHEET-17 §8). `deathChanges` (`actions.ts`) ends every
   attunement but not `state.concentration`. Measured: golden B at exhaustion 5, concentrating, set

@@ -15,6 +15,7 @@ export * from './checks';
 export * from './classes';
 export * from './combat';
 export * from './conditions';
+export * from './dead';
 export * from './death-saves';
 export * from './defenses';
 export * from './entity-types';
