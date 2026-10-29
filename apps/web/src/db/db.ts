@@ -3,13 +3,17 @@
 // parallel never each claim the next version. A primary key can never change once a table exists,
 // so each table's key is fixed here; the row that first stores into a table gives its row the
 // rest of its fields. `entityIndex` is phase 3's (search) and arrives with it.
+import type { StoredObject } from '@grimoire/schema';
 import Dexie, { type EntityTable } from 'dexie';
 
 // The IndexedDB name. Saved data lives under it, so it never changes, even if the app is renamed.
 export const DB_NAME = 'grimoire';
 
-/** A stored character, at whatever version it was saved; it migrates as it opens (SHEET-10). */
-export interface CharacterRow {
+/**
+ * A stored character, the file at whatever versions it was saved; it migrates as it opens
+ * (SHEET-10, `characters.ts`).
+ */
+export interface CharacterRow extends StoredObject {
   id: string;
 }
 

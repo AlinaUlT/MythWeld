@@ -17,6 +17,7 @@
     "@grimoire/engine": "workspace:*",
     "@grimoire/pdf": "workspace:*",
     "@grimoire/schema": "workspace:*",
+    "@grimoire/system-5e": "workspace:*",
     "clsx": "^2.1.1",
     "dexie": "^4.4.6",
     "i18next": "^26.4.2",
@@ -29,7 +30,6 @@
     "workbox-window": "^7.4.1"
   },
   "devDependencies": {
-    "@grimoire/system-5e": "workspace:*",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.20.4",
@@ -37,6 +37,7 @@
     "@types/react-dom": "^19.3.0",
     "@vite-pwa/assets-generator": "^1.0.4",
     "@vitejs/plugin-react": "^6.1.1",
+    "fake-indexeddb": "6.2.5",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.1",
     "vite-plugin-pwa": "^1.3.0"

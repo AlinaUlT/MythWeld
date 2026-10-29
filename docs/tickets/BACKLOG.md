@@ -196,7 +196,7 @@ chats never claim one version number.
 | SHEET-07 | Phase 2's device tables arrive in one database version | XS | ✅ 2026-10-28 |
 | SHEET-08 | The phase 1 fixtures ship as the built-in mini-pack | M | 🔲 |
 | SHEET-09 | Built-in packs load into the content index at start | S | 🔲 |
-| SHEET-10 | Characters are saved on the device, migrated as they open | S | 🔲 |
+| SHEET-10 | Characters are saved on the device, migrated as they open | S | ✅ 2026-10-29 |
 | **Navigation** | **ADR 008, ADR 013** | | |
 | SHEET-11 | The start page replaces the bottom bar | M | 🔲 |
 | SHEET-12 | The player page shows its six sections | S | 🔲 |
@@ -272,8 +272,8 @@ chats never claim one version number.
 - **SHEET-09** — found by ENG-25: a character's active pack that is not installed on the device
   never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
   on each of its entries. The row starts the load from `apps/web/src/main.tsx`, which SHEET-11, in
-  the same wave, leaves alone.
-- **SHEET-10** — SPEC §5.8: an older stored character migrates as it opens.
+  the same wave, leaves alone. Found by SHEET-10: an installed pack opens through its system's
+  frame; its opener joins the table in `apps/web/src/systems.ts`, beside the character's.
 - **SHEET-11** — found by OPS-08: ADR 008 replaces the SETUP-04 bottom bar with a start page, a
   player page and My characters. Player and DM are two squares (ADR 013 item 16, board
   `V3-Start`); the DM square shows as coming later (ADR 008 item 2). Every page has a back arrow
@@ -322,7 +322,10 @@ chats never claim one version number.
 - **SHEET-23** — SPEC §7.2: an "Undo" toast after every change, and the last 50 states kept in
   the history table; an entry is ENG-30's log entry.
 - **SHEET-24** — ADR 008 item 4, BRIEF P2, board `V3-Characters`; an empty state with "+" and
-  "Import file". No counter and no limit before the payment phase (ADR 005 item 2).
+  "Import file". No counter and no limit before the payment phase (ADR 005 item 2). Found by
+  SHEET-10: rows open through `openCharacter` (`apps/web/src/db/characters.ts`), which no e2e
+  test runs yet; this row's e2e saves one in Chromium and lists it, and a row that does not open
+  shows its reason, not a crash.
 - **SHEET-25** — ADR 008 item 4: a swipe or "⋯" opens Actions. Copy, Export (a JSON file, SPEC
   §12 stage 2) and Delete (with Undo) work; Link for DM and Transfer wait for the table link's
   phase and show as coming later.

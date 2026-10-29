@@ -1577,3 +1577,147 @@ this row, and the long press is SHEET-33, so a search for SHEET-04 finds a wrong
 OPS-32.
 
 **Changelog:** nothing for the changelog; no screen draws a part yet.
+
+---
+
+### SHEET-10 Characters on the device
+
+**Hat:** Characters are saved on the device, migrated as they open
+**Depends on:** SHEET-07, ENG-06
+**Size:** S
+**Screen:** No
+**SPEC:** §5.8 (migrations), §11 (the `characters` table)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/db/characters.ts` — new: `saveCharacter` and `openCharacter`. The
+other files it touches:
+
+- `apps/web/src/systems.ts` — new: the system modules the app carries, by system id, with each
+  one's character opener.
+- `apps/web/src/db/db.ts` — changes: `CharacterRow` is a stored file with an `id`.
+- `apps/web/package.json` — changes: `@grimoire/system-5e` moves from `devDependencies` to
+  `dependencies` (the app's code now imports it; ADR 004 item 2: core ← module ← `apps/web`);
+  `fake-indexeddb` 6.2.5 joins `devDependencies`, for the unit tests.
+- `apps/web/test/characters.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on 2026-10-29, at `3977c50`:
+
+- `apps/web/src/db/db.ts` has the `characters` table (SHEET-07), keyed by `id`; nothing writes or
+  reads it: `grep -rn "characters\." apps/web/src` finds nothing.
+- The migration frame exists: `openFifthEditionCharacter` (ENG-06, ENG-33) migrates a file of
+  any older `schemaVersion` or `systemSchemaVersion` and refuses a newer one. The app never calls
+  it.
+- No unit test can reach IndexedDB: Vitest runs in Node, and no IndexedDB stand-in is installed.
+
+#### 3. What it should look like when done
+
+1. `saveCharacter(character)` stores the character under its id, as its system's schema reads
+   it, and returns the frame's answer: `{ ok: true, value, from }`.
+2. `saveCharacter` stores nothing for a character its schema refuses, and returns
+   `{ ok: false, code: 'invalid' }`.
+3. `openCharacter(id)` opens a row of the current versions as it was saved:
+   `from: { schemaVersion: 2, systemSchemaVersion: 8 }`.
+4. It opens golden A stored at fifth edition's version 2 (no `languageSource`, no
+   `deathSaves.stable`) as golden A at version 8, `from: { schemaVersion: 2,
+   systemSchemaVersion: 2 }`, and the row stays at version 2.
+5. The next `saveCharacter` of what opened stores version 8 over it; the table still has 1 row.
+6. A row of `systemSchemaVersion` 9 is refused with `code: 'newer'`, `found: 9`, `current: 8`; a
+   row the schema does not read with `code: 'invalid'`; a row whose `system` is `tales` or
+   missing with `code: 'unknownSystem'`. Each row stays as it was.
+7. An id with no row gives `code: 'notFound'`.
+8. The app carries one system, `5e`; `characterOpenerOf` finds nothing for `tales`, `toString`,
+   `__proto__`, `5` or `undefined`.
+
+#### 4. How to do it
+
+1. `apps/web/src/systems.ts`: `CHARACTER_OPENERS`, system id → opener, with `5e` →
+   `openFifthEditionCharacter`; `characterOpenerOf(system)` reads it with `Object.hasOwn`, so a
+   name on `Object.prototype` finds nothing. `AppCharacter` is a character of any system the app
+   carries (today `FifthEditionCharacter`). This is the one place the app picks a system: no
+   `if (system === …)` anywhere else.
+2. `apps/web/src/db/characters.ts`: one private `openFile(file)` reads the file's `system`, finds
+   its opener, and runs it; with no opener it gives `unknownSystem`.
+   `openCharacter(id, characters = db.characters)` reads the row and gives `openFile`'s answer,
+   or `notFound`. `saveCharacter(character, characters = db.characters)` runs `openFile` first
+   and puts the parsed value only when it is `ok`. The table is a parameter so the tests give
+   each case its own database.
+3. **Opening never writes.** Technical choice (ADR 002 item 1): the migrated character is not
+   written back when it opens. Why: ADR 002 keeps "anything that would lose or rewrite data a
+   person has already saved" for the owner, and the migrations are pure, so running them on each
+   open costs nothing. The stored row moves to the current versions only when the person's own
+   change is saved. A refused row (newer, invalid, unknown system) stays as it was, so an app
+   update can still open it later. To reverse: write `opened.value` in `openCharacter`.
+4. `fake-indexeddb` (Apache-2.0, dev only, not in the build) gives Vitest an IndexedDB, so Dexie
+   runs as it does in the browser. Version 6.2.5, from 2025-11-07; 6.2.6, from 2026-10-16, is
+   under two weeks old and is not taken.
+
+#### 5. Stored data
+
+Nothing stored changes shape. The `characters` table (SHEET-07) gets its first rows: each row is
+the character file itself, at the versions it was saved. No Dexie version bump, no
+`schemaVersion` bump.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `apps/web/test/characters.test.ts` — `SHEET-10 characters on the device`: §3 items 1–7, each on
+  its own fresh database; `SHEET-10 systems the app carries`: §3 item 8.
+- Control numbers from: SPEC §6.7 golden A (`packages/system-5e/test/golden/characters-2014.ts`);
+  `FIFTH_EDITION_SCHEMA_VERSION` (8) and `CHARACTER_SCHEMA_VERSION` (2) in the source; the 2014
+  ruleset's `languageSource: 'species'` (`packages/system-5e/src/rulesets/2014.ts:19`), which the
+  3 → 4 step gives.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts.
+
+#### 9. Not in this ticket
+
+- Listing the saved characters: SHEET-24. Copy, export, delete: SHEET-25.
+- Importing a character file through its checks: SHEET-26 (it can call `saveCharacter`).
+- `rev` and `updatedAt` on a change, and undo: SHEET-23. `saveCharacter` stores what it is given.
+- Packs on the device and their opener: SHEET-08, SHEET-09.
+- A screen that says why a character does not open: the screens that open one (SHEET-24 on).
+
+#### 10. Rake check
+
+- **A stored-shape change needs a migration**: no shape changes; every row opens through the
+  migration frame, and an older row is tested to open at the current versions.
+- **Missing is not broken**: a row of an unknown system, a newer row or an id with no row gives
+  a result with a code, never an exception; nothing is deleted.
+- **Each system's rules live in its own module**: the app names a system only in `systems.ts`'s
+  one table; the core imports nothing new.
+- **Ids are stable**: a row is keyed by the character's own `id`.
+- **No telemetry, no external requests**: IndexedDB only.
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on top of SHEET-04 (`22de7b9`):
+
+- Whole gate (`lint && typecheck && test && e2e`): exit 0, 49.3 s.
+- `pnpm lint`: `Checked 229 files`, 0 errors. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: `Test Files 73 passed (73)`, `Tests 984 passed (984)` (975 before, 9 new). The
+  second suite (`Tests 2 passed (2)`) is unchanged.
+- `pnpm e2e`: `18 passed (11.1s)` on `pixel-7`, unchanged.
+- The tests are live: with `openCharacter` writing the migrated character back, §3 item 4 failed
+  (`1 failed | 8 passed (9)`).
+- Build: JS 499.66 kB (159.56 kB gzip), the same as at `22de7b9`: nothing on screen imports
+  `characters.ts` yet.
+- Differs from the row: none.
+
+Found, not fixed:
+
+- No e2e test saves and opens a character in Chromium: no screen does it yet. SHEET-24, the
+  first screen that opens saved rows, can carry it (note added to its row).
+- SHEET-09's installed packs open through their own system's frame too; their openers can join
+  `apps/web/src/systems.ts` (note added to its row).
+
+Nothing for the changelog.
