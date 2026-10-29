@@ -64,7 +64,7 @@ function rowsOf(characterId: string, table: GrimoireDb['history']): Promise<Hist
 }
 
 /** `character` one revision on, updated at `now`. */
-function revised(character: AppCharacter, now: string): AppCharacter {
+export function revised(character: AppCharacter, now: string): AppCharacter {
   return { ...character, rev: character.rev + 1, updatedAt: now };
 }
 

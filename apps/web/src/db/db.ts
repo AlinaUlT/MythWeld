@@ -48,9 +48,20 @@ export interface HistoryRow extends StoredObject {
   at: string;
 }
 
-/** A file the person added (a portrait, an uploaded PDF form), keyed by its uuid. */
+/** The frames of a portrait's token, one slot each (SHEET-03), in the board's order. */
+export const TOKEN_FRAMES = ['thin', 'ring', 'double'] as const;
+export type TokenFrame = (typeof TOKEN_FRAMES)[number];
+
+/**
+ * A file the person added (a portrait, an uploaded PDF form), keyed by its uuid. SHEET-56: a
+ * portrait's row also holds the frame the person picked for its token, so Copy and Delete carry
+ * it with the picture.
+ */
 export interface BlobRow {
   id: string;
+  data: Blob;
+  type: string;
+  frame?: TokenFrame;
 }
 
 export class GrimoireDb extends Dexie {

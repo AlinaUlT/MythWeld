@@ -5458,3 +5458,90 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+### SHEET-56 The portrait makes a round token
+
+**Hat:** Make the round token from the person's image
+**Depends on:** SHEET-03, SHEET-05, SHEET-25, SHEET-30
+**Size:** S
+**Screen:** Yes — `V3-Token`; BRIEF P4 and ADR 009 item 6
+**SPEC:** §5.8 `portraitBlobId`
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/db/portrait.ts` — new. `sheet/panels/PortraitPanel.tsx` — new, the screen.
+`sheet/header/portraitMedia.ts` — new, the hooks. `sheet/header/Token.tsx`, `SheetHeader.tsx`,
+`pages/SheetPage.tsx`, `db/db.ts`, `db/history.ts` (exports `revised`) — change.
+
+#### 2. What is missing now
+
+`Token.tsx` draws the first letter only. `BlobRow` is `{ id }`; nothing writes a portrait.
+
+#### 3. What it should look like when done
+
+1. Tapping the header token opens the Portrait screen over the sheet.
+2. A PNG, JPEG, WebP, GIF, AVIF, MP4 or WebM file up to 10 MB can be picked; any other file says why.
+3. The token shows it cut round in the Thin, Ring (default) or Double frame, one slot each.
+4. "Use as token" stores the file and names it in `portraitBlobId`; it survives a reload.
+5. A replaced or removed portrait drops its blob. Copy and Delete (SHEET-25) carry the frame with the row.
+6. While `motionIsStill()` is true an animated picture shows one still frame and a video stays paused.
+
+#### 4. How to do it
+
+1. `BlobRow` gains `data`, `type` and `frame`. The frame lives on the blob row, not on the
+   character, so no stored character shape changes.
+2. `portrait.ts`: `setPortrait`, `removePortrait`, `setTokenFrame`, each one transaction.
+3. `useStoredPortrait` watches the row; `useMedia` makes an object URL and frees it; a still frame is
+   drawn through a canvas; `useMotionStill` follows the switch and the phone's setting.
+4. `TokenFace` draws the frame slot and the portrait slot; the header and the screen both use it.
+
+#### 5. Stored data
+
+`CharacterDoc` is unchanged (`portraitBlobId` already existed). The `blobs` table keeps its key
+and indexes, so no Dexie version bump. A portrait row gains `data`, `type` and optional `frame`.
+
+#### 6. What a person will see
+
+Portrait screen at 360×800, keys in `token.json`: title, choose, replace, stays, token, frame,
+frames, use, remove, refused. No picture yet shows the first letter.
+
+#### 7. Tests
+
+- `apps/web/test/portrait.test.tsx` — file rules, store, replace, refuse, frame, remove, Copy and
+  Delete carry the row, token markup. Values from golden B and the files made in the test.
+- `apps/web/e2e/sheet.spec.ts` — pick, choose Double, use, reload; a GIF becomes a PNG under reduced
+  motion; a text file is refused.
+
+#### 8. Checked against the source
+
+Nothing to check.
+
+#### 9. Not in this ticket
+
+- The token in lists and the initiative tracker: SHEET-24's cards and the table tools keep the letter.
+- Cropping or zooming the picture; it is centred and covers the circle.
+- Skins that fill the frame slots with their own rings (SHEET-03 owns the slots).
+
+#### 10. Rake check
+
+- **A person's saved data:** a failed character save throws inside the transaction, so no stray blob stays.
+- **No look in a component:** frames are slots, colours tokens, the corner the panel part's.
+- **No visible literal:** every string is a `token` key.
+- **No external requests:** the file is read from the device and shown from an object URL.
+- **Stored-shape change:** none; see §5.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-29: `pnpm lint` 358 files, no fixes; `pnpm typecheck` 0 errors; `pnpm test`
+97 files, 1250 passed, 0 failed, then the speed project 2 passed; `pnpm e2e` 42 passed, 0 failed,
+21.5 s (3 new). Screenshot at 360×800 checked in the chat.
+
+Differences from the board: the file zone has a solid border (the panel part's), not dashed; the
+screen is a full-height panel over the sheet, not a route, so the router is unchanged.
+
+Found, not fixed: an Undo of the portrait is not offered; the portrait is not in the change history.
+
+Changelog: "The token in the sheet's header opens a Portrait screen: pick a picture, an animated
+picture or a short video, choose a Thin, Ring or Double frame, and it becomes the round token."

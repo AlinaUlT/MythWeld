@@ -203,3 +203,80 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
 });
+
+// SHEET-56: the header's token opens the portrait screen; a picked picture is cut round in the
+// frame chosen and stays after a reload. An animated picture shows a still frame while the phone
+// asks for reduced motion.
+const pixel = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+const animated = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+
+test('SHEET-56 a picked picture becomes the header token and stays after a reload', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  const token = en.token;
+  await page.getByRole('button', { name: token.open }).click();
+  const panel = page.getByRole('dialog', { name: token.title });
+  await expect(panel).toBeVisible();
+  await panel.locator('input[type=file]').setInputFiles({
+    name: 'iren.png',
+    mimeType: 'image/png',
+    buffer: pixel,
+  });
+  await panel.getByRole('radio', { name: token.frames.double }).click();
+  await expect(panel.getByRole('radio', { name: token.frames.double })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await testInfo.attach('portrait', { body: await page.screenshot(), contentType: 'image/png' });
+  await panel.getByRole('button', { name: token.use }).click();
+  await expect(panel).toHaveCount(0);
+
+  const open = page.getByRole('button', { name: token.open });
+  await expect(open.locator('img')).toHaveCount(1);
+  await expect(open.locator('[data-skin-slot="token-frame-double"]')).toHaveCount(1);
+  await page.reload();
+  await expect(page.getByRole('button', { name: token.open }).locator('img')).toHaveCount(1);
+  await expect(
+    page.getByRole('button', { name: token.open }).locator('[data-skin-slot="token-frame-double"]'),
+  ).toHaveCount(1);
+});
+
+test('SHEET-56 an animated picture shows a still frame while motion is reduced', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  await page.getByRole('button', { name: en.token.open }).click();
+  const panel = page.getByRole('dialog', { name: en.token.title });
+  await panel.locator('input[type=file]').setInputFiles({
+    name: 'iren.gif',
+    mimeType: 'image/gif',
+    buffer: animated,
+  });
+  await panel.getByRole('button', { name: en.token.use }).click();
+  const img = page.getByRole('button', { name: en.token.open }).locator('img');
+  await expect(img).toHaveCount(1);
+  const type = await img.evaluate(async (el) =>
+    (await fetch((el as HTMLImageElement).src)).blob().then((b) => b.type),
+  );
+  expect(type).toBe('image/png');
+});
+
+test('SHEET-56 a file that is not a picture is refused in words', async ({ page }) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  await page.getByRole('button', { name: en.token.open }).click();
+  const panel = page.getByRole('dialog', { name: en.token.title });
+  await panel.locator('input[type=file]').setInputFiles({
+    name: 'notes.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('hello'),
+  });
+  await expect(panel.getByRole('alert')).toHaveText(en.token.refused.type);
+});

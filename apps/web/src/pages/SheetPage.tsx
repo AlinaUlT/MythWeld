@@ -16,6 +16,7 @@ import { RollDialog } from '../shared/RollDialog';
 import { ActionsMenu } from '../sheet/panels/ActionsMenu';
 import { ChoicesPanel } from '../sheet/panels/ChoicesPanel';
 import { NumberPad, type NumberPadMode } from '../sheet/panels/NumberPad';
+import { PortraitPanel } from '../sheet/panels/PortraitPanel';
 import { RestPanel } from '../sheet/panels/RestPanel';
 import { SheetContext, type SheetValue } from '../sheet/SheetContext';
 import { SheetDice } from '../sheet/SheetDice';
@@ -35,7 +36,7 @@ export const SWIPE_PX = 56;
 type Open =
   | { kind: 'roll' | 'breakdown'; path: string }
   | { kind: 'numberPad'; mode: NumberPadMode }
-  | { kind: 'rest' | 'actions' | 'choices' };
+  | { kind: 'rest' | 'actions' | 'choices' | 'portrait' };
 
 type Loaded = { status: 'loading' } | { status: 'failed' } | OpenedCharacter;
 
@@ -99,6 +100,7 @@ function Frame({ character, system }: { character: AppCharacter; system: SheetSy
           onRest={() => setOpen({ kind: 'rest' })}
           onEdit={() => setEditing((on) => !on)}
           onActions={() => setOpen({ kind: 'actions' })}
+          onPortrait={() => setOpen({ kind: 'portrait' })}
         />
         <main
           id="sheet-tab-panel"
@@ -147,6 +149,7 @@ function Frame({ character, system }: { character: AppCharacter; system: SheetSy
         {open?.kind === 'rest' && <RestPanel onClose={close} />}
         {open?.kind === 'actions' && <ActionsMenu onClose={close} />}
         {open?.kind === 'choices' && <ChoicesPanel onClose={close} />}
+        {open?.kind === 'portrait' && <PortraitPanel onClose={close} />}
       </Slot>
     </SheetContext>
   );

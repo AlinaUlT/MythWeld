@@ -46,6 +46,7 @@ export interface HeaderActions {
   onRest: () => void;
   onEdit: () => void;
   onActions: () => void;
+  onPortrait: () => void;
 }
 
 function ChoicesBadge({ onChoices, t }: { onChoices: () => void; t: SheetT }) {
@@ -123,7 +124,7 @@ function CastingRow({ t }: { t: SheetT }) {
   );
 }
 
-export function SheetHeader({ onChoices, onRest, onEdit, onActions }: HeaderActions) {
+export function SheetHeader({ onChoices, onRest, onEdit, onActions, onPortrait }: HeaderActions) {
   const { t } = useTranslation('sheet');
   const { character, editing } = useSheet();
   const classLine = useClassLine(t);
@@ -131,7 +132,7 @@ export function SheetHeader({ onChoices, onRest, onEdit, onActions }: HeaderActi
     <Slot as="header" name="header" className="shrink-0 border-b border-line">
       <div className="flex h-16 items-center gap-0.5 px-0.5">
         <BackButton to={paths.characters} />
-        <Token />
+        <Token onOpen={onPortrait} />
         <div className="flex min-w-0 grow flex-col gap-0.5">
           <h1 className="truncate font-heading text-22 leading-tight font-bold">
             {character.name}
