@@ -1011,3 +1011,31 @@ Nothing for the changelog; a person sees no change.
 **Tests:** none; a document change. The quality gate runs as for any commit.
 **What came out of it:** Done as item 2 says. Gate measured on this commit is in the chat report.
 Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-30 `RUNNING.md` names the container's current Chromium path · XS
+
+**Hat:** `RUNNING.md` names the container's current Chromium path
+**Where:** `docs/RUNNING.md` — "Playwright's browser"
+**Depends on:** Nothing
+**Screen:** No
+
+Found by SHEET-02 (SHEET-02 §11). Measured on 2026-10-29: `docs/RUNNING.md` gave
+`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; `ls /opt/pw-browsers/chromium-1194` says
+"No such file or directory". `/opt/pw-browsers/` holds `chromium`, `chromium-1243`,
+`chromium_headless_shell-1243` and `ffmpeg-1011`; `chromium` is a symbolic link to
+`/opt/pw-browsers/chromium-1243/chrome-linux64/chrome` (Google Chrome for Testing 153.0.8010.12).
+
+**What it should look like when done:**
+1. `docs/RUNNING.md` gives `PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm e2e`, a path
+   with no version in it, and says it is a link to the build the container has now.
+2. `pnpm e2e` passes with that path.
+3. Nothing else changes: `apps/web/playwright.config.ts` still reads the variable, and the closed
+   tickets in `docs/archive/` keep the old path they measured with.
+
+**Tests:** none new; a document change. `pnpm e2e` is run with the new path as proof.
+**What came out of it:** `PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm e2e` in
+`apps/web`: 18 passed, 0 failed, 18.8 s. The link is the container's, not the repository's; if
+a later container drops it, the path to give is `ls -l /opt/pw-browsers/`'s current `chromium-*`
+build. Nothing for the changelog; a person sees no change.

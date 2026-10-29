@@ -71,8 +71,11 @@ pnpm e2e
   at it:
 
   ```
-  PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome pnpm e2e
+  PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm e2e
   ```
+
+  `/opt/pw-browsers/chromium` is a link to the browser build the container has now, so the path
+  does not change when the build's version does.
 
   Without the variable Playwright looks for its own browser build, which is not installed there.
 - **Anywhere else** Playwright uses its own browser. Its standard install command is
