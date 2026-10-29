@@ -254,7 +254,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-50 | The Gear tab equips items | M | 🔲 |
 | SHEET-51 | Coins change by quick steps | XS | 🔲 |
 | SHEET-52 | Custom entries are added as free text | S | 🔲 |
-| SHEET-53 | The About tab shows the origin details | S | 🔲 |
+| SHEET-53 | The About tab shows the origin details | S | ✅ 2026-10-29 |
 | SHEET-54 | The Notes tab keeps free text | XS | 🔲 |
 | SHEET-55 | Inspiration is tracked as stars | S | 🔲 |
 | SHEET-56 | The portrait makes a round token | S | 🔲 |

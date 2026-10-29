@@ -1,1 +1,27 @@
-{}
+{
+  "title": "About {{name}}",
+  "origin": "Origin",
+  "species": "Species",
+  "background": "Background",
+  "alignment": "Alignment",
+  "languages": "Languages",
+  "proficiencies": "Proficiencies",
+  "skills": "Skills",
+  "armor": "Armor",
+  "weapons": "Weapons",
+  "tools": "Tools",
+  "none": "—",
+  "separator": ", ",
+  "groups": {
+    "armor": {
+      "light": "Light armor",
+      "medium": "Medium armor",
+      "heavy": "Heavy armor",
+      "shield": "Shields"
+    },
+    "weapons": {
+      "simple": "Simple weapons",
+      "martial": "Martial weapons"
+    }
+  }
+}

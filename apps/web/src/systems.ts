@@ -11,9 +11,11 @@ import {
   type EditionTerms,
   FIFTH_EDITION_HEADER_NUMBERS,
   FIFTH_EDITION_SYSTEM,
+  type FifthEditionAbout,
   type FifthEditionCharacter,
   type FifthEditionEntity,
   type FifthEditionPack,
+  fifthEditionAbout,
   fifthEditionCasting,
   fifthEditionClassLine,
   fifthEditionHitPoints,
@@ -39,6 +41,9 @@ export type AppPack = FifthEditionPack;
 
 /** What `compute()` gives for a character of any system the app carries. */
 export type AppComputed = Computed<FifthEditionEntity>;
+
+/** What the About tab shows for a character of any system the app carries. */
+export type AppAbout = FifthEditionAbout;
 
 /** Opens a stored character of one system through its migration frame (SPEC §5.8). */
 export type CharacterOpener = (file: unknown) => Opened<AppCharacter>;
@@ -124,6 +129,8 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** SHEET-53: what the About tab names: the origin, the alignment, the languages, the training. */
+  about(character: AppCharacter, computed: AppComputed): AppAbout;
 }
 
 /** Each system's sheet, by system id. */
@@ -134,6 +141,7 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    about: fifthEditionAbout,
   },
 };
 

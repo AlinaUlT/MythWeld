@@ -203,3 +203,16 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
 });
+
+test('SHEET-53 the About tab names the origin, the languages and the training', async ({
+  page,
+}) => {
+  await saveRows(page, [goldenA]);
+  await page.goto(`characters/${goldenA.id}?tab=about`);
+
+  await expect(page.getByRole('heading', { name: 'About Golden A' })).toBeVisible();
+  await expect(page.getByText('Dwarf, Hill Dwarf')).toBeVisible();
+  await expect(page.getByText('Acolyte', { exact: true })).toBeVisible();
+  await expect(page.getByText('Dwarvish')).toBeVisible();
+  await expect(page.getByText('Insight, Religion, Medicine, Persuasion')).toBeVisible();
+});

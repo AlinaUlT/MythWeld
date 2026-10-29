@@ -5458,3 +5458,104 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-53 The About tab shows the origin details
+
+**Hat:** The About tab shows the origin details
+**Depends on:** SHEET-30
+**Size:** S
+**Screen:** Yes — the sheet's About tab; board `V3-About`, BRIEF P4, ADR 009 item 3
+**SPEC:** §7.2 (the tabs), §5.8 (`notes`); ADR 009 item 3
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/AboutList.tsx` — filled: two cards of rows.
+- `packages/system-5e/src/about.ts` — new: `fifthEditionAbout()`, what the tab names, read from
+  `Computed`; `ALIGNMENT_NOTE`.
+- `apps/web/src/systems.ts` — `SheetSystem.about`, so the tab asks the system, not a module.
+- `apps/web/src/locales/en/about.json` — filled.
+
+#### 2. What is missing now
+
+Measured on `30f4382`: `AboutList` returns `null`; `about.json` is `{}`. The stored character has
+no alignment field.
+
+#### 3. What it should look like when done
+
+1. The tab has a card "About <name>": Species (the species, then its lineages), Background,
+   Alignment, Languages.
+2. A second card "Proficiencies": Armor, Weapons, Tools, Skills.
+3. Every name comes from `Computed` (`entities`, `proficiencies`, `byKey`), so a feat or class
+   that gives a language or training shows with no code of its own. A key listed twice shows once.
+4. A key no pack has an entry for (a group such as `light`, or an item the pack lacks) is written
+   from a locale key or, failing that, spelled from the key. It is never dropped.
+5. A row with nothing shows a dash.
+
+#### 4. How to do it
+
+`fifthEditionAbout(character, computed)` walks `computed.entities` for the origin sides
+(`originSideOf`) and `computed.proficiencies` per listed category, naming each key with
+`computed.byKey`. The tab renders the result; the app's `SheetSystem` carries the function.
+
+#### 5. Stored data
+
+Nothing stored changes. Decided here (ADR 002): alignment is kept in the character's `notes`,
+under the key `alignment` (`ALIGNMENT_NOTE`), not in a new `systemData` field. A new field would
+bump `schemaVersion` for every fifth-edition file and pack, and alignment is free text with no
+rule attached. The row's backlog note allowed either way.
+
+#### 6. What a person will see
+
+At 360 px, the About tab: two outlined cards, each row a small label above its value. Keys
+(`about` namespace): `title`, `origin`, `species`, `background`, `alignment`, `languages`,
+`proficiencies`, `armor`, `weapons`, `tools`, `skills`, `none`, `separator`, `groups.*`.
+
+#### 7. Tests
+
+- `apps/web/test/about.test.tsx` — 6 tests on goldens A, B and C: the origin ids, the languages,
+  the training keys, a key once, the alignment note, the drawn rows, the dash, the spelled key.
+- `apps/web/e2e/sheet.spec.ts` — the tab in the built app.
+- Control numbers from: SPEC §6.7 goldens A (hill dwarf acolyte), B (human soldier) and C, and
+  the entries of the built-in packs they name.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is relied on; names are the packs'.
+
+#### 9. Not in this ticket
+
+- Editing the alignment, the languages or the training: edit mode is SHEET-57's; a language the
+  person adds by hand has no screen yet.
+- A language or tool grant whose choice is not made yet: it is a pending choice (SHEET-36).
+- Saving throw proficiencies: the Main tab (SHEET-32).
+
+#### 10. Rake check
+
+- **Everything is data:** no ability, skill or language is named in code; categories are the
+  module's proficiency categories.
+- **Missing is not broken:** a key with no entry shows spelled, never throws.
+- **No visible literal / no look in a component:** every string is an `about` key; the card is
+  the card part, colours are tokens.
+- **Core names no game:** the function is in `system-5e`; the app reaches it through
+  `SheetSystem`.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-29, on `30f4382` plus this ticket: `pnpm lint` 356 files, no fixes.
+`pnpm typecheck` clean. `pnpm test` 97 files, 1248 passed, 0 failed, 23.2 s (7 new in
+`about.test.tsx`), then the speed project 2 passed. `pnpm e2e` 40 passed, 0 failed, 26.8 s (1 new).
+
+Differences from §3 and the board:
+- The board's "Skills" row sits under Proficiencies, as here; its "Hit points" row is the dock's.
+- Golden B (2024) shows no languages: its stored choices pick none yet.
+- A weapon the pack has no entry for (a battleaxe) shows spelled from its key ("Battleaxe").
+
+Found, not fixed: nothing a person can reach yet writes the alignment note; SHEET-57 (edit mode)
+or SHEET-54 (Notes) is the place.
+
+Changelog: "The About tab names the character's species, background, languages, armor, weapon
+and tool training and skills."

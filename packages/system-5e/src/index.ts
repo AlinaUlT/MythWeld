@@ -6,6 +6,7 @@
 // engine refuses, `Math.random`, and any import but its own files, the core and `zod`.
 
 export * from './ability-bonus';
+export * from './about';
 export * from './actions';
 export * from './attacks';
 export * from './attunement';
