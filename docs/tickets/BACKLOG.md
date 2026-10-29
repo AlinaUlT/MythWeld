@@ -249,7 +249,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-45 | The Rest frames show what comes back | M | 🔲 |
 | SHEET-46 | The Spells tab shows the slot grid | M | 🔲 |
 | SHEET-47 | The cast panel casts a spell | M | 🔲 |
-| SHEET-48 | The Features tab groups features by source | M | 🔲 |
+| SHEET-48 | The Features tab groups features by source | M | ✅ 2026-10-29 |
 | SHEET-49 | The Turn tab lists actions by timing | S | 🔲 |
 | SHEET-50 | The Gear tab equips items | M | 🔲 |
 | SHEET-51 | Coins change by quick steps | XS | 🔲 |
@@ -355,10 +355,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   concentration ends the old one with a confirmation (SPEC §6.4). Found by SHEET-17: the dialog
   shows `castWarnings` before Cast, a `cannotCast` warning's steps as a breakdown; the cast still
   happens, its `outcome.warnings` the same list.
-- **SHEET-48** — ADR 009 item 2, board `V3-Features`: grouped under the species, the class (its
-  subclass on the line below), the background, the feats; each with its uses, their recovery label
-  and its switches (`state.toggles`, ENG-17). Found by SHEET-20: the label reads
-  `recoveryOf(computed, key)`, each event's `all` or count; a count's breakdown is its `path`.
 - **SHEET-49** — ADR 010 item 8, board `V3-Turn`: built from each feature's `activation`; nothing
   is typed twice. It fills out as phase 3 adds content.
 - **SHEET-50** — SPEC §7.2: worn and attuned change AC and attacks at once (ENG-44); weight;

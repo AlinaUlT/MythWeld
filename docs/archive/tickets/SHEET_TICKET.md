@@ -5458,3 +5458,147 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+### SHEET-48 The Features tab groups features by source
+
+**Hat:** The Features tab groups features by source
+**Depends on:** SHEET-30 (the frame and its empty sections), SHEET-31 (descriptions in place), SHEET-23 (the toast), SHEET-20 (`recoveryOf`), ENG-30 (`useResource`, `setToggle`)
+**Size:** M
+**Screen:** Yes — the Features tab; board `V3-Features`, and its row in `docs/design/BRIEF.md` Part 5
+**SPEC:** §7.2 (the Features tab; trackers change in play mode), §6.4 (uses), ADR 009 item 2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/FeatureList.tsx` — changes: the tab.
+- `packages/system-5e/src/feature-sources.ts` — new: which source each feature belongs to.
+- `packages/system-5e/src/index.ts` — exports it.
+- `apps/web/src/systems.ts` — `SheetSystem.featureSources`, so the tab names no game.
+- `apps/web/src/sheet/act.ts` — new: makes an action's stamp and records its change.
+- `apps/web/src/locales/en/features.json` — the tab's words.
+- `apps/web/test/features.test.tsx`, `packages/system-5e/test/feature-sources.test.ts`,
+  `apps/web/e2e/sheet.spec.ts`, `apps/web/test/sheet.test.tsx` (FeatureList is no longer empty).
+
+#### 2. What is missing now
+
+Measured on `30f4382`: `FeatureList` returns `null`, `features.json` is `{}`. Opening
+`characters/<id>?tab=features` shows an empty tab.
+
+`compute()` on the built-in packs gives each feature its origins (`HadEntity.from`), measured
+with a throwaway test:
+- golden B: `feature/resourceful`, `skillful`, `versatile` from `species/human#traits`;
+  `feat/alert` from `feature/versatile#feat`; `feat/savage-attacker` from `background/soldier#feat`;
+  `feature/fighter-second-wind` from `class/fighter#features-1`; `feat/defense` from
+  `feature/fighter-fighting-style#feat`. One resource: `secondWind`, from
+  `feature/fighter-second-wind#uses`, recovery `short: 1`, `long: all`.
+- golden A: the subclass `subclass/life` has the origin `character`, not its class, so the class
+  is found through `systemData.classes`; the lineage `lineage/hill-dwarf` comes from
+  `species/dwarf#subrace`.
+
+#### 3. What it should look like when done
+
+1. The tab lists one card per source, in this order: the species, each class in the order taken,
+   the background, the feats the character took by hand (only when there is one).
+2. A card's header names the source; a class's says `class · level N`.
+3. Under a class's name, its subclass; with none, "chosen at a later level" below the subclass
+   level, "not chosen yet" at or above it. Under a species' name, its lineage, when it has one.
+4. A feature or feat is a row that opens its description in place (SHEET-31). A feat a trait, a
+   feature or the background gave stays under that giver; a subclass's feature is under its class.
+5. A feature with uses shows what comes back on each recovery event, from `recoveryOf`, the
+   uses left as dots and as "N of M left", and "Use". Golden B's Second Wind: "1 back on a short
+   rest, all on a long rest", "2 of 2 left", two filled dots. "Use" spends one, shows the toast
+   "Second Wind used" with "Undo", and is disabled at 0 left.
+6. A toggled effect shows a switch with its label, "On" or "Off": the stored state, else its
+   default. Tapping it flips it, with the same toast and "Undo".
+7. A source with no features says "No features listed."; an id a source's grant names that no
+   pack has shows `Missing: <id>` in amber, and nothing throws (SPEC §8.2).
+8. Uses and switches work in play mode.
+
+#### 4. How to do it
+
+1. `fifthEditionFeatureSources(character, computed)`: for each feature, feat, lineage follow
+   `from` up to the species, class or background that gave it (a subclass leads to the class that
+   names it in `systemData.classes`; a thing the character holds itself is a feat of the feats
+   group). Items and conditions lead nowhere and are left out. `warnings` of code `missing` go
+   to the source their `from` leads to.
+2. `SheetSystem.featureSources` carries it, as the header's numbers are carried.
+3. `FeatureList` draws the cards; a resource belongs to the feature whose id starts its `from`.
+4. `act` runs an engine action with a stamp (`crypto.randomUUID()`, now, the character as the
+   roller) and records the result through `changeCharacter`, so SHEET-23's toast follows.
+5. The recovery label is built from `features` keys, one per event; an event with no words
+   reads "on <event>".
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+360×800, from the Features tab. Empty: "No features listed." under a source with none. Error:
+`Missing: <id>`. Keys, all in `features`: `kind.*`, `feats` ("Feats"), `subline.*`, `noEntries`,
+`missing`, `recovery.*` (`all`, `amount`, `when.short|long|dawn|turn|manual|revive|other`),
+`uses.*` ("{{left}} of {{max}} left", "Use"), `switch.on|off`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/feature-sources.test.ts` — the groups of goldens A, B, C (2014) and
+  E: order, the lineage and subclass sublines, each feature under its giver, the feats group,
+  a missing id, nothing for a character with nothing.
+- `apps/web/test/features.test.tsx` — the cards, rows, Second Wind's label and dots (full, and
+  both uses spent: disabled), a toggled feat's switch on its default and when stored, the label.
+- `apps/web/e2e/sheet.spec.ts` — the tab at 360×800, "Use" twice, "Undo", a description opens,
+  and no card is squeezed under its content.
+- Control numbers from: SPEC §6.7 goldens; board `V3-Features` (2 uses; the label's words); the
+  ids from `compute()` on the built-in packs (§2).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is used. The uses are `resources.<key>.max` and `recoveryOf`
+(SHEET-20), which read the pack's own numbers.
+
+#### 9. Not in this ticket
+
+- "Always on" for a passive effect, and the one-line effect summary ("AC +1") the board draws:
+  the pack has no field for either yet; the description shows the text.
+- The board's "Skill: Proficient in Insight" and similar rows: a summary of proficiency grants,
+  not features; the About tab (SHEET-53) lists proficiencies.
+- A feature an item gives: the Gear tab (SHEET-50).
+- Custom features with text: SHEET-52. Custom sections: SHEET-57.
+- The Rest frames' "what comes back" (SHEET-45).
+
+#### 10. Rake check
+
+- **The core names no game:** which things name a group (species, class, background) lives in
+  `system-5e`; the tab reads `SheetSystem.featureSources`.
+- **Every number from `compute()`:** the max, the uses left and the recovery amounts come from
+  `resourceUses` and `recoveryOf`; the tab adds nothing.
+- **Missing is not broken:** a missing id is a line, not an error.
+- **No look, no literal in a component:** tokens, parts and `features` keys only.
+- **A person's saved data:** a change goes through the engine's action and the history, so
+  "Undo" reverses it.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-29: `pnpm lint && pnpm typecheck && pnpm test` exit 0 in 69.5 s. `pnpm
+lint` 358 files, no fixes. `pnpm test` 98 files, 1257 passed, 0 failed (16 new: 6 in
+`feature-sources.test.ts`, 10 in `features.test.tsx`), then the speed project 2 passed.
+Coverage: statements 99.32 % (3546/3570), lines 99.8 % (3110/3116). `pnpm e2e` 40 passed, 0
+failed, 46.2 s (1 new).
+
+Differences from §3 and the board:
+- The first screenshot showed the Human card with Alert missing and "Use" cut off: the tab is a
+  flex column, and a card with `overflow-hidden` shrinks to fit it. The card has `shrink-0`; the
+  e2e checks each card is as tall as its content (it failed with 181 against 224 without it).
+- A lineage is shown under the species as a subclass is under its class (§3 item 3); the board
+  has no species with a lineage.
+- `SheetSystem` gained `featureSources`; the `sheet.test.tsx` test that every section is empty
+  now lists `FeatureList` as filled, which a row that fills a section does from here on.
+
+Found, not fixed:
+- A resource two entities give shows its pool on both rows; each has its own "Use". Neither pack
+  has one today.
+
+Changelog: "The Features tab groups a character's features under its species, classes,
+background and feats; a feature opens its description, and one with uses shows what comes back on
+each rest, its uses left, and a Use button."

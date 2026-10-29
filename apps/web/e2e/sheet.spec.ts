@@ -203,3 +203,48 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
 });
+
+test('SHEET-48 the Features tab groups features by source, and Use spends one use', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=features`);
+  const panel = page.getByRole('tabpanel');
+  await expect(panel.getByRole('heading', { level: 2 })).toHaveText([
+    'Human',
+    'Fighter',
+    'Soldier',
+  ]);
+  await expect(panel).toContainText('Subclass: chosen at a later level');
+  // Board V3-Features: Second Wind has 2 uses; 1 comes back on a short rest, all on a long one.
+  await expect(panel).toContainText('1 back on a short rest, all on a long rest');
+  await expect(panel).toContainText('2 of 2 left');
+  await expect(panel.locator('[data-filled="true"]')).toHaveCount(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  // The cards keep their height and the tab scrolls: no row is squeezed out of sight.
+  for (const card of await panel.locator('section').all()) {
+    const box = await card.boundingBox();
+    const rows = await card.evaluate((element) => element.scrollHeight);
+    expect(Math.round(box?.height ?? 0)).toBeGreaterThanOrEqual(rows);
+  }
+  await page.screenshot({ path: testInfo.outputPath('features.png') });
+
+  const use = panel.getByRole('button', { name: 'Use' });
+  await use.tap();
+  await expect(panel).toContainText('1 of 2 left');
+  await expect(panel.locator('[data-filled="true"]')).toHaveCount(1);
+  await expect(page.getByRole('status')).toContainText('Second Wind used');
+  await page.screenshot({ path: testInfo.outputPath('features-used.png') });
+  await use.tap();
+  await expect(panel).toContainText('0 of 2 left');
+  await expect(use).toBeDisabled();
+
+  // "Undo" gives the last use back.
+  await page.getByRole('status').getByRole('button', { name: 'Undo' }).tap();
+  await expect(panel).toContainText('1 of 2 left');
+  await expect(use).toBeEnabled();
+
+  // A description opens in place from a feature's row.
+  await panel.getByRole('button', { name: /Weapon Mastery/ }).tap();
+  await expect(panel.getByRole('button', { name: 'See full description' })).toBeVisible();
+});

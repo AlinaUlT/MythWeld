@@ -1,1 +1,39 @@
-{}
+{
+  "kind": {
+    "species": "species",
+    "class": "class · level {{level}}",
+    "background": "background"
+  },
+  "feats": "Feats",
+  "subline": {
+    "lineage": "Lineage: {{name}}",
+    "subclass": "Subclass: {{name}}",
+    "subclassLater": "Subclass: chosen at a later level",
+    "subclassUnchosen": "Subclass: not chosen yet"
+  },
+  "noEntries": "No features listed.",
+  "missing": "Missing: {{id}}",
+  "recovery": {
+    "all": "all {{when}}",
+    "amount": "{{amount}} back {{when}}",
+    "separator": ", ",
+    "when": {
+      "short": "on a short rest",
+      "long": "on a long rest",
+      "dawn": "at dawn",
+      "turn": "at the start of your turn",
+      "manual": "when you reset it",
+      "revive": "on revival",
+      "other": "on {{event}}"
+    }
+  },
+  "uses": {
+    "summary": "{{left}} of {{max}} uses left",
+    "left": "{{left}} of {{max}} left",
+    "use": "Use"
+  },
+  "switch": {
+    "on": "On",
+    "off": "Off"
+  }
+}

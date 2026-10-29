@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-48 · The Features tab groups a character's features under its species,
+  classes, background and feats; a feature opens its description, and one with uses shows what
+  comes back on each rest, its uses left, and a Use button.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.
