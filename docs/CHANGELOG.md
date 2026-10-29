@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-54 · The Notes tab keeps free text in eight boxes (appearance, personality,
+  ideals, bonds, flaws, backstory, allies, notes); a box saves when you leave it, with Undo.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.

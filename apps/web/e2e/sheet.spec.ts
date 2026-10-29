@@ -203,3 +203,23 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
 });
+
+test('SHEET-54 a note typed on the Notes tab is kept, and gone when emptied', async ({ page }) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=notes`);
+  const box = page.getByLabel(en.notes.keys.backstory);
+  await expect(box).toHaveValue('');
+  await box.fill('Raised by dwarves.');
+  await box.blur();
+  await expect(page.getByRole('status')).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel(en.notes.keys.backstory)).toHaveValue('Raised by dwarves.');
+  await page.getByLabel(en.notes.keys.backstory).fill('  ');
+  await page.getByLabel(en.notes.keys.backstory).blur();
+  await expect
+    .poll(async () => {
+      await page.reload();
+      return page.getByLabel(en.notes.keys.backstory).inputValue();
+    })
+    .toBe('');
+});

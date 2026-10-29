@@ -5458,3 +5458,42 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-54 The Notes tab keeps free text · XS
+
+**Hat:** Keep a character's notes from the Notes tab
+**Where:** `apps/web/src/sheet/sections/NotesText.tsx`; `apps/web/src/locales/en/notes.json`
+**Depends on:** SHEET-30, SHEET-23
+**Screen:** Notes tab of board `V3-Sheet`
+
+**What it should look like when done:**
+1. The Notes tab shows one labelled box for each key of SPEC §5.8 `notes`: appearance,
+   personality, ideals, bonds, flaws, backstory, allies, free. A new character shows eight empty boxes.
+2. A box saves when it loses focus, as one change (`setNote`, path `['notes', key]`) through
+   `changeCharacter`, so the "Undo" toast follows it.
+3. A box emptied, or holding only spaces, removes its key; the stored `notes` never holds blank text.
+4. Reopening the sheet shows each stored note in its own box.
+5. Notes are written in play mode too (SPEC §7.2 calls the tab plain text; a note is not a number).
+6. Nothing stored changes: `notes` is already in the character's shape.
+
+**Tests:** `apps/web/test/notes.test.tsx` — eight boxes, a stored note shown, `storedNote`, and a
+note written, rewritten, removed and restored through the history; `apps/web/e2e/sheet.spec.ts` —
+a note typed, blurred, kept after a reload, then emptied and gone. Control numbers: the eight keys
+come from SPEC §5.8; golden B (§6.7) stores no notes.
+
+**What came out of it:**
+
+Quality gate, 2026-10-29: `pnpm lint` 355 files, no fixes. `pnpm typecheck` 0 errors. `pnpm test`
+97 files, 1245 passed, 0 failed (4 new in `notes.test.tsx`; the "sections draw empty" test in
+`sheet.test.tsx` now skips Notes). `pnpm e2e` 40 passed, 0 failed, 19.6 s (1 new).
+
+Differences from §3: none. Decided here (ADR 002): the box saves on blur, not on each key, so one
+typing session is one Undo; the key list is the SPEC's, in its order; the key `free` is labelled
+"Notes".
+
+Found, not fixed: a note shows no "saved" cue besides the Undo toast; the board draws none.
+
+Changelog: "The Notes tab keeps free text in eight boxes (appearance, personality, ideals, bonds,
+flaws, backstory, allies, notes); a box saves when you leave it, with Undo."
