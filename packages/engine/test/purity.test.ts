@@ -314,6 +314,43 @@ export const f = Math.max(1, 2);
   });
 });
 
+// SHEET-08: `content` imports the module, so a climb into it, or into the packages above, would
+// reach the module past ENG-31 and ENG-41 (the ENG-31 note of phase 3).
+const climbs = `import { packs } from '@grimoire/content';
+import { fill } from '@grimoire/pdf';
+import { srd } from '../../content/src/index.ts';
+import { sheet } from '../../pdf/src/index.ts';
+import { map } from '../../foundry/src/index.ts';
+import { app } from '../../../apps/web/src/main.tsx';
+import { other } from '../../system-tales/src/index.ts';
+import { index } from './content-index.ts';
+import { near } from '../content-index.ts';
+export const all = [packs, fill, srd, sheet, map, app, other, index, near];
+`;
+
+describe('SHEET-08 no climb into a package above the core or beside a module', () => {
+  it('fails lint when the schema or the engine reaches content, pdf, foundry or the app', () => {
+    // content and pdf by name (1, 2), content, pdf and foundry by a climb (3–5), the app (6).
+    // Another module (7) is ENG-31's; a file of its own named content-index (8, 9) is allowed.
+    const schema = 'packages/schema/src/Sample.ts';
+    expect(refused(schema, climbs, 'SHEET-08').lines).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(refused(schema, climbs, 'ENG-31').lines).toEqual([7]);
+    // In the engine, ENG-01 already refuses a name off its list (1, 2) and the app (6).
+    const engine = 'packages/engine/src/Sample.ts';
+    expect(refused(engine, climbs, 'SHEET-08').lines).toEqual([1, 2, 3, 4, 5]);
+    expect(refused(engine, climbs, 'ENG-31').lines).toEqual([7]);
+    expect(refused(engine, climbs, 'ENG-01').lines).toEqual([1, 2, 6]);
+  });
+
+  it('fails lint when a module climbs into content, pdf, foundry or another module', () => {
+    const result = refused(moduleFile, climbs, 'SHEET-08');
+    expect(result.status).toBe(1);
+    // By a climb (3–5, 7). By name (1, 2) and the app (6) are ENG-41's; its own files (8, 9) pass.
+    expect(result.lines).toEqual([3, 4, 5, 7]);
+    expect(refused(moduleFile, climbs, 'ENG-41').lines).toEqual([1, 2, 6]);
+  });
+});
+
 describe("ENG-42 a system module's code sees the language alone", () => {
   it('finds the modules, the fifth-edition one among them', () => {
     expect(modules).toContain('system-5e');

@@ -1,5 +1,5 @@
+import type { fifthEditionEntitySchema, fifthEditionPackSchema } from '@grimoire/system-5e';
 import type { z } from 'zod';
-import type { fifthEditionEntitySchema, fifthEditionPackSchema } from '../../src/index.ts';
 
 // ENG-09: the SRD 5.1 entities goldens A and C need (SPEC §6.7, ADR 016), written by hand. Every
 // value was read from 5e-database at `e6edf9a` (ENG-09 §8); ids keep its slugs, keys are the
@@ -571,6 +571,32 @@ const versatile: Of<'weaponProperty'> = {
   source,
 };
 
+// --- Names of keys (SHEET-08 §8): `5e-SRD-Magic-Schools.json`; `5e-SRD-Rules.json` ---------------
+
+/** Type, slug, key, name: the schools the pack's spells name, and every size. */
+const NAMED_KEYS: readonly [Of<'spellSchool' | 'size'>['type'], string, string, string][] = [
+  ['spellSchool', 'enchantment', 'enchantment', 'Enchantment'],
+  ['spellSchool', 'evocation', 'evocation', 'Evocation'],
+  // "Creature Size", its Size Categories table, in its order.
+  ['size', 'tiny', 'tiny', 'Tiny'],
+  ['size', 'small', 'small', 'Small'],
+  ['size', 'medium', 'medium', 'Medium'],
+  ['size', 'large', 'large', 'Large'],
+  ['size', 'huge', 'huge', 'Huge'],
+  ['size', 'gargantuan', 'gargantuan', 'Gargantuan'],
+];
+
+const namedKeys = NAMED_KEYS.map(
+  ([type, slug, key, name]): Of<'spellSchool' | 'size'> => ({
+    id: `srd-2014:${type}/${slug}`,
+    type,
+    key,
+    ruleset,
+    name: { en: name },
+    source,
+  }),
+);
+
 /** The pack `srd-2014`, as a file would hold it: the SRD 5.1 entities goldens A and C need. */
 export const srd2014 = {
   id: 'srd-2014',
@@ -606,5 +632,6 @@ export const srd2014 = {
     ...items,
     bludgeoning,
     versatile,
+    ...namedKeys,
   ],
 } satisfies z.input<typeof fifthEditionPackSchema>;

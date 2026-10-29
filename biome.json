@@ -83,6 +83,18 @@
                   {
                     "group": ["@grimoire/system-*", "**/system-*/**"],
                     "message": "ENG-31: the core knows no game (ADR 004 item 2). @grimoire/schema and @grimoire/engine never import a system module (@grimoire/system-<id>, in packages/system-<id>/), by name or by a relative path. The module imports the core, never the other way."
+                  },
+                  {
+                    "group": [
+                      "@grimoire/content",
+                      "@grimoire/pdf",
+                      "@grimoire/foundry",
+                      "**/content/**",
+                      "**/pdf/**",
+                      "**/foundry/**",
+                      "**/apps/**"
+                    ],
+                    "message": "SHEET-08: the core reaches no package above it (found by ENG-31). @grimoire/schema and @grimoire/engine never import @grimoire/content, @grimoire/pdf, @grimoire/foundry or apps/, by name or by a relative path; content imports the module, so a climb into it would reach the module."
                   }
                 ]
               }
@@ -114,6 +126,17 @@
                   {
                     "group": ["@grimoire/system-*", "**/system-*/**"],
                     "message": "ENG-31: the core knows no game (ADR 004 item 2). @grimoire/schema and @grimoire/engine never import a system module (@grimoire/system-<id>, in packages/system-<id>/), by name or by a relative path. The module imports the core, never the other way."
+                  },
+                  {
+                    "group": [
+                      "@grimoire/content",
+                      "@grimoire/pdf",
+                      "@grimoire/foundry",
+                      "**/content/**",
+                      "**/pdf/**",
+                      "**/foundry/**"
+                    ],
+                    "message": "SHEET-08: the core reaches no package above it (found by ENG-31). @grimoire/schema and @grimoire/engine never import @grimoire/content, @grimoire/pdf, @grimoire/foundry or apps/, by name or by a relative path; content imports the module, so a climb into it would reach the module."
                   }
                 ]
               }
@@ -143,6 +166,10 @@
                       "**/node_modules/**"
                     ],
                     "message": "ENG-41: a system module is pure TypeScript, as the engine is (ENG-01, ADR 004 item 1). It imports only its own files, @grimoire/schema, @grimoire/engine and zod: no React, DOM, Dexie or network library, no other package, and no path into apps/ or node_modules/. A new pure dependency is added to this list in biome.json."
+                  },
+                  {
+                    "group": ["**/content/**", "**/pdf/**", "**/foundry/**", "**/system-*/**"],
+                    "message": "SHEET-08: a system module reaches no package beside or above it (found by ENG-41). It never imports content, pdf, foundry, apps/ or another system module by a relative path; those import the module, never the other way."
                   }
                 ]
               }
@@ -174,8 +201,8 @@
                   "XMLHttpRequest": "ENG-01: the engine and the system modules do not use the network.",
                   "WebSocket": "ENG-01: the engine and the system modules do not use the network.",
                   "EventSource": "ENG-01: the engine and the system modules do not use the network.",
-                  "eval": "ENG-07: formulas never run code (SPEC §5.6). Parse the formula and walk its tree.",
-                  "Function": "ENG-07: formulas never run code (SPEC §5.6). Parse the formula and walk its tree."
+                  "eval": "ENG-07: formulas never run code (SPEC \u00a75.6). Parse the formula and walk its tree.",
+                  "Function": "ENG-07: formulas never run code (SPEC \u00a75.6). Parse the formula and walk its tree."
                 }
               }
             }

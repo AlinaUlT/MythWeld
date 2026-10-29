@@ -304,6 +304,15 @@ export const damageType = named('damageType', 'glare', 'glare');
 export const weaponProperty = named('weaponProperty', 'long-haft', 'longHaft');
 export const weaponMastery = named('weaponMastery', 'nudge', 'nudge');
 export const toolKind = named('toolKind', 'wick-kit', 'wickKit');
+// SHEET-08: the simple types that name a spell's school, a size, a creature type, a rarity, an
+// area's shape, a feat's category and a rule's topic.
+export const spellSchool = named('spellSchool', 'glimmercraft', 'glimmercraft');
+export const size = named('size', 'pocket', 'pocket');
+export const creatureType = named('creatureType', 'wisp', 'wisp');
+export const rarity = named('rarity', 'dusty', 'dusty');
+export const areaShape = named('areaShape', 'ring', 'ring');
+export const featCategory = named('featCategory', 'knack', 'knack');
+export const ruleTopic = named('ruleTopic', 'environment', 'environment');
 
 export const rule = {
   id: 'hb-test:rule/dim-light',
@@ -337,4 +346,11 @@ export const everyEntity = [
   weaponMastery,
   toolKind,
   rule,
+  spellSchool,
+  size,
+  creatureType,
+  rarity,
+  areaShape,
+  featCategory,
+  ruleTopic,
 ];

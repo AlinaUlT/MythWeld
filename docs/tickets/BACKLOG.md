@@ -193,7 +193,7 @@ chats never claim one version number.
 | SHEET-06 | The app's fonts ship inside it, each licence read | S | 🔲 |
 | **On the device** | **tables, the mini-pack, saved characters** | | |
 | SHEET-07 | Phase 2's device tables arrive in one database version | XS | ✅ 2026-10-28 |
-| SHEET-08 | The phase 1 fixtures ship as the built-in mini-pack | M | 🔲 |
+| SHEET-08 | The phase 1 fixtures ship as the built-in mini-pack | M | ✅ 2026-10-29 |
 | SHEET-09 | Built-in packs load into the content index at start | S | 🔲 |
 | SHEET-10 | Characters are saved on the device, migrated as they open | S | 🔲 |
 | **Navigation** | **ADR 008, ADR 013** | | |
@@ -264,21 +264,14 @@ chats never claim one version number.
   heading placeholder of the mockups until the owner picks (BRIEF X1). No font service. Found by
   SHEET-01: the `@font-face` rules go in `apps/web/src/theme/fonts.css`, made empty for this row;
   the family names are already the tokens `font-body` and `font-heading`.
-- **SHEET-08** — SPEC §12 stage 2: "a mini-pack of the stage 1 fixtures". The goldens' SRD
-  fixtures (`packages/system-5e/test/golden/srd-2014.ts`, `srd-2024.ts`) become the app's
-  built-in packs, with their CC-BY-4.0 metadata; the tests keep reading the same data. If the row
-  makes `content` import the module, the ENG-31 note under phase 3 applies to it.
-  Found by ENG-32: some fifth-edition keys have no entity type to give their name on screen: a
-  spell's `school`, a species' `size` and `creatureType`, an item's `rarity`, a spell area's
-  `shape`, a feat's `category`, a rule's `topic` and `icon`. This row gives them names (a simple
-  entity type each, or the module's i18n keys), so the wave 6 tabs only show them. Found by
-  ENG-48: the key path `size` takes only the species' own sizes, so an effect or an override
-  naming another warns and is not applied (SRD 5.2.1's goliath, Large Form: "you can change your
-  size to Large"). A size type would give every size as its keys.
 - **SHEET-09** — found by ENG-25: a character's active pack that is not installed on the device
   never reaches `loadContentIndex`; the sheet says which pack is missing, not only `Missing: <id>`
   on each of its entries. The row starts the load from `apps/web/src/main.tsx`, which SHEET-11, in
   the same wave, leaves alone.
+  Found by SHEET-08: the packs to load are `BUILT_IN_PACKS` from `@grimoire/content`, each as a
+  pack file holds it, so each opens through `openFifthEditionPack`. `apps/web` lists
+  `@grimoire/system-5e` as a dev dependency only; `content` needs it at run time, so this row
+  moves it to `dependencies`.
 - **SHEET-10** — SPEC §5.8: an older stored character migrates as it opens.
 - **SHEET-11** — found by OPS-08: ADR 008 replaces the SETUP-04 bottom bar with a start page, a
   player page and My characters. Player and DM are two squares (ADR 013 item 16, board
@@ -506,13 +499,6 @@ chats never claim one version number.
   are one `spell` grant per spell, each with its `atLevel`, its `uses` and a `key`.
 - **Phase 3** — found by ENG-02: 11 of 4,428 5e-database slugs do not fit the entity id's slug
   pattern; the import maps them. ENG-02 §11 lists them.
-- **Phase 3** — found by ENG-31: a core file may climb into a sibling package other than a
-  module (`../../content/src/index.ts` passes lint, measured). The row that first makes
-  `content`, `pdf` or `foundry` import the module also refuses that climb in `packages/schema/src`
-  and `packages/engine/src`, or the core reaches the module through it with no error. Found by
-  ENG-41: a module file climbs the same way (`../../content/src/index.ts`,
-  `../../system-tales/src/index.ts` pass lint in `packages/system-5e/src`, measured); that row
-  refuses it in `packages/system-*/src` too.
 - **Phase 3** — found by ENG-32: SRD values the fifth-edition schemas cannot hold yet, measured
   at 5e-database `e6edf9a` (ENG-32 §8, §11): 2014's `mounts-and-vehicles` equipment (40 entries)
   has no `ItemDef.category`; 2024's "Until dispelled or triggered" (2 spells) has no place for

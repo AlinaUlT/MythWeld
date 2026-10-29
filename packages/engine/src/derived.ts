@@ -98,6 +98,11 @@ export interface KeyPath {
   readonly key?: string;
   readonly steps: readonly KeyStep[];
   readonly keys: readonly string[];
+  /**
+   * SHEET-08: the keys its choice offers, when they are fewer than `keys` (a species' sizes, where
+   * an effect may set any size). Without it, the choice offers `keys`.
+   */
+  readonly options?: readonly string[];
   /** What a rule of its system met in giving it; each is warned as `stepRule` (ENG-48). */
   readonly ruleWarnings?: readonly RuleWarning[];
 }
@@ -429,7 +434,7 @@ export function computeDerived<E extends GatherableEntity>(input: {
   for (const [path, own] of keyPaths) {
     const key = keyAt(path, path);
     if (key !== undefined) out.keys[path] = key;
-    if (own.key === undefined) out.pendingKeys.push({ path, options: own.keys });
+    if (own.key === undefined) out.pendingKeys.push({ path, options: own.options ?? own.keys });
   }
   return out;
 }

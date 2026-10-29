@@ -5,10 +5,15 @@ import type { FifthEditionEntity, LineageDef, SpeciesDef } from './entity-types'
 // ENG-48: the character's size, the key path `size`, one rule in both editions (ENG-48 §8). Its
 // sizes are a gathered lineage's own, else the species'. Of one size, that size; of several, the
 // one stored in `species.size`, else it is pending. An effect or an override may set it to any of
-// them (ENG-43).
+// them (ENG-43). SHEET-08: an effect or an override may also set any size an entry of the type
+// `size` names (SRD 5.2.1's goliath, Large Form: "you can change your size to Large"); the choice
+// still offers the species' own.
 
 /** The character's size: a key, not a number. */
 export const SIZE_PATH = 'size';
+
+/** The entity type whose keys a size is (`entity-types.ts`). */
+export const SIZE_TYPE = 'size';
 
 /** The sizes the character's species offers: a gathered lineage's own, else the species'. */
 function sizeGiver({
@@ -27,7 +32,8 @@ function sizeGiver({
 /**
  * The size key path: the size of a species with one, else the one chosen in `species.size`, each
  * with a step naming the species or lineage; with none chosen, no key. A stored size it does not
- * offer is warned and not used. Nothing when the character has no species.
+ * offer is warned and not used. Its options are the sizes offered; its keys, every `size` entry's
+ * key, then any size offered with no entry. Nothing when the character has no species.
  */
 export function sizeKeys(
   input: DeriveInput<FifthEditionCharacter, FifthEditionEntity>,
@@ -46,11 +52,14 @@ export function sizeKeys(
   }
   const key = sizes.length === 1 ? sizes[0] : sizes.find((size) => size === stored);
   const { id: source, name: label } = giver;
+  const entries = Object.keys(input.gathered.byKey[SIZE_TYPE] ?? {});
+  const keys = [...entries, ...sizes.filter((size) => !entries.includes(size))];
   return {
     [SIZE_PATH]: {
       ...(key !== undefined && { key }),
       steps: key === undefined ? [] : [{ kind: 'entity', source, label, key }],
-      keys: sizes,
+      keys,
+      options: sizes,
       ...(ruleWarnings.length > 0 && { ruleWarnings }),
     },
   };

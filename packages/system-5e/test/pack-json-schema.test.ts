@@ -59,7 +59,7 @@ describe('ENG-38 fifth-edition pack JSON Schema', () => {
       packJsonSchemaOf(fifthEditionPackSchema, FIFTH_EDITION_CHECKS_LEFT_OUT),
     );
     expect(jsonSchema.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
-    expect(everyEntity).toHaveLength(21);
+    expect(everyEntity).toHaveLength(28);
     expect(fifthEditionPackSchema.safeParse(pack).success).toBe(true);
     expect(jsonValid(pack), JSON.stringify(jsonValid.errors)).toBe(true);
   });

@@ -1,5 +1,5 @@
+import type { fifthEditionEntitySchema, fifthEditionPackSchema } from '@grimoire/system-5e';
 import type { z } from 'zod';
-import type { fifthEditionEntitySchema, fifthEditionPackSchema } from '../../src/index.ts';
 
 // ENG-10: the SRD 5.2.1 entities goldens B, B4, C and D need (SPEC §6.7), written by hand. Every
 // value was read from 5e-database at `e6edf9a`, and from dnd5e at `7bfb3f1` where 5e-database is
@@ -709,6 +709,37 @@ const masteries: Of<'weaponMastery'>[] = [
   },
 ];
 
+// --- Names of keys (SHEET-08 §8): `5e-SRD-Species.json`, `-Feats.json`; dnd5e's labels --------
+
+type NamedType = 'size' | 'creatureType' | 'featCategory';
+
+/** Type, slug, key, name: every size, and the creature type and feat categories the pack names. */
+const NAMED_KEYS: readonly [Of<NamedType>['type'], string, string, string][] = [
+  // dnd5e's `actorSizes`, which serve both editions (ENG-48 §8), in its order.
+  ['size', 'tiny', 'tiny', 'Tiny'],
+  ['size', 'small', 'small', 'Small'],
+  ['size', 'medium', 'medium', 'Medium'],
+  ['size', 'large', 'large', 'Large'],
+  ['size', 'huge', 'huge', 'Huge'],
+  ['size', 'gargantuan', 'gargantuan', 'Gargantuan'],
+  // The human's `type`.
+  ['creatureType', 'humanoid', 'humanoid', 'Humanoid'],
+  // A feat's `type`, named as dnd5e's `DND5E.Feature.Feat` labels name it.
+  ['featCategory', 'origin', 'origin', 'Origin Feat'],
+  ['featCategory', 'fighting-style', 'fightingStyle', 'Fighting Style Feat'],
+];
+
+const namedKeys = NAMED_KEYS.map(
+  ([type, slug, key, name]): Of<NamedType> => ({
+    id: `srd-2024:${type}/${slug}`,
+    type,
+    key,
+    ruleset,
+    name: { en: name },
+    source,
+  }),
+);
+
 /** The pack `srd-2024`, as a file would hold it: the SRD 5.2.1 entities goldens B to D need. */
 export const srd2024 = {
   id: 'srd-2024',
@@ -743,5 +774,6 @@ export const srd2024 = {
     slashing,
     ...weaponProperties,
     ...masteries,
+    ...namedKeys,
   ],
 } satisfies z.input<typeof fifthEditionPackSchema>;

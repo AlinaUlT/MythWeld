@@ -71,7 +71,7 @@ describe('ENG-10 2024 fixtures', () => {
     expect(openFifthEditionPack(srd2024)).toEqual({ ok: true, value: srd2024, from: FROM_CURRENT });
     expect(refused).toEqual([]);
     expect(warnings).toEqual([]);
-    expect(index.entities).toHaveLength(57);
+    expect(index.entities).toHaveLength(66);
   });
 
   it('holds the counts the SRD has', () => {
@@ -91,6 +91,10 @@ describe('ENG-10 2024 fixtures', () => {
       damageType: 1,
       weaponProperty: 3,
       weaponMastery: 2,
+      // SHEET-08: the names of the keys its entities name, and every size.
+      size: 6,
+      creatureType: 1,
+      featCategory: 2,
     });
     expect(entities.every((entity) => entity.ruleset === '2024')).toBe(true);
     expect(entities.every((entity) => entity.source.pack === 'srd-2024')).toBe(true);
@@ -106,7 +110,7 @@ describe('ENG-10 2024 fixtures', () => {
     expect(entities.flatMap(idsNamedBy)).toHaveLength(13);
   });
 
-  it('names only its own stats, skills, classes, damage types, properties and masteries', () => {
+  it('names only its own stats, skills, classes, damage types, properties, masteries, sizes, creature types and feat categories', () => {
     const missing = entities.flatMap((entity) =>
       keysNamedBy(entity)
         .filter((named) => {
@@ -116,7 +120,7 @@ describe('ENG-10 2024 fixtures', () => {
         .map((named) => `${named} (named by ${entity.id})`),
     );
     expect(missing).toEqual([]);
-    expect(entities.flatMap(keysNamedBy)).toHaveLength(81);
+    expect(entities.flatMap(keysNamedBy)).toHaveLength(87);
   });
 
   it('holds formulas that parse', () => {

@@ -54,7 +54,7 @@ const speedSchema = z
   .refine((speed) => Object.keys(speed).length > 0, 'Needs at least one speed.')
   .meta({ minProperties: 1 });
 
-/** A species: its sizes to choose from, its speeds, its creature type. */
+/** A species: its sizes to choose from (`size` keys), its speeds, its `creatureType` key. */
 export const speciesDefSchema = base.safeExtend({
   type: z.literal('species'),
   size: uniqueList(entityKeySchema),
@@ -156,7 +156,7 @@ export type SubclassDef = z.infer<typeof subclassDefSchema>;
 export const backgroundDefSchema = base.safeExtend({ type: z.literal('background') });
 export type BackgroundDef = z.infer<typeof backgroundDefSchema>;
 
-/** A feat. */
+/** A feat, of a `featCategory` when it has one. */
 export const featDefSchema = base.safeExtend({
   type: z.literal('feat'),
   category: entityKeySchema.optional(),
@@ -194,6 +194,7 @@ const spellRangeSchema = z
   .strictObject({
     kind: z.enum(['self', 'touch', 'distance', 'sight', 'unlimited', 'special']),
     distance: z.int().positive().optional(),
+    /** The shape is an `areaShape` key; the size is in feet. */
     area: z.strictObject({ shape: entityKeySchema, size: z.int().positive() }).optional(),
   })
   .refine((range) => (range.kind === 'distance') === (range.distance !== undefined), {
@@ -249,6 +250,7 @@ export const spellDefSchema = base
   .safeExtend({
     type: z.literal('spell'),
     level: z.int().min(0).max(MAX_SPELL_LEVEL),
+    /** A `spellSchool` key. */
     school: entityKeySchema,
     castingTime: z.strictObject({
       value: z.int().positive(),
@@ -339,6 +341,7 @@ export const itemDefSchema = base
     armor: armorSchema.optional(),
     magic: z
       .strictObject({
+        /** A `rarity` key. */
         rarity: entityKeySchema,
         attunement: z.union([z.boolean(), l10nSchema]).optional(),
         bonus: z.int().optional(),
@@ -398,13 +401,69 @@ export const toolKindDefSchema = base.safeExtend({
 });
 export type ToolKindDef = z.infer<typeof toolKindDefSchema>;
 
-/** A rule, shown in Quick rules under its topic, with an icon when it has one (ADR 014 item 5). */
+/**
+ * A rule, shown in Quick rules under its `ruleTopic`, with an icon when it has one (ADR 014 item
+ * 5). The icon is a picture's key, drawn beside the rule's name, not a name of its own (SHEET-08).
+ */
 export const ruleDefSchema = base.safeExtend({
   type: z.literal('rule'),
   topic: entityKeySchema,
   icon: entityKeySchema.optional(),
 });
 export type RuleDef = z.infer<typeof ruleDefSchema>;
+
+// SHEET-08: the keys ENG-32 left with no name on screen each name an entry of a simple type, as a
+// damage's `type` names a `damageType`. So the screen shows the entry's name, a pack adds its own
+// (a homebrew school), and a missing one shows as missing (SPEC §8.2).
+
+/** A school of magic, named by key in a spell's `school`. */
+export const spellSchoolDefSchema = base.safeExtend({
+  type: z.literal('spellSchool'),
+  key: entityKeySchema,
+});
+export type SpellSchoolDef = z.infer<typeof spellSchoolDefSchema>;
+
+/** A size, named by key in a species' or lineage's `size`, and by the key path `size`. */
+export const sizeDefSchema = base.safeExtend({
+  type: z.literal('size'),
+  key: entityKeySchema,
+});
+export type SizeDef = z.infer<typeof sizeDefSchema>;
+
+/** A creature type, named by key in a species' or lineage's `creatureType`. */
+export const creatureTypeDefSchema = base.safeExtend({
+  type: z.literal('creatureType'),
+  key: entityKeySchema,
+});
+export type CreatureTypeDef = z.infer<typeof creatureTypeDefSchema>;
+
+/** A magic item's rarity, named by key in an item's `magic.rarity`. */
+export const rarityDefSchema = base.safeExtend({
+  type: z.literal('rarity'),
+  key: entityKeySchema,
+});
+export type RarityDef = z.infer<typeof rarityDefSchema>;
+
+/** The shape of an area, named by key in a spell's `range.area.shape`. */
+export const areaShapeDefSchema = base.safeExtend({
+  type: z.literal('areaShape'),
+  key: entityKeySchema,
+});
+export type AreaShapeDef = z.infer<typeof areaShapeDefSchema>;
+
+/** A feat's category, named by key in a feat's `category`. */
+export const featCategoryDefSchema = base.safeExtend({
+  type: z.literal('featCategory'),
+  key: entityKeySchema,
+});
+export type FeatCategoryDef = z.infer<typeof featCategoryDefSchema>;
+
+/** A topic of Quick rules, named by key in a rule's `topic`. */
+export const ruleTopicDefSchema = base.safeExtend({
+  type: z.literal('ruleTopic'),
+  key: entityKeySchema,
+});
+export type RuleTopicDef = z.infer<typeof ruleTopicDefSchema>;
 
 /** Any fifth-edition entity, chosen by its `type`: the core's three types, then the module's. */
 export const fifthEditionEntitySchema = systemEntitySchemaOf(fifthEdition, [
@@ -423,5 +482,12 @@ export const fifthEditionEntitySchema = systemEntitySchemaOf(fifthEdition, [
   weaponMasteryDefSchema,
   toolKindDefSchema,
   ruleDefSchema,
+  spellSchoolDefSchema,
+  sizeDefSchema,
+  creatureTypeDefSchema,
+  rarityDefSchema,
+  areaShapeDefSchema,
+  featCategoryDefSchema,
+  ruleTopicDefSchema,
 ]);
 export type FifthEditionEntity = z.infer<typeof fifthEditionEntitySchema>;

@@ -1274,3 +1274,189 @@ Nothing to check: no rules fact.
 
 **Changelog:** "The bottom bar takes the dock's look: the surface colour with a soft shadow above
 it."
+
+---
+
+### SHEET-08 The phase 1 fixtures ship as the built-in mini-pack
+
+**Hat:** The phase 1 fixtures ship as the built-in mini-pack
+**Depends on:** ENG-09 and ENG-10 (the SRD fixtures), ENG-31 and ENG-41 (the lint rules on
+imports), ENG-32 (the entity types), ENG-43 and ENG-48 (key paths, the size)
+**Size:** M
+**Screen:** No
+**SPEC:** §12 stage 2 ("a mini-pack of the stage 1 fixtures"), §3 and ADR 003 (licence metadata,
+built-in packs), §5.3 (the keys a spell, species, item, feat and rule name), §8.2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/index.ts` — changes: exports `srd2014`, `srd2024` and
+`BUILT_IN_PACKS`.
+- `packages/content/src/packs/srd-2014.ts`, `srd-2024.ts` — moved from
+  `packages/system-5e/test/golden/`; each gains the entries that name its keys.
+- `packages/content/package.json` — changes: depends on `@grimoire/system-5e` and `zod`; its
+  tests on `@grimoire/engine`; `typecheck` also types `test/`.
+- `packages/content/test/built-in-packs.test.ts`, `test/tsconfig.json` — new.
+- `packages/system-5e/src/entity-types.ts` — changes: seven simple types.
+- `packages/system-5e/src/size.ts` — changes: `SIZE_TYPE`; the size path's keys and options.
+- `packages/engine/src/derived.ts` — changes: `KeyPath.options`.
+- `biome.json` — changes: two groups of refused imports.
+- `packages/system-5e/test/golden/index.ts` — changes: re-exports the two packs from `content`.
+- `packages/system-5e/test/golden/checks.ts` — changes: `keysNamedBy` reads the new keys.
+- `apps/web/public/schema/5e/pack.schema.json` — written again by its test (ENG-38).
+- Tests that change: `packages/engine/test/derived.test.ts`, `purity.test.ts`;
+  `packages/system-5e/test/size.test.ts`, `entities.ts`, `entity-types.test.ts`,
+  `pack-json-schema.test.ts`, `golden/fixtures-2014.test.ts`, `golden/fixtures-2024.test.ts`.
+
+#### 2. What is missing now
+
+Measured on `main` at `3977c50`:
+- `packages/content/src/index.ts` is `export {};`. The SRD packs exist only as test data,
+  `packages/system-5e/test/golden/srd-2014.ts` (66 entities) and `srd-2024.ts` (57 entities).
+- No entity type names a spell's `school`, a species' `size` or `creatureType`, an item's
+  `magic.rarity`, a spell area's `shape`, a feat's `category`, or a rule's `topic` and `icon`
+  (`entity-types.ts` has 18 types; none of these).
+- ENG-48: the key path `size` offers and accepts only the species' sizes. An effect setting
+  `large` on the 2024 human warns `unknownKey` with `keys: ['medium', 'small']` and is not applied
+  (`size.test.ts`).
+- Lint, with a probe file in each `src`: `../../content/src/index.ts` and `../../pdf/src/index.ts`
+  pass in `packages/schema/src`, `packages/engine/src` and `packages/system-5e/src`;
+  `../../system-tales/src/index.ts` passes in `packages/system-5e/src`; `@grimoire/content` passes
+  in `packages/schema/src`.
+- `pnpm test`: 70 files, 955 passed.
+
+#### 3. What it should look like when done
+
+1. `@grimoire/content` exports `srd2014` and `srd2024`, and `BUILT_IN_PACKS = [srd2014, srd2024]`.
+   Each opens through `openFifthEditionPack`, carries `CC-BY-4.0` with `redistributable: true`,
+   and the two load together with 0 refused and 0 warnings.
+2. The golden tests read the same objects: `golden.srd2014` is `srd2014` (`toBe`).
+3. Seven simple types, each `{ type, key }` on the module's base: `spellSchool`, `size`,
+   `creatureType`, `rarity`, `areaShape`, `featCategory`, `ruleTopic`. A rule's `icon` stays a key
+   with no type (§4).
+4. The packs hold an entry for every such key their entities name, and every size: 2014 adds 2
+   schools and 6 sizes (74 entities); 2024 adds 6 sizes, 1 creature type, 2 feat categories (66).
+   `keysNamedBy` reads the new keys, and none is missing an entry.
+5. Size: the choice still offers the species' sizes (`pendingKeys` options `['medium', 'small']`
+   for the human); an effect or an override may set any size with an entry. An effect setting
+   `large` on the human applies with no warning; one setting `colossal` warns with the six sizes.
+6. Lint refuses, in `schema` and `engine`: `@grimoire/content`, `@grimoire/pdf`,
+   `@grimoire/foundry`, and a climb into `content`, `pdf`, `foundry` or `apps`; in a module: a
+   climb into `content`, `pdf`, `foundry` or another `system-*`. A file of one's own named
+   `content-index.ts` still passes.
+7. No golden value changes.
+
+#### 4. How to do it
+
+1. `git mv` the two fixtures to `packages/content/src/packs/`; their type import becomes
+   `@grimoire/system-5e`. `golden/index.ts` re-exports them by their path. The module's package
+   does not depend on `content` (that would be a loop: `content` depends on the module), so its
+   tests reach the files by a climb, in that one file. Lint's rules are on `src` only.
+2. The seven types in `entity-types.ts`, each like `damageType`, and in the union after `rule`.
+   They are entity types, not i18n keys: a homebrew pack can add a school or a size, a
+   missing one shows as missing (SPEC §8.2), and the screen shows them as it shows a damage type.
+   A rule's icon is a picture's key, drawn beside the rule's name by the skin (ADR 015); it has no
+   text of its own to name, so it gets no type.
+3. The new entries in each pack, from §8, as one `NAMED_KEYS` table each.
+4. `KeyPath.options` (engine, game-free): the keys a choice offers when fewer than `keys`;
+   `pendingKeys` reads `options ?? keys`. `size.ts`: `keys` is every `size` entry's key in
+   `byKey`'s order, then any size the species offers with no entry; `options` is the species'
+   sizes.
+5. `biome.json`: a `SHEET-08` group in the schema's and the engine's `noRestrictedImports`, and
+   one in the modules'. In the engine the app path is left to ENG-01, which refuses it already.
+6. Run `pack-schema.test.ts` with `-u` to write the published JSON Schema again.
+
+#### 5. Stored data
+
+Nothing stored changes. Seven new entity types widen what a pack may hold; every pack valid before
+is valid now, so no `systemSchemaVersion` bump and no migration (as ENG-32 §11 widens the schema
+for phase 3). The packs keep `version: '0.1.0'`: they have never shipped. No `CharacterDoc` field
+and no Dexie table changes; built-in packs ship in the build, not in the `packs` table.
+
+#### 6. What a person will see
+
+Not a screen. Nothing loads the packs into the app yet (SHEET-09).
+
+#### 7. Tests
+
+- `packages/content/test/built-in-packs.test.ts` — `describe('SHEET-08 the built-in packs')`: the
+  two packs in order, the licence, opened and loaded together (140 entities), the same objects as
+  the goldens', the names of the sizes, schools, creature type and feat categories.
+- `packages/engine/test/derived.test.ts` — `SHEET-08`: a key path with `options` is pending with
+  them; an override sets a key outside them, with no warning (Tales).
+- `packages/engine/test/purity.test.ts` — `SHEET-08`: the refused lines in schema, engine and the
+  module, and which rule refuses each.
+- `packages/system-5e/test/size.test.ts` — ENG-48's two effect tests now hold the new rule; a new
+  one keeps a species' size that has no entry among the keys.
+- `entity-types.test.ts`, `pack-json-schema.test.ts`, the two fixture tests — the new types and
+  counts.
+- Control numbers from: §8 (names); the counts are the entries added, counted in the source files.
+
+#### 8. Checked against the source
+
+Sources: 5e-bits/5e-srd-api at `e6edf9a`, `packages/5e-database/src/{2014,2024}/en/` (as ENG-09,
+ENG-10); foundryvtt/dnd5e at `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` (as ENG-48). Read
+2026-10-29 with `jq`. Names only; no rules text is copied.
+- **Schools.** `5e-SRD-Magic-Schools.json`, 2014 and 2024 alike: abjuration, conjuration,
+  divination, enchantment, evocation, illusion, necromancy, transmutation, named "Enchantment"
+  and so on. `5e-SRD-Spells.json` (2014): Bless's `school.index` is `enchantment`, Cure Wounds'
+  `evocation`.
+- **Sizes, 2014.** `5e-SRD-Rules.json`, `creature-size`, its Size Categories table: Tiny, Small,
+  Medium, Large, Huge, Gargantuan, in that order.
+- **Sizes, 2024.** 5e-database has no rules for 2024. dnd5e's `CONFIG.DND5E.actorSizes`
+  (`module/config.mjs`), which serves both editions (ENG-48 §8): `tiny`, `sm`, `med`, `lg`,
+  `huge`, `grg`, labelled (`lang/en.json`) Tiny, Small, Medium, Large, Huge, Gargantuan.
+- **Creature type.** `5e-SRD-Species.json` (2024): the human's `type` is `Humanoid`; all 9
+  species have it.
+- **Feat categories.** `5e-SRD-Feats.json` (2024): `type` is `origin` (Alert, Savage Attacker),
+  `fighting-style` (Defense), and also `general` and `epic-boon`. 5e-database gives no display
+  name; dnd5e's `featureTypes.feat.subtypes` keys are `general`, `origin`, `fightingStyle`,
+  `epicBoon`, labelled "General Feat", "Origin Feat", "Fighting Style Feat", "Epic Boon Feat".
+  The fixtures' keys are `origin` and `fightingStyle` (ENG-10).
+- **The goliath** (ENG-48 §8): SRD 5.2.1's Large Form, "you can change your size to Large".
+
+#### 9. Not in this ticket
+
+- Loading the built-in packs into the content index at start, and saying which pack is missing:
+  SHEET-09.
+- Showing these names on a screen: the wave 6 tabs.
+- Every school, rarity, area shape, creature type and rule topic of the SRD: phase 3's import.
+  The mini-pack names what its own entities name.
+- Russian names (`name.ru`): the Russian phase.
+
+#### 10. Rake check
+
+- **Only openly licensed content:** the packs are SRD 5.1 and SRD 5.2.1, CC-BY-4.0, already in
+  the repository as test data; the new entries are names from the same data sets.
+- **The core names no game:** `KeyPath.options` names no game; the test is on Tales. Lint now also
+  refuses the core a path to the module through `content`.
+- **Everything is data:** sizes, schools and categories are entries a pack can add to, not lists in
+  code.
+- **Missing is not broken:** a species' size with no entry still counts among the keys; a key with
+  no entry shows as missing.
+- **Golden values:** none changed; `golden-values.test.ts` passes as it was.
+- **Stored shape:** nothing stored changes (§5).
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-29, on `main` at `3977c50`: `pnpm lint` 224 files, no fixes; `pnpm
+typecheck` every project, no errors; `pnpm test` 71 files, 964 passed, 0 failed, 18.2 s, then the
+speed project 1 file, 2 passed. Against 955 before (+9: content 5, purity 2, derived 1, size 1).
+Lines covered 99.93 % (2903/2905). `pnpm e2e`: 16 passed, 12.9 s (the published JSON Schema is
+under `apps/web`).
+
+- Measured as §3 said: 2014, 74 entities and 63 keys named; 2024, 66 entities and 87 keys named;
+  0 keys with no entry; the published JSON Schema grows by 413 lines (7 options).
+- Differs from §3: nothing. ENG-48's two effect tests held the rule this row changes (`large`
+  warned); they now set `colossal` for the warning and `large` for the applied size.
+- The golden tests reach `content` by a relative path in `golden/index.ts`, and the content test
+  reaches `golden/index.ts` the same way, to prove both read one object. Lint's rules cover `src`
+  only, so test files may climb.
+- Found, not fixed:
+  - `apps/web` lists `@grimoire/system-5e` as a dev dependency; `@grimoire/content` now needs it
+    at run time. SHEET-09, which first runs the packs in the app, moves it (its note).
+  - The mini-pack's 2024 half has no `language` entries, as before; no golden names a 2024
+    language.
+
+Nothing for the changelog: no screen shows the packs yet.

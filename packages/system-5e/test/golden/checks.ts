@@ -73,12 +73,26 @@ export function keysNamedBy(entity: FifthEditionEntity): string[] {
   if (entity.type === 'spell') {
     if (entity.save !== undefined) stat(entity.save);
     for (const damage of entity.damage ?? []) named.push(['damageType', damage.type]);
+    named.push(['spellSchool', entity.school]);
+    if (entity.range.area !== undefined) named.push(['areaShape', entity.range.area.shape]);
   }
   if (entity.type === 'item' && entity.weapon !== undefined) {
     if (entity.weapon.damage !== undefined) named.push(['damageType', entity.weapon.damage.type]);
     for (const property of entity.weapon.properties ?? []) named.push(['weaponProperty', property]);
     if (entity.weapon.mastery !== undefined) named.push(['weaponMastery', entity.weapon.mastery]);
   }
+  // SHEET-08: the keys a screen shows by the name of an entry of their type.
+  if (entity.type === 'species' || entity.type === 'lineage') {
+    for (const size of entity.size ?? []) named.push(['size', size]);
+    if (entity.creatureType !== undefined) named.push(['creatureType', entity.creatureType]);
+  }
+  if (entity.type === 'item' && entity.magic !== undefined) {
+    named.push(['rarity', entity.magic.rarity]);
+  }
+  if (entity.type === 'feat' && entity.category !== undefined) {
+    named.push(['featCategory', entity.category]);
+  }
+  if (entity.type === 'rule') named.push(['ruleTopic', entity.topic]);
   return named.map(([type, key]) => `${type}:${key}`);
 }
 

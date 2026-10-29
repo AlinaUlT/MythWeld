@@ -548,6 +548,32 @@ describe('ENG-48 a key path with no key of its own', () => {
   });
 });
 
+describe('SHEET-08 a choice that offers fewer keys than an effect may set', () => {
+  it('is pending with its options; an effect sets a key outside them', () => {
+    const system: Module = {
+      ...talesModule,
+      keys: (input) => ({
+        ...talesModule.keys?.(input),
+        'tally.pose': { steps: [], keys: ['bold', 'calm', 'wary'], options: ['bold', 'wary'] },
+      }),
+    };
+    const pending = computed(ash, system);
+    expect(pending.pendingKeys).toEqual([{ path: 'tally.pose', options: ['bold', 'wary'] }]);
+    expect(pending.keys['tally.pose']).toBeUndefined();
+
+    const calm = computed(
+      variant(ash, { overrides: [{ path: 'tally.pose', value: 'calm' }] }),
+      system,
+    );
+    expect(calm.keys['tally.pose']).toEqual({
+      key: 'calm',
+      steps: [{ kind: 'override', key: 'calm' }],
+    });
+    expect(calm.pendingKeys).toEqual([{ path: 'tally.pose', options: ['bold', 'wary'] }]);
+    expect(calm.warnings).toEqual([]);
+  });
+});
+
 describe("ENG-14 a step's own warnings", () => {
   it('warns each rule warning as `stepRule`, naming its path; effect warnings pass as they are', () => {
     const notAppended: EffectWarning = {

@@ -20,21 +20,28 @@ import {
   spellGrantSchema,
 } from '../src/index.ts';
 import {
+  areaShape,
   armor,
   background,
   cantrip,
   column,
+  creatureType,
   damageType,
   everyEntity,
   feat,
+  featCategory,
   feature,
   gear,
   klass,
   language,
+  rarity,
   rule,
+  ruleTopic,
+  size,
   source,
   species,
   spell,
+  spellSchool,
   subclass,
   toolKind,
   weapon,
@@ -101,6 +108,13 @@ describe('ENG-32 fifth-edition entity types', () => {
       'weaponMastery',
       'toolKind',
       'rule',
+      'spellSchool',
+      'size',
+      'creatureType',
+      'rarity',
+      'areaShape',
+      'featCategory',
+      'ruleTopic',
     ]);
     expect(issuePaths(fifthEditionEntitySchema, { ...rule, type: 'monster' })).toEqual(['type']);
     expect(MAX_LEVEL).toBe(20);
@@ -369,6 +383,13 @@ describe('ENG-32 fifth-edition entity types', () => {
       weaponProperty,
       weaponMastery,
       toolKind,
+      spellSchool,
+      size,
+      creatureType,
+      rarity,
+      areaShape,
+      featCategory,
+      ruleTopic,
     ]) {
       expect(issuePaths(fifthEditionEntitySchema, without(entity, 'key')), entity.type).toEqual([
         'key',
@@ -454,6 +475,13 @@ describe('ENG-32 fifth-edition entity types', () => {
       | 'weaponMastery'
       | 'toolKind'
       | 'rule'
+      | 'spellSchool'
+      | 'size'
+      | 'creatureType'
+      | 'rarity'
+      | 'areaShape'
+      | 'featCategory'
+      | 'ruleTopic'
     >();
     expectTypeOf<FifthEditionEntity['ruleset']>().toEqualTypeOf<'2014' | '2024' | 'any'>();
     type Grant = NonNullable<FifthEditionEntity['grants']>[number];
@@ -472,7 +500,7 @@ describe('ENG-32 fifth-edition entity types', () => {
     const json = z.toJSONSchema(fifthEditionEntitySchema) as unknown as {
       oneOf: { additionalProperties: unknown; properties: { ruleset: { enum: unknown } } }[];
     };
-    expect(json.oneOf).toHaveLength(18);
+    expect(json.oneOf).toHaveLength(25);
     for (const option of json.oneOf) {
       expect(option.additionalProperties).toBe(false);
       expect(option.properties.ruleset.enum).toEqual(['2014', '2024', 'any']);

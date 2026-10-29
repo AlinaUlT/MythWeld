@@ -1484,6 +1484,419 @@
             "topic"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema9",
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:spellSchool\\/[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "type": "string",
+              "const": "spellSchool"
+            },
+            "key": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "ruleset": {
+              "$ref": "#/$defs/__schema5"
+            },
+            "name": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "aliases": {
+              "$ref": "#/$defs/__schema11"
+            },
+            "summary": {
+              "$ref": "#/$defs/__schema12"
+            },
+            "text": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "tags": {
+              "$ref": "#/$defs/__schema14"
+            },
+            "source": {
+              "$ref": "#/$defs/__schema15"
+            },
+            "effects": {
+              "$ref": "#/$defs/__schema16"
+            },
+            "grants": {
+              "$ref": "#/$defs/__schema26"
+            },
+            "prerequisites": {
+              "$ref": "#/$defs/__schema67"
+            },
+            "meta": {
+              "$ref": "#/$defs/__schema69"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "key",
+            "ruleset",
+            "name",
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema9",
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:size\\/[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "type": "string",
+              "const": "size"
+            },
+            "key": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "ruleset": {
+              "$ref": "#/$defs/__schema5"
+            },
+            "name": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "aliases": {
+              "$ref": "#/$defs/__schema11"
+            },
+            "summary": {
+              "$ref": "#/$defs/__schema12"
+            },
+            "text": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "tags": {
+              "$ref": "#/$defs/__schema14"
+            },
+            "source": {
+              "$ref": "#/$defs/__schema15"
+            },
+            "effects": {
+              "$ref": "#/$defs/__schema16"
+            },
+            "grants": {
+              "$ref": "#/$defs/__schema26"
+            },
+            "prerequisites": {
+              "$ref": "#/$defs/__schema67"
+            },
+            "meta": {
+              "$ref": "#/$defs/__schema69"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "key",
+            "ruleset",
+            "name",
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema9",
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:creatureType\\/[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "type": "string",
+              "const": "creatureType"
+            },
+            "key": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "ruleset": {
+              "$ref": "#/$defs/__schema5"
+            },
+            "name": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "aliases": {
+              "$ref": "#/$defs/__schema11"
+            },
+            "summary": {
+              "$ref": "#/$defs/__schema12"
+            },
+            "text": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "tags": {
+              "$ref": "#/$defs/__schema14"
+            },
+            "source": {
+              "$ref": "#/$defs/__schema15"
+            },
+            "effects": {
+              "$ref": "#/$defs/__schema16"
+            },
+            "grants": {
+              "$ref": "#/$defs/__schema26"
+            },
+            "prerequisites": {
+              "$ref": "#/$defs/__schema67"
+            },
+            "meta": {
+              "$ref": "#/$defs/__schema69"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "key",
+            "ruleset",
+            "name",
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema9",
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:rarity\\/[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "type": "string",
+              "const": "rarity"
+            },
+            "key": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "ruleset": {
+              "$ref": "#/$defs/__schema5"
+            },
+            "name": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "aliases": {
+              "$ref": "#/$defs/__schema11"
+            },
+            "summary": {
+              "$ref": "#/$defs/__schema12"
+            },
+            "text": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "tags": {
+              "$ref": "#/$defs/__schema14"
+            },
+            "source": {
+              "$ref": "#/$defs/__schema15"
+            },
+            "effects": {
+              "$ref": "#/$defs/__schema16"
+            },
+            "grants": {
+              "$ref": "#/$defs/__schema26"
+            },
+            "prerequisites": {
+              "$ref": "#/$defs/__schema67"
+            },
+            "meta": {
+              "$ref": "#/$defs/__schema69"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "key",
+            "ruleset",
+            "name",
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema9",
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:areaShape\\/[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "type": "string",
+              "const": "areaShape"
+            },
+            "key": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "ruleset": {
+              "$ref": "#/$defs/__schema5"
+            },
+            "name": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "aliases": {
+              "$ref": "#/$defs/__schema11"
+            },
+            "summary": {
+              "$ref": "#/$defs/__schema12"
+            },
+            "text": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "tags": {
+              "$ref": "#/$defs/__schema14"
+            },
+            "source": {
+              "$ref": "#/$defs/__schema15"
+            },
+            "effects": {
+              "$ref": "#/$defs/__schema16"
+            },
+            "grants": {
+              "$ref": "#/$defs/__schema26"
+            },
+            "prerequisites": {
+              "$ref": "#/$defs/__schema67"
+            },
+            "meta": {
+              "$ref": "#/$defs/__schema69"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "key",
+            "ruleset",
+            "name",
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema9",
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:featCategory\\/[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "type": "string",
+              "const": "featCategory"
+            },
+            "key": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "ruleset": {
+              "$ref": "#/$defs/__schema5"
+            },
+            "name": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "aliases": {
+              "$ref": "#/$defs/__schema11"
+            },
+            "summary": {
+              "$ref": "#/$defs/__schema12"
+            },
+            "text": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "tags": {
+              "$ref": "#/$defs/__schema14"
+            },
+            "source": {
+              "$ref": "#/$defs/__schema15"
+            },
+            "effects": {
+              "$ref": "#/$defs/__schema16"
+            },
+            "grants": {
+              "$ref": "#/$defs/__schema26"
+            },
+            "prerequisites": {
+              "$ref": "#/$defs/__schema67"
+            },
+            "meta": {
+              "$ref": "#/$defs/__schema69"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "key",
+            "ruleset",
+            "name",
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema9",
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:ruleTopic\\/[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "type": "string",
+              "const": "ruleTopic"
+            },
+            "key": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "ruleset": {
+              "$ref": "#/$defs/__schema5"
+            },
+            "name": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "aliases": {
+              "$ref": "#/$defs/__schema11"
+            },
+            "summary": {
+              "$ref": "#/$defs/__schema12"
+            },
+            "text": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "tags": {
+              "$ref": "#/$defs/__schema14"
+            },
+            "source": {
+              "$ref": "#/$defs/__schema15"
+            },
+            "effects": {
+              "$ref": "#/$defs/__schema16"
+            },
+            "grants": {
+              "$ref": "#/$defs/__schema26"
+            },
+            "prerequisites": {
+              "$ref": "#/$defs/__schema67"
+            },
+            "meta": {
+              "$ref": "#/$defs/__schema69"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "key",
+            "ruleset",
+            "name",
+            "source"
+          ],
+          "additionalProperties": false
         }
       ]
     },
