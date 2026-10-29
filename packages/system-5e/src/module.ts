@@ -10,6 +10,7 @@ import {
 } from '@grimoire/engine';
 import { abilityBonusWarnings, leftOutSides } from './ability-bonus';
 import { attackSteps } from './attacks';
+import { attunementWarnings } from './attunement';
 import type { FifthEditionCharacter } from './character';
 import { checkSteps, skillKeys } from './checks';
 import { characterLevel, classesOf, prerequisitesOf } from './classes';
@@ -54,6 +55,7 @@ import { unconsciousNamed, unconsciousWarnings } from './unconscious';
 // ENG-64 adds the inspiration a long rest gives (`inspiration.ts`).
 // SHEET-15 adds the defenses effects append (`defenses.ts`).
 // SHEET-14: a class of a multiclass character asks its multiclass prerequisites too.
+// SHEET-18: more attuned rows than the limit warn (`attunement.ts`).
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -207,12 +209,14 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
 
   // Ability score increases given by both the species and the background; a mix that gives no
   // starting languages; a character at 0 hit points, or knocked out, with no Unconscious
-  // condition to have; an effect on a list of defenses that gives it no key.
+  // condition to have; an effect on a list of defenses that gives it no key; more rows attuned
+  // than the limit.
   ruleWarnings: (input) => [
     ...abilityBonusWarnings(input, (entity) => ruledGrants(input.character, entity)),
     ...languageWarnings(input),
     ...unconsciousWarnings(input),
     ...defenseWarnings(input),
+    ...attunementWarnings(input),
   ],
 
   // The AC effects of a shield worn without training, when its edition takes its AC away.

@@ -8,6 +8,7 @@
 export * from './ability-bonus';
 export * from './actions';
 export * from './attacks';
+export * from './attunement';
 export * from './casting';
 export * from './character';
 export * from './checks';

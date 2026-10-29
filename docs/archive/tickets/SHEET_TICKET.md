@@ -2019,3 +2019,151 @@ gives the same changes and the same outcome as before.
 Found, not fixed: nothing.
 
 Nothing for the changelog.
+
+---
+
+### SHEET-18 Attunement past the limit gives a warning
+
+**Hat:** Attunement past the limit gives a warning
+**Depends on:** ENG-33 (`systemData.inventory`, a row's `attuned`), ENG-35 (a module's
+`ruleWarnings`, warned as `characterRule`), ENG-63 (the SRD text, every attuned row ends at death)
+**Size:** XS
+**Screen:** No
+**SPEC:** §8.2 (prerequisites and limits warn, never block); ENG-63 §11 put the row here
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/attunement.ts` — new: `ATTUNEMENT_LIMIT`,
+`attunementWarnings`.
+- `packages/system-5e/src/module.ts` — changes: `ruleWarnings` adds `attunementWarnings`.
+- `packages/system-5e/src/index.ts` — changes: exports `attunement.ts`.
+- `packages/system-5e/test/attunement.test.ts` — new: the SHEET-18 tests.
+
+#### 2. What is missing now
+
+Measured on 2026-10-29 at `3977c50`:
+- `grep -rn "attuned" packages/system-5e/src`: `character.ts` (the schema), `equipment.ts` (an
+  equipped row's `@attuned` and whether its magic works), `actions.ts` (death unattunes every row).
+  Nothing counts the attuned rows.
+- So golden B with four attuned rows computes with no warning about it.
+- `pnpm test`: unit `Test Files 70 passed (70)`, `Tests 955 passed (955)`, 20.98 s.
+
+#### 3. What it should look like when done
+
+The charms are made up (`character:item/charm-1` … `charm-5`): each needs attunement and gives
++1 AC with no `when`. Golden A (2014) and golden B (2024) keep their own rows, none attuned.
+1. `ATTUNEMENT_LIMIT` is 3.
+2. Golden A and golden B as they are, and each with three charms equipped and attuned: no
+   `attunementLimit` warning.
+3. Each with four charms equipped and attuned: one warning, `{ code: 'characterRule', rule:
+   'attunementLimit', data: { attuned: 4, limit: 3 } }`, message "The character is attuned to 4
+   magic items; no more than 3 at a time." The four still work: AC is 4 higher than the golden's
+   own (+1 from each charm).
+4. Golden B with five: `data: { attuned: 5, limit: 3 }`.
+5. Three attuned and two not: no warning.
+6. Golden A with an attuned charm equipped, an attuned charm not equipped, an attuned custom row
+   ("Lucky stone", not equipped) and an attuned row whose item no pack has: `attuned: 4`.
+7. A frozen character with four: nothing throws, nothing changes, the same warning.
+8. The quality gate is green.
+
+#### 4. How to do it
+
+1. `attunement.ts`: count the rows with `attuned: true`; above the limit, one `RuleWarning`.
+2. `module.ts`: `ruleWarnings` adds it, after the defenses' warnings.
+3. Tests (§7), then the gate.
+
+Technical choices (ADR 002):
+- **A character warning, not a step warning.** The limit is about the inventory as a whole, not a
+  path, so it is a module `ruleWarnings` entry (`characterRule`), as the ability bonus and the
+  languages warn (ENG-35, ENG-56).
+- **Every attuned row counts once**, an item or a custom row, equipped or not, its item found or
+  missing. Attunement needs no wearing in either SRD; the stored flag is what the person set, and
+  death ends every one the same way (ENG-63). A row's `qty` is not read: a row is one attunement.
+- **Never a block.** The fourth item's magic still works (§8.2); the screen shows the warning.
+- **One constant, no ruleset file.** Both SRDs give three (§8). No house rule changes it yet, so
+  nothing stored changes.
+- **`data` carries both numbers** (`attuned`, `limit`), so the screen writes its own text.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen. The Gear tab (SHEET-50) sets `attuned` and shows this warning; its note in
+`BACKLOG.md` says so.
+
+#### 7. Tests
+
+- `packages/system-5e/test/attunement.test.ts` — `describe('SHEET-18 attunement past the limit
+  gives a warning')`: items 1–7.
+- Control values from: the SRD text of §8 (three); the charms' +1 AC each, counted by hand.
+
+#### 8. Checked against the source
+
+Read again on 2026-10-29 at the commits ENG-63 named. CC-BY-4.0.
+- SRD 5.1, 5e-bits/5e-srd-api `e6edf9a51fad4b59a7e9561fad6c15232caed214`,
+  `packages/5e-database/src/2014/en/5e-SRD-Rules.json` (Attunement): "An item can be attuned to
+  only one creature at a time, and a creature can be attuned to no more than three magic items at a
+  time. Any attempt to attune to a fourth item fails; the creature must end its attunement to an
+  item first."
+- SRD 5.2.1, foundryvtt/dnd5e `7bfb3f1c03e107bf65942151ef08d50ddb01ba8a`,
+  `packs/_source/content24/appendices/rules-glossary.yml` (Attunement): "A creature can have
+  Attunement with no more than three magic items at a time."
+- SRD 5.1 says the fourth attempt "fails". The app does not refuse it: SPEC §8.2 and the row say
+  a warning, never a block, and the person sets the flag by hand. The warning is the app's way of
+  saying the fourth fails.
+
+#### 9. Not in this ticket
+
+- The Gear tab's control and the warning on screen: SHEET-50.
+- "n of 3 attuned" as a number with a breakdown: not asked; SHEET-50 adds it if the board shows it.
+- A house rule or an effect that changes the limit: none in either SRD.
+- Two copies of one item attuned (SRD 5.1): found, not fixed (§11).
+
+#### 10. Rake check
+
+- **A rule lives in the module, never in a component:** `attunement.ts`; the screen reads the
+  warning.
+- **The core names no game:** the engine is unchanged; the rule is fifth edition's.
+- **Prerequisites warn, never block (§8.2):** nothing is refused; the fourth charm's AC applies
+  (§3 item 3).
+- **No ruleset check:** one rule in both editions, one constant.
+- **`compute()` is pure:** the warning reads only the character; the frozen test (§3 item 7).
+- **No rules text without an open license:** the quotes are CC-BY-4.0; the charms are made up.
+
+#### 11. What came out of it
+
+- `pnpm lint`: `Checked 224 files`, no fixes. `pnpm typecheck`: every project `Done`.
+- `pnpm test`: unit `Test Files 71 passed (71)`, `Tests 962 passed (962)`, 22.00 s (955 before,
+  plus 7 in `attunement.test.ts`). No file in `apps/web` changed, so no `pnpm e2e`.
+- The speed pass is noisy on this machine, with or without this change. `pnpm test` four times
+  with the change: the speed pass `2 passed` once, and 3 times `1 failed` (median × 4: 11.67,
+  11.35, 10.69 ms against the budget of 10 ms). On `3977c50` without the change, alone, 3 runs
+  right after the install: 10.70, 11.74, 10.61 ms, all failed. Alternated, alone, base then this
+  change, 4 pairs: medians 2.51 / 2.37, 3.06 / 2.64, 2.58 / 2.26, 1.76 / 2.57 ms. The change adds
+  one pass over the inventory rows; the spread is the machine's.
+- The tests catch mistakes. Each change made alone, then `attunement.test.ts` run (7 tests), then
+  undone (each file compared equal to its copy after): the limit checked with `<` in place of
+  `<=`, 2 failed; only equipped rows counted, 1 failed; only rows with an `itemId` counted, 1
+  failed; the warning left out of `ruleWarnings`, 4 failed (so, before this ticket, four attuned
+  rows gave no warning, §2).
+- Rebased onto SHEET-06, SHEET-04 and SHEET-10, which parallel chats pushed meanwhile. On top of
+  them: `pnpm lint` `Checked 231 files`, no fixes; `pnpm typecheck` 6 of 6 `Done`; `pnpm test`
+  twice: unit `Test Files 74 passed (74)`, `Tests 991 passed (991)`, 21.16 s and 20.92 s; the
+  speed pass `1 failed` (10.79 ms), then `2 passed`, 3.11 s.
+- Then onto SHEET-20 and SHEET-16, pushed meanwhile too. On top of SHEET-20: unit `Tests 999
+  passed (999)`, 21.93 s and 20.10 s; the speed pass `2 passed` both times. On top of SHEET-16:
+  `pnpm lint` `Checked 232 files`, no fixes; `pnpm typecheck` 6 of 6 `Done`; `pnpm test` twice:
+  unit `Test Files 75 passed (75)`, `Tests 1011 passed (1011)`, 21.26 s and 20.65 s; the speed
+  pass `1 failed` (10.61 ms), then `2 passed`, 3.27 s.
+
+Differences from §3: none.
+
+**Found, not fixed:** SRD 5.1 also forbids attuning to more than one copy of an item (the
+sentence is quoted in the note of the new row). SRD 5.2.1's Rules Glossary entry does not say it.
+A new row in `BACKLOG.md`: SHEET-63.
+
+**Changelog:** nothing; no screen changes.

@@ -206,13 +206,14 @@ chats never claim one version number.
 | SHEET-15 | Resistances, immunities, vulnerabilities are computed from effects | S | ✅ 2026-10-28 |
 | SHEET-16 | Damage applies the character's defenses by its type | S | ✅ 2026-10-29 |
 | SHEET-17 | Casting warns of what forbids it | S | ✅ 2026-10-28 |
-| SHEET-18 | Attunement past the limit gives a warning | XS | 🔲 |
+| SHEET-18 | Attunement past the limit gives a warning | XS | ✅ 2026-10-29 |
 | SHEET-19 | Rolling initiative interrupts a knock-out's rest | XS | ✅ 2026-10-28 |
 | SHEET-20 | A use's recovery amount is computed with a breakdown | S | ✅ 2026-10-29 |
 | SHEET-21 | Every base AC calculation is computed for the pin | S | 🔲 |
 | SHEET-22 | Removing an entity drops what was stored for it | S | 🔲 |
 | SHEET-61 | A condition the character is immune to has no effect | S | 🔲 |
 | SHEET-62 | Gaining the Incapacitated condition ends concentration | XS | 🔲 |
+| SHEET-63 | Attuning two copies of one item gives a warning | XS | 🔲 |
 | **Characters** | **the list, the file, the manual form** | | |
 | SHEET-23 | An undo toast reverses the last change | S | 🔲 |
 | SHEET-24 | My characters lists the saved characters | S | 🔲 |
@@ -289,9 +290,6 @@ chats never claim one version number.
   theme (dark by default, light), the motion switch (SHEET-05), the units (feet or metres, pounds
   or kilograms; stored units stay feet and pounds), "I roll myself" (SPEC §6.5). Language, backup,
   packs, AI and purchases come with their phases.
-- **SHEET-18** — found by ENG-63: nothing counts the attuned rows; both SRDs allow "no more than
-  three magic items at a time" (ENG-63's ticket quotes both). A warning, never a block (§8.2),
-  computed by the module, not the screen.
 - **SHEET-21** — found by ENG-47: the pinned base AC calculation is `systemData.acCalc`:
   `equipment` (the armor worn, else 10 + DEX) or an `ac.formulas` effect's part id; without it the
   highest counts. The control that pins one (SHEET-35) needs each candidate's key, name and value,
@@ -311,6 +309,11 @@ chats never claim one version number.
   (the Unconscious, Paralyzed, Petrified and Stunned entries), keeps `state.concentration`. The
   condition is read by its key, `INCAPACITATED_CONDITION` (`casting.ts`). After SHEET-61, which
   changes setting a condition too.
+- **SHEET-63** — found by SHEET-18: SRD 5.1 (Attunement, SHEET-18 §8's file): "a creature can't
+  attune to more than one copy of an item. For example, a creature can't attune to more than one
+  *ring of protection* at a time." Nothing checks two attuned rows of one `itemId`. SRD 5.2.1's
+  Rules Glossary entry (SHEET-18 §8) does not say it; the row reads SRD 5.2.1's magic items
+  chapter before building. A warning beside `attunementLimit` (`attunement.ts`), never a block.
 - **SHEET-23** — SPEC §7.2: an "Undo" toast after every change, and the last 50 states kept in
   the history table; an entry is ENG-30's log entry.
 - **SHEET-24** — ADR 008 item 4, BRIEF P2, board `V3-Characters`; an empty state with "+" and
