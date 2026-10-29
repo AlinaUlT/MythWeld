@@ -15,7 +15,12 @@ import type { FifthEditionCharacter } from './character';
 import { checkSteps, skillKeys } from './checks';
 import { characterLevel, classesOf, prerequisitesOf } from './classes';
 import { combatSteps } from './combat';
-import { defenseSteps, defenseWarnings } from './defenses';
+import {
+  defenseSteps,
+  defenseWarnings,
+  immuneConditions,
+  immuneConditionWarnings,
+} from './defenses';
 import type { FifthEditionEntity } from './entity-types';
 import { equipmentOf } from './equipment';
 import { hitDiceSteps } from './hit-dice';
@@ -56,6 +61,7 @@ import { unconsciousNamed, unconsciousWarnings } from './unconscious';
 // SHEET-15 adds the defenses effects append (`defenses.ts`).
 // SHEET-14: a class of a multiclass character asks its multiclass prerequisites too.
 // SHEET-18: more attuned rows than the limit warn (`attunement.ts`).
+// SHEET-61: a condition the character is immune to is withheld, with a warning (`defenses.ts`).
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -210,17 +216,21 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
   // Ability score increases given by both the species and the background; a mix that gives no
   // starting languages; a character at 0 hit points, or knocked out, with no Unconscious
   // condition to have; an effect on a list of defenses that gives it no key; more rows attuned
-  // than the limit.
+  // than the limit; a condition left out because the character is immune to it.
   ruleWarnings: (input) => [
     ...abilityBonusWarnings(input, (entity) => ruledGrants(input.character, entity)),
     ...languageWarnings(input),
     ...unconsciousWarnings(input),
     ...defenseWarnings(input),
     ...attunementWarnings(input),
+    ...immuneConditionWarnings(input),
   ],
 
   // The AC effects of a shield worn without training, when its edition takes its AC away.
   suppressedEffects: untrainedEffects,
+
+  // The conditions the character is immune to have no effect.
+  withheldEntities: immuneConditions,
 
   // An entity's own prerequisites; a class of a character with two or more, its multiclass ones.
   prerequisitesOf,

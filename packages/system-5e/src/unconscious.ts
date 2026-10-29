@@ -49,14 +49,21 @@ export function unconsciousNamed(
   return entry === undefined ? [] : [{ id: entry.id }];
 }
 
-/** The warning that a rule gives the Unconscious condition, and no entry is there to give. */
+/**
+ * The warning that a rule gives the Unconscious condition, and no entry is there to give. An entry
+ * left out because the character is immune to it is there (SHEET-61): it warns that instead.
+ */
 export function unconsciousWarnings({
   character,
   gathered,
   find,
 }: DeriveInput<FifthEditionCharacter, FifthEditionEntity>): RuleWarning[] {
+  const withheld = (gathered.withheld ?? []).some(
+    ({ entity }) => entity.type === CONDITION_TYPE && entity.key === UNCONSCIOUS_CONDITION,
+  );
   if (
     !ruledUnconscious(character, find) ||
+    withheld ||
     (gathered.conditions[UNCONSCIOUS_CONDITION]?.level ?? 0) > 0
   ) {
     return [];

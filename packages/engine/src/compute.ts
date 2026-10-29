@@ -106,12 +106,32 @@ export interface SystemModule<C, E extends GatherableEntity = GatherableEntity> 
    */
   suppressedEffects?(input: DeriveInput<C, E>): readonly EntityPartId[];
   /**
+   * SHEET-61: the entities a rule of the system says have no effect on this character, by id, read
+   * from what was computed (a fifth-edition condition the character is immune to). `computed`
+   * gives what was had and what was `withheld`. While the ids differ from those the last pass left
+   * out, `compute()` runs again without them: gathering leaves each out where it meets it, so
+   * neither its effects nor its grants apply. An id of no entity the character meets changes
+   * nothing.
+   */
+  withheldEntities?(character: C, computed: Computed<E>): readonly string[];
+  /**
    * SHEET-14: the prerequisites this character must meet to have an entity, when a rule of the
    * system adds to the entity's own (a fifth-edition class of a character with more than one
    * class: its multiclass prerequisites). Without it, an entity's own `prerequisites`. Each one
    * unmet is warned as `unmetPrerequisite`; the entity applies all the same.
    */
   prerequisitesOf?(character: C, entity: E): readonly Prerequisite[];
+}
+
+/**
+ * SHEET-61: the passes ran out before the ids a module withholds settled (two of its rules that
+ * undo each other); the last pass is used.
+ */
+export interface WithheldWarning {
+  readonly code: 'withheldUnsettled';
+  /** The ids the last pass left out. */
+  readonly ids: readonly string[];
+  readonly message: string;
 }
 
 /** A warning a module's `ruleWarnings` gave: `rule` is the module's name for it (ENG-35). */
@@ -133,7 +153,8 @@ export type ComputeWarning =
   | DerivedWarning
   | PhaseWarning
   | PrerequisiteWarning
-  | CharacterRuleWarning;
+  | CharacterRuleWarning
+  | WithheldWarning;
 
 /** What `compute()` gives: what the character has (SPEC §6.1 steps 1–2), then its values. */
 export interface Computed<E extends GatherableEntity> extends Omit<Gathered<E>, 'warnings'> {
@@ -179,15 +200,51 @@ function suppressed<E extends GatherableEntity>(
   return marked ? { ...gathered, entities } : gathered;
 }
 
+/** The most passes `compute()` runs while the ids a module withholds change (SHEET-61). */
+export const MAX_COMPUTE_PASSES = 8;
+
+/** The ids, each once, in a fixed order. */
+function idSet(ids: readonly string[]): string[] {
+  return [...new Set(ids)].sort();
+}
+
 /**
  * Computes a character of a system: `index` holds its active packs (`loadContentIndex`), `system`
  * is its system's module. Pure and deterministic: nothing passed in is changed, and the same
- * arguments give an equal result.
+ * arguments give an equal result. SHEET-61: when the module withholds entities, it runs again
+ * without them until the ids it names are those left out, at most `MAX_COMPUTE_PASSES` times.
  */
 export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
   character: C,
   index: ContentIndex<E>,
   system: SystemModule<C, E>,
+): Computed<E> {
+  let without: string[] = [];
+  let computed = computeOnce(character, index, system, without);
+  const withheldEntities = system.withheldEntities;
+  if (withheldEntities === undefined) return computed;
+  for (let pass = 1; ; pass += 1) {
+    const next = idSet(withheldEntities(character, computed));
+    if (next.join('\n') === without.join('\n')) return computed;
+    if (pass === MAX_COMPUTE_PASSES) {
+      const warning: WithheldWarning = {
+        code: 'withheldUnsettled',
+        ids: without,
+        message: `The entities the module leaves out did not settle in ${pass} passes; the last pass is used.`,
+      };
+      return { ...computed, warnings: [...computed.warnings, warning] };
+    }
+    without = next;
+    computed = computeOnce(character, index, system, without);
+  }
+}
+
+/** One pass of `compute()`, gathering without the entities `without` names. */
+function computeOnce<C extends CharacterCore<E>, E extends GatherableEntity>(
+  character: C,
+  index: ContentIndex<E>,
+  system: SystemModule<C, E>,
+  without: readonly string[],
 ): Computed<E> {
   const level = system.level(character);
   const grantsOf = system.grantsOf;
@@ -200,6 +257,7 @@ export function compute<C extends CharacterCore<E>, E extends GatherableEntity>(
     system.entities(character, find, findKey),
     grantsOf === undefined ? ownGrants : (entity) => grantsOf(character, entity, find),
     system.namedIds,
+    new Set(without),
   );
   const defaults = system.statDefaults(character);
   // The stats are the stat entities had; suppressing an effect changes none of them.

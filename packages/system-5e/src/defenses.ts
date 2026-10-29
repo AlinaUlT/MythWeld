@@ -3,6 +3,7 @@ import {
   activeEffects,
   type BreakdownStep,
   CONDITION_TYPE,
+  type Computed,
   type DerivedStep,
   type DeriveInput,
   type EffectWarning,
@@ -46,6 +47,7 @@ export const DEFENSE_RULES = {
   missing: 'defenseMissing',
   notAppended: 'defenseNotAppended',
   notAKey: 'defenseNotAKey',
+  immuneCondition: 'immuneCondition',
 } as const;
 
 /** The path of a key in a list of defenses. */
@@ -228,4 +230,42 @@ export function defendedDamage(dealt: number, type: string, defenses: Defenses):
     if (amount === 0) break;
   }
   return { dealt, type, steps, amount };
+}
+
+// SHEET-61: a condition the character is immune to has no effect: both SRDs' rules glossary (SRD
+// 5.2.1: "it doesn't affect you in any way"), SRD 5.1's Petrified ("a poison or disease already
+// in its system is suspended, not neutralized") and dnd5e's code (SHEET-61 §8). So it is not
+// refused and not removed: it stays stored, `compute()` leaves it out (the module's
+// `withheldEntities`), so neither its effects nor its grants apply and its level reads 0, and it
+// warns `immuneCondition`. When the immunity ends, the condition applies again.
+
+/**
+ * The module's `withheldEntities`: each condition the character has or would have whose key it is
+ * immune to (`defenses.conditionImmune.<key>` above 0), by its id.
+ */
+export function immuneConditions(
+  _character: FifthEditionCharacter,
+  { values, entities, withheld = [] }: Computed<FifthEditionEntity>,
+): string[] {
+  const immune = new Set(defensesOf(values).conditionImmune);
+  return [...entities, ...withheld]
+    .map(({ entity }) => entity)
+    .filter(({ type, key }) => type === CONDITION_TYPE && key !== undefined && immune.has(key))
+    .map(({ id }) => id);
+}
+
+/** The warning of each condition left out because the character is immune to it. */
+export function immuneConditionWarnings({
+  gathered,
+}: DeriveInput<FifthEditionCharacter, FifthEditionEntity>): RuleWarning[] {
+  return (gathered.withheld ?? []).flatMap(({ entity: { id, type, key } }): RuleWarning[] => {
+    if (type !== CONDITION_TYPE || key === undefined) return [];
+    return [
+      {
+        rule: DEFENSE_RULES.immuneCondition,
+        data: { condition: id, key },
+        message: `The character is immune to "${id}" (${defensePath('conditionImmune', key)}); it has no effect.`,
+      },
+    ];
+  });
 }

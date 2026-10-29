@@ -175,7 +175,7 @@ chats never claim one version number.
 |---|---|---|
 | 1 | SHEET-01, 02, 07, 14, 15, 17, 19 | Phase 1 is closed |
 | 2 | SHEET-03, 04, 05, 06, 08, 10, 16, 18, 20, 21, 61 | Wave 1 is closed |
-| 3 | SHEET-09, 11, 22, 62 | Wave 2 is closed |
+| 3 | SHEET-09, 11, 22, 62, 63, 64 | Wave 2 is closed |
 | 4 | SHEET-12, 13, 23, 24, 37 | Wave 3 is closed |
 | 5 | SHEET-25, 27, 30, 31, 38 | Wave 4 is closed |
 | 6 | SHEET-26, 28, 32, 33, 36, 39, 46, 48, 50, 53, 54, 55, 56 | Wave 5 is closed |
@@ -211,9 +211,10 @@ chats never claim one version number.
 | SHEET-20 | A use's recovery amount is computed with a breakdown | S | ✅ 2026-10-29 |
 | SHEET-21 | Every base AC calculation is computed for the pin | S | ✅ 2026-10-29 |
 | SHEET-22 | Removing an entity drops what was stored for it | S | 🔲 |
-| SHEET-61 | A condition the character is immune to has no effect | S | 🔲 |
+| SHEET-61 | A condition the character is immune to has no effect | S | ✅ 2026-10-29 |
 | SHEET-62 | Gaining the Incapacitated condition ends concentration | XS | 🔲 |
 | SHEET-63 | Attuning two copies of one item gives a warning | XS | 🔲 |
+| SHEET-64 | Exhaustion the character is immune to does not kill | XS | 🔲 |
 | **Characters** | **the list, the file, the manual form** | | |
 | SHEET-23 | An undo toast reverses the last change | S | 🔲 |
 | SHEET-24 | My characters lists the saved characters | S | 🔲 |
@@ -293,23 +294,22 @@ chats never claim one version number.
 - **SHEET-22** — found by ENG-17: a stored switch (`state.toggles`) stays after its entity is
   removed and warns `toggleGone` on every compute. Found by ENG-47: a pin that does not apply
   warns `stepRule` `acCalcNotApplying` on every compute. Removing an entity drops both.
-- **SHEET-61** — found by SHEET-15: `defenses.conditionImmune.<key>` is 1 for a condition the
-  character is immune to, but nothing reads it: a condition stored for the character still applies
-  its effects, and `setCondition` still sets it. SRD 5.2.1 (Immunity): "If you have Immunity to a
-  damage type or a condition, it doesn't affect you in any way" (SHEET-15 §8). The row decides,
-  from each SRD's text, whether setting it is refused or warned and whether its effects stop; a
-  warning never blocks.
 - **SHEET-62** — found by SHEET-17: both SRDs end concentration on the Incapacitated condition
   (SHEET-17 §8). Damage to 0 and a knock-out end it (`applyDamage`); `setConditionLevel` (ENG-69)
   does not, so a character given the Incapacitated condition, or one that includes it by its grant
   (the Unconscious, Paralyzed, Petrified and Stunned entries), keeps `state.concentration`. The
-  condition is read by its key, `INCAPACITATED_CONDITION` (`casting.ts`). After SHEET-61, which
-  changes setting a condition too.
+  condition is read by its key, `INCAPACITATED_CONDITION` (`casting.ts`). Found by SHEET-61:
+  setting a condition is unchanged; an Incapacitated the character is immune to is stored, but
+  `compute()` withholds it (`Computed.withheld`, its level 0), so it ends nothing.
 - **SHEET-63** — found by SHEET-18: SRD 5.1 (Attunement, SHEET-18 §8's file): "a creature can't
   attune to more than one copy of an item. For example, a creature can't attune to more than one
   *ring of protection* at a time." Nothing checks two attuned rows of one `itemId`. SRD 5.2.1's
   Rules Glossary entry (SHEET-18 §8) does not say it; the row reads SRD 5.2.1's magic items
   chapter before building. A warning beside `attunementLimit` (`attunement.ts`), never a block.
+- **SHEET-64** — found by SHEET-61: a condition the character is immune to has no effect, but
+  `isDead` (`fatalExhaustion`, `exhaustion.ts`) reads the stored exhaustion level without
+  `compute()`, so exhaustion at its highest level kills a character immune to it. `compute()`
+  itself asks `isDead` (`unconsciousNamed`), so the immunity cannot come from a full compute.
 - **SHEET-23** — SPEC §7.2: an "Undo" toast after every change, and the last 50 states kept in
   the history table; an entry is ENG-30's log entry.
 - **SHEET-24** — ADR 008 item 4, BRIEF P2, board `V3-Characters`; an empty state with "+" and

@@ -206,6 +206,16 @@ export interface ConditionLevel {
   level: number;
 }
 
+/**
+ * SHEET-61: an entity gathering met and left out because the module's rule said so (a
+ * fifth-edition condition the character is immune to), with every place that gave it. It is not
+ * had: its effects and grants give nothing, and a condition's level reads 0.
+ */
+export interface WithheldEntity<E extends GatherableEntity> {
+  entity: E;
+  from: readonly Origin[];
+}
+
 /** Something gathering met. `code` and its data are for the screen; `message` is for logs. */
 export type GatherWarning = { message: string } & (
   | { code: 'missing'; id: string; from: Origin }
@@ -230,6 +240,8 @@ export interface Gathered<E extends GatherableEntity> {
   byKey: Readonly<Record<string, Readonly<Record<string, E>>>>;
   /** Condition key → its entry and level. A condition without a key has no path. */
   conditions: Readonly<Record<string, ConditionLevel>>;
+  /** The entities left out by `without`, in the order met; absent when none was met. */
+  withheld?: readonly WithheldEntity<E>[];
   warnings: readonly GatherWarning[];
 }
 
@@ -302,7 +314,9 @@ function namesNone(): readonly string[] {
  * grant's `atLevel` is measured against; `named` are the entities its module part names, each
  * with its own level when its grants count one. `grantsOf` gives the grants an entity gives this
  * character, its own by default; `namedIds`, the ids a grant of a module's own kind names, which
- * are looked up and not gathered (none by default). Pure: nothing passed in is changed.
+ * are looked up and not gathered (none by default); `without`, the ids gathering leaves out where
+ * it meets them (SHEET-61), each found as any id is, so a missing one still warns. Pure: nothing
+ * passed in is changed.
  */
 export function gather<E extends GatherableEntity>(
   character: CharacterCore<E>,
@@ -311,6 +325,7 @@ export function gather<E extends GatherableEntity>(
   named: readonly NamedEntity[],
   grantsOf: (entity: E) => readonly GrantOf<E>[] = ownGrants,
   namedIds: (grant: GrantOf<E>) => readonly string[] = namesNone,
+  without: ReadonlySet<string> = new Set(),
 ): Gathered<E> {
   const warnings: GatherWarning[] = [];
   const warnedMissing = new Map<Origin, Set<string>>();
@@ -351,6 +366,7 @@ export function gather<E extends GatherableEntity>(
     string,
     { entity: E; level: number; from: Origin[]; paths?: OwnPaths; dormant?: true }
   >();
+  const withheld = new Map<string, { entity: E; from: Origin[] }>();
   const grants: ReachedGrant<E>[] = [];
   const proficiencies: ProficiencyGiven[] = [];
   const resources: ResourceGiven[] = [];
@@ -372,7 +388,7 @@ export function gather<E extends GatherableEntity>(
   const stack = roots.reverse();
   for (let step = stack.pop(); step !== undefined; step = stack.pop()) {
     const { id, from } = step;
-    const known = had.get(id);
+    const known = had.get(id) ?? withheld.get(id);
     if (known !== undefined) {
       if (!known.from.includes(from)) known.from.push(from);
       continue;
@@ -380,6 +396,10 @@ export function gather<E extends GatherableEntity>(
     const entity = find(id);
     if (entity === undefined) {
       warnMissing(id, from);
+      continue;
+    }
+    if (without.has(id)) {
+      withheld.set(id, { entity, from: [from] });
       continue;
     }
     had.set(id, {
@@ -635,6 +655,7 @@ export function gather<E extends GatherableEntity>(
     pendingChoices,
     byKey,
     conditions,
+    ...(withheld.size > 0 && { withheld: [...withheld.values()] }),
     warnings,
   };
 }

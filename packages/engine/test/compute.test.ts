@@ -5,6 +5,7 @@ import {
   type GrantOf,
   keyFinderOf,
   loadContentIndex,
+  MAX_COMPUTE_PASSES,
   type SystemModule,
 } from '@grimoire/engine';
 import type { EntityId } from '@grimoire/schema';
@@ -977,5 +978,125 @@ describe('ENG-62 an entry by its type and key', () => {
     ]);
     expect(after.values).toEqual({ ...before.values, 'conditions.lost.level': 1 });
     expect(after.warnings).toEqual(before.warnings);
+  });
+});
+
+describe('SHEET-61 entities a module withholds', () => {
+  const weary = 'tales-core:condition/weary';
+  const lost = 'tales-core:condition/lost';
+  const snaredId = 'character:condition/snared';
+
+  /** A condition of the character's own that gives `lost`. */
+  const snared: TalesEntity = {
+    id: snaredId,
+    type: 'condition',
+    key: 'snared',
+    ruleset: 'any',
+    name: { en: 'Snared' },
+    grants: [{ id: 'lose', kind: 'entity', fixed: [lost] }],
+    source,
+  };
+
+  /** Tales' module, withholding these ids. */
+  const withholding = (withheld: readonly string[]): SystemModule<TalesCharacter, TalesEntity> => ({
+    ...talesModule,
+    withheldEntities: () => withheld,
+  });
+
+  /** Ash with `snared` of its own, and these stored conditions. */
+  const snaredAsh = (conditions: TalesCharacter['state']['conditions']) =>
+    variant(ash, { localEntities: [snared], state: { ...ash.state, conditions } });
+
+  /** Each withheld entity's id and where it was given. */
+  const withheldOf = (result: Computed<TalesEntity>) =>
+    result.withheld?.map(({ entity, from }) => [entity.id, from]);
+
+  it('leaves a withheld condition out: its effects give nothing, its level reads 0', () => {
+    const result = computed(ash, withholding([weary]));
+    expect(ids(result)).not.toContain(weary);
+    expect(withheldOf(result)).toEqual([[weary, ['character']]]);
+    expect(result.values).toMatchObject({
+      'conditions.weary.level': 0,
+      'skills.all.bonus': 0,
+      // Ash's, each without weary's -1: wits 2 + 2 × 1 + `shadow` 1.
+      'skills.sneak.total': 5,
+      // grit 3 + 2 × 1 + `nimble` 2.
+      'skills.climb.total': 7,
+      // nerve 1 + 2 × 0; passive 5 + 1.
+      'skills.steady.total': 1,
+      'skills.steady.passive': 6,
+    });
+    expect(result.breakdown['conditions.weary.level']).toEqual([]);
+    // The stored condition is kept: it applies again once the module withholds it no more.
+    expect(ash.state.conditions).toEqual([{ id: weary, level: 1 }]);
+    expect(codes(result)).toEqual(codes(computed(ash)));
+  });
+
+  it("gives nothing of a withheld entity's grants, and names each place that gave it", () => {
+    const both = snaredAsh([{ id: snaredId }, { id: lost }]);
+    const noLost = computed(both, withholding([lost]));
+    expect(ids(noLost)).toContain(snaredId);
+    expect(ids(noLost)).not.toContain(lost);
+    expect(withheldOf(noLost)).toEqual([[lost, [`${snaredId}#lose`, 'character']]]);
+    expect(noLost.values['conditions.lost.level']).toBe(0);
+    expect(noLost.values['conditions.snared.level']).toBe(1);
+
+    // Withheld, `snared` gives no `lost`; the `lost` stored is had all the same.
+    const noSnared = computed(both, withholding([snaredId]));
+    expect(withheldOf(noSnared)).toEqual([[snaredId, ['character']]]);
+    const had = noSnared.entities.find(({ entity }) => entity.id === lost);
+    expect(had?.from).toEqual(['character']);
+    expect(noSnared.values['conditions.lost.level']).toBe(1);
+  });
+
+  it('changes nothing without the hook, when it names none, or names an id no one gives', () => {
+    expect(talesModule.withheldEntities).toBeUndefined();
+    const plain = computed(ash);
+    expect(plain).not.toHaveProperty('withheld');
+    expect(computed(ash, withholding([]))).toEqual(plain);
+    expect(computed(ash, withholding([lost, 'tales-core:condition/gone']))).toEqual(plain);
+    // A missing id stored and withheld warns as any missing id does.
+    const gone = variant(ash, {
+      state: { ...ash.state, conditions: [{ id: 'tales-core:condition/gone' }] },
+    });
+    const result = computed(gone, withholding(['tales-core:condition/gone']));
+    expect(result).not.toHaveProperty('withheld');
+    expect(codes(result)).toEqual(codes(computed(gone)));
+  });
+
+  it('asks the module after each pass, until the ids it names are those left out', () => {
+    const asked: [string[], unknown][] = [];
+    const system: SystemModule<TalesCharacter, TalesEntity> = {
+      ...talesModule,
+      withheldEntities: (_, result) => {
+        const left = result.withheld?.map(({ entity }) => entity.id) ?? [];
+        asked.push([left, result.values['conditions.weary.level']]);
+        return [weary, weary];
+      },
+    };
+    const result = computed(ash, system);
+    expect(asked).toEqual([
+      [[], 1],
+      [[weary], 0],
+    ]);
+    expect(result.values['skills.sneak.total']).toBe(5);
+  });
+
+  it('stops after its last pass, with a warning, when the ids never settle', () => {
+    expect(MAX_COMPUTE_PASSES).toBe(8);
+    let asked = 0;
+    // Weary is withheld while it lowers the bonus, so each pass undoes the one before.
+    const system: SystemModule<TalesCharacter, TalesEntity> = {
+      ...talesModule,
+      withheldEntities: (_, result) => {
+        asked += 1;
+        return result.values['skills.all.bonus'] === -1 ? [weary] : [];
+      },
+    };
+    const result = computed(ash, system);
+    expect(asked).toBe(8);
+    // Passes 2, 4, 6 and 8 run without weary.
+    expect(withheldOf(result)).toEqual([[weary, ['character']]]);
+    expect(codes(result).at(-1)).toEqual({ code: 'withheldUnsettled', ids: [weary] });
   });
 });

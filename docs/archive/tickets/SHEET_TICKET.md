@@ -2322,3 +2322,165 @@ Measured on 2026-10-29, on `main` at `2da9707`:
   inside its `describe` to the file's top level, unchanged, so the SHEET-21 block reads them too.
 - Found, not fixed: nothing.
 - Nothing for the changelog: no screen reads it yet.
+
+---
+
+### SHEET-61 A condition the character is immune to has no effect
+
+**Hat:** A condition the character is immune to has no effect
+**Depends on:** SHEET-15 (`defenses.conditionImmune.<key>`)
+**Size:** S
+**Screen:** No
+**SPEC:** §5.4 (the `defenses.*` targets), §6.1 steps 1–2 and 6, §8.2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/defenses.ts` — changes: `immuneConditions` (the module's
+`withheldEntities`), `immuneConditionWarnings`, the rule `immuneCondition`.
+- `packages/engine/src/compute.ts` — the hook `withheldEntities`, the passes, `computeOnce`,
+  `MAX_COMPUTE_PASSES`, the warning `withheldUnsettled`.
+- `packages/engine/src/gather.ts` — `gather` takes `without`; `Gathered.withheld`.
+- `packages/system-5e/src/module.ts` — gives the hook and the warnings.
+- `packages/system-5e/src/unconscious.ts` — no `noUnconsciousCondition` for an entry withheld.
+
+#### 2. What is missing now
+
+Measured on `main` at `afc38a5`, 2026-10-29:
+- `git grep -n conditionImmune afc38a5 -- packages/engine/src packages/system-5e/src` finds only
+  `defenses.ts`: the list's name, its entity type and `defensesOf`'s empty list. Nothing reads it.
+- A condition stored for a character immune to it is gathered like any other: its effects apply,
+  its grants give, `@conditions.<key>.level` reads its level. `setConditionLevel` sets it with no
+  word.
+- The module's `suppressedEffects` (ENG-46) runs before any value is computed, so it cannot read
+  `defenses.conditionImmune.<key>`, whose effects may have a `when` or a switch.
+
+#### 3. What it should look like when done
+
+1. Setting a condition the character is immune to is not refused: it is stored (§8).
+2. While the character is immune to its key, a condition it has is left out by `compute()`: not in
+   `entities`, but in `withheld` with each place that gave it. Its effects give nothing, its
+   grants give nothing, and `conditions.<key>.level` reads 0 with no step. The values are those of
+   the character without the condition.
+3. It warns `characterRule` `immuneCondition`, with `{ condition, key }`.
+4. The immunity decides as its path does: switched off, or overridden to 0, the condition applies
+   again. Nothing stored changes when the immunity comes or goes.
+5. A condition another gives (an Incapacitated that a made-up `reeling` gives) is withheld where
+   it is given; the giver applies. Casting no longer warns `incapacitated` for it.
+6. An immunity that a withheld condition gave is gone: immune to `stone`, which is immune to
+   `dazed`, both stored, `dazed` applies.
+7. At 0 hit points, immune to the Unconscious condition: no condition, and no
+   `noUnconsciousCondition` warning; with no entry at all, ENG-62's warning stays.
+8. The core, on Tales: a module's `withheldEntities` names ids by what was computed; `compute()`
+   runs again without them until the ids named are those left out. A pass that names none, or no
+   hook, gives the result of today. Ids that never settle stop after 8 passes, with
+   `withheldUnsettled` and the last pass's ids.
+
+#### 4. How to do it
+
+1. The core: `gather(…, without)` leaves out an id it meets in `without`, after looking it up (so a
+   missing id still warns `missing`), and records it in `withheld`, absent when none was met.
+2. `compute()` runs `computeOnce` with no ids; with the hook, it asks for ids, and while they
+   differ from the last pass's, runs again without them. One pass when the hook names none, so
+   the speed of a character with no immune condition is unchanged.
+3. The module: `immuneConditions` gives the ids of the conditions had or withheld whose key is in
+   `defensesOf(values).conditionImmune`. Each pass computes the immunities from scratch, so an
+   immunity a withheld condition gave is gone in the next pass (§3 item 6).
+4. `immuneConditionWarnings` reads `gathered.withheld`. `unconsciousWarnings` counts a withheld
+   Unconscious entry as there.
+5. No edition difference (§8), so nothing goes in `rulesets/`.
+
+#### 5. Stored data
+
+Nothing stored changes. The condition stays in `state.conditions`; `withheld` is computed.
+
+#### 6. What a person will see
+
+Not a screen. The conditions control (SHEET-42) reads `withheld` and the `immuneCondition`
+warning to show a condition set but without effect.
+
+#### 7. Tests
+
+- `packages/engine/test/compute.test.ts` — `describe('SHEET-61 entities a module withholds')`, 5
+  tests: §3 item 8 on Ash (Weary withheld: every skill 1 higher), a made-up `snared` that gives
+  Lost, a missing id, the passes asked, the unsettled stop.
+- `packages/system-5e/test/immune-conditions.test.ts` — `describe('SHEET-61 a condition the
+  character is immune to')`, 7 tests: §3 items 1–7 on golden C of both editions, with made-up
+  feats and conditions.
+- Control numbers from: the made-up entities, worked out by hand: `dazed` takes 3 from the
+  Dexterity save, `reeling` 2 from the Strength save; Ash's values from ENG-27's `expected.ts`
+  less Weary's −1. No golden value is read or changed.
+
+#### 8. Checked against the source
+
+Sources, read 2026-10-29, the commits SHEET-15 read: SRD 5.1 as 5e-bits/5e-srd-api quotes it at
+`e6edf9a51fad4b59a7e9561fad6c15232caed214` (`packages/5e-database/src/2014/en/5e-SRD-Rules.json`,
+`5e-SRD-Conditions.json`); SRD 5.2.1 as foundryvtt/dnd5e at
+`7bfb3f1c03e107bf65942151ef08d50ddb01ba8a` quotes it
+(`packs/_source/content24/chapter-1/damage-and-healing.yml`, `appendices/rules-glossary.yml`);
+dnd5e's code at the same commit (`module/documents/actor/actor.mjs`). CC-BY-4.0 for the SRDs.
+
+**SRD 5.2.1.** Chapter 1: "Immunity to a condition means you aren't affected by it." Rules
+Glossary (Immunity): "If you have Immunity to a damage type or a condition, it doesn't affect you
+in any way." So its effects and what it gives stop, and a formula reading its level reads 0.
+
+**SRD 5.1.** Its rules text has no paragraph on condition immunity (a search of the rules file for
+"immun" finds objects, diseases and damage thresholds only). Petrified: "The creature is immune to
+poison and disease, although a poison or disease already in its system is suspended, not
+neutralized." So a condition that immunity meets stays, without effect, until the immunity ends:
+it is kept, not removed.
+
+**dnd5e.** One code for both editions. `hasConditionEffect`: "If immune, naturally never
+applied" (`imms.has(status)` gives `false`); `conditionRollReductions` takes
+`this.statuses.difference(immunities)`. `toggleStatusEffect` does not check immunity: the status
+is set and stays on the actor. So setting is not refused, and the condition does nothing.
+
+#### 9. Not in this ticket
+
+- Exhaustion the character is immune to at its highest level: `isDead` (`fatalExhaustion`) reads
+  the stored level without `compute()`, and `compute()` itself asks `isDead`, so it still kills.
+  New row SHEET-64.
+- A withheld condition is not in `entities`, so `conditionsRecoveredOn` keeps it through a rest:
+  "suspended, not neutralized" (§8). No change.
+- Ending concentration on the Incapacitated condition: SHEET-62, which reads the level, 0 while
+  withheld.
+- Showing the withheld condition on the sheet: SHEET-42.
+
+#### 10. Rake check
+
+- **The core names no game:** the core gains a game-free hook (entities a rule leaves out) and
+  `without`, tested on Tales; immunity, `defenses` and conditions are the module's.
+- **Everything is data:** no condition is named in code but Unconscious and Incapacitated, already
+  read by their keys (ENG-62, SHEET-17); any condition key a pack immunizes works.
+- **`compute()` is pure:** each pass is a pure `computeOnce`; the hook reads only the result.
+- **Manual overrides always win:** the immunity is read from the computed values, after overrides
+  (§3 item 4).
+- **Missing is not broken:** a missing id withheld still warns `missing`; ids that never settle
+  warn and give the last pass; nothing throws. Setting is warned, never blocked.
+- **No rules text without an open license:** the test entities are made up; the quotes are
+  CC-BY-4.0 SRD text, and dnd5e's code is quoted for its logic only.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-29, on `main` at `a78a8ee` (SHEET-18, SHEET-21 and OPS-30 landed while
+this ran): `pnpm lint` 233 files, no fixes; `pnpm typecheck` 6 projects, no errors; `pnpm test` 76
+files, 1030 passed, 0 failed, 18.9 s, then the speed project 1 file, 2 passed. Before the rebase,
+on `afc38a5`: 1016 passed, against 1004 without this ticket's tests (+12, 5 core and 7 module).
+Coverage: statements 99.47 % (3384/3402), lines 99.89 % (2968/2971). Not `apps/web`, so no `pnpm
+e2e`.
+
+Differences from the row: the row asked whether setting is refused or warned. It is neither
+refused nor warned by the action: it is stored, and every `compute()` warns `immuneCondition`
+while the immunity holds, so the warning follows the immunity, not the moment of setting.
+
+The first draft of the module test measured golden C's walk speed; golden C has no species, so its
+speed is 0 and a −10 floors to 0 either way. The made-up conditions now change saving throws.
+
+Re-cut: SHEET-64 (XS), wave 3, new (SHEET-18 took SHEET-63 while this ran): exhaustion the character is immune to still kills. SHEET-62's
+note now says setting is unchanged and the level reads 0 while withheld.
+
+Found, not fixed:
+- Exhaustion at its highest level kills a character immune to it (SHEET-64).
+
+Nothing for the changelog.
