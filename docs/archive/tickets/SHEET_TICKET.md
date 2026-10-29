@@ -4725,3 +4725,211 @@ Found, not fixed:
   none until phase 3's import fills them (ADR 011, by phase).
 
 Nothing for the changelog: no page draws the piece yet.
+
+---
+
+### SHEET-38 The dice panel rolls any formula fairly
+
+**Hat:** The dice panel rolls any formula fairly
+**Depends on:** ENG-08 (`rollFormula`, `fairDie`, `randomSourceOf`), ENG-26 (`recordRoll`, the
+roll record), SHEET-37 (`logRoll`, `readRollLog`), SHEET-13 ("I roll myself"), SHEET-11 (the
+`/dice` route, the empty `DicePanel`, the `dice` namespace), SHEET-12 (the Dice roll tile)
+**Size:** M
+**Screen:** Yes — the dice page and the half-screen dice panel; boards `V3-Dice` and
+`V3-SheetDice`; BRIEF Part 2 P9 and its Part 5 row
+**SPEC:** §6.5 (`d` and `к`, "I roll myself", the roll log); ADR 009 item 1; ADR 010 items 4
+and 5; §8.2 (missing is not broken); §9 (i18n)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/shared/DicePanel.tsx` — changes: fills SHEET-11's empty panel; adds
+`DiceSheet`, the half-screen frame, and `EditDiceButton`.
+- `apps/web/src/shared/dice.ts` — new: the panel's pure parts: the standard dice, the formula the
+  picker builds, the fair die, the typed die of "I roll myself", the roll's record.
+- `apps/web/src/db/customDice.ts` — new: the person's own dice, one row of `settings`.
+- `apps/web/src/pages/DicePage.tsx` — changes: the dice page holds the panel.
+- `apps/web/src/pages/PlayerPage.tsx` — changes: the Dice roll tile links to `/dice`.
+- `apps/web/src/locales/en/dice.json` — the panel's strings.
+- Tests: `apps/web/test/dice.test.ts`, `apps/web/test/dice-panel.test.tsx`,
+  `apps/web/e2e/dice.spec.ts`; `apps/web/test/player.test.tsx` and
+  `apps/web/test/navigation.test.tsx` change.
+
+#### 2. What is missing now
+
+Measured on 2026-10-29, at `ed11c6f`:
+
+- `apps/web/src/shared/DicePanel.tsx` returns `null`; `DicePage.tsx` is `<Page title back />`
+  with nothing under it; `locales/en/dice.json` holds only `title`.
+- The Dice roll tile on the player page is not a link and reads "Coming later" (`PlayerPage.tsx`,
+  `{ key: 'dice', icon: Dices }` with no `to`).
+- `grep -rn "rollFormula\|fairDie\|logRoll" apps/web/src` finds only `logRoll` in
+  `db/rollLog.ts`: nothing in the app rolls a die, and nothing writes the roll log.
+- The `rollMyself` setting is stored (SHEET-13) and read by nothing.
+
+#### 3. What it should look like when done
+
+1. `/dice` shows the dice page: header "Dice" with "Edit dice"; under it the panel. The player
+   page's Dice roll tile links to `/dice`, with no "Coming later" and no count.
+2. The panel, top to bottom: "Last roll" (the dice faces, the total large; "No rolls yet" before
+   any); the standard dice d4, d6, d8, d10, d12, d20, d100 as chips, one picked; "Custom:" and the
+   person's own dice; "How many" with − and + and a number field; "Modifier" with − and +; the
+   formula field; "Roll <formula>"; then "History", the earlier rolls of the log.
+3. Picking d6, setting "How many" to 37 and the modifier to 3 writes `37d6 + 3` in the field and
+   on the button. "How many" stays from 1 to 999 (`DICE_LIMITS.count`).
+4. The formula field takes any roll formula: `2к6+1` rolls as `2d6+1` (SPEC §6.5), `2d20kh1 + 1d4`
+   rolls both terms. A formula that does not parse shows why, in words, under the field, and the
+   Roll button is off. Picking a die or changing a stepper writes the built formula again.
+5. Each roll uses `fairDie(randomSourceOf((a) => crypto.getRandomValues(a)))`; over 70,000 rolls
+   of a d7 that die passes the engine's chi-square test at p = 10^-9 (threshold 53.34).
+6. A roll is a record `recordRoll` builds (one breakdown entry, the formula), logged with
+   `logRoll`: on the dice page with no `actorId`; on a sheet with the character's id. The last
+   roll shows each term's faces, a die a `kh`/`kl` term drops struck through, and the total; its
+   total is the sum of the kept faces plus the modifier.
+7. A path in a typed formula that the panel cannot read (`1d4 + @level` on the dice page) counts
+   as 0, and the last roll says so; nothing throws (SPEC §8.2).
+8. "Edit dice" turns on the edit mode: a faces field (2 to 1000, `DICE_LIMITS.faces`) with "Add
+   die", and a remove button on each custom die. A custom d7 is kept on the device and is there
+   after a reload; a standard die or one already there is not added twice.
+9. With "I roll myself" on, the panel shows one number field per die of the formula, labelled
+   with its die, and the button reads "Count <formula>". It is off until every field holds a face
+   from 1 to that die's faces. `1d20 + 2` with 14 typed gives 16, logged as a roll.
+10. "History" lists the log's earlier rolls, newest first: formula and total. A roll just made
+    moves the last one into it.
+11. `DiceSheet` is the half-screen frame of ADR 009 item 1: a dialog over a scrim, at most half the
+    screen high (`max-h-[50dvh]`), the title "Dice" with "Edit dice", the panel scrolling inside;
+    the scrim, the close button and Escape close it.
+12. Nothing is wider than 360 px. Dark by default; light the same.
+
+#### 4. How to do it
+
+1. `dice.ts`: `STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100]`; `builtFormula(count, faces, modifier)`
+   (`37d6 + 3`, `1d20 - 1`, `2d8`); `panelDie()` over `crypto.getRandomValues`; `typedDie(faces)`,
+   a die that hands out the typed faces in order; `diceFields(parsed)`, one field per die of
+   `diceOf`, in written order; `rollWith({ formula, read, die, roller, now, id })` → the record
+   and its warnings, from `recordRoll`.
+2. Typed faces go out in the order the formula is written. A term in a `?:` branch the roll does
+   not take is still asked for; the dice the roll reaches take the first faces typed. The panel's
+   own controls never build a `?:`. Technical choice: the engine's `DieSource` names only the
+   faces, not the term.
+3. `customDice.ts`: the row `{ key: 'customDice', value: number[] }` in `settings`, read by
+   `readCustomDice()` (whole numbers 2 to 1000, no standard die, no repeat, sorted; anything else
+   is dropped and named, not thrown) and written by `saveCustomDice(list)`. `readSettings` leaves
+   a key it does not know as it is, so the row sits beside the display choices.
+4. `DicePanel({ roller, read, editing })`: reads the custom dice and the log on open; keeps
+   `faces`, `count`, `modifier` and `typed` (the field's text when the person typed one); the
+   field shows `typed ?? builtFormula(...)`. The faces boxes are `<Slot name="dice">`, the chips
+   `<Part name="chip">`, the buttons `<Part name="button">`/`button-secondary`.
+5. The roller: a sheet passes `{ actorId, name }`; the dice page passes none, and the record's
+   `by.name` is the `dice:roller` text ("Player"). Technical choice: `by.name` must hold visible
+   text (ENG-26).
+6. Words for a parse error and a warning come from the error's `code` (`errors.<code>`,
+   `warnings.<code>`), never from the engine's `message`, which is for logs.
+7. `DiceSheet({ open, onClose, roller, read })`: `role="dialog"`, `aria-modal`, the `sheet` part
+   on the `surface` colour, the scrim `bg-scrim`. The sheet's dice button that opens it is
+   SHEET-30's.
+8. `DicePage`: `<Page title back={paths.player} action={<EditDiceButton />}>` and the panel.
+
+#### 5. Stored data
+
+- `rollLog`: rows written by `logRoll` (SHEET-37), shape version 1, unchanged.
+- `settings`: a new row keyed `customDice`, a list of whole numbers. No `schemaVersion` and no
+  migration: a settings row is checked as it is read and a bad value reads as the default, as
+  SHEET-13 does for every choice; nothing was stored under this key before. No Dexie version bump.
+- `CharacterDoc`, `ContentPack` and `RollRecord` do not change.
+
+#### 6. What a person will see
+
+- From the player page's Dice roll tile, or `/dice`: header (back to the player page, "Dice",
+  "Edit dice"), then the panel of §3 item 2. From a sheet (once SHEET-30 adds the button): the same
+  panel in the half-screen frame.
+- Empty log: "No rolls yet" in the Last roll card, no History.
+- A formula that does not parse: the reason under the field; the button off.
+- "I roll myself": the dice fields above the button, which reads "Count …".
+- English keys in `dice`: `title` "Dice", `edit` "Edit dice", `editDone` "Done", `lastRoll` "Last
+  roll", `noRolls` "No rolls yet", `custom` "Custom:", `noCustom` "None yet", `newFaces` "Faces",
+  `addDie` "Add die", `removeDie` "Remove {{die}}", `howMany` "How many", `modifier` "Modifier",
+  `less` "One less", `more` "One more", `formula` "Formula", `roll` "Roll {{formula}}", `count`
+  "Count {{formula}}", `typed` "What your dice show", `typedDie` "{{die}}, die {{n}}", `history`
+  "History", `total` "Total", `dropped` "dropped", `roller` "Player", `close` "Close", and
+  `errors.<code>` and `warnings.<code>` for each code.
+
+#### 7. Tests
+
+- `apps/web/test/dice.test.ts` — `SHEET-38`: `builtFormula`; the typed die; `diceFields`; a roll's
+  record and its total (`37d6 + 3` with a scripted die); a missing path warns and counts 0; the
+  chi-square of `panelDie()`; `readCustomDice`/`saveCustomDice` (kept, sorted, a bad row dropped
+  and named).
+- `apps/web/test/dice-panel.test.tsx` — the panel's first markup (the chips, `1d20`, "No rolls
+  yet"); `DiceSheet` open and closed.
+- `apps/web/test/player.test.tsx` — Characters and Dice roll are links; the dice tile has no count.
+- `apps/web/e2e/dice.spec.ts` — §3 items 1–4, 6, 8–10, 12 in Chromium at 360 × 800; screenshots.
+- Control numbers from: the chi-square threshold of `packages/engine/test/dice.test.ts` (scipy
+  `chi2.ppf(1 - 1e-9, 6)` = 53.34); the faces the scripted die gives; `DICE_LIMITS`.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts. `d` and `к` both parse (ENG-08, `formula.ts` `DICE`).
+
+#### 9. Not in this ticket
+
+- The sheet's dice button that opens `DiceSheet`: SHEET-30 (the sheet's frame does not exist yet).
+- The roll dialog of a number on the sheet, advantage, criticals: SHEET-39.
+- The throw that looks real, dice skins ("Skins ★" on `V3-Dice`), the "Flat dice" setting:
+  the dice phase (ADR 009 item 10, ADR 005 item 11).
+- The person's own modifiers as marked `own` entries of a sheet's roll (ADR 009 item 11): the
+  dice phase; the panel's modifier is part of its own formula.
+- Sending a roll over the table link, secret rolls: the table link's phase.
+- Vibration on Android (SPEC §6.5): phase 7.
+
+#### 10. Rake check
+
+- **Formulas never run code**: the panel passes text to `parseRoll`/`recordRoll`; no `eval`.
+- **Missing is not broken**: a formula that does not parse shows a reason; a missing path counts
+  0 with a warning; a bad `customDice` row reads as none and is named.
+- **The engine is pure**: the random source is the app's, passed in; the engine is not changed.
+- **No look written in a component**: token classes, `<Part>` and `<Slot>`; lint is green.
+- **No user-facing string literal**: every string is a `dice` key; formulas and numbers are data.
+- **The dice parser accepts both `d` and `к`**: the field goes through `parseRoll`; e2e types `к`.
+- **No external requests**: IndexedDB and `crypto` only.
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on top of SHEET-31 (`d1cd153`; built on `ed11c6f`, then SHEET-31
+landed and the gate ran again):
+
+- `pnpm lint`: `Checked 286 files`, 0 errors. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: `Test Files 91 passed (91)`, `Tests 1180 passed (1180)`, 19.63 s (19 new: 15 in
+  `dice.test.ts`, 4 in `dice-panel.test.tsx`; `player.test.tsx` and `navigation.test.tsx`
+  changed, not added); lines covered 99.9 % (3026 / 3029). The second suite
+  `Tests 2 passed (2)`, unchanged.
+- `pnpm e2e`: `27 passed (17.9s)` on `pixel-7` (2 new in `dice.spec.ts`; `navigation.spec.ts`
+  now counts 4 links and 4 "Coming later").
+- The tests are live: with `builtFormula` dropping the modifier, `dice.test.ts` gave
+  `1 failed | 14 passed (15)`.
+- The chi-square of `panelDie()` over 70,000 rolls of a d7 is under 53.34 on every run.
+- Screenshots at 360 × 800: the empty page (dark); 37d6 + 3 rolled, 37 faces and the total
+  (dark); `2к20kh1 + 1` with the dropped d20 greyed and struck, History, a parse error, the edit
+  mode with a d7 (dark); "I roll myself" with 14 typed (light). `scrollWidth` 360 on each.
+- Differs from the boards: one panel serves both places, so the dice page draws the builder of
+  `V3-SheetDice` (die chips, "How many", the formula field) instead of `V3-Dice`'s "tap a die to
+  add it" chips, and the sheet panel gets `V3-Dice`'s "Last roll" card. The modifier is a −/+
+  stepper, not a "+ Modifier" button. The total sits under the faces, not beside them: beside
+  them the 37 faces fit 4 to a row in 193 px (measured), under them 7. No "Skins ★" (the dice
+  phase).
+- Decided here (ADR 002): the roller off a sheet is named "Player" (`dice:roller`); custom dice
+  are one `settings` row; typed faces go out in written order (§4 item 2); a parse error's
+  position is shown counted from 1.
+- Not proved in a browser: `DiceSheet` is drawn by nothing yet. Its markup is tested
+  (`dice-panel.test.tsx`); SHEET-30 mounts it and its e2e taps it.
+
+Found, not fixed:
+
+- The SHEET-38 row's note said the panel's "History" is on board `V3-SheetDice`; the "History"
+  there is the skill on the sheet behind the panel. The panel's History is built anyway, as the
+  note asked.
+
+Changelog: "The dice page rolls any count of any die, a modifier, or any formula typed with d or
+к, fairly; it keeps the person's own dice, shows the last roll's faces and the earlier rolls, and
+with "I roll myself" on counts the faces the person types."

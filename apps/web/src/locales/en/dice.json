@@ -1,3 +1,46 @@
 {
-  "title": "Dice"
+  "title": "Dice",
+  "edit": "Edit dice",
+  "editDone": "Done",
+  "lastRoll": "Last roll",
+  "noRolls": "No rolls yet",
+  "custom": "Custom:",
+  "noCustom": "None yet",
+  "newFaces": "Faces",
+  "addDie": "Add die",
+  "removeDie": "Remove {{die}}",
+  "die": "d{{faces}}",
+  "howMany": "How many",
+  "fewerDice": "One die fewer",
+  "moreDice": "One die more",
+  "modifier": "Modifier",
+  "modifierDown": "Modifier down",
+  "modifierUp": "Modifier up",
+  "formula": "Formula",
+  "roll": "Roll {{formula}}",
+  "count": "Count {{formula}}",
+  "typed": "What your dice show",
+  "typedDie": "{{term}}, die {{n}}",
+  "history": "History",
+  "total": "Total",
+  "dropped": "dropped",
+  "roller": "Player",
+  "close": "Close",
+  "errors": {
+    "unexpected": "Something here does not read as a formula, at character {{at}}.",
+    "unknownName": "There is no function called {{name}}.",
+    "argumentCount": "{{name}} takes a different number of values.",
+    "badPath": "{{path}} is not a name a formula can read.",
+    "tooLong": "The formula is longer than {{limit}} characters.",
+    "tooDeep": "The formula nests deeper than {{limit}} levels.",
+    "diceNotAllowed": "Dice are not allowed here.",
+    "diceCount": "{{term}}: a roll holds {{min}} to {{max}} dice.",
+    "diceFaces": "{{term}}: a die has {{min}} to {{max}} faces.",
+    "diceKeep": "{{term}}: it keeps {{min}} to {{max}} dice."
+  },
+  "warnings": {
+    "missingPath": "@{{path}} is not known here; it counted as 0.",
+    "badFace": "{{term}}: a die showed no face; it counted as 0.",
+    "other": "Part of the formula could not be read; it counted as 0."
+  }
 }

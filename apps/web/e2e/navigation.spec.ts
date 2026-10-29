@@ -129,9 +129,13 @@ test('SHEET-12 the player page shows its six sections', async ({ page }, testInf
     await expect(tile).toBeVisible();
     expect((await tile.locator('..').boundingBox())?.height).toBeGreaterThanOrEqual(44);
   }
-  // Only Characters opens; the other five are coming later.
-  await expect(page.getByRole('link')).toHaveCount(3);
-  await expect(main.getByText(en.common.comingLater)).toHaveCount(5);
+  // Characters and Dice roll open (SHEET-38); the other four are coming later.
+  await expect(page.getByRole('link')).toHaveCount(4);
+  await expect(main.getByText(en.common.comingLater)).toHaveCount(4);
+  await expect(page.getByRole('link', { name: en.player.dice.title })).toHaveAttribute(
+    'href',
+    `${APP_BASE_PATH}dice`,
+  );
   const characters = page.getByRole('link', { name: en.player.characters.title });
   await expect(characters).toHaveAttribute('href', `${APP_BASE_PATH}characters`);
   await expect(characters).toContainText('No characters yet');

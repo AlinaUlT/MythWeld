@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-38 · The dice page rolls any count of any die, a modifier, or any formula
+  typed with d or к, fairly; it keeps the person's own dice, shows the last roll's faces and the
+  earlier rolls, and with "I roll myself" on counts the faces the person types.
 - 2026-10-29 · SHEET-13 · Settings chooses dark or light colours, stops animations, picks feet
   or metres and pounds or kilograms, and turns on "I roll myself"; each choice is kept on the
   device and already holds when the app opens.

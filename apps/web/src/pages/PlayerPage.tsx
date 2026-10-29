@@ -1,6 +1,6 @@
 // SHEET-12: the player page's six sections (ADR 013 item 17, board V3-Player). Characters opens
 // the list and shows how many are stored, with no limit (ADR 005 item 2); the other five open with
-// their phases (Dice roll with SHEET-38) and show as coming later until then.
+// their phases and show as coming later until then. SHEET-38: Dice roll opens the dice page.
 import {
   Bookmark,
   BookOpen,
@@ -31,7 +31,7 @@ export const sections: readonly Section[] = [
   { key: 'characters', icon: Users, to: paths.characters },
   { key: 'sources', icon: BookOpen },
   { key: 'library', icon: Search },
-  { key: 'dice', icon: Dices },
+  { key: 'dice', icon: Dices, to: paths.dice },
   { key: 'quickRules', icon: ScrollText },
   { key: 'bookmarks', icon: Bookmark },
 ];
@@ -50,7 +50,9 @@ export function PlayerSections({ characters }: { characters: number | undefined 
             <span className="min-h-[1lh] text-12 text-muted">
               {to === undefined
                 ? tc('comingLater')
-                : characters !== undefined && t('characters.count', { count: characters })}
+                : key === 'characters' &&
+                  characters !== undefined &&
+                  t('characters.count', { count: characters })}
             </span>
           </>
         );

@@ -45,8 +45,11 @@ describe('SHEET-12 the player page', () => {
     ]);
   });
 
-  it('links only Characters, to the list', () => {
-    expect(links(render(0))).toEqual([['/characters', ['Characters', 'No characters yet']]]);
+  it('links Characters to the list, and Dice roll to the dice page (SHEET-38)', () => {
+    expect(links(render(2))).toEqual([
+      ['/characters', ['Characters', '2 characters']],
+      ['/dice', ['Dice roll', '']],
+    ]);
   });
 
   it('counts the stored characters, with no limit', () => {
@@ -60,11 +63,14 @@ describe('SHEET-12 the player page', () => {
     expect(lines(render(undefined))[0]).toEqual(['Characters', '']);
   });
 
-  it('shows the other five as coming later', () => {
-    expect(
-      lines(render(2))
-        .slice(1)
-        .map(([, line]) => line),
-    ).toEqual(Array(5).fill(en.common.comingLater));
+  it('shows the four sections not open yet as coming later', () => {
+    expect(lines(render(2)).map(([, line]) => line)).toEqual([
+      '2 characters',
+      en.common.comingLater,
+      en.common.comingLater,
+      '',
+      en.common.comingLater,
+      en.common.comingLater,
+    ]);
   });
 });

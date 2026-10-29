@@ -239,7 +239,7 @@ chats never claim one version number.
 | SHEET-35 | The AC breakdown pins its base calculation | XS | 🔲 |
 | SHEET-36 | The choices badge opens every pending choice | M | 🔲 |
 | SHEET-37 | Rolls are kept in the roll log | S | ✅ 2026-10-29 |
-| SHEET-38 | The dice panel rolls any formula fairly | M | 🔲 |
+| SHEET-38 | The dice panel rolls any formula fairly | M | ✅ 2026-10-29 |
 | SHEET-39 | Tapping a number rolls it in the roll dialog | M | 🔲 |
 | SHEET-40 | The number pad changes the hit points | M | 🔲 |
 | SHEET-41 | Concentration shows until it ends | XS | 🔲 |
@@ -295,8 +295,10 @@ chats never claim one version number.
   comes from `Computed`. For the waves, the row gives each tab one empty file per section, an
   empty file for each panel the sheet opens (the number pad, the Rest frames, the "⋯" menu, the
   choices list), and one number component whose tap rolls (SHEET-39) and whose long press opens
-  the breakdown (SHEET-33). Found by SHEET-23: the "Undo" toast (`ToastHost`) sits 16 px above
-  the page's bottom edge; on the sheet it sits above the dock, as board `V3-Features` draws it.
+  the breakdown (SHEET-33). Found by SHEET-38: the dice button opens `DiceSheet`
+  (`apps/web/src/shared/DicePanel.tsx`) with the character as `roller`; the e2e taps it. Found
+  by SHEET-23: the "Undo" toast (`ToastHost`) sits 16 px above the page's bottom edge; on the
+  sheet it sits above the dock, as board `V3-Features` draws it.
 - **SHEET-32** — board `V3-Sheet`: the stats, the saves, the skills with their proficiency, the
   passives. Found by ENG-43: a skill's stat is `Computed.keys['skills.<key>.ability']`, with steps
   naming the skill, each effect and a manual edit; the sheet shows that key, never the skill's own
@@ -320,13 +322,6 @@ chats never claim one version number.
   `Computed.pendingKeys` (`{ path, options }`); the answer is written to
   `systemData.species.size`, not to `choices`. A stored size the species does not offer warns
   `stepRule` `sizeNotOffered`.
-- **SHEET-38** — ADR 009 item 1, ADR 010 items 4 and 5, boards `V3-SheetDice` and `V3-Dice`: the
-  half-screen panel on the sheet, and the dice page; any count of dice; custom dice. Found by
-  ENG-08: the engine has no random source of its own (lint refuses `Math.random` in it). The panel
-  passes `fairDie(randomSourceOf((a) => crypto.getRandomValues(a)))` to `rollFormula`; "I roll
-  myself" (SPEC §6.5) passes the faces the person typed as the die. The throw that looks real and
-  dice skins are the dice phase's. Found by SHEET-37: each roll goes to `logRoll`
-  (`apps/web/src/db/rollLog.ts`), and the panel's "History" reads `readRollLog`.
 - **SHEET-39** — BRIEF P5 sheet 1, board `V3-Roll`. Found by ENG-34: each d20 test's roll mode is
   a number path, 1 advantage, −1 disadvantage, 0 neither, with a step per source:
   `checks.<stat>.mode`, `abilities.<stat>.saveMode`, `skills.<key>.mode`, `init.mode`,
