@@ -226,3 +226,16 @@ describe('SHEET-30 tabs', () => {
     expect(draw(sheet, <NumberPad mode="damage" onClose={noop} />)).toBe('');
   });
 });
+
+describe('SHEET-68 squares', () => {
+  // SRD 5.2.1, "Playing on a Grid": each square is 5 feet; a Speed of 30 feet is 6 squares.
+  it('shows feet as whole 5-foot squares', () => {
+    expect(shownDistance(30, 'sq')).toEqual({ value: 6, unit: 'sq' });
+    expect(shownDistance(5, 'sq')).toEqual({ value: 1, unit: 'sq' });
+    expect(shownDistance(0, 'sq')).toEqual({ value: 0, unit: 'sq' });
+    // A leftover under 5 feet enters no square.
+    expect(shownDistance(25, 'sq')).toEqual({ value: 5, unit: 'sq' });
+    expect(shownDistance(4, 'sq')).toEqual({ value: 0, unit: 'sq' });
+    expect(formatNumber(30, 'distance', t, 'sq')).toBe('6 sq');
+  });
+});

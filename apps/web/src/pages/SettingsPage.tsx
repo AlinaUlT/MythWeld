@@ -25,7 +25,10 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 type ChoiceKey = { [K in SettingKey]: Settings[K] extends string ? K : never }[SettingKey];
 type SwitchKey = { [K in SettingKey]: Settings[K] extends boolean ? K : never }[SettingKey];
 
-/** One value of a choice from a short list, as radio buttons drawn side by side. */
+/**
+ * One value of a choice from a short list, as radio buttons drawn side by side. When they do not
+ * fit beside the label at 360 px (three distance units, SHEET-68), they move under it.
+ */
 function Choice<K extends ChoiceKey>({
   setting,
   label,
@@ -39,7 +42,7 @@ function Choice<K extends ChoiceKey>({
   // Each list is one choice's values, so its entries are that choice's type.
   const values = settingValues[setting] as readonly string[] as readonly Settings[K][];
   return (
-    <fieldset className={row}>
+    <fieldset className={`${row} flex-wrap`}>
       <legend className="sr-only">{label}</legend>
       <span aria-hidden className="grow text-15">
         {label}

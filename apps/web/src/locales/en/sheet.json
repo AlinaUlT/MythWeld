@@ -36,7 +36,8 @@
   },
   "distance": {
     "ft": "{{value, number}} ft",
-    "m": "{{value, number}} m"
+    "m": "{{value, number}} m",
+    "sq": "{{value, number}} sq"
   },
   "noValue": "—",
   "hp": {

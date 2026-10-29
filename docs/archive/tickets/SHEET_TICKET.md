@@ -5294,3 +5294,41 @@ Changelog: "A character opens its sheet: the name, class and level, edition, AC,
 speed, proficiency, passive Perception and, for a caster, the spell save DC and attack pinned
 at the top; hit points with temporary ones in their own colour, Damage, Heal and eight tabs
 pinned at the bottom. The tabs are still empty."
+
+---
+
+### SHEET-68 Distances can be shown in squares · XS
+
+**Hat:** Show a distance in squares
+**Where:** `apps/web/src/settings/units.ts` — `shownDistance`; `settings.ts` — `settingValues.distance`
+**Depends on:** SHEET-13, SHEET-30
+**Screen:** P10 Settings (not drawn yet, BRIEF Part 5)
+
+**What it should look like when done:**
+1. `settingValues.distance` is `['ft', 'm', 'sq']`; feet stay the default. No stored row changes.
+2. Settings shows a third distance option, "Squares".
+3. `shownDistance(30, 'sq')` is `{ value: 6, unit: 'sq' }`; the sheet writes it "6 sq".
+4. One square is 5 feet, fixed. A leftover under 5 feet is dropped: 25 ft is 5 sq, 4 ft is 0 sq.
+5. Settings stays 360 px wide at 360×800.
+
+**Tests:** `apps/web/test/sheet.test.tsx` (`SHEET-68 squares`) — 30, 5, 0, 25 and 4 feet in
+squares, and `formatNumber` writing "6 sq"; `apps/web/test/settings.test.tsx` — the list and seven
+radios; `apps/web/e2e/sheet.spec.ts` — Squares picked in Settings, golden B's speed reads "6 sq".
+Control numbers: SRD 5.2.1, "Playing on a Grid" (PDF page 13): "Squares. Each square represents 5
+feet." and "a Speed of 30 feet translates into 6 squares". SRD 5.1 has no grid section (its rule
+sections checked: none names a grid). Foundry dnd5e `system.json`: `"grid": { "distance": 5,
+"units": "ft" }`.
+
+**What came out of it:**
+- Decided here (ADR 002): a square is 5 feet and a person cannot change it; both rulesets' grid
+  is 5 feet, and nothing in SPEC §7.5 asks for another size. Rounding is down, because SRD 5.2.1
+  moves Speed "in 5-foot segments".
+- `ShownDistance.unit` is now `Settings['distance']`, so a new unit is one list entry.
+- Differed from §3: with three options the Distance row was 363 px wide at 360 px (the SHEET-13
+  e2e caught it). `Choice` in `SettingsPage.tsx` now wraps: the options move under the label when
+  they do not fit. Weight and Colours stay on one line (screenshot shown in the chat).
+- Gate: lint 350 files clean; typecheck clean; `pnpm test` 1223 + 2 passed, 0 failed, 23.2 s
+  (1 test new); `pnpm e2e` 37 passed, 0 failed, 24.7 s (1 new).
+- Found, not fixed: BRIEF P10's design prompt still names "feet or metres"; the screen is not
+  drawn yet, and the prompt is the owner's text.
+- Changelog: "Settings can show distances in squares of 5 feet; the sheet's speed follows."

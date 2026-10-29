@@ -9,7 +9,7 @@ export const settingValues = {
   theme: ['dark', 'light'],
   stillMotion: [false, true],
   // Shown units only: stored units stay feet and pounds (SPEC §7.5).
-  distance: ['ft', 'm'],
+  distance: ['ft', 'm', 'sq'],
   weight: ['lb', 'kg'],
   // "I roll myself" (SPEC §6.5): the person types what their own dice show.
   rollMyself: [false, true],

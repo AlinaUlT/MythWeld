@@ -49,7 +49,7 @@ describe('SHEET-13 the display choices', () => {
     expect(settingValues).toEqual({
       theme: ['dark', 'light'],
       stillMotion: [false, true],
-      distance: ['ft', 'm'],
+      distance: ['ft', 'm', 'sq'],
       weight: ['lb', 'kg'],
       rollMyself: [false, true],
     });
@@ -158,6 +158,7 @@ describe('SHEET-13 the display choices', () => {
       s.units.weight,
       s.units.ft,
       s.units.m,
+      s.units.sq,
       s.units.lb,
       s.units.kg,
       s.dice.title,
@@ -178,7 +179,7 @@ describe('SHEET-13 the display choices', () => {
       'weight=lb',
       'theme=dark',
     ]);
-    expect(html.match(/<input type="radio"/g)).toHaveLength(6);
+    expect(html.match(/<input type="radio"/g)).toHaveLength(7);
     expect(html.match(/role="switch" aria-checked="false"/g)).toHaveLength(2);
   });
 });

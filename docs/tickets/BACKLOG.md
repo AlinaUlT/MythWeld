@@ -205,7 +205,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-11 | The start page replaces the bottom bar | M | ✅ 2026-10-29 |
 | SHEET-12 | The player page shows its six sections | S | ✅ 2026-10-29 |
 | SHEET-13 | Settings keep the person's display choices | S | ✅ 2026-10-29 |
-| SHEET-68 | Distances can be shown in squares | XS | 🔲 |
+| SHEET-68 | Distances can be shown in squares | XS | ✅ 2026-10-29 |
 | **Rules the screens need** | **engine and module, no screen** | | |
 | SHEET-14 | An unmet prerequisite gives a warning | S | ✅ 2026-10-28 |
 | SHEET-15 | Resistances, immunities, vulnerabilities are computed from effects | S | ✅ 2026-10-28 |
@@ -401,12 +401,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   refuses as `changed` where a later change wrote over its place.
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
-- **SHEET-68** — found by SHEET-13: SPEC §7.5 lists squares beside feet and metres; the SHEET-13
-  row and BRIEF P10 named feet or metres, so Settings offers those two. The row adds `sq` to
-  `settingValues.distance` (`apps/web/src/settings/settings.ts`) and its label; no stored row
-  changes. How many feet one square is, and whether a person can change it, is decided in the row.
-  Found by SHEET-30: the sheet shows a distance through `shownDistance`
-  (`apps/web/src/settings/units.ts`); squares join it there.
 
 ---
 

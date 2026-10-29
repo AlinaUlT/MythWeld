@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-68 · Settings can show distances in squares of 5 feet; the sheet's speed
+  follows.
 - 2026-10-29 · SHEET-30 · A character opens its sheet: the name, class and level, edition, AC,
   initiative, speed, proficiency, passive Perception and, for a caster, the spell save DC and
   attack pinned at the top; hit points with temporary ones in their own colour, Damage, Heal and

@@ -193,3 +193,13 @@ test('SHEET-30 a pack the character names that is not on the device is named', a
     en.sheet.notInstalled.replace('{{id}}', 'my-pack'),
   );
 });
+
+test('SHEET-68 the sheet shows speed in squares once Settings picks them', async ({ page }) => {
+  await saveRows(page, [goldenB]);
+  await page.goto('settings');
+  await page.getByText(en.settings.units.sq, { exact: true }).tap();
+  await expect(page.getByRole('radio', { name: en.settings.units.sq })).toBeChecked();
+  await page.goto(`characters/${goldenB.id}`);
+  // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
+  await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
+});
