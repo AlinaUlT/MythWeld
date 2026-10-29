@@ -11,6 +11,10 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-39 · Tapping initiative or a spell attack on the sheet opens the roll dialog:
+  choose advantage, disadvantage or a situational effect (or, in 2014 rules, spend inspiration),
+  then roll. The roll is fair, counts typed faces with "I roll myself", and goes to the roll log; a
+  roll of initiative interrupts a knock-out's short rest.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.

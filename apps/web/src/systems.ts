@@ -4,9 +4,12 @@
 // SHEET-24: what My characters names under a character's name is its module's too.
 // SHEET-27: the manual form makes a character through its system's maker, with its rules bases.
 // SHEET-30: so is what the sheet's header and dock read, and the module `compute()` runs.
-import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
-import type { Opened } from '@grimoire/schema';
+import type { Computed, ContentIndex, LogStamp, SystemModule } from '@grimoire/engine';
+import type { LogEntry, Opened } from '@grimoire/schema';
 import {
+  attackOutcome,
+  criticalDamage,
+  d20Formula,
   EDITION_RULES,
   type EditionTerms,
   FIFTH_EDITION_HEADER_NUMBERS,
@@ -27,8 +30,15 @@ import {
   type MadeByHand,
   type ManualCharacterAsk,
   madeByHand,
+  modeSigns,
   openFifthEditionCharacter,
   openFifthEditionPack,
+  rollInitiative,
+  rollModeOf,
+  rollTestOf,
+  rulesOf,
+  situationalModes,
+  spendInspiration,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
@@ -114,6 +124,39 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
 
 export type { MadeByHand, ManualCharacterAsk };
 
+/** What a roll's action gives: the entry to record, or why there is none (`code` is for the screen). */
+export type RollAction =
+  | { ok: true; entry: LogEntry }
+  | { ok: false; code: string; message: string };
+
+/** SHEET-39: how a system's numbers roll in the roll dialog: its d20 tests and what changes them. */
+export interface SheetRolls {
+  /** The test the number at `path` rolls; none when it rolls nothing. */
+  test: typeof rollTestOf;
+  /** The signs the sheet's own sources give the test's mode. */
+  signs: typeof modeSigns;
+  /** What the signs add up to: 1 advantage, −1 disadvantage, 0 neither. */
+  mode: typeof rollModeOf;
+  /** The effects the person may switch on for one roll. */
+  situational: typeof situationalModes;
+  /** The d20 a roll of `mode` rolls. */
+  d20: typeof d20Formula;
+  /** What a natural d20 face does to an attack roll. */
+  outcome: typeof attackOutcome;
+  /** An attack's damage formula for a critical hit. */
+  critical: typeof criticalDamage;
+  /** What inspiration does to a roll in this character's rules, and how much it holds. */
+  inspiration(character: AppCharacter): { held: number; use: 'advantage' | 'reroll' };
+  /** The entry that spends one inspiration. */
+  spend(character: AppCharacter, stamp: LogStamp): RollAction;
+  /** The entry that rolling initiative makes, if it changes anything. */
+  initiative(
+    character: AppCharacter,
+    index: ContentIndex<FifthEditionEntity>,
+    stamp: LogStamp,
+  ): RollAction;
+}
+
 /** What the sheet reads of one system: its module, and what its header and dock name. */
 export interface SheetSystem {
   module: SystemModule<AppCharacter, FifthEditionEntity>;
@@ -124,6 +167,8 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** How its numbers roll (SHEET-39). */
+  rolls: SheetRolls;
 }
 
 /** Each system's sheet, by system id. */
@@ -134,6 +179,21 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    rolls: {
+      test: rollTestOf,
+      signs: modeSigns,
+      mode: rollModeOf,
+      situational: situationalModes,
+      d20: d20Formula,
+      outcome: attackOutcome,
+      critical: criticalDamage,
+      inspiration: (character) => ({
+        held: character.systemData.state.inspiration,
+        use: rulesOf(character).inspiration.use,
+      }),
+      spend: spendInspiration,
+      initiative: rollInitiative,
+    },
   },
 };
 

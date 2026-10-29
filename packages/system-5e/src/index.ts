@@ -33,6 +33,7 @@ export * from './module';
 export * from './origin';
 export * from './pack';
 export * from './rests';
+export * from './roll-tests';
 export * from './rolls';
 export * from './rulesets';
 export * from './sheet-header';

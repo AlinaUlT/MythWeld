@@ -70,7 +70,7 @@ export function ToastHost() {
   return (
     <div
       role="status"
-      className="pointer-events-none fixed inset-x-4 bottom-[calc(var(--dock-height,0px)+16px)]"
+      className="pointer-events-none fixed inset-x-4 z-20 bottom-[calc(var(--dock-height,0px)+16px)]"
       onFocus={() => setHeld(true)}
       onBlur={() => setHeld(false)}
     >

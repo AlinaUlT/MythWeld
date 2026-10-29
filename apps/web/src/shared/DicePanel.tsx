@@ -45,7 +45,7 @@ export function warningKeyOf(code: string): WarningKey {
 }
 
 /** Whether `text` is a face of a die of `faces` faces. */
-function isFace(text: string, faces: number): boolean {
+export function isFace(text: string, faces: number): boolean {
   const face = Number(text);
   return text.trim() !== '' && Number.isInteger(face) && face >= 1 && face <= faces;
 }
@@ -94,7 +94,7 @@ export function facesOf(record: RollRecord): { key: string; face: number; kept: 
 }
 
 /** Each term's faces as dice; a die the term drops is struck through. */
-function Faces({ record }: { record: RollRecord }) {
+export function Faces({ record }: { record: RollRecord }) {
   const { t } = useTranslation('dice');
   return (
     <span className="flex min-w-0 flex-wrap gap-1.5">

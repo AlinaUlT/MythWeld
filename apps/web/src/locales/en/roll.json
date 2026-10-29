@@ -1,1 +1,46 @@
-{}
+{
+  "title": "Roll",
+  "close": "Close",
+  "done": "Done",
+  "noRoll": "This number does not roll.",
+  "missing": "Missing: {{id}}",
+  "titles": {
+    "check": "{{name}} check",
+    "save": "{{name}} saving throw",
+    "skill": "{{name}}",
+    "init": "Initiative",
+    "weaponAttack": "{{name}} attack",
+    "spellAttack": "Spell attack"
+  },
+  "d20": "d20",
+  "formula": "{{dice}} {{sign}} {{value}}",
+  "sign": {
+    "plus": "+",
+    "minus": "−"
+  },
+  "advantage": "Advantage",
+  "disadvantage": "Disadvantage",
+  "inspiration": "Spend inspiration for advantage ({{count}} held)",
+  "situational": "{{hint}} ({{mode}})",
+  "mode": {
+    "advantage": "advantage",
+    "disadvantage": "disadvantage",
+    "normal": "no advantage or disadvantage"
+  },
+  "fromSheet": "The sheet gives {{mode}}.",
+  "rollingWith": "Rolling with {{mode}}.",
+  "roll": "Roll",
+  "rollAgain": "Roll again",
+  "count": "Count",
+  "countAgain": "Count again",
+  "outcome": {
+    "criticalHit": "Critical hit",
+    "automaticMiss": "Automatic miss"
+  },
+  "damageOf": "{{name}} damage",
+  "damageDice": "Damage dice",
+  "criticalDice": "Critical damage dice",
+  "damageBonus": "Damage bonus",
+  "rollDamage": "Roll damage",
+  "rollCriticalDamage": "Roll critical damage"
+}

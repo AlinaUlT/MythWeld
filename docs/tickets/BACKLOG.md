@@ -240,7 +240,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-36 | The choices badge opens every pending choice | M | 🔲 |
 | SHEET-37 | Rolls are kept in the roll log | S | ✅ 2026-10-29 |
 | SHEET-38 | The dice panel rolls any formula fairly | M | ✅ 2026-10-29 |
-| SHEET-39 | Tapping a number rolls it in the roll dialog | M | 🔲 |
+| SHEET-39 | Tapping a number rolls it in the roll dialog | M | ✅ 2026-10-29 |
 | SHEET-40 | The number pad changes the hit points | M | 🔲 |
 | SHEET-41 | Concentration shows until it ends | XS | 🔲 |
 | SHEET-42 | Conditions are set from the sheet | S | 🔲 |
@@ -258,6 +258,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-54 | The Notes tab keeps free text | XS | 🔲 |
 | SHEET-55 | Inspiration is tracked as stars | S | 🔲 |
 | SHEET-56 | The portrait makes a round token | S | 🔲 |
+| SHEET-69 | Heroic Inspiration rerolls a die in the roll dialog | S | 🔲 |
 | SHEET-57 | Custom sections hold the person's own lists | S | 🔲 |
 | SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | 🔲 |
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
@@ -298,19 +299,10 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   `Computed.pendingKeys` (`{ path, options }`); the answer is written to
   `systemData.species.size`, not to `choices`. A stored size the species does not offer warns
   `stepRule` `sizeNotOffered`.
-- **SHEET-39** — BRIEF P5 sheet 1, board `V3-Roll`. Found by ENG-34: each d20 test's roll mode is
-  a number path, 1 advantage, −1 disadvantage, 0 neither, with a step per source:
-  `checks.<stat>.mode`, `abilities.<stat>.saveMode`, `skills.<key>.mode`, `init.mode`,
-  `attacks.<key>.mode`, `spell.attackMode`, `deathSave.mode` (`rolls.ts`, `attacks.ts`). Every
-  step's `value` is its source's sign, so the roll dialog adds its own sources to those values
-  with `rollModeOf` (2014 inspiration's advantage, a situational effect switched on, matched to
-  the test by `ROLL_TARGETS`), rolls `d20Formula(mode)`, reads the kept d20 face with
-  `attackOutcome(face, range)` (a weapon's `crit.range`, a spell's 20) and, on a critical hit,
-  rolls `criticalDamage` of the damage dice. ENG-20's concentration save is the Constitution save:
-  its mode is `abilities.con.saveMode`. "Send to DM" waits for the table link. Found by SHEET-19:
-  after each initiative roll it calls `rollInitiative` (`knock-out.ts`), which interrupts a
-  knock-out's short rest; its `unchanged` refusal is the usual answer and is not shown. Found by
-  SHEET-37: each roll goes to `logRoll` with the character as `by.actorId`.
+- **SHEET-69** — found by SHEET-39: 2024's Heroic Inspiration (`rulesOf(character).inspiration.use`
+  `reroll`) rerolls one die of a roll and keeps the new one; the roll dialog offers inspiration only
+  where it gives advantage (2014). The reroll goes on the dialog's result, and calls
+  `spendInspiration` (ENG-59) through `changeCharacter`.
 - **SHEET-40** — ADR 010 item 6, ADR 013 item 1, boards `V3-Keypad` and `V3-TempHP`. Found by
   ENG-20: damage returns the concentration save's DC (`outcome.concentrationDc`); the screen rolls
   it and calls `endConcentration` on a failure. Found by ENG-65: the pad offers knocking out

@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import i18n from '../src/i18n';
 import { en } from '../src/i18n/namespaces';
 import { BreakdownSheet } from '../src/shared/BreakdownSheet';
-import { RollDialog } from '../src/shared/RollDialog';
 import { paths, sheetPath } from '../src/shell/routes';
 
 const localeFiles = readdirSync(new URL('../src/locales/en/', import.meta.url))
@@ -85,9 +84,7 @@ describe('SHEET-11 navigation', () => {
   });
 
   it('creates the shared pieces empty, for the rows that fill them', () => {
-    // SHEET-30: the sheet passes the roll dialog and the breakdown their number's path.
-    for (const Piece of [RollDialog, BreakdownSheet]) {
-      expect(renderToStaticMarkup(<Piece path="init.total" onClose={() => {}} />)).toBe('');
-    }
+    // SHEET-30: the sheet passes the breakdown its number's path. The roll dialog is SHEET-39's.
+    expect(renderToStaticMarkup(<BreakdownSheet path="init.total" onClose={() => {}} />)).toBe('');
   });
 });
