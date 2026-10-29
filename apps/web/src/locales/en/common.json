@@ -1,8 +1,5 @@
 {
-  "nav": {
-    "characters": "Characters",
-    "library": "Library",
-    "dice": "Dice",
-    "settings": "Settings"
-  }
+  "back": "Back",
+  "settings": "Settings",
+  "comingLater": "Coming later"
 }

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { APP_BACKGROUND_COLOR, APP_BASE_PATH, APP_NAME, APP_SHORT_NAME } from '../src/config/app';
-import en from '../src/locales/en/common.json' with { type: 'json' };
+import { en } from '../src/i18n/namespaces';
 import { waitForServiceWorker } from './service-worker';
 
 type Icon = { src: string; sizes: string; purpose?: string };
@@ -90,12 +90,12 @@ test('SETUP-07 after the first visit the app opens offline', async ({
   await context.setOffline(true);
   const reloaded = await page.reload();
   expect(reloaded?.fromServiceWorker()).toBe(true);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(en.nav.characters);
-  await page.screenshot({ path: testInfo.outputPath('offline-characters.png') });
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(APP_NAME);
+  await page.screenshot({ path: testInfo.outputPath('offline-start.png') });
 
-  // A link straight to a tab opens too: the service worker answers every page with index.html.
+  // A link straight to a page opens too: the service worker answers every page with index.html.
   await page.goto('dice');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(en.nav.dice);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(en.dice.title);
   await page.screenshot({ path: testInfo.outputPath('offline-dice.png') });
 
   // The page and its service worker asked nothing of any server but the app's own.

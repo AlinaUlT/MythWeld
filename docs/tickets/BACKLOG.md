@@ -179,7 +179,7 @@ chats never claim one version number.
 | 1 | SHEET-01, 02, 07, 14, 15, 17, 19 | Phase 1 is closed |
 | 2 | SHEET-03, 04, 05, 06, 08, 10, 16, 18, 20, 21, 61 | Wave 1 is closed |
 | 3 | SHEET-09, 11, 22, 62, 63, 64 | Wave 2 is closed |
-| 4 | SHEET-12, 13, 23, 24, 37, 65, 66 | Wave 3 is closed |
+| 4 | SHEET-12, 13, 23, 24, 37, 65, 66, 67 | Wave 3 is closed |
 | 5 | SHEET-25, 27, 30, 31, 38 | Wave 4 is closed |
 | 6 | SHEET-26, 28, 32, 33, 36, 39, 46, 48, 50, 53, 54, 55, 56 | Wave 5 is closed |
 | 7 | SHEET-29, 34, 40, 41, 42, 43, 44, 45, 47, 49, 51, 52, 57, 58 | Wave 6 is closed |
@@ -195,13 +195,14 @@ chats never claim one version number.
 | SHEET-04 | Each part takes its style from a fixed menu | M | ✅ 2026-10-29 |
 | SHEET-05 | Animations are presets that stop for reduced motion | S | ✅ 2026-10-29 |
 | SHEET-06 | The app's fonts ship inside it, each licence read | S | ✅ 2026-10-29 |
+| SHEET-67 | A part names its fill slot without a lint finding | XS | 🔲 |
 | **On the device** | **tables, the mini-pack, saved characters** | | |
 | SHEET-07 | Phase 2's device tables arrive in one database version | XS | ✅ 2026-10-28 |
 | SHEET-08 | The phase 1 fixtures ship as the built-in mini-pack | M | ✅ 2026-10-29 |
 | SHEET-09 | Built-in packs load into the content index at start | S | 🔲 |
 | SHEET-10 | Characters are saved on the device, migrated as they open | S | ✅ 2026-10-29 |
 | **Navigation** | **ADR 008, ADR 013** | | |
-| SHEET-11 | The start page replaces the bottom bar | M | 🔲 |
+| SHEET-11 | The start page replaces the bottom bar | M | ✅ 2026-10-29 |
 | SHEET-12 | The player page shows its six sections | S | 🔲 |
 | SHEET-13 | Settings keep the person's display choices | S | 🔲 |
 | **Rules the screens need** | **engine and module, no screen** | | |
@@ -271,14 +272,6 @@ chats never claim one version number.
   legal page, and the cloud container cannot reach the PDFs (`media.wizards.com`,
   `media.dndbeyond.com`: 403, measured 2026-10-29). Loading the packs puts them in the public
   build, so the row fills each pack's `attribution` from the checked text first.
-- **SHEET-11** — found by OPS-08: ADR 008 replaces the SETUP-04 bottom bar with a start page, a
-  player page and My characters. Player and DM are two squares (ADR 013 item 16, board
-  `V3-Start`); the DM square shows as coming later (ADR 008 item 2). Every page has a back arrow
-  and, where it needs one, the gear (ADR 008 item 1). ADR 008 leaves open whether the start page
-  shows on every start; until the owner says, it does (ADR 007 item 7). For the waves, the row
-  gives every phase 2 screen its route, an empty page and its own i18n namespace file, and creates
-  empty the shared pieces later rows fill: the toast host, the dice panel, the roll dialog, the
-  breakdown sheet, the description.
 - **SHEET-12** — ADR 013 item 17, board `V3-Player`: Characters works; Sources, Library, Quick
   rules and Bookmarks open with phase 3, and Dice roll with SHEET-38; until then each shows as
   coming later. No "2 of 3": no limit applies before the payment phase (ADR 005 item 2).
@@ -475,6 +468,10 @@ chats never claim one version number.
   Undoing a change that later changes touched is decided in the row.
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
+- **SHEET-67** — found by SHEET-11: SHEET-02's lint (`biome/no-look-literals.grit`) fails any
+  `fill="…"` attribute as an SVG colour, so `<Part fill="card">` (SHEET-04) cannot be written as a
+  string; `StartPage.tsx` passes a constant. The check keeps `fill` on SVG elements and lets a
+  component's `fill` name a slot.
 
 ---
 

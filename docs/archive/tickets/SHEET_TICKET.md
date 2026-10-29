@@ -3191,3 +3191,152 @@ Found, not fixed:
   typecheck fails instead of lint: `TS2307: Cannot find module '@grimoire/content'`, measured.
 
 Nothing for the changelog.
+
+---
+
+### SHEET-11 The start page replaces the bottom bar
+
+**Hat:** The start page replaces the bottom bar
+**Depends on:** SHEET-03, SHEET-04 (slots and parts the pages draw with)
+**Size:** M
+**Screen:** Yes — the start page, board `V3-Start`, BRIEF Part 5 row P1; the page header of
+`V3-Player` and `V3-Characters` (back arrow, title, gear)
+**SPEC:** §7.1 as ADR 008 items 1–2 and ADR 013 item 16 change it; §9 (i18n)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/App.tsx` — changes: the router of every phase 2 screen.
+- `apps/web/src/shell/routes.ts` — new: the paths, and `sheetPath(id)`.
+- `apps/web/src/shell/AppLayout.tsx` — new, replaces `AppShell.tsx`: no bar; the toast host.
+- `apps/web/src/shell/Page.tsx` — new: a page's header (back arrow, title, gear).
+- `apps/web/src/pages/StartPage.tsx` — new: board `V3-Start`.
+- `apps/web/src/pages/{Player,Settings,Characters,NewCharacter,Sheet,Dice}Page.tsx` — empty pages.
+- `apps/web/src/shared/{ToastHost,Description,DicePanel,BreakdownSheet,RollDialog}.tsx` — empty.
+- `apps/web/src/i18n/namespaces.ts` — new: the English namespaces; `index.ts`, `i18next.d.ts` read it.
+- `apps/web/src/locales/en/*.json` — one file per screen and per shared piece.
+- Deleted: `shell/AppShell.tsx`, `shell/tabs.ts`, `pages/PageTitle.tsx`, `pages/LibraryPage.tsx`.
+
+#### 2. What is missing now
+
+- `/` redirects to `/characters`; every page sits above SETUP-04's bottom bar of four tabs
+  (`tabs.ts`: `/characters`, `/library`, `/dice`, `/settings`), which ADR 008 item 1 removes.
+- No start page, no player page, no route for the manual form or the sheet.
+- One i18n namespace, `common`, holding `nav.*`: every screen row of a wave would edit it.
+- No file for the toast host, the dice panel, the roll dialog, the breakdown or the description.
+
+#### 3. What it should look like when done
+
+1. `/` shows the start page: the app's name (`APP_NAME`) as the `h1`, the chip "5E compatible ·
+   2014 and 2024 rules", the gear, and two squares: Player (a link to `/player`, "Characters,
+   sources, library, dice") and DM ("Coming later", not a link). No `navigation` element, no back
+   arrow.
+2. Every other page has a header: a back arrow (44 × 44 px or more), its title as the `h1`, and the
+   gear where the board draws one (Player). The routes and where back goes:
+   `/player` → `/`; `/characters` → `/player`; `/characters/new` → `/characters`;
+   `/characters/:id` → `/characters`; `/dice` → `/player`; `/settings` → the page it was opened
+   from, or `/` when it was the first page opened.
+3. An unknown path opens `/`. The start page shows on every start (ADR 008 "Still open").
+4. Each screen and each shared piece has its own namespace file: `start`, `player`, `settings`,
+   `characters`, `create`, `sheet`, `dice`, `toast`, `roll`, `breakdown`, `description`, plus
+   `common` (Back, Settings, Coming later). Every file in `locales/en/` is loaded; a test fails if
+   one is not.
+5. The five shared pieces exist and render nothing. `ToastHost` is mounted over every page.
+6. Nothing is wider than 360 px; dark stays the default.
+
+#### 4. How to do it
+
+1. `routes.ts` holds the paths as data; `App.tsx` maps each to its page under `AppLayout`.
+2. `Page` draws the `page` slot, then a `header`: `BackButton`, the `h1` in `font-heading
+   text-28`, and `GearLink`. Both icon buttons are `<Part name="icon-button">`. `back="history"`
+   steps back with `navigate(-1)` unless React Router's location key is `default` (the first page
+   of a visit), in which case it links to `/`.
+3. `StartPage` draws the `page` slot, the gear, the name, the chip (`<Part name="chip">` on
+   `bg-soft`) and the squares (`<Part name="card" fill="card">`).
+4. `namespaces.ts` imports each locale file (with `type: 'json'`, so Playwright's Node loader
+   reads it too); `index.ts` loads `Object.keys(en)`; the type declaration takes `typeof en`.
+5. Replace the SETUP-04 tests of the bar (`tabs.test.ts`, `shell.spec.ts`) by SHEET-11's; point
+   SETUP-05's, SETUP-07's and SHEET-03's tests at the new pages.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+- The app opens on the start page: "GrimoireMancer" in the heading font, the system chip under it,
+  the gear top right, the two squares at the bottom. Dark by default, light the same way.
+- Player opens an empty page titled "Player" with a back arrow and the gear. The DM square is
+  greyed and says "Coming later".
+- Every other screen is an empty page with a back arrow and its title, until its row fills it.
+- English keys: `common` — `back` "Back", `settings` "Settings", `comingLater` "Coming later";
+  `start` — `system` "5E compatible · 2014 and 2024 rules", `player.title` "Player",
+  `player.hint` "Characters, sources, library, dice", `dm.title` "DM"; `title` in `player`
+  "Player", `settings` "Settings", `characters` "My characters", `create` "New character",
+  `sheet` "Character", `dice` "Dice".
+
+#### 7. Tests
+
+- `apps/web/test/navigation.test.tsx` — the paths, `sheetPath`, every locale file loaded as a
+  namespace, each page's title, the empty pieces.
+- `apps/web/test/i18n.test.ts` — SETUP-05's checks on the new `common` keys.
+- `apps/web/e2e/navigation.spec.ts` — the start page, Player and back, every route with its title
+  and back target, the gear and Settings' back, an unknown path; screenshots.
+- `apps/web/e2e/pwa.spec.ts`, `theme.spec.ts` — the offline check and the slots, on the new pages.
+- Control values from: board `V3-Start` and `V3-Player` (text, header), ADR 008, ADR 013.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact.
+
+#### 9. Not in this ticket
+
+- The player page's six sections: SHEET-12. Settings' choices: SHEET-13.
+- The lists, forms and the sheet's frame and tabs: SHEET-24, 27, 30 (SHEET-30 gives each tab its
+  file and decides the tabs' namespaces).
+- What each shared piece does, and where it is mounted: SHEET-23, 31, 33, 38, 39.
+- The system picker before the start page (ADR 013 item 15) and the DM side: later phases.
+- Loading the built-in packs at start: SHEET-09 (`main.tsx` is untouched).
+
+#### 10. Rake check
+
+- **No look written in a component**: every colour, font and size is a token class; the squares,
+  the chip and the icon buttons are `<Part>`, the backgrounds `<Slot>`; lint is green.
+- **No user-facing string literal**: every visible string is an i18n key; the app's name comes
+  from `APP_NAME`; lint is green.
+- **"5E compatible" is the only phrase for fifth edition**: the chip says exactly that; no other
+  name.
+- **No external requests**: no new request; SETUP-07's offline test still sees only the app's own
+  origin.
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on top of SHEET-08 (`8bb21cd`):
+
+- `pnpm lint`: `Checked 260 files`, 0 errors. `pnpm typecheck`: exit 0.
+- `pnpm test`: `Test Files 80 passed (80)`, `Tests 1073 passed (1073)`, 23.35 s; the second
+  suite `Tests 2 passed (2)`. Unit tests in `apps/web`: 91 (SETUP-04's 4 tab tests gone,
+  SHEET-11's 5 new).
+- `pnpm e2e`: `20 passed (23.2s)` (SETUP-04's 4 bar tests gone, SHEET-11's 5 new).
+- Build: `index-BAupy7B3.js`, 475,470 bytes; 150,187 bytes through `gzip -c`.
+- Screenshots at 360 × 800: the start page dark and light, the player page, Settings; the name
+  "GrimoireMancer" at `text-48` fits the width (`scrollWidth` 360).
+- Differs from the board: the start page has no back arrow (the board's leads to the system
+  picker, which ADR 013 item 15 keeps for a second system). The chip is filled with `soft`
+  instead of the board's muted outline: the base pick for `chip` is `flat` (SHEET-04), and a page
+  cannot re-pick a part. The name is `text-48`, not the board's 54 px: "GrimoireMancer" is longer
+  than the board's "Grimoire". The page header is not the `header` slot: the boards draw it with
+  no fill, and the `header` slot paints `surface` (the sheet's pinned header, SHEET-30).
+- Decided here (ADR 002): Settings' back arrow steps back through history, since the gear opens
+  it from several pages. The Library route is gone; Library opens with phase 3 (ADR 013
+  item 17). SHEET-03's e2e test now counts the start page's slots: `app`, `page`, `card`, `card`.
+
+Found, not fixed:
+
+- SHEET-02's lint reads `fill="card"` on `<Part>` as an SVG colour and fails it, so a page cannot
+  write SHEET-04's `fill` prop as a string. `StartPage.tsx` passes it through a constant. New row
+  SHEET-67.
+
+Changelog: "The app opens on a start page with Player and DM instead of the bottom bar; every page
+has a back arrow."

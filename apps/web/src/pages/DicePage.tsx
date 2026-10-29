@@ -1,6 +1,9 @@
-// SETUP-04: empty until the phase that fills this tab.
-import { PageTitle } from './PageTitle';
+// SHEET-11: empty until SHEET-38 fills it, the dice page.
+import { useTranslation } from 'react-i18next';
+import { Page } from '../shell/Page';
+import { paths } from '../shell/routes';
 
 export function DicePage() {
-  return <PageTitle labelKey="nav.dice" />;
+  const { t } = useTranslation('dice');
+  return <Page title={t('title')} back={paths.player} />;
 }

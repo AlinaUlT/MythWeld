@@ -1,10 +1,10 @@
 // SETUP-05: lets TypeScript reject a key that is not in the English locale.
 import 'i18next';
-import type common from '../locales/en/common.json';
+import type { Namespaces } from './namespaces';
 
 declare module 'i18next' {
   interface CustomTypeOptions {
     defaultNS: 'common';
-    resources: { common: typeof common };
+    resources: Namespaces;
   }
 }

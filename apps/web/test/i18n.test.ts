@@ -6,11 +6,10 @@ describe('SETUP-05 i18n', () => {
     expect(i18n.language).toBe('en');
   });
 
-  it('gives the English text of the tab labels', () => {
-    expect(i18n.t('nav.characters')).toBe('Characters');
-    expect(i18n.t('nav.library')).toBe('Library');
-    expect(i18n.t('nav.dice')).toBe('Dice');
-    expect(i18n.t('nav.settings')).toBe('Settings');
+  it('gives the English text of the shared labels', () => {
+    expect(i18n.t('back')).toBe('Back');
+    expect(i18n.t('settings')).toBe('Settings');
+    expect(i18n.t('comingLater')).toBe('Coming later');
   });
 
   it('rejects an unknown key at compile time', () => {

@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-11 · The app opens on a start page with Player and DM (DM coming later)
+  instead of the bottom bar; every page has a back arrow, and the gear opens Settings.
 - 2026-10-29 · SHEET-06 · Text is set in Inter and headings in EB Garamond on every device,
   offline too, with Latin and Cyrillic letters.
 - 2026-10-28 · SHEET-03 · The bottom bar takes the dock's look: the surface colour with a soft

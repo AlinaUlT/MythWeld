@@ -36,25 +36,24 @@ test('SHEET-03 the shell draws its slots, and a skin refills one without a compo
   page,
 }, testInfo) => {
   await page.goto('./');
+  // SHEET-11: the start page replaced the bottom bar, so its two squares are the cards drawn.
   const slots = page.locator('[data-skin-slot]');
-  await expect(slots).toHaveCount(3);
+  await expect(slots).toHaveCount(4);
   expect(
     await slots.evaluateAll((all) => all.map((el) => el.getAttribute('data-skin-slot'))),
-  ).toEqual(['app', 'page', 'dock']);
+  ).toEqual(['app', 'page', 'card', 'card']);
   const look = await page.evaluate(() => {
     const style = (name: string) =>
       getComputedStyle(document.querySelector(`[data-skin-slot="${name}"]`) as Element);
     return {
       app: style('app').backgroundColor,
       page: style('page').backgroundColor,
-      dock: style('dock').backgroundColor,
-      shadow: style('dock').boxShadow,
+      card: style('card').backgroundColor,
     };
   });
   expect(hex(look.app)).toBe(baseTheme.dark['color-bg']);
   expect(look.page).toBe('rgba(0, 0, 0, 0)');
-  expect(hex(look.dock)).toBe(baseTheme.dark['color-surface']);
-  expect(look.shadow).toBe('rgba(0, 0, 0, 0.3) 0px -4px 12px 0px');
+  expect(hex(look.card)).toBe(baseTheme.dark['color-surface']);
   await page.screenshot({ path: testInfo.outputPath('slots-dark.png') });
 
   // A skin fills the same key with a gradient; the shell paints it as it is.

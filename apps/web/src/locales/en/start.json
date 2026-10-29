@@ -1,0 +1,10 @@
+{
+  "system": "5E compatible · 2014 and 2024 rules",
+  "player": {
+    "title": "Player",
+    "hint": "Characters, sources, library, dice"
+  },
+  "dm": {
+    "title": "DM"
+  }
+}

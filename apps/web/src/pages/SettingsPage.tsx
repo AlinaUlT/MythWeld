@@ -1,6 +1,8 @@
-// SETUP-04: empty until the phase that fills this tab.
-import { PageTitle } from './PageTitle';
+// SHEET-11: empty until SHEET-13 fills it (SPEC §7.5).
+import { useTranslation } from 'react-i18next';
+import { Page } from '../shell/Page';
 
 export function SettingsPage() {
-  return <PageTitle labelKey="nav.settings" />;
+  const { t } = useTranslation('settings');
+  return <Page title={t('title')} back="history" />;
 }
