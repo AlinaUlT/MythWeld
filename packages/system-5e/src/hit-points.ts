@@ -7,10 +7,11 @@ import {
   compute,
   conditionsRecoveredOn,
   finderOf,
+  keyFinderOf,
   type LogStamp,
   type MadeChanges,
 } from '@grimoire/engine';
-import type { EntityId, LogChange, LogEntry } from '@grimoire/schema';
+import { type EntityId, entityKeySchema, type LogChange, type LogEntry } from '@grimoire/schema';
 import {
   CONCENTRATION_PATH,
   DEATH_FAILURE_PATH,
@@ -27,6 +28,7 @@ import {
 } from './actions';
 import { DEATH_SAVES, type FifthEditionCharacter } from './character';
 import { isDead } from './death-saves';
+import { DAMAGE_TYPE, type DefendedDamage, defendedDamage, defensesOf } from './defenses';
 import type { FifthEditionEntity } from './entity-types';
 import { fatalExhaustion } from './exhaustion';
 import { fifthEditionModule } from './module';
@@ -49,6 +51,8 @@ import { rulesOf } from './rulesets';
 // `compute()` made before the revival, as a rest's do (ENG-61).
 // ENG-67: a character dead of exhaustion at its highest level is refused as the dead are; a revival
 // that leaves that level, as SRD 5.1's exhaustion does, leaves the character dead, and is refused.
+// SHEET-16: damage of a type meets the character's defenses first (`defendedDamage`); every step
+// above takes what is left.
 
 /** The lowest DC of the Constitution save that keeps concentration after damage (both SRDs). */
 export const CONCENTRATION_DC_MIN = 10;
@@ -56,6 +60,8 @@ export const CONCENTRATION_DC_MIN = 10;
 /** Why a hit point action did not run. `code` and its data are for the screen. */
 export type HitPointRefusal = { message: string } & (
   | { code: 'badAmount'; amount: number }
+  | { code: 'badType'; type: string }
+  | { code: 'noDamage'; defended: TypedDamage }
   | { code: 'dead' }
   | { code: 'notDead' }
   | { code: 'noKnockOut' }
@@ -80,10 +86,21 @@ export type ReviveResult =
   | { ok: true; character: FifthEditionCharacter; entry: LogEntry; outcome: ReviveOutcome }
   | Extract<HitPointResult, { ok: false }>;
 
+/** SHEET-16: what the defenses made of damage of a type, and whether an entry has the type. */
+export interface TypedDamage extends DefendedDamage {
+  /** No entry of type `damageType` has the key; the defenses that name it still apply. */
+  missing: boolean;
+}
+
 /** What damage asks for. */
 export interface DamageAsk {
-  /** The damage taken, resistance, vulnerability and immunity applied: a whole number from 1. */
+  /** The damage dealt, every change but the defenses applied: a whole number from 1. */
   readonly amount: number;
+  /**
+   * SHEET-16: the key of the damage's type. With it, the character's immunity, resistance and
+   * vulnerability to the type apply to `amount`; without it, `amount` is the damage taken.
+   */
+  readonly type?: string;
   /** The damage is a critical hit's: at 0 hit points it gives two failures, not one. */
   readonly critical?: boolean;
   /**
@@ -110,6 +127,8 @@ export interface DamageOutcome {
   concentrationDc?: number;
   /** The spell whose concentration it ended, by dropping the character to 0 hit points. */
   concentrationEnded?: string;
+  /** SHEET-16: what the defenses made of the damage, when the ask names its type. */
+  defended?: TypedDamage;
 }
 
 /** What damage gives: the changed character, its entry and the outcome, or why nothing changed. */
@@ -134,6 +153,24 @@ export function concentrationDc(
 function maxIn(computed: Computed<FifthEditionEntity>): number {
   const value = computed.values['hp.max'];
   return typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : 0;
+}
+
+/**
+ * SHEET-16: what the defenses in `computed` make of `amount` damage of `type`; refused as
+ * `noDamage` when they leave none.
+ */
+function typedDamage(
+  character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
+  computed: Computed<FifthEditionEntity>,
+  amount: number,
+  type: string,
+): TypedDamage | ({ ok: false } & HitPointRefusal) {
+  const missing = keyFinderOf(character, index)(DAMAGE_TYPE, type) === undefined;
+  const defended = { ...defendedDamage(amount, type, defensesOf(computed.values)), missing };
+  if (defended.amount > 0) return defended;
+  const message = `The defenses leave ${amount} ${type} damage at 0: the character takes none.`;
+  return { ok: false, code: 'noDamage', defended, message };
 }
 
 /** The hit point maximum the character computes, rounded down; 0 when it is not a number. */
@@ -192,9 +229,11 @@ function hitPoints(action: string, changes: LogChange[]): MadeChanges {
  * past the temporary hit points ends stable. At 0 concentration ends. Death ends every attunement
  * (`deathChanges`). ENG-65: with `knockOut`, the damage that would drop the character to 0 leaves
  * it at 1, knocked out (`resting`), with no failure and no massive damage, and concentration ends;
- * any other damage to a knocked-out character interrupts its rest (`interrupted`). Refused for an
- * amount that is not a whole number from 1, for a dead character, and for a knock-out the edition
- * does not have or the damage does not give.
+ * any other damage to a knocked-out character interrupts its rest (`interrupted`). SHEET-16: with
+ * `ask.type`, the damage is first what the character's defenses make of it (`defended`). Refused
+ * for an amount that is not a whole number from 1, for a dead character, for a type that is not a
+ * key, for damage the defenses leave at 0, and for a knock-out the edition does not have or the
+ * damage does not give.
  */
 export function applyDamage(
   character: FifthEditionCharacter,
@@ -202,15 +241,23 @@ export function applyDamage(
   ask: DamageAsk,
   stamp: LogStamp,
 ): DamageResult {
-  const { amount, critical = false, knockOut = false } = ask;
-  const refused = refusal(character, index, amount, 1);
+  const { type, critical = false, knockOut = false } = ask;
+  const refused = refusal(character, index, ask.amount, 1);
   if (refused !== undefined) return refused;
+  if (type !== undefined && !entityKeySchema.safeParse(type).success) {
+    return { ok: false, code: 'badType', type, message: `"${type}" is not a damage type's key.` };
+  }
+  const computed = compute(character, index, fifthEditionModule);
+  const defended =
+    type === undefined ? undefined : typedDamage(character, index, computed, ask.amount, type);
+  if (defended !== undefined && 'ok' in defended) return defended;
+  const amount = defended?.amount ?? ask.amount;
   const { hp, deathSaves, concentration, knockedOut } = character.systemData.state;
   const temp = Math.min(hp.temp, amount);
   const through = amount - temp;
   const knocked = knockOut ? knockOutRefusal(character, through) : undefined;
   if (knocked !== undefined) return knocked;
-  const max = maxOf(character, index);
+  const max = maxIn(computed);
 
   const lost = knockOut ? hp.current - 1 : Math.min(hp.current, through);
   const current = hp.current - lost;
@@ -250,6 +297,7 @@ export function applyDamage(
     ...(concentration !== undefined &&
       !ends && { concentrationDc: concentrationDc(character, amount) }),
     ...(ends && { concentrationEnded: concentration }),
+    ...(defended !== undefined && { defended }),
   };
   return { ...result, outcome };
 }
