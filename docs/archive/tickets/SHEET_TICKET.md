@@ -3191,3 +3191,142 @@ Found, not fixed:
   typecheck fails instead of lint: `TS2307: Cannot find module '@grimoire/content'`, measured.
 
 Nothing for the changelog.
+
+---
+
+### SHEET-37 Rolls are kept in the roll log
+
+**Hat:** Rolls are kept in the roll log
+**Depends on:** SHEET-07, ENG-26, ENG-06
+**Size:** S
+**Screen:** No
+**SPEC:** §6.5 (the log of a character's last 100 rolls), §5.8 (migrations), §11 (the `rollLog`
+table)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/db/rollLog.ts` — new: `logRoll`, `readRollLog`, `ROLL_LOG_LIMIT`. The
+other files it touches:
+
+- `packages/schema/src/roll.ts` — changes: `ROLL_LOG_SCHEMA_VERSION`, `rollLogRowSchema`,
+  `rollLogRowOf`, `openRollLogRow`.
+- `apps/web/src/db/db.ts` — changes: `RollLogRow` is a stored object, at whatever version.
+- `packages/schema/test/roll.test.ts` — changes: the row's tests.
+- `apps/web/test/rollLog.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on 2026-10-29, at `84f423c`:
+
+- `grep -rn "rollLog" apps/web/src` finds only `db.ts`: the table exists (SHEET-07), keyed by `id`
+  with the index `[characterId+rolledAt]`; nothing writes or reads it.
+- `rollRecordSchema` (ENG-26) is strict and has no version field, so a record stored as it is
+  could never migrate (ENG-26 §11, "Found, not fixed").
+- Nothing keeps a log to 100 rolls.
+
+#### 3. What it should look like when done
+
+1. `logRoll(record)` stores the row `{ schemaVersion: 1, id, characterId, rolledAt, record }` and
+   returns `{ ok: true, record }`. `characterId` is the record's `by.actorId`, absent when it has
+   none; `rolledAt` is the record's time as `toISOString` writes it.
+2. After 101 rolls of one character, the table holds 100 rows; roll 1 is gone; `readRollLog`
+   lists rolls 101 down to 2, newest first.
+3. A roll logged after 100 newer ones is dropped as it is logged; the table holds 100.
+4. One character's 101st roll drops none of another character's rolls nor of the rolls made off
+   a sheet: 100 + 1 + 3 = 104 rows.
+5. The rolls made off a sheet (no `actorId`) are kept to 100 the same way.
+6. Rolls at `18:00:00.500Z`, `18:00:00Z`, `18:00:01Z`, logged in that order, read back newest
+   first by time: the third, the first, the second.
+7. A record whose total is not the sum of its breakdown is not stored: `{ ok: false, code:
+   'invalid' }`, 0 rows.
+8. A row at `schemaVersion` 2 and a row whose record does not add up are listed in `refused`
+   (`newer`, `invalid`), not thrown, and stay as they were.
+9. `rollLogRowSchema` refuses a key that is not the record's (`id`, `characterId`, `rolledAt`), an
+   unknown field, and a missing version.
+
+#### 4. How to do it
+
+1. `packages/schema/src/roll.ts`: the row schema wraps the record unchanged, so the record stays
+   what the table link sends (ADR 005 item 5.6), and the version belongs to the log. The row's
+   `id`, `characterId` and `rolledAt` repeat the record's for the table's keys; a `superRefine`
+   refuses a row where they differ. `openRollLogRow` is `openerOf` with an empty chain, so
+   version 2 is one step away.
+2. **The time is stored in one form.** Technical choice (ADR 002 item 1): the index sorts
+   `rolledAt` as text, and `z.iso.datetime()` accepts `18:00:00Z` and `18:00:00.500Z`, which sort
+   the wrong way round as text (`.` before `Z`). The row's `rolledAt` is
+   `new Date(record.rolledAt).toISOString()`, always three decimals; the record keeps its own text.
+3. `apps/web/src/db/rollLog.ts`: `logRoll` builds the row, opens it through the frame (a record
+   the schema refuses is not stored), then in one `rw` transaction puts it and deletes the oldest
+   of that character's rows past 100. One character's rows come from the compound index; the
+   rows made off a sheet are not in it (Dexie leaves out a key with an undefined part), so they
+   are filtered and sorted by `rolledAt`.
+4. `readRollLog(characterId)` reads the same rows newest first, at most 100, and opens each; a
+   refused row goes into `refused` with its id, code and message. Opening never writes, as
+   SHEET-10 chose for characters.
+5. **The rolls made off a sheet are kept to 100 too.** Technical choice: SPEC §6.5 names a
+   character's log only; the dice page (SHEET-38) rolls for no character, and its rolls would
+   otherwise grow without end.
+
+#### 5. Stored data
+
+The `rollLog` table (SHEET-07) gets its first rows, shape version 1 (`ROLL_LOG_SCHEMA_VERSION`),
+with an empty migration chain. No Dexie version bump: the table, its key and its index stay as
+SHEET-07 made them. `CharacterDoc`, `ContentPack` and `RollRecord` do not change.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/schema/test/roll.test.ts` — `SHEET-37 the roll log row`: §3 items 1 and 9 on the
+  row, and a version 2 row refused as `newer` (`found: 2`, `current: 1`).
+- `apps/web/test/rollLog.test.ts` — `SHEET-37 the roll log`: §3 items 1–8, each on a fresh
+  database.
+- Control numbers from: SPEC §6.5 (100); ENG-26's record fixtures; the rolls' times and ids are
+  written by hand from their number n (n seconds after 18:00, uuid ending in n).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts.
+
+#### 9. Not in this ticket
+
+- Rolling, and showing the log ("History" on board `V3-SheetDice`): SHEET-38; the roll dialog
+  that logs a sheet's roll: SHEET-39. Each calls `logRoll`; the panel reads `readRollLog`.
+- Dropping a deleted character's rolls: SHEET-25 (its note already names `rollLog`).
+- A version on what the table link sends: the table link's phase (ENG-26 §11).
+- Vibration on Android (SPEC §6.5): phase 7, Android.
+
+#### 10. Rake check
+
+- **A stored-shape change needs a migration**: the row carries `schemaVersion` from its first
+  write and opens through the migration frame; a newer row is tested to be refused and kept.
+- **Missing is not broken**: a row that does not open is named in `refused`, never thrown; a
+  refused record gives a code, not an exception.
+- **Ids are stable**: a row is keyed by the record's own `id`.
+- **No telemetry, no external requests**: IndexedDB only.
+- **Everything is data**: the log names no game; the fixtures are a made-up game's rolls.
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on top of OPS-32 (`84f423c`):
+
+- `pnpm lint`: `Checked 242 files`, 0 errors. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: `Test Files 81 passed (81)`, `Tests 1083 passed (1083)` (1072 before, 11 new:
+  3 in the schema, 8 in the app), 23.5 s. The second suite: `Tests 2 passed (2)`, unchanged.
+- `pnpm e2e`: `19 passed (18.7s)` on `pixel-7`, unchanged.
+- The tests are live: with the trimming removed, 4 of the 8 app tests failed; with `rolledAt`
+  stored as the record's text, §3 item 6 and the row's first schema test failed.
+- Differs from §3: none. Differs from the row: the rolls made off a sheet are kept to 100 too
+  (§4 item 5).
+
+Found, not fixed:
+
+- Rolls with the same `rolledAt` to the millisecond sort by their uuid, not by the order they
+  were made. The app writes one roll at a time from `new Date()`, so two in one millisecond are
+  unlikely; nothing to do now.
+
+Nothing for the changelog.
