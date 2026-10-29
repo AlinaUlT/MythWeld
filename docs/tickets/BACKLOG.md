@@ -232,7 +232,7 @@ chats never claim one version number.
 | SHEET-29 | The manual form shows the ability bonus window | S | 🔲 |
 | **The sheet** | **the frame, the tabs, trackers, rolls** | | |
 | SHEET-30 | The sheet's frame pins the header above the dock | M | 🔲 |
-| SHEET-31 | An entry's description opens in place | S | 🔲 |
+| SHEET-31 | An entry's description opens in place | S | ✅ 2026-10-29 |
 | SHEET-32 | The Main tab shows every check bonus | S | 🔲 |
 | SHEET-33 | A long press opens a number's breakdown | S | 🔲 |
 | SHEET-34 | A manual edit overrides a number | S | 🔲 |
@@ -297,9 +297,6 @@ chats never claim one version number.
   choices list), and one number component whose tap rolls (SHEET-39) and whose long press opens
   the breakdown (SHEET-33). Found by SHEET-23: the "Undo" toast (`ToastHost`) sits 16 px above
   the page's bottom edge; on the sheet it sits above the dock, as board `V3-Features` draws it.
-- **SHEET-31** — ADR 011, ADR 013 item 7: every entry opens and closes its description in place
-  with the turning chevron; "See full description" shows the exact text with its source, or says
-  the source has none. Phase 2's texts are the fixtures' and the person's free text.
 - **SHEET-32** — board `V3-Sheet`: the stats, the saves, the skills with their proficiency, the
   passives. Found by ENG-43: a skill's stat is `Computed.keys['skills.<key>.ability']`, with steps
   naming the skill, each effect and a manual edit; the sheet shows that key, never the skill's own

@@ -1,1 +1,10 @@
-{}
+{
+  "seeFull": "See full description",
+  "noText": "Its source has no full text for this entry.",
+  "source": "Source: {{book}}",
+  "sourcePage": "Source: {{book}}, page {{page}}",
+  "version": "version {{version}}",
+  "separator": " · ",
+  "own": "Source: your own entry",
+  "notInstalled": "Source: {{pack}}, not on this device"
+}

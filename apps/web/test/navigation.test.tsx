@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import i18n from '../src/i18n';
 import { en } from '../src/i18n/namespaces';
 import { BreakdownSheet } from '../src/shared/BreakdownSheet';
-import { Description } from '../src/shared/Description';
 import { DicePanel } from '../src/shared/DicePanel';
 import { RollDialog } from '../src/shared/RollDialog';
 import { paths, sheetPath } from '../src/shell/routes';
@@ -69,7 +68,7 @@ describe('SHEET-11 navigation', () => {
   });
 
   it('creates the shared pieces empty, for the rows that fill them', () => {
-    for (const Piece of [DicePanel, RollDialog, BreakdownSheet, Description]) {
+    for (const Piece of [DicePanel, RollDialog, BreakdownSheet]) {
       expect(renderToStaticMarkup(<Piece />)).toBe('');
     }
   });

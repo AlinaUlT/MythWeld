@@ -4556,3 +4556,172 @@ Found, not fixed:
 Changelog: "Settings chooses dark or light colours, stops animations, picks feet or metres and
 pounds or kilograms, and turns on "I roll myself"; each choice is kept on the device and already
 holds when the app opens."
+
+---
+
+### SHEET-31 An entry's description opens in place
+
+**Hat:** An entry's description opens in place
+**Depends on:** SHEET-05 (the `turn` preset), SHEET-09 (the installed packs), SHEET-11 (the
+empty `Description` and its `description` namespace)
+**Size:** S
+**Screen:** Yes — a piece every tab's entry uses; the chevron of boards `V3-Create` and
+`V3-Conflict`, the summary and "See full description" of board `V3-Cast`; BRIEF P4 (ADR 011,
+ADR 013 item 7)
+**SPEC:** §7.2 (the sheet's entries), §8.2 (missing is not broken), §3 (only openly licensed text);
+ADR 011, ADR 013 item 7
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/shared/Description.tsx` — changes: fills SHEET-11's empty piece with
+`Description` (an entry's row that opens in place) and `DescriptionBody` (the summary and "See
+full description", which the cast panel shows without the row).
+- `apps/web/src/content/descriptions.ts` — new: `textIn`, `descriptionOf`, the description of an
+  entry read from the entity and the installed packs.
+- `apps/web/src/shared/Chevron.tsx` — new: the turning chevron in a circle (ADR 013 item 7), its
+  own file, so the creation steps (SHEET-27, phase 4) use the same control.
+- `apps/web/src/locales/en/description.json` — the piece's English text.
+- `apps/web/test/description.test.tsx` — new; `apps/web/test/navigation.test.tsx` — the piece is
+  no longer empty.
+
+#### 2. What is missing now
+
+Measured on 2026-10-29, at `ed11c6f`:
+
+- `apps/web/src/shared/Description.tsx` returns `null`; `locales/en/description.json` is `{}`.
+- `grep -rn "Chevron" apps/web/src` finds only `ChevronLeft` in `Page.tsx`: no turning chevron.
+- The `turn` preset (SHEET-05) exists; nothing wears it (`grep -rn "preset=\"turn\"" apps/web/src`
+  finds nothing).
+- The built-in packs' entities carry no `summary` and no `text`: `grep -c "summary\|text:"` on
+  `packages/content/src/packs/srd-2014.ts` and `srd-2024.ts` gives 0 and 0.
+
+#### 3. What it should look like when done
+
+1. A closed entry shows its name and the chevron pointing down (`transform: none`); its button
+   says `aria-expanded="false"`, and nothing of the description is drawn.
+2. An open entry's chevron points up (`rotate(180deg)`), turning with the `turn` preset; its
+   button says `aria-expanded="true"` and names the region it opened with `aria-controls`.
+3. Open, it shows the entry's summary, when it has one, and a "See full description" button,
+   itself closed (`aria-expanded="false"`), with its own turning chevron.
+4. "See full description" open shows the entry's `text` as written, line breaks kept, and under
+   it the source line: "Source: <book> · version <version> · <license>", with ", page <page>"
+   after the book when the entity names a page; under that the pack's attribution, when it has
+   one.
+5. An entry with no `text` shows, instead of a text, "Its source has no full text for this entry.",
+   with the source line under it. Every entry of the built-in packs is one today: SRD 5.1's
+   Dwarf reads "Source: SRD 5.1 · version 0.1.0 · CC-BY-4.0" and the SRD's attribution.
+6. A character's own entry (pack id `character`) reads "Source: your own entry", with no license
+   and no attribution.
+7. An entry whose source pack is not on the device reads "Source: <pack>, not on this device", and
+   nothing breaks.
+8. Text is read in the app's language, then English, then any language the entry has.
+9. `DescriptionBody` alone draws 3–7, without the row, for the cast panel.
+10. Each button is at least 44 px high; the lint finds no look and no visible literal.
+
+#### 4. How to do it
+
+1. `descriptionOf(entity, packs, language)` is pure: the name, the summary and the text in the
+   language (`textIn`), and the source as one of three kinds: `pack` (book, version, license,
+   attribution, page), `own`, `notInstalled`. The book is the entity's `source.book`, else the
+   pack's title; the license is the pack's `spdx`, else its `name`. An entity whose id is of
+   `character` is `own`, whatever its `source.pack` says: the person wrote or changed it.
+2. Technical choice (ADR 002): each piece keeps whether it is open in its own state, starting
+   closed, with `defaultOpen` and `defaultFull` to start it open, as a native `<details open>`
+   does. Nothing is stored; a reopened sheet starts closed.
+3. The row is one button holding the name, an optional line under it (the tab's), and the chevron,
+   so tapping anywhere on it opens it (ADR 011 item 2). A tab's own buttons (Use, Cast) sit outside
+   it.
+4. Technical choice: "See full description" opens in place with the same turning chevron, not a
+   window, because ADR 013 item 7 gives every open-and-close control that chevron; board
+   `V3-Cast` draws the text opening in place under it.
+5. `Chevron` is lucide's `CircleChevronDown` (an outline in `currentColor`, the board's
+   `circlechev`) inside `<Motion preset="turn" as="span">`, with `transform: rotate(180deg)` when
+   open.
+6. The text keeps its line breaks (`whitespace-pre-line`); it is plain text until phase 3 decides
+   how the SRD texts are marked up.
+
+#### 5. Stored data
+
+Nothing stored changes. Whether an entry is open is the piece's state on screen only.
+
+#### 6. What a person will see
+
+No tab shows an entry yet: each tab's row (SHEET-32 onward) draws its entries with `Description`,
+and the cast panel (SHEET-47) with `DescriptionBody`. At 360×800 the piece is a card row: the name
+in 15 px bold, an optional line in 12 px muted, the chevron at the right in a 44 px square. Open,
+the summary, then a 44 px "See full description" row on `bg-soft`; open, the text, then the source
+line and the attribution in 12 px muted. There is no loading or error state: the entity is already
+loaded, and a missing source is a line, not an error.
+
+English keys (`description`):
+- `seeFull`: "See full description"
+- `noText`: "Its source has no full text for this entry."
+- `source`: "Source: {{book}}", `sourcePage`: "Source: {{book}}, page {{page}}"
+- `version`: "version {{version}}", `separator`: " · "
+- `own`: "Source: your own entry"
+- `notInstalled`: "Source: {{pack}}, not on this device"
+
+#### 7. Tests
+
+- `apps/web/test/description.test.tsx` — `SHEET-31 an entry's description`: §3 items 1–9, drawn
+  with `renderToStaticMarkup` at each starting state; `descriptionOf` on golden A's Dwarf from the
+  built-in SRD 5.1 pack, on a test pack with a summary, a text and a page, on a character's own
+  entry, on a missing pack, and in each language order.
+- `apps/web/test/navigation.test.tsx` — `Description` leaves the list of empty pieces.
+- `apps/web/e2e` — no new test: no page draws the piece yet. The whole suite runs as the gate.
+- Control values from: the built-in packs' `title`, `version` and `license`
+  (`packages/content/src/packs/srd-2014.ts`, `srd-2024.ts`); board `V3-Create`'s chevron
+  (`turn_arrow()` in `docs/design/mockups/generator/gen13.py`: `rotate(180deg)` when open).
+  The test pack's texts are invented for the test, never rules text.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts. No rules text is written: the built-in packs have none, and the
+test's texts are invented.
+
+#### 9. Not in this ticket
+
+- The tabs' entries that use the piece: SHEET-32 (stats, skills), SHEET-44 (attacks), SHEET-46
+  and SHEET-47 (spells, the cast panel), SHEET-48 (features), SHEET-50 (items).
+- The SRD's texts in the built-in packs: phase 3's import (ADR 011, by phase).
+- Terms inside a text as links, and tappable dice: phase 3 (ADR 013 items 6 and 18).
+- A free-text entry's form: SHEET-52.
+- The creation steps' chevron: SHEET-27 and phase 4 use `Chevron`.
+
+#### 10. Rake check
+
+- **No look is written in a component**: colours, sizes and corners are token classes and parts;
+  the chevron's turn is the `turn` preset, only its end angle is written.
+- **No user-facing string literal**: every text is a `description` key or the entity's own data.
+- **Only openly licensed text**: the piece shows only the entity's own `text`; with none, it says
+  so. Nothing is fetched.
+- **Missing is not broken**: a source pack not on the device is a line, not an exception.
+- **Entity names stay bilingual**: `textIn` reads both languages; nothing is dropped.
+- **Everything is data**: the piece names no game, no stat and no entity type.
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on `ed11c6f` (SHEET-13, the base it landed on):
+
+- Whole gate (`lint && typecheck && test && e2e`): exit 0, 74 s.
+- `pnpm lint`: `Checked 281 files`, no fixes. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: 89 files, 1161 passed, 0 failed, 22.2 s, then the speed project 2 passed. That is
+  88 files and 1151 tests before, plus 1 file and 10 tests.
+- `pnpm e2e`: 25 passed, 0 failed, 21.7 s; this ticket adds no e2e test.
+- The tests are live: with the own-entry rule removed and the chevron left unturned, 2 of the 10
+  failed.
+- Screenshots at 360×800, dark and light, in the chat, from a page drawn in the dev server and
+  then deleted: SRD 5.1's Dwarf closed, and open with "Its source has no full text for this
+  entry.", "Source: SRD 5.1 · version 0.1.0 · CC-BY-4.0" and the attribution; an own entry open
+  with its two lines of text. Measured there: every button 44 px or taller (the rows 62.5 px, the
+  "See full description" rows 44 px); the chevron's transition `transform 0.2s`; a tap on the
+  closed row set `aria-expanded="true"`; `scrollWidth` 360; no console error.
+- Differs from §3: none. Differs from the row: none.
+
+Found, not fixed:
+- The built-in packs have no summary and no text, so every built-in entry says its source has
+  none until phase 3's import fills them (ADR 011, by phase).
+
+Nothing for the changelog: no page draws the piece yet.
