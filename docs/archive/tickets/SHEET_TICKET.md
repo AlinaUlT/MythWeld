@@ -4378,7 +4378,7 @@ Measured on 2026-10-29, on the base it landed on, SHEET-24 (`4a89c54`):
 - `pnpm test`: `Test Files 87 passed (87)`, `Tests 1144 passed (1144)` (1126 on the base, 18 new:
   3 in the schema, 8 for the history, 7 for the toast), 20.9 s. The second suite: `Tests 2 passed
   (2)`, unchanged.
-- `pnpm e2e`: `23 passed (22.4s)` on `pixel-7`, as on the base.
+- `pnpm e2e`: `23 passed (22.4s)` on `pixel-7`; this ticket adds no e2e test.
 - The tests are live: with the trimming removed, 2 of the 8 history tests failed.
 - Screenshots at 360×800, dark and light, in the chat: a change written in the dev server
   ("Second Wind used") shows the toast; "Undo" set the resource back to `{}`, `rev` to 2, and the
