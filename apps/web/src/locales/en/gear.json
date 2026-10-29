@@ -1,1 +1,21 @@
-{}
+{
+  "title": "Items",
+  "empty": "Nothing carried yet.",
+  "worn": "Worn",
+  "attuned": "Attuned",
+  "qty": "×{{count}}",
+  "weight": {
+    "lb": "{{value}} lb",
+    "kg": "{{value}} kg"
+  },
+  "carried": "Carried",
+  "holds": "Holds {{count}}",
+  "putIn": "Put in",
+  "putInNone": "Nowhere (carried)",
+  "missing": "Missing: {{id}}",
+  "warning": {
+    "attunementLimit": "Attuned to {{attuned}} items; at most {{limit}} at a time.",
+    "attunementCopies": "Attuned to {{attuned}} copies of {{name}}; one copy at most.",
+    "oneAtATime": "{{name}} is worn with {{worn}}; only one counts at a time."
+  }
+}

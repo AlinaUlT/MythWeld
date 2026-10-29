@@ -251,7 +251,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-47 | The cast panel casts a spell | M | 🔲 |
 | SHEET-48 | The Features tab groups features by source | M | 🔲 |
 | SHEET-49 | The Turn tab lists actions by timing | S | 🔲 |
-| SHEET-50 | The Gear tab equips items | M | 🔲 |
+| SHEET-50 | The Gear tab equips items | M | ✅ 2026-10-29 |
 | SHEET-51 | Coins change by quick steps | XS | 🔲 |
 | SHEET-52 | Custom entries are added as free text | S | 🔲 |
 | SHEET-53 | The About tab shows the origin details | S | 🔲 |
@@ -361,11 +361,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   `recoveryOf(computed, key)`, each event's `all` or count; a count's breakdown is its `path`.
 - **SHEET-49** — ADR 010 item 8, board `V3-Turn`: built from each feature's `activation`; nothing
   is typed twice. It fills out as phase 3 adds content.
-- **SHEET-50** — SPEC §7.2: worn and attuned change AC and attacks at once (ENG-44); weight;
-  containers. Found by ENG-63: the inventory sets a row's `attuned` by hand; death clears every one
-  (`deathChanges`, `actions.ts`); SHEET-18 warns past the limit, SHEET-63 of two copies. Found by
-  SHEET-22: an action that takes a row away ends with `withDropped` (`trackers.ts`), so its
-  switches and an AC pin go too.
 - **SHEET-51** — SPEC §7.2: cp, sp, ep, gp, pp with + and −.
 - **SHEET-52** — SPEC §12 stage 2 ("custom item", "custom feature" with text), ADR 009 item 7
   (free text now; with effects in phase 5), board `V3-Add`. The stored shape has both already: an

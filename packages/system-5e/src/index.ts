@@ -24,6 +24,7 @@ export * from './exhaustion';
 export * from './hit-dice';
 export * from './hit-points';
 export * from './inspiration';
+export * from './inventory';
 export * from './knock-out';
 export * from './languages';
 export * from './level-up';

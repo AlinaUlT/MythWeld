@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-50 · The Gear tab lists the items a character carries with Worn and Attuned
+  switches that change the AC at once, each with Undo; it shows weights in pounds or kilograms and
+  the total carried, warns of too many attuned items, and in edit mode puts an item inside another.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.

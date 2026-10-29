@@ -23,6 +23,7 @@ import { SheetDice } from '../src/sheet/SheetDice';
 import { barShares, SheetDock } from '../src/sheet/SheetDock';
 import { SheetHeader } from '../src/sheet/SheetHeader';
 import { formatNumber, numberAt } from '../src/sheet/SheetNumber';
+import { Items } from '../src/sheet/sections/Items';
 import { SHEET_TABS, tabOf } from '../src/sheet/tabs';
 import { type AppCharacter, sheetSystemOf } from '../src/systems';
 
@@ -217,7 +218,8 @@ describe('SHEET-30 tabs', () => {
     // Fourteen files; Conditions stands on two tabs.
     const sections = [...new Set(SHEET_TABS.flatMap(({ sections }) => sections))];
     expect(sections).toHaveLength(14);
-    for (const Section of [...sections, Inspiration]) {
+    // SHEET-50 filled Items; its own test draws it.
+    for (const Section of [...sections, Inspiration].filter((each) => each !== Items)) {
       expect(draw(sheet, <Section />)).toBe('');
     }
     for (const Panel of [RestPanel, ActionsMenu, ChoicesPanel]) {

@@ -25,6 +25,11 @@
     "longRest": "Long rest taken",
     "gainInspiration": "Inspiration gained",
     "spendInspiration": "Inspiration spent",
+    "equipItem": "{{name}} worn",
+    "unequipItem": "{{name}} taken off",
+    "attuneItem": "{{name}} attuned",
+    "unattuneItem": "{{name}} no longer attuned",
+    "moveItem": "{{name}} moved",
     "levelUp": "{{name}} level gained",
     "other": "Change made"
   }

@@ -4,11 +4,15 @@
 // SHEET-24: what My characters names under a character's name is its module's too.
 // SHEET-27: the manual form makes a character through its system's maker, with its rules bases.
 // SHEET-30: so is what the sheet's header and dock read, and the module `compute()` runs.
+// SHEET-50: so are the inventory's actions and its weight, which the Gear tab calls.
 import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
+  attuneItem,
+  carriedWeight,
   EDITION_RULES,
   type EditionTerms,
+  equipItem,
   FIFTH_EDITION_HEADER_NUMBERS,
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
@@ -27,12 +31,17 @@ import {
   type MadeByHand,
   type ManualCharacterAsk,
   madeByHand,
+  moveItem,
+  needsAttunement,
   openFifthEditionCharacter,
   openFifthEditionPack,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
 export type AppCharacter = FifthEditionCharacter;
+
+/** An entity of any system the app carries. */
+export type AppEntity = FifthEditionEntity;
 
 /** A content pack of any system the app carries. */
 export type AppPack = FifthEditionPack;
@@ -124,6 +133,15 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** What the Gear tab does to the inventory's rows, and what they weigh (SHEET-50). */
+  inventory: {
+    equip: typeof equipItem;
+    attune: typeof attuneItem;
+    move: typeof moveItem;
+    weight: typeof carriedWeight;
+    /** Whether an item asks to be attuned to. */
+    needsAttunement: typeof needsAttunement;
+  };
 }
 
 /** Each system's sheet, by system id. */
@@ -134,6 +152,13 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    inventory: {
+      equip: equipItem,
+      attune: attuneItem,
+      move: moveItem,
+      weight: carriedWeight,
+      needsAttunement,
+    },
   },
 };
 
