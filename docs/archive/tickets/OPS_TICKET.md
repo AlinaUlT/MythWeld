@@ -1039,3 +1039,117 @@ Found by SHEET-02 (SHEET-02 §11). Measured on 2026-10-29: `docs/RUNNING.md` gav
 `apps/web`: 18 passed, 0 failed, 18.8 s. The link is the container's, not the repository's; if
 a later container drops it, the path to give is `ls -l /opt/pw-browsers/`'s current `chromium-*`
 build. Nothing for the changelog; a person sees no change.
+
+---
+
+### OPS-28 The quality gate gives one verdict for one commit, whatever the load
+
+**Hat:** The quality gate gives one verdict for one commit, whatever the load
+**Depends on:** Nothing
+**Size:** S
+**Screen:** No
+**SPEC:** §6.6 (the 10 ms budget the speed pass checks)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/test/speed/compute.speed.ts` — changes: the verdict reads the
+fastest run.
+- `vitest.config.ts` — changes: both projects get a 60 s time limit per test and per hook.
+- `docs/RUNNING.md` — changes: the speed pass's printed line, and the time limit.
+
+#### 2. What is missing now
+
+Two checks in `pnpm test` read the wall clock, so another process on the machine can fail them
+with no code changed. Measured on `2da9707` in the cloud container (4 CPUs, Node 22.22.0). "Busy"
+means that many `node` processes each spinning one CPU in a loop.
+
+- ENG-23's speed pass fails when the median of 500 `compute()` runs × 4 is over 10 ms. Its line,
+  quiet, 4 runs: 6.80, 6.39, 6.56, 7.30 ms; 4 busy, 4 runs: 6.89, 9.37, 7.20, 9.66 ms. ENG-66
+  §11 measured 6.53 to 11.20 ms over 8 runs, 2 above 10.
+- The same 500 runs, printed by a probe file (deleted after), 5 runs each: quiet, median × 4
+  6.28 to 7.47 ms, fastest × 4 5.54 to 5.82 ms; 4 busy, median 6.43 to 10.71, fastest 5.55 to
+  6.23; 8 busy, median 10.75 to 23.61, fastest 5.66 to 6.19.
+- ENG-52's seeded-formula test (`packages/engine/test/average.test.ts`) runs under Vitest's
+  default limit of 5,000 ms per test. Unit pass with coverage, quiet: 3,066 ms and 2,932 ms, the
+  slowest test of 1,011. With 4 busy: 5,885 ms, failed; `1010 passed, 1 failed`.
+
+#### 3. What it should look like when done
+
+1. The speed pass fails when the fastest of its 500 runs × 4 is over 10 ms. Its line reads
+   `compute(), level 20: fastest … ms × 4 = … ms (budget 10 ms); of 500, median … ms, slowest …
+   ms`.
+2. The speed pass still fails on a slower `compute()`: with 1.2 ms of busy waiting added to each
+   run, it fails.
+3. Every test and hook in both projects may take 60,000 ms before Vitest stops it.
+4. `pnpm test` passes on an unchanged commit, quiet, with 4 busy and with 8 busy processes.
+5. `docs/RUNNING.md` describes the new line and the time limit.
+
+#### 4. How to do it
+
+1. Speed pass: sort the 500 times as now; the verdict takes `times[0]`; the line also prints the
+   median and the slowest, for a reader. Why the fastest: another process only adds time to a
+   run, never takes it away, so the fastest run is the code's own cost and the load moves it
+   least (§2: 5.54 to 6.23 ms over every load, against 6.28 to 23.61 for the median). A slower
+   `compute()` makes every run slower, the fastest too, so the check still catches it. SPEC §6.6
+   names the budget and the ×4, not the statistic, so this is a technical choice (ADR 002).
+2. `vitest.config.ts`: one `limits` object, `testTimeout` and `hookTimeout` 60,000 ms, spread
+   into both projects; an inline project does not take the root's `test` options. The limit's
+   only job is to stop a test that hangs; 60 s is 20 times the slowest test, quiet.
+3. `docs/RUNNING.md`: the new line, and one bullet on the limit.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/system-5e/test/speed/compute.speed.ts` — the check itself, renamed `its fastest
+  compute() × 4 is at most 10 ms`; still inside ENG-23's `describe`, whose subject it is.
+- The gate run quiet, with 4 busy and with 8 busy processes, twice each (§11).
+- Control numbers: measured in §2; the budget from SPEC §6.6.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact. SPEC §6.6 gives "10 ms", "level 20 with multiclassing" and "CPU
+slowed ×4"; it names no statistic.
+
+#### 9. Not in this ticket
+
+- A faster `compute()`: none is needed, the fastest × 4 is about 5.7 ms.
+- `docs/RUNNING.md`'s Chromium path: OPS-30.
+
+#### 10. Rake check
+
+- Measure, never estimate: every number in §2 and §11 is a run's output.
+- The golden tests are the truth: no expected value changes; only a time limit and the timing
+  statistic change.
+- `packages/engine` stays pure: no source file changes.
+
+#### 11. What came out of it
+
+Done as §3 says, measured on `2da9707` with the change:
+- Speed pass, fastest × 4: quiet 5.75 and 5.69 ms; 4 busy 5.65 and 5.64 ms; 8 busy 5.69 and
+  5.80 ms. The median × 4 in the same runs: 6.64, 6.72; 6.84, 6.36; 8.20, 10.96 ms; the last
+  would have failed the old check.
+- ENG-52's test: quiet 2,880 and 2,980 ms; 4 busy 5,875 and 4,726 ms; 8 busy 8,081 and
+  8,789 ms. Every unit run: 1,011 passed, 0 failed. The busy processes ran 120 s each, started
+  before each pair of runs, so the second run of a pair was busy only for its first part.
+- With 1.2 ms of busy waiting added to each run (not committed): `fastest 2.63 ms × 4 = 10.52 ms`,
+  `1 failed | 1 passed`.
+- `pnpm e2e`, not part of this ticket's gate, run to see the whole gate under load: quiet
+  `18 passed (45.4s)`; with 8 busy, `18 passed (23.4s)`.
+- No new `describe`: the change is to ENG-23's check and to the runner's settings; the code
+  comment `OPS-28` is in both files.
+- Rebased onto `13c1f2d` (SHEET-21, SHEET-61 and OPS-30 pushed meanwhile; OPS-30's ticket and
+  row are kept beside this one). The gate there: lint checked 233 files; typecheck passed in all
+  6 packages; unit 76 files, 1,030 tests passed, 0 failed, 17.02 s, lines 99.89 %; speed 2
+  passed, 2.77 s, `fastest 1.62 ms × 4 = 6.50 ms`, up from about 5.7 ms with the two SHEET rows'
+  engine code.
+Found, not fixed: nothing.
+Nothing for the changelog; a person sees no change.

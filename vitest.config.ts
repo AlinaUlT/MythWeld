@@ -4,6 +4,10 @@ import { defineConfig } from 'vitest/config';
 // ENG-23: the phase 1 gate runs in `pnpm test`, in two passes. `unit` is every test, with the
 // coverage SPEC §6.6 asks of the engine and the fifth-edition module. `speed` times `compute()`
 // after it, alone and without coverage, whose counters slow the code they count.
+// OPS-28: a test fails by what it checks, never by the machine's load. The time limits only stop a
+// test that hangs, so they sit far above the slowest test, which takes about 3 s on a quiet machine.
+const limits = { testTimeout: 60_000, hookTimeout: 60_000 };
+
 export default defineConfig({
   test: {
     projects: [
@@ -11,9 +15,10 @@ export default defineConfig({
         test: {
           name: 'unit',
           include: ['packages/*/test/**/*.test.ts', 'apps/web/test/**/*.test.{ts,tsx}'],
+          ...limits,
         },
       },
-      { test: { name: 'speed', include: ['packages/*/test/**/*.speed.ts'] } },
+      { test: { name: 'speed', include: ['packages/*/test/**/*.speed.ts'], ...limits } },
     ],
     coverage: {
       provider: 'v8',

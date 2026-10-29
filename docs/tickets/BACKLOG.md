@@ -735,23 +735,12 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-25 | Every ticket that builds a screen names its mockup boards | XS | ✅ 2026-10-01 |
 | OPS-26 | ADR 015 makes every look a skin's data | XS | ✅ 2026-10-01 |
 | OPS-27 | Closed tickets leave the files a new chat reads | XS | ✅ 2026-10-01 |
-| OPS-28 | The quality gate gives one verdict for one commit, whatever the load | S | 🔲 |
+| OPS-28 | The quality gate gives one verdict for one commit, whatever the load | S | ✅ 2026-10-29 |
 | OPS-29 | Phase 2 is cut into rows that run in waves | S | ✅ 2026-10-22 |
 | OPS-30 | `RUNNING.md` names the container's current Chromium path | XS | ✅ 2026-10-29 |
 | OPS-31 | The chat with the owner is in English | XS | ✅ 2026-10-28 |
 | OPS-32 | The changelog's format example names no real ticket | XS | 🔲 |
 
-- **OPS-28** — found by ENG-66 (ENG-66 §11): ENG-23's speed pass (`compute.speed.ts`, the median
-  × 4 at most 10 ms) fails on some runs in the cloud container with no code changed. On `05f3430`,
-  8 runs gave a median × 4 of 6.53 to 11.20 ms, 2 of them above 10; ENG-23 measured 5.78 to
-  6.07 ms. A gate that fails by the machine's load stops a commit that has no fault. The row
-  decides how the check reads the same on every run of one commit. Found by OPS-29, and the row's
-  hat widened for it: ENG-52's seeded-formula test (`packages/engine/test/average.test.ts`, its
-  limit 5,000 ms) took 5,096 ms and 5,117 ms in two of four full `pnpm test` runs of one
-  documents-only change on `c6e3395`, and passed in the other two; alone it took 2,157 ms.
-  It belongs to no phase, so it can run now, beside any other row: it owns
-  `packages/system-5e/test/speed/`, `packages/engine/test/average.test.ts` and `vitest.config.ts`,
-  which no phase 2 row touches.
 - **OPS-32** — found by SHEET-04 (SHEET-04 §11): `docs/CHANGELOG.md`'s format example is
   `2026-MM-DD · SHEET-04 · Long-press on any number shows where it came from.`; SHEET-04 is the
   part styles, and the long press is SHEET-33. A search for a ticket id finds the example.
