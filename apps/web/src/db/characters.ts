@@ -70,3 +70,8 @@ export async function saveCharacter(
   if (opened.ok) await characters.put(opened.value as CharacterRow);
   return opened;
 }
+
+/** How many characters are stored, each counted whether it opens or not (ADR 005 item 2). */
+export function countCharacters(characters = db.characters): Promise<number> {
+  return characters.count();
+}

@@ -203,7 +203,7 @@ chats never claim one version number.
 | SHEET-10 | Characters are saved on the device, migrated as they open | S | ✅ 2026-10-29 |
 | **Navigation** | **ADR 008, ADR 013** | | |
 | SHEET-11 | The start page replaces the bottom bar | M | ✅ 2026-10-29 |
-| SHEET-12 | The player page shows its six sections | S | 🔲 |
+| SHEET-12 | The player page shows its six sections | S | ✅ 2026-10-29 |
 | SHEET-13 | Settings keep the person's display choices | S | 🔲 |
 | **Rules the screens need** | **engine and module, no screen** | | |
 | SHEET-14 | An unmet prerequisite gives a warning | S | ✅ 2026-10-28 |
@@ -262,9 +262,6 @@ chats never claim one version number.
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
-- **SHEET-12** — ADR 013 item 17, board `V3-Player`: Characters works; Sources, Library, Quick
-  rules and Bookmarks open with phase 3, and Dice roll with SHEET-38; until then each shows as
-  coming later. No "2 of 3": no limit applies before the payment phase (ADR 005 item 2).
 - **SHEET-13** — SPEC §7.5, BRIEF P10 (not drawn yet; the row draws it from SHEET-04's parts). The
   theme (dark by default, light), the motion switch (SHEET-05's `setMotionStill`; this row keeps
   the choice and sets it at start), the units (feet or metres, pounds or kilograms; stored units

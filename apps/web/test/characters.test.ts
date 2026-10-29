@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { FIFTH_EDITION_SCHEMA_VERSION, fifthEditionCharacterSchema } from '@grimoire/system-5e';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { goldenA } from '../../../packages/system-5e/test/golden/characters-2014.ts';
-import { openCharacter, saveCharacter } from '../src/db/characters';
+import { countCharacters, openCharacter, saveCharacter } from '../src/db/characters';
 import { GrimoireDb } from '../src/db/db';
 import { CHARACTER_OPENERS, characterOpenerOf } from '../src/systems';
 
@@ -128,6 +128,18 @@ describe('SHEET-10 characters on the device', () => {
       code: 'invalid',
     });
     expect(await database.characters.count()).toBe(0);
+  });
+});
+
+describe('SHEET-12 the count of stored characters', () => {
+  it('counts every stored row, one that does not open too', async () => {
+    expect(await countCharacters(database.characters)).toBe(0);
+    await saveCharacter(saved, database.characters);
+    expect(await countCharacters(database.characters)).toBe(1);
+    const none = { id: '6c1d2e3f-4a5b-4c6d-8e7f-8091a2b3c4d5', name: 'No system' };
+    await database.characters.put(none);
+    expect(await openCharacter(none.id, database.characters)).toMatchObject({ ok: false });
+    expect(await countCharacters(database.characters)).toBe(2);
   });
 });
 

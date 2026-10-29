@@ -3834,3 +3834,128 @@ Found, not fixed:
   inside `compute()`, the pass's `without`.
 
 Nothing for the changelog.
+
+---
+
+### SHEET-12 The player page shows its six sections
+
+**Hat:** The player page shows its six sections
+**Depends on:** SHEET-11 (the page and its header), SHEET-10 (the characters table)
+**Size:** S
+**Screen:** Yes — the player page, board `V3-Player`, BRIEF Part 5 row P17
+**SPEC:** §7.1 as ADR 008 items 3–4 and ADR 013 item 17 change it; §9 (i18n)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/pages/PlayerPage.tsx` — changes: the six tiles under the header.
+- `apps/web/src/db/characters.ts` — changes: `countCharacters`.
+- `apps/web/src/locales/en/player.json` — changes: the tiles' keys.
+- `apps/web/test/player.test.tsx` — new.
+- `apps/web/test/characters.test.ts` — changes: the count's test.
+- `apps/web/e2e/navigation.spec.ts` — changes: the player page's test.
+
+#### 2. What is missing now
+
+Measured on 2026-10-29, at `3b027bd`:
+
+- `PlayerPage.tsx` renders `<Page title={t('title')} back={paths.start} gear />` and nothing
+  under the header.
+- `player.json` holds one key, `title`.
+- `characters.ts` has no way to count the stored characters.
+
+#### 3. What it should look like when done
+
+1. Under the header, six tiles in two columns, in the board's order: Characters, Sources,
+   Library, Dice roll, Quick rules, Bookmarks. Each has an icon, its title and one second line.
+2. Characters is a link to `/characters`. Its second line is the number of stored characters:
+   "No characters yet" (0), "1 character" (1), "2 characters" (2). No "of 3": no limit applies
+   before the payment phase (ADR 005 item 2).
+3. The other five are not links. Each is muted and its second line is "Coming later".
+4. The count counts every stored row, also one that does not open (SHEET-10): nothing a person
+   made is hidden (ADR 005 item 2).
+5. The page has exactly three links: the back arrow, the gear, Characters.
+6. Each tile is 44 px tall or more; nothing is wider than 360 px.
+
+#### 4. How to do it
+
+1. `countCharacters(characters = db.characters)` returns `characters.count()`.
+2. `PlayerPage` reads the count once in an effect; until it arrives (or if the read fails) the
+   Characters line is empty. `PlayerSections({ characters })` draws the grid from a list of
+   sections (`key`, icon, link or none), so the unit test renders it with any count.
+3. Each tile is `<Part name="card" fill="card">` (through a constant, SHEET-67), 128 px tall, the
+   content at the bottom: icon `size-[30px]`, title `text-16 font-bold`, line `text-12
+   text-muted`. A coming-later tile adds `text-muted`, as the start page's DM square does.
+4. The count line uses i18next plurals: `characters.count_zero`, `_one`, `_other`.
+
+#### 5. Stored data
+
+Nothing stored changes. The page reads the `characters` table; it writes nothing.
+
+#### 6. What a person will see
+
+- Player opens the page titled "Player", with the back arrow and the gear, and six tiles in a
+  2 × 3 grid. Characters shows how many characters are saved; the other five are greyed and say
+  "Coming later".
+- English keys in `player`: `characters.title` "Characters", `characters.count_zero` "No
+  characters yet", `characters.count_one` "{{count}} character", `characters.count_other`
+  "{{count}} characters", `sources.title` "Sources", `library.title` "Library", `dice.title`
+  "Dice roll", `quickRules.title` "Quick rules", `bookmarks.title` "Bookmarks".
+
+#### 7. Tests
+
+- `apps/web/test/player.test.tsx` — the six tiles in order; one link, to `/characters`; the count
+  at 0, 1, 2; "Coming later" on the other five; no line while the count is unknown.
+- `apps/web/test/characters.test.ts` — `countCharacters` counts 0, then 2 after two saves, and a
+  row that does not open.
+- `apps/web/e2e/navigation.spec.ts` — the page in Chromium: the six titles, the links, the count
+  after a row is put into the table, the tile height, the width; screenshots dark and light.
+- Control values from: board `V3-Player` (order, titles), ADR 013 item 17, the row in
+  `BACKLOG.md`.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact.
+
+#### 9. Not in this ticket
+
+- What each section opens: Sources, Library, Quick rules and Bookmarks (phase 3), Dice roll
+  (SHEET-38; the `/dice` route stays, with nothing linking to it from here).
+- The last opened character (ADR 008 item 3): nothing stores which one was opened last; SHEET-24
+  or SHEET-30 decides whether the list or the sheet keeps it.
+- The list of characters: SHEET-24. Settings: SHEET-13.
+
+#### 10. Rake check
+
+- **No look written in a component**: tiles are `<Part>`, every size and colour a token class;
+  lint is green.
+- **No user-facing string literal**: every line is an i18n key; lint is green.
+- **No external requests**: the count reads the device's own database.
+- **Nothing locked or hidden**: the count includes rows that do not open, and no limit is shown.
+
+#### 11. What came out of it
+
+Measured on 2026-10-29, on top of SHEET-64 (`3b027bd`):
+
+- `pnpm lint`: `Checked 266 files`, 0 errors. `pnpm typecheck`: exit 0.
+- `pnpm test`: `Test Files 83 passed (83)`, `Tests 1107 passed (1107)`, 14.01 s; the second
+  suite `Tests 2 passed (2)`. New: 5 tests in `player.test.tsx`, 1 in `characters.test.ts`.
+- `pnpm e2e`: `21 passed (14.0s)` (1 new).
+- Build: `index-CZbh3nLW.js`, 623.97 kB (193.70 kB gzip); before this ticket 620.97 kB
+  (192.58 kB gzip), measured on the same machine.
+- Screenshots at 360 × 800, dark and light, with two rows in the table: the six tiles in a 2 × 3
+  grid, Characters "2 characters", the other five greyed with "Coming later";
+  `scrollWidth` 360.
+- Differs from the board: the tiles' corner is the `card` token (14 px), not the board's 16 px
+  (the board writes both, 16 last); a page cannot set a part's radius. The icons are the closest
+  in the app's icon set: `Users`, `BookOpen`, `Search`, `Dices`, `ScrollText`, `Bookmark`.
+- Decided here (ADR 002): the Characters line counts the stored characters (ADR 008 item 3 asks
+  for the count), with no limit; the count includes rows that do not open, so nothing made is
+  hidden (ADR 005 item 2). The Dice roll tile is not a link to the empty `/dice` page; it opens
+  with SHEET-38, as the row says.
+
+Found, not fixed: nothing.
+
+Changelog: "The player page shows six sections: Characters, with how many are saved, opens the
+list; Sources, Library, Dice roll, Quick rules and Bookmarks are marked as coming later."

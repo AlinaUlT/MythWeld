@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import { APP_BASE_PATH, APP_NAME } from '../src/config/app';
+import { DB_NAME } from '../src/db/db';
 import { en } from '../src/i18n/namespaces';
 
 // Every page but the start page: its path, its title, and where its back arrow goes.
@@ -92,4 +93,57 @@ test('SHEET-11 an unknown path opens the start page', async ({ page }) => {
   await page.goto('no-such-page');
   await expect(page).toHaveURL(APP_BASE_PATH);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(APP_NAME);
+});
+
+/** Puts rows into the characters table without Dexie; the page counts any row. */
+function putCharacters({ name, ids }: { name: string; ids: string[] }) {
+  return new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open(name);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const opened = request.result;
+      const transaction = opened.transaction('characters', 'readwrite');
+      for (const id of ids) transaction.objectStore('characters').put({ id, name: id });
+      transaction.oncomplete = () => {
+        opened.close();
+        resolve();
+      };
+      transaction.onerror = () => reject(transaction.error);
+    };
+  });
+}
+
+test('SHEET-12 the player page shows its six sections', async ({ page }, testInfo) => {
+  await page.goto('player');
+  const main = page.getByRole('main');
+  const titles = [
+    en.player.characters.title,
+    en.player.sources.title,
+    en.player.library.title,
+    en.player.dice.title,
+    en.player.quickRules.title,
+    en.player.bookmarks.title,
+  ];
+  for (const title of titles) {
+    const tile = main.getByText(title, { exact: true });
+    await expect(tile).toBeVisible();
+    expect((await tile.locator('..').boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  }
+  // Only Characters opens; the other five are coming later.
+  await expect(page.getByRole('link')).toHaveCount(3);
+  await expect(main.getByText(en.common.comingLater)).toHaveCount(5);
+  const characters = page.getByRole('link', { name: en.player.characters.title });
+  await expect(characters).toHaveAttribute('href', `${APP_BASE_PATH}characters`);
+  await expect(characters).toContainText('No characters yet');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+
+  await page.evaluate(putCharacters, { name: DB_NAME, ids: ['first', 'second'] });
+  await page.reload();
+  await expect(characters).toContainText('2 characters');
+  await page.screenshot({ path: testInfo.outputPath('player-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('player-light.png') });
+
+  await characters.tap();
+  await expect(page).toHaveURL('characters');
 });
