@@ -4046,7 +4046,9 @@ above; the rule from ENG-20 §8.
 **What came out of it:** Quality gate, 2026-10-29, on `3b027bd`: `pnpm lint` 265 files, no fixes;
 `pnpm typecheck` 6 projects, no errors; `pnpm test` 82 files, 1108 passed, 0 failed, 19.7 s, then
 the speed project 1 file, 2 passed. 1101 before this ticket's 7 tests. Coverage: statements 99.45 %
-(3448/3467), lines 99.9 % (3024/3027). Not `apps/web`, so no `pnpm e2e`. With the source change
+(3448/3467), lines 99.9 % (3024/3027). Again after SHEET-12 and SHEET-67 landed, on `22211de`:
+`pnpm lint` 266 files, no fixes; `pnpm typecheck` 6 projects, no errors; `pnpm test` 83 files, 1116
+passed, 0 failed, 20.0 s, then the speed project 1 file, 2 passed; the same coverage. Not `apps/web`, so no `pnpm e2e`. With the source change
 stashed, 3 of the 7 fail (items 1 and 4); the damage tests (item 2) pass either way, since damage
 already ended concentration at 0, and they now guard against the change being listed twice.
 
