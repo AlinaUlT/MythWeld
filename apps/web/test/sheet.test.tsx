@@ -217,13 +217,40 @@ describe('SHEET-30 tabs', () => {
     // Fourteen files; Conditions stands on two tabs.
     const sections = [...new Set(SHEET_TABS.flatMap(({ sections }) => sections))];
     expect(sections).toHaveLength(14);
-    for (const Section of [...sections, Inspiration]) {
+    for (const Section of sections) {
       expect(draw(sheet, <Section />)).toBe('');
     }
     for (const Panel of [RestPanel, ActionsMenu, ChoicesPanel]) {
       expect(draw(sheet, <Panel onClose={noop} />)).toBe('');
     }
     expect(draw(sheet, <NumberPad mode="damage" onClose={noop} />)).toBe('');
+  });
+});
+
+describe('SHEET-55 inspiration', () => {
+  // Golden B's house rules hold `inspirationMax: 1` and no inspiration; the edition's maximum is 1
+  // in both SRDs (`rulesOf(...).inspiration.max`, ENG-19 section 8).
+  it('draws one star for the house maximum, empty, with the edition maximum beside it', () => {
+    const html = draw(sheetOf(goldenB), <Inspiration />);
+    expect(html).toContain('<fieldset');
+    expect(html.match(/<polygon/g)).toHaveLength(1);
+    expect(html).toContain('aria-pressed="false"');
+    expect(html).toContain('Rules: 1');
+  });
+
+  it('draws the house maximum of stars, the held ones pressed', () => {
+    const golden = {
+      ...goldenB,
+      systemData: {
+        ...goldenB.systemData,
+        houseRules: { ...goldenB.systemData.houseRules, inspirationMax: 3 },
+        state: { ...goldenB.systemData.state, inspiration: 2 },
+      },
+    };
+    const html = draw(sheetOf(golden), <Inspiration />);
+    expect(html.match(/<polygon/g)).toHaveLength(3);
+    expect(html.match(/aria-pressed="true"/g)).toHaveLength(2);
+    expect(html.match(/aria-pressed="false"/g)).toHaveLength(1);
   });
 });
 

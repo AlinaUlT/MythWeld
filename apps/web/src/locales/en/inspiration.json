@@ -1,1 +1,14 @@
-{}
+{
+  "term": {
+    "inspiration": "Inspiration",
+    "heroicInspiration": "Heroic Inspiration"
+  },
+  "use": {
+    "advantage": "advantage on a roll",
+    "reroll": "a reroll of one die"
+  },
+  "group": "{{term}}: {{held}} of {{max}}",
+  "gain": "Gain {{term}}",
+  "spend": "Spend {{term}} for {{use}}",
+  "rules": "Rules: {{max}}"
+}

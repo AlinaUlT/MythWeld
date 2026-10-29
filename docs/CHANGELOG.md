@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-55 · The sheet's header shows inspiration as eight-pointed stars: tap an
+  empty star to gain one, a filled star to spend it, with Undo; the edition's own maximum shows
+  beside them.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.

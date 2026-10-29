@@ -5458,3 +5458,32 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+### SHEET-55 Inspiration is tracked as stars · XS
+
+**Hat:** Draw inspiration as stars in the header
+**Where:** `apps/web/src/sheet/header/Inspiration.tsx`; `locales/en/inspiration.json`
+**Depends on:** SHEET-30, SHEET-23, ENG-59
+**Screen:** board V3-Sheet, BRIEF Part 5 P4; ADR 009 item 5
+
+**What it should look like when done:**
+1. The header draws one eight-pointed star per point `houseRules.inspirationMax` allows (3 by
+   default); the held ones are filled and `aria-pressed`.
+2. Pressing a filled star runs `spendInspiration`; pressing an empty one runs `gainInspiration`.
+   Each is one log entry with the "Undo" toast (SHEET-23). The stored shape does not change.
+3. The edition's maximum, `rulesOf(...).inspiration.max`, shows beside the stars as "Rules: 1".
+   Each star's label names the edition's word (Inspiration, Heroic Inspiration) and what
+   spending does (`inspiration.use`: advantage, or a reroll of one die).
+4. No colour or size is written in the component: the stars use `fill-strong`, `fill-transparent`
+   and the stroke colour of the text; every string is an i18next key in `inspiration`.
+
+**Tests:** `apps/web/test/sheet.test.tsx` — one star and "Rules: 1" for golden B (its
+`inspirationMax` is 1); three stars with two pressed for a copy of golden B with `inspirationMax: 3`
+and `inspiration: 2`. Control numbers: golden B's own fixture values.
+**What came out of it:** Lint clean, typecheck clean, `pnpm test` 1242 tests in 96 files with the
+two new ones, `pnpm e2e` 39 passed. The "creates every section empty" test no longer lists
+`Inspiration`, which is filled now. The SRD check that ADR 009 item 5 asks for was done by ENG-19:
+both SRDs allow 1 (`inspiration.max`), so the house default of 3 is a house setting, and the
+edition's 1 is shown next to it. Found, not fixed: a press that the engine refuses (for example a
+star pressed after another device changed the state) does nothing and says nothing; the Damage
+and Heal rows will need the same screen-side handling.
