@@ -11,6 +11,7 @@ Format:
 
 ---
 
+- 2026-10-29 · SHEET-46 · The Spells tab shows the stat, spell save DC and spell attack, a grid of spell slots by level (a tap on a circle spends a slot or gives it back, with Undo), and the spell list: spells a feature gives show their source, "no spell slot" and their limit, such as "1/LR"; a spell of the other edition or one no pack has says so.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.

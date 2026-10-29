@@ -4,7 +4,7 @@
 // SHEET-24: what My characters names under a character's name is its module's too.
 // SHEET-27: the manual form makes a character through its system's maker, with its rules bases.
 // SHEET-30: so is what the sheet's header and dock read, and the module `compute()` runs.
-import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
+import type { Computed, ContentIndex, LogStamp, SystemModule } from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
   EDITION_RULES,
@@ -19,6 +19,10 @@ import {
   fifthEditionHitPoints,
   fifthEditionListLine,
   fifthEditionModule,
+  fifthEditionSlotChange,
+  fifthEditionSlotGrid,
+  fifthEditionSpellcasting,
+  fifthEditionSpells,
   type HeaderCasting,
   type HeaderHitPoints,
   type HeaderNumber,
@@ -29,6 +33,9 @@ import {
   madeByHand,
   openFifthEditionCharacter,
   openFifthEditionPack,
+  type SlotColumn,
+  type SlotResult,
+  type SpellListEntry,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
@@ -112,7 +119,7 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
   },
 ];
 
-export type { MadeByHand, ManualCharacterAsk };
+export type { MadeByHand, ManualCharacterAsk, SlotColumn, SpellListEntry };
 
 /** What the sheet reads of one system: its module, and what its header and dock name. */
 export interface SheetSystem {
@@ -124,6 +131,24 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** SHEET-46: the Spells tab's spellcasting at a glance: the header's rows, and a grant's stats. */
+  spellcasting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
+  /** SHEET-46: the slot grid, one column per spell level and one for pact magic. */
+  slotGrid(character: AppCharacter, computed: AppComputed): readonly SlotColumn[];
+  /** SHEET-46: one slot of a column spent or given back: the change a tap on a circle makes. */
+  changeSlot(
+    character: AppCharacter,
+    index: ContentIndex<FifthEditionEntity>,
+    column: Pick<SlotColumn, 'kind' | 'level'>,
+    spend: boolean,
+    stamp: LogStamp,
+  ): SlotResult;
+  /** SHEET-46: the spells to list: those known or prepared, then those a feature gives. */
+  spells(
+    character: AppCharacter,
+    index: ContentIndex<FifthEditionEntity>,
+    computed: AppComputed,
+  ): readonly SpellListEntry[];
 }
 
 /** Each system's sheet, by system id. */
@@ -134,6 +159,10 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    spellcasting: fifthEditionSpellcasting,
+    slotGrid: fifthEditionSlotGrid,
+    changeSlot: fifthEditionSlotChange,
+    spells: fifthEditionSpells,
   },
 };
 

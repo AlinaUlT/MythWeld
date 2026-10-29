@@ -38,6 +38,7 @@ export * from './rulesets';
 export * from './sheet-header';
 export * from './size';
 export * from './spell-dice';
+export * from './spell-list';
 export * from './spell-uses';
 export * from './spellcasting';
 export * from './system';

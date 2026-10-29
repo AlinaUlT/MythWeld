@@ -1,1 +1,42 @@
-{}
+{
+  "none": "No spells yet.",
+  "glance": {
+    "label": "Spellcasting",
+    "dc": "Save DC",
+    "attack": "Attack"
+  },
+  "grid": {
+    "label": "Spell slots",
+    "level": "Level {{level}}",
+    "pact": "Pact · Level {{level}}",
+    "summary": "{{name}}: {{left}} of {{max}} left",
+    "spend": "Use a slot, {{name}}",
+    "regain": "Get a slot back, {{name}}"
+  },
+  "list": {
+    "label": "Spells"
+  },
+  "cantrip": "Cantrip",
+  "level": "Level {{level}}",
+  "from": "from {{name}}",
+  "alwaysPrepared": "Always prepared",
+  "unprepared": "Not prepared",
+  "noSlot": "no spell slot",
+  "limit": "{{max}}/{{recovery}}",
+  "left": "{{left}} left",
+  "recovery": {
+    "short": "SR",
+    "long": "LR",
+    "dawn": "dawn",
+    "turn": "turn",
+    "manual": "manual",
+    "revive": "revive",
+    "separator": ", "
+  },
+  "edition": {
+    "any": "Pack"
+  },
+  "otherRuleset": "{{ruleset}} rules; this character plays {{own}}",
+  "missing": "Missing: {{id}}",
+  "separator": " · "
+}

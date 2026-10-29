@@ -203,3 +203,106 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
 });
+
+// SHEET-46: golden A (cleric 1: two level 1 slots, Wisdom, DC 13, attack +5, the Life domain's
+// Bless and Cure Wounds) with a made-up feat that gives Spark, cast with its own one use a long
+// rest and no spell slot, and a spell no pack has.
+const sparkFeat = {
+  id: 'character:feat/gifted',
+  type: 'feat',
+  ruleset: 'any',
+  name: { en: 'Gifted' },
+  source: { pack: 'character' },
+  grants: [
+    {
+      id: 'spark',
+      kind: 'spell',
+      fixed: ['character:spell/spark', 'character:spell/gone'],
+      key: 'giftedSpark',
+      uses: { max: '1', recovery: [{ on: 'long', amount: 'all' }] },
+    },
+  ],
+};
+const sparkSpell = {
+  id: 'character:spell/spark',
+  type: 'spell',
+  ruleset: 'any',
+  name: { en: 'Spark' },
+  source: { pack: 'character' },
+  level: 1,
+  school: 'evocation',
+  castingTime: { value: 1, unit: 'action' },
+  range: { kind: 'self' },
+  components: { v: true, s: true },
+  duration: { kind: 'instant' },
+  concentration: false,
+  ritual: false,
+  classes: ['cleric'],
+};
+const withSpark = {
+  ...goldenA,
+  localEntities: [sparkFeat, sparkSpell],
+  systemData: { ...goldenA.systemData, feats: [{ id: sparkFeat.id }] },
+};
+
+test('SHEET-46 the Spells tab shows the glance, the slot grid and the spells', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [withSpark]);
+  await page.goto(`characters/${goldenA.id}?tab=spells`);
+  const panel = page.getByRole('tabpanel');
+
+  // At a glance: Wisdom, the DC and the attack, as the header has them.
+  await expect(panel).toContainText('WIS');
+  await expect(panel.locator('[data-path="classes.cleric.spell.dc"]')).toHaveText('Save DC13');
+  await expect(panel.locator('[data-path="classes.cleric.spell.attack"]')).toHaveText('Attack+5');
+
+  // The grid: one column, level 1, two circles, both left.
+  await expect(panel.getByText('Level 1: 2 of 2 left')).toBeAttached();
+  await expect(panel.locator('[data-slot-level="1"]')).toHaveCount(2);
+  await expect(panel.locator('[data-slot-left="true"]')).toHaveCount(2);
+
+  // The list: the domain's two spells, always prepared; Spark through its own use, with no slot.
+  const list = panel.getByRole('list', { name: en.spells.list.label });
+  await expect(list.getByRole('listitem')).toHaveCount(4);
+  await expect(list.getByRole('listitem').nth(0)).toContainText('Bless');
+  await expect(list.getByRole('listitem').nth(0)).toContainText('Always prepared');
+  await expect(list).toContainText('Spark');
+  await expect(list).toContainText('from Gifted · no spell slot · 1/LR');
+  await expect(list).toContainText('Missing: character:spell/gone');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('spells-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('spells-light.png') });
+});
+
+test('SHEET-46 a tap on a circle spends a slot and gives it back, with Undo', async ({ page }) => {
+  await saveRows(page, [withSpark]);
+  await page.goto(`characters/${goldenA.id}?tab=spells`);
+  const panel = page.getByRole('tabpanel');
+  const left = panel.locator('[data-slot-left="true"]');
+  await expect(left).toHaveCount(2);
+
+  // A tap on a filled circle spends one slot; it stays spent after the sheet opens again.
+  await left.first().tap();
+  await expect(left).toHaveCount(1);
+  await expect(panel.getByText('Level 1: 1 of 2 left')).toBeAttached();
+  await expect(page.getByRole('status')).toContainText(en.toast.done.spendSlot);
+  await page.reload();
+  await expect(panel.locator('[data-slot-left="true"]')).toHaveCount(1);
+
+  // A tap on the empty circle gives it back.
+  await panel.locator('[data-slot-left="false"]').tap();
+  await expect(panel.locator('[data-slot-left="true"]')).toHaveCount(2);
+  await expect(page.getByRole('status')).toContainText(en.toast.done.regainSlot);
+
+  // "Undo" takes the last change back: the slot is spent again.
+  await page.getByRole('button', { name: en.toast.undo }).tap();
+  await expect(panel.locator('[data-slot-left="true"]')).toHaveCount(1);
+});
+
+test('SHEET-46 the Spells tab of a fighter says it has no spells', async ({ page }) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=spells`);
+  await expect(page.getByRole('tabpanel')).toHaveText(en.spells.none);
+});
