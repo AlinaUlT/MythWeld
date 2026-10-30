@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-30 · SHEET-39 · A tap on initiative or a spell attack opens the roll dialog: a d20 with
+  the bonus, Advantage and Disadvantage, situational effects and 2014 inspiration; the roll is
+  kept in the log, and with "I roll myself" on the person types the faces.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.

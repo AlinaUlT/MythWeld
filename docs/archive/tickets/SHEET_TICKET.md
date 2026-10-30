@@ -5458,3 +5458,142 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-39 Tapping a number rolls it in the roll dialog
+
+**Hat:** A tap on a number of the sheet rolls it in the roll dialog
+**Depends on:** ENG-34 (`rollModeOf`, `d20Formula`, `attackOutcome`, `criticalDamage`), ENG-26
+(`recordRoll`), SHEET-37 (`logRoll`), SHEET-38 (`rollParts` builds on its `rollWith`, `panelDie`,
+`typedDie`), SHEET-30 (the sheet mounts the dialog and `SheetNumber` opens it), SHEET-19
+(`rollInitiative`), ENG-64 (`spendInspiration`)
+**Size:** M
+**Screen:** Yes — P5 sheet 1 "Roll"; board `V3-Roll` in `docs/design/mockups/`; BRIEF Part 5 row
+"P5 Roll dialog and breakdown"
+**SPEC:** §6.5 (rolls, "I roll myself"), §5.4 (`roll.*` targets), §7.2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/shared/RollDialog.tsx` — changes (was SHEET-11's empty piece).
+- `packages/system-5e/src/roll-setup.ts` — new: `rollSetupOf`, `situationalOf`, `criticalRangeOf`,
+  `inspirationAdvantage`.
+- `apps/web/src/shared/rollSheet.ts` — new: the dialog's parts with no screen.
+- `apps/web/src/shared/dice.ts` — `rollParts`; `rollWith` now calls it.
+- `apps/web/src/systems.ts` — `SheetSystem.rolls`: what the dialog reads of a system.
+- `apps/web/src/locales/en/roll.json` — the dialog's words.
+
+#### 2. What is missing now
+
+`RollDialog` returned `null`. A tap on Init, or on a caster's spell attack, set the sheet's open
+panel to `roll` and drew nothing. No function said which d20 test a computed path is:
+`grep -rn "rollModeOf\|d20Formula\|attackOutcome" apps/web/src` found nothing.
+
+#### 3. What it should look like when done
+
+1. A tap on Init opens a bottom sheet titled "Initiative" with the formula `d20 + 3` for golden B.
+2. "Roll" rolls `1d20 + 3` with a fair die, shows the face and the total (face + 3), and logs the
+   roll (SHEET-37) with the character as roller and `init.total` as its path.
+3. "Advantage" and "Disadvantage" are the person's own switches; they replace each other, and a
+   second tap turns one off. The formula reads `2d20, the higher + 3` with advantage; the dropped
+   die is struck through.
+4. The mode is `rollModeOf` of the rules' sources for the test (the steps of its mode path) and
+   of every switch that is on: any advantage and any disadvantage cancel.
+5. A situational effect that names the test shows as a chip; an `advantage` or `disadvantage` one
+   adds its sign when on, an `add` one adds its value as a part of the roll with its own label.
+6. In 2014, with inspiration held, "Spend inspiration" is a switch that gives advantage and, when
+   the roll is made, spends one (with Undo).
+7. A weapon attack shows "Critical hit" on a face at or above its `crit.range`, "Natural 1: a miss"
+   on a 1, and offers "Roll damage": the weapon's dice plus its damage bonus, the dice doubled on a
+   critical hit.
+8. Rolling initiative calls `rollInitiative`; its `unchanged` answer is not shown.
+9. With "I roll myself" on, "Roll" asks for each die's face and "Count" counts them.
+10. A number that rolls nothing shows "This number cannot be rolled."
+
+#### 4. How to do it
+
+1. `rollSetupOf(character, computed, index, path)` matches the path to a test (`checks.<stat>.total`,
+   `abilities.<stat>.save`, `skills.<key>.total`, `init.total`, `classes.<key>.spell.attack`,
+   `attacks.<key>.hit`) and returns its mode path, its `ROLL_TARGETS`, the entry that names it and,
+   for a weapon, its dice and damage path. It gives `undefined` when the number or the mode is not
+   in `Computed`.
+2. `situationalOf` lists the effects of the gathered entities that have `situational`, name one of
+   the targets, and are an `advantage`, a `disadvantage` or an `add`.
+3. `SheetSystem.rolls` hands these and the ENG-34 rules to the dialog, so the web names no
+   fifth-edition path.
+4. `RollDialog` builds the parts (`d20Parts`), rolls them with `rollParts` and keeps the record.
+
+#### 5. Stored data
+
+Nothing stored changes. A roll is a `rollLog` row (SHEET-37); inspiration and a knock-out's rest
+change through the existing log entries.
+
+#### 6. What a person will see
+
+Opens from a tap on Init or on a spell attack. The sheet stays visible above it. States: not
+rolled (formula and switches), rolled (faces, total, outcome for an attack), asking for faces
+("I roll myself"), nothing to roll. Keys are in `roll.json`: `titles.*`, `formula.*`, `mode.*`,
+`roll`, `rollAgain`, `count`, `rollDamage`, `rollCriticalDamage`, `outcome.*`, `inspiration`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/roll-setup.test.ts` — the path of every test, the weapon with its
+  damage, the spell attack, paths that roll nothing, situational effects, inspiration by edition.
+- `apps/web/test/roll-sheet.test.ts` — signs, parts, kept face, typed-face fields, damage formula.
+- `apps/web/test/roll-dialog.test.tsx` — the first view for goldens A and B.
+- `apps/web/e2e/roll.spec.ts` — initiative with advantage and the log; a typed natural 20 and 1.
+- Control numbers from: golden B initiative +3, greatsword attack +5, damage +3
+  (`attacks.test.ts`); golden A spell attack +5 (SPEC §6.7).
+
+#### 8. Checked against the source
+
+The rules are ENG-34 §8's: any advantage and any disadvantage cancel; a natural 1 misses and a 20
+or a face in `crit.range` is a critical hit; a critical hit rolls each dice term twice. 2014
+inspiration gives advantage when spent (`rulesOf(...).inspiration.use`); 2024's heroic
+inspiration is a reroll, so it gives no advantage here. Nothing marked `[ПРОВЕРИТЬ]`.
+
+#### 9. Not in this ticket
+
+- Death saves: SHEET-43 rolls them with the tracker.
+- The person's own roll modifiers and "Send to DM" / "Secret to DM": ADR 009 item 11, with the
+  table link.
+- 2024's heroic inspiration reroll: SHEET-55.
+- A section that lists the numbers to tap (abilities, saves, skills, attacks): SHEET-32, SHEET-44.
+  The dialog already takes their paths.
+
+#### 10. Rake check
+
+- Engine stays pure: the rules are in `system-5e`; the web reads them through `SheetSystem.rolls`.
+- No look in a component: classes are tokens and parts. No visible literal: every word is in
+  `roll.json`.
+- Missing is not broken: a path with no test, or a name the packs lack, shows a message.
+- Stored units unchanged; no migration.
+
+#### 11. What came out of it
+
+Measured on 2026-10-30:
+
+- `pnpm lint`: `Checked 360 files`, 0 errors. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: `Test Files 99 passed (99)`, `Tests 1264 passed (1264)`, 30.95 s (23 new: 9 in
+  `roll-setup.test.ts`, 9 in `roll-sheet.test.ts`, 5 in `roll-dialog.test.tsx`; `navigation.test.tsx`
+  changed); lines covered 99.9 % (3093 / 3096). The second suite `Tests 2 passed (2)`.
+- `pnpm e2e`: `41 passed (44.4s)` on `pixel-7` (2 new in `roll.spec.ts`).
+- The `roll-setup` test is live: with the `situational` check removed, 1 of 8 failed.
+- Screenshots at 360 × 800: Initiative with advantage rolled (dark), the same on light, a typed
+  die (dark). Not committed.
+
+Differs from the boards: the mockup's dialog is a sample with one result line; this one adds the
+situational chips, the inspiration switch and the damage step the BRIEF and the row note ask for.
+The two mode switches replace each other (decided here, ADR 002): the person's own source is one.
+
+Not proved in a browser: a weapon attack's damage and critical damage. No section lists the
+attacks yet (SHEET-44), so nothing can tap them; `rollSetupOf`, `damageFormula` and the dialog's
+first view are tested. Situational chips and inspiration are tested at the pure level only.
+
+Found, not fixed: nothing.
+
+Changelog: "A tap on initiative or a spell attack opens the roll dialog: a d20 with the bonus, the
+person's Advantage and Disadvantage, situational effects and 2014 inspiration; the roll is kept in
+the log, and with 'I roll myself' on the person types the faces."

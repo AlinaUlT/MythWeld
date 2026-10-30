@@ -4,9 +4,19 @@
 // SHEET-24: what My characters names under a character's name is its module's too.
 // SHEET-27: the manual form makes a character through its system's maker, with its rules bases.
 // SHEET-30: so is what the sheet's header and dock read, and the module `compute()` runs.
-import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
+import type {
+  ActionResult,
+  Computed,
+  ContentIndex,
+  LogStamp,
+  SystemModule,
+} from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
+  attackOutcome,
+  criticalDamage,
+  criticalRangeOf,
+  d20Formula,
   EDITION_RULES,
   type EditionTerms,
   FIFTH_EDITION_HEADER_NUMBERS,
@@ -22,6 +32,9 @@ import {
   type HeaderCasting,
   type HeaderHitPoints,
   type HeaderNumber,
+  type InitiativeRefusal,
+  type InspirationRefusal,
+  inspirationAdvantage,
   type ListLinePart,
   MAX_LEVEL,
   type MadeByHand,
@@ -29,6 +42,14 @@ import {
   madeByHand,
   openFifthEditionCharacter,
   openFifthEditionPack,
+  type RollSetup,
+  rollInitiative,
+  rollModeOf,
+  rollSetupOf,
+  type Situational,
+  situationalOf,
+  spendInspiration,
+  type Unchanged,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
@@ -112,7 +133,42 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
   },
 ];
 
-export type { MadeByHand, ManualCharacterAsk };
+export type { MadeByHand, ManualCharacterAsk, RollSetup, Situational };
+
+/** SHEET-39: what the roll dialog reads of one system: which test a number is, and its rules. */
+export interface SheetRolls {
+  /** The d20 test that the number at `path` is; `undefined` for a number that rolls nothing. */
+  setup(
+    character: AppCharacter,
+    computed: AppComputed,
+    index: ContentIndex<AppPack['entities'][number]>,
+    path: string,
+  ): RollSetup | undefined;
+  /** The situational effects a person may switch on for the test. */
+  situational(computed: AppComputed, setup: RollSetup): Situational[];
+  /** The mode of signs: advantage, disadvantage, or neither when there are both or none. */
+  modeOf(signs: readonly number[]): -1 | 0 | 1;
+  /** The d20 formula of a mode. */
+  d20Formula(mode: number): string;
+  /** The lowest d20 face that is a critical hit for the test. */
+  criticalRange(setup: RollSetup, computed: AppComputed): number;
+  /** What the kept d20 face gives an attack, by its critical range. */
+  attackOutcome: typeof attackOutcome;
+  /** The damage formula of a critical hit. */
+  criticalDamage: typeof criticalDamage;
+  /** Whether the character may spend inspiration for advantage now. */
+  inspirationAdvantage(character: AppCharacter): boolean;
+  spendInspiration(
+    character: AppCharacter,
+    stamp: LogStamp,
+  ): ActionResult<AppCharacter, InspirationRefusal | Unchanged>;
+  /** Rolling initiative interrupts a knock-out's rest (SHEET-19). */
+  rollInitiative(
+    character: AppCharacter,
+    index: ContentIndex<AppPack['entities'][number]>,
+    stamp: LogStamp,
+  ): ActionResult<AppCharacter, InitiativeRefusal | Unchanged>;
+}
 
 /** What the sheet reads of one system: its module, and what its header and dock name. */
 export interface SheetSystem {
@@ -124,6 +180,7 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  rolls: SheetRolls;
 }
 
 /** Each system's sheet, by system id. */
@@ -134,6 +191,18 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    rolls: {
+      setup: rollSetupOf,
+      situational: situationalOf,
+      modeOf: rollModeOf,
+      d20Formula,
+      criticalRange: criticalRangeOf,
+      attackOutcome,
+      criticalDamage,
+      inspirationAdvantage,
+      spendInspiration,
+      rollInitiative,
+    },
   },
 };
 

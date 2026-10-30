@@ -1,1 +1,50 @@
-{}
+{
+  "titles": {
+    "check": "{{name}} check",
+    "save": "{{name}} save",
+    "skill": "{{name}}",
+    "init": "Initiative",
+    "spellAttack": "{{name}} spell attack",
+    "weaponAttack": "{{name}} attack"
+  },
+  "missing": "Missing: {{id}}",
+  "d20": "d20",
+  "damage": "Damage",
+  "criticalDamage": "Critical damage",
+  "formula": {
+    "normal": "d20 {{bonus}}",
+    "advantage": "2d20, the higher {{bonus}}",
+    "disadvantage": "2d20, the lower {{bonus}}"
+  },
+  "mode": {
+    "advantage": "Advantage",
+    "disadvantage": "Disadvantage"
+  },
+  "situationalSwitches": "When it applies",
+  "inspiration": "Spend inspiration",
+  "roll": "Roll",
+  "rollAgain": "Roll again",
+  "count": "Count",
+  "rollDamage": "Roll damage",
+  "rollCriticalDamage": "Roll critical damage",
+  "typed": "What your dice show",
+  "typedDie": "{{term}}, die {{n}}",
+  "die": "d{{faces}}",
+  "total": "Total",
+  "dropped": "dropped",
+  "outcome": {
+    "criticalHit": "Critical hit",
+    "automaticMiss": "Natural 1: a miss"
+  },
+  "damageTotal": "{{label}}: {{total}}",
+  "roller": "Player",
+  "done": "Done",
+  "close": "Close",
+  "nothing": "Nothing to roll",
+  "notRolled": "This number cannot be rolled.",
+  "warning": "Part of the roll could not be read; it counted as 0.",
+  "bonus": {
+    "plus": "+ {{value}}",
+    "minus": "− {{value}}"
+  }
+}

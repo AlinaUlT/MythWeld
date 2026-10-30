@@ -6,6 +6,7 @@ import {
   type FormulaReader,
   fairDie,
   type ParsedRoll,
+  type RollPart,
   type RollPartWarning,
   randomSourceOf,
   recordRoll,
@@ -77,8 +78,16 @@ export interface PanelRoll {
   now: Date;
 }
 
-/** The roll as its record, one breakdown entry for the formula, and what rolling it met. */
-export function rollWith({ formula, read, die, roller, id, now }: PanelRoll): {
+/** A roll of several labelled parts: a sheet's d20 test, its bonus and what the person switched on. */
+export interface PartsRoll extends Omit<PanelRoll, 'formula'> {
+  parts: readonly [RollPart, ...RollPart[]];
+  label: string;
+  /** The computed path of the number rolled, kept in the record (SHEET-37). */
+  path?: string;
+}
+
+/** The roll of `parts` as its record, one breakdown entry each, and what rolling it met. */
+export function rollParts({ parts, label, path, read, die, roller, id, now }: PartsRoll): {
   record: RollRecord;
   warnings: readonly RollPartWarning[];
 } {
@@ -91,14 +100,20 @@ export function rollWith({ formula, read, die, roller, id, now }: PanelRoll): {
         name: roller.name,
         ...(roller.actorId !== undefined && { actorId: roller.actorId }),
       },
-      label: formula.text,
+      label,
+      ...(path !== undefined && { path }),
       visibility: 'public',
-      parts: [{ label: formula.text, formula }],
+      parts,
       modifiers: [],
     },
     read,
     die,
   );
+}
+
+/** The roll as its record, one breakdown entry for the formula, and what rolling it met. */
+export function rollWith({ formula, ...rest }: PanelRoll) {
+  return rollParts({ ...rest, parts: [{ label: formula.text, formula }], label: formula.text });
 }
 
 /** The dice page reads no character: every path is missing. */
