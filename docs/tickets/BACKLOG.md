@@ -257,10 +257,11 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-53 | The About tab shows the origin details | S | 🔲 |
 | SHEET-54 | The Notes tab keeps free text | XS | 🔲 |
 | SHEET-55 | Inspiration is tracked as stars | S | 🔲 |
-| SHEET-56 | The portrait makes a round token | S | 🔲 |
+| SHEET-56 | The portrait makes a round token | S | ✅ 2026-10-30 |
 | SHEET-57 | Custom sections hold the person's own lists | S | 🔲 |
 | SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | 🔲 |
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
+| SHEET-69 | The token's frame is chosen from Thin, Ring and Double | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 
 - **SHEET-26** — SPEC §5.8, §12 stage 2: an older file migrates; a file that fails its checks is
@@ -379,12 +380,9 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 - **SHEET-55** — ADR 009 item 5. Found by ENG-19: the inspiration stars hold the house rule's
   `inspirationMax` and show the edition's `inspiration.max` (1 in both SRDs) next to it; spending
   one does `inspiration.use` (advantage in 2014, a reroll of one die in 2024).
-- **SHEET-56** — ADR 009 item 6, ADR 015 item 2, board `V3-Token`: the person's image, an animated
-  picture or a short video included, kept in the blobs table on the device (ADR 005 item 10); the
-  token is the image in a round frame (SHEET-03's slot). Found by SHEET-25: Copy copies the blob
-  under a new id and Delete drops it (`apps/web/src/db/characterActions.ts`), whatever the blob
-  row holds. Found by SHEET-05: CSS cannot stop an
-  animated picture or a video, so while `motionIsStill()` is true the token shows a still frame.
+- **SHEET-69** — board `V3-Token`, SHEET-03's three frame slots: the person picks the frame; the
+  choice is stored on the character (a stored-shape change: `schemaVersion` and a migration, SPEC
+  §5.8). Split from SHEET-56, which draws the Ring frame.
 - **SHEET-57** — ADR 009 items 7 and 8, board `V3-Add`: Mounts, Pets, Familiars, Notes or any
   named list, each entry free text; a companion is such an entry with its small stat block as text.
   A companion with a sheet of its own waits for the table link (ADR 014 item 9). A stored-shape

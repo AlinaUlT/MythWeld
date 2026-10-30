@@ -48,9 +48,12 @@ export interface HistoryRow extends StoredObject {
   at: string;
 }
 
-/** A file the person added (a portrait, an uploaded PDF form), keyed by its uuid. */
+/** A file the person added (a portrait, later an uploaded PDF form), keyed by its uuid. */
 export interface BlobRow {
   id: string;
+  /** The media type the person's file came with, `image/webp`, `video/mp4`. */
+  type: string;
+  data: Blob;
 }
 
 export class GrimoireDb extends Dexie {

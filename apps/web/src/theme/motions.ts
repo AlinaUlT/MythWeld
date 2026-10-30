@@ -88,6 +88,25 @@ export function motionIsStill(win: Window = window): boolean {
   );
 }
 
+// SHEET-56: calls `onChange` when the phone's setting or the app's switch changes `motionIsStill()`,
+// so a picture or a video on screen follows it at once. Returns the way to stop watching.
+export function watchMotionStill(
+  onChange: () => void,
+  win: Window & typeof globalThis = window,
+): () => void {
+  const query = win.matchMedia('(prefers-reduced-motion: reduce)');
+  const observer = new win.MutationObserver(onChange);
+  observer.observe(win.document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-motion'],
+  });
+  query.addEventListener('change', onChange);
+  return () => {
+    observer.disconnect();
+    query.removeEventListener('change', onChange);
+  };
+}
+
 // The style an element wears for a preset: a transition or an animation, read from its theme key.
 export function motionStyle(name: MotionName): CSSProperties {
   const value = token(`motion-${name}`);

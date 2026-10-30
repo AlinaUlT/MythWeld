@@ -5458,3 +5458,85 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-56 The portrait makes a round token
+
+**Hat:** Show the person's portrait as the header's round token
+**Depends on:** SHEET-03 (token slots), SHEET-05 (`motionIsStill()`), SHEET-25 (blob copy and drop), SHEET-30 (the header)
+**Size:** S
+**Screen:** Yes — the portrait panel, board `V3-Token` (`docs/design/mockups/V3-Token.dc.html`), BRIEF P4; the header token, board `V3-Sheet`
+**SPEC:** §5.8 `portraitBlobId`, §11 `blobs`; ADR 009 item 6, ADR 015 item 2, ADR 005 item 10
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/db/portraits.ts` — new. Also: `db/db.ts` (the blob row gets `type` and `data`), `sheet/header/TokenFace.tsx` (new), `sheet/header/Token.tsx`, `sheet/panels/PortraitPanel.tsx` (new), `sheet/SheetHeader.tsx` and `pages/SheetPage.tsx` (open the panel), `theme/motions.ts` (`watchMotionStill`), `locales/en/token.json`.
+
+#### 2. What is missing now
+
+`Token.tsx` draws the first letter of the name. `BlobRow` is `{ id }`. Nothing stores a portrait file, and no screen picks one.
+
+#### 3. What it should look like when done
+
+1. A tap on the header token opens the Portrait panel: a file picker for an image, an animated picture or a video, "stays on this device", the round preview, "Use as token".
+2. "Use as token" keeps the file as it came in the `blobs` table, names it in `portraitBlobId`, raises `rev` by 1, and drops the file it replaces unless another character names it.
+3. A file that is not `image/*` or `video/*`, or is over 10 MiB (10,485,760 bytes), is said in the panel and nothing is written.
+4. The header token shows the picture cut round in the ring frame; a video plays muted in a loop.
+5. While `motionIsStill()` is true, a video does not autoplay or loop and an animated picture shows its first frame as a PNG; the token follows the switch without a reload.
+6. "Remove portrait" appears only when there is one; it drops the id and the file. A portrait id with no blob shows the letter.
+7. Back in the panel closes the panel and stays on the sheet.
+
+#### 4. How to do it
+
+1. `portraits.ts`: `portraitKind`, `refusalFor`, `setPortrait`, `clearPortrait` (one transaction each), `readPortrait`, `stillFrameOf` (`createImageBitmap` + canvas).
+2. `TokenFace` draws the file or the letter; `Token` is a button over it; `PortraitPanel` picks, previews and saves.
+3. `watchMotionStill` listens to the media query and to `data-motion` on `<html>`.
+
+#### 5. Stored data
+
+The `blobs` row gets `type` and `data` (a table field, not part of a character; the Dexie schema string is unchanged). `CharacterDoc` does not change, so no `schemaVersion` bump.
+
+#### 6. What a person will see
+
+At 360×800, from the header token. States: empty (letter, button disabled), chosen (preview), refused (alert), saved (panel closes), existing (Remove shown). Keys in `token.json`: `open`, `title`, `choose`, `stays`, `tokenTitle`, `tokenText`, `use`, `remove`, `notMedia`, `tooBig`, `notFound`, `failed`, `accept`.
+
+#### 7. Tests
+
+- `apps/web/test/portrait.test.tsx` — file kinds and limit, set, replace, shared blob kept, refusals write nothing, clear, missing blob, the token's markup, the panel's text, `watchMotionStill`.
+- `apps/web/e2e/portrait.spec.ts` — a real two-frame GIF through the picker: kept, round, still frame as PNG under reduced motion and GIF again after; a video's attributes; Back; Remove.
+- Control numbers from: ADR 005 item 10 and the board; the limit is this ticket's own choice.
+
+#### 8. Checked against the source
+
+Nothing to check.
+
+#### 9. Not in this ticket
+
+- The choice among Thin, Ring and Double frames of the board: SHEET-69 (it stores a field on the character).
+- The token in lists and the initiative tracker: their own tickets.
+- Making images smaller before sharing: the table link (ADR 005 item 10).
+
+#### 10. Rake check
+
+- **No look in a component:** the circle, frame and fill come from the `portrait` and `token-frame-ring` slots and the panel from `app`, parts and tokens.
+- **No visible literal:** every string is a `token` key; the picture's `alt` is the character's name.
+- **Missing is not broken:** a portrait id with no blob shows the letter.
+- **A person's saved data:** the file never leaves the device; Copy and Delete (SHEET-25) already carry the blob.
+- **Stored shape:** `CharacterDoc` unchanged.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-30: `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` exit 0 in 98.8 s. `pnpm lint` 359 files, no fixes. `pnpm test` 97 files, 1251 passed, 0 failed (10 new), speed project 2 passed. `pnpm e2e` 42 passed, 0 failed, 40.4 s (3 new).
+
+Differences from §3 and the board:
+- The board's frame picker is not here: it needs a stored field on the character, a `schemaVersion` bump and a migration that touches about 50 fixtures. Split into SHEET-69. The token uses the Ring frame, the board's chosen one.
+- The board's drop area is dashed; the `panel` part has a solid border, so the panel follows the skin.
+- Under reduced motion a video shows its first frame by not autoplaying; the e2e video is bytes the browser cannot decode, so only its attributes are checked.
+- The first screenshot showed the sheet through the panel (the `page` slot is clear); the panel uses the `app` slot. Back first went a step back in the router; it now closes the panel.
+
+Found, not fixed: nothing.
+
+Changelog: "Tapping the token on a character's sheet opens Portrait: pick an image, an animated picture or a short video up to 10 MB; it stays on the device and the sheet shows it as a round token."

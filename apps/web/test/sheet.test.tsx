@@ -52,7 +52,10 @@ function draw(sheet: SheetValue, node: ReactNode): string {
 
 const noop = () => {};
 const header = (sheet: SheetValue) =>
-  draw(sheet, <SheetHeader onChoices={noop} onRest={noop} onEdit={noop} onActions={noop} />);
+  draw(
+    sheet,
+    <SheetHeader onChoices={noop} onRest={noop} onEdit={noop} onActions={noop} onPortrait={noop} />,
+  );
 
 /** The text of every element whose `data-path` is `path`, tags removed. */
 function textAt(html: string, path: string): string[] {
