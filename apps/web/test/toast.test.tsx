@@ -127,6 +127,8 @@ describe('SHEET-23 the undo toast', () => {
       'gainInspiration',
       'spendInspiration',
       'levelUp',
+      // SHEET-54: the Notes tab's own action, not the engine's.
+      'setNote',
     ];
     expect(Object.keys(en.toast.done)).toEqual([...actions, 'other']);
     for (const action of actions) expect(doneKeyOf(action)).toBe(action);

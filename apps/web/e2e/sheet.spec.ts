@@ -203,3 +203,24 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
 });
+
+test('SHEET-54 a note is saved when the box loses focus, survives a reload, and can be undone', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=notes`);
+  const box = page.getByLabel(en.notes.fields.bonds);
+  await box.fill('My sister Ada');
+  await box.blur();
+  await expect(page.getByRole('status')).toContainText(en.toast.done.setNote);
+  await page.screenshot({ path: testInfo.outputPath('sheet-notes.png') });
+
+  await page.reload();
+  await expect(page.getByLabel(en.notes.fields.bonds)).toHaveValue('My sister Ada');
+
+  await page.getByLabel(en.notes.fields.free).fill('Owes the guild');
+  await page.getByLabel(en.notes.fields.free).blur();
+  await page.getByRole('button', { name: en.toast.undo }).tap();
+  await expect(page.getByLabel(en.notes.fields.free)).toHaveValue('');
+  await expect(page.getByLabel(en.notes.fields.bonds)).toHaveValue('My sister Ada');
+});

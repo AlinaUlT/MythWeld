@@ -1,1 +1,12 @@
-{}
+{
+  "fields": {
+    "appearance": "Appearance",
+    "personality": "Personality",
+    "ideals": "Ideals",
+    "bonds": "Bonds",
+    "flaws": "Flaws",
+    "backstory": "Backstory",
+    "allies": "Allies",
+    "free": "Other notes"
+  }
+}

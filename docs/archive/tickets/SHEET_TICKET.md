@@ -5458,3 +5458,40 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-54 The Notes tab keeps free text · XS
+
+**Hat:** Keep the character's notes as text boxes
+**Where:** `apps/web/src/sheet/sections/NotesText.tsx`; `notes` and `toast` locale files
+**Depends on:** SHEET-30, SHEET-23
+**Screen:** `V3-Sheet` (BRIEF P4: "Notes (plain text)")
+
+**What it should look like when done:**
+1. The Notes tab shows one box for each note of SPEC §5.8: appearance, personality, ideals,
+   bonds, flaws, backstory, allies and other notes. Each holds the stored text.
+2. Leaving a box saves it as one change at `notes.<key>` (SHEET-23's `changeCharacter`); the toast
+   says "Note saved" and its Undo puts the old text back.
+3. A box with only spaces removes its note: a stored note always shows something
+   (`visibleTextSchema`). A box that did not change writes nothing.
+4. Nothing stored changes: `notes` is already `Record<key, text>`; no migration.
+
+**Tests:** `apps/web/test/notes.test.tsx` — eight boxes drawn, the entry for add, edit and
+remove, no entry for no change, a write and its undo on a fake database; `apps/web/e2e/sheet.spec.ts`
+— type, blur, reload, undo in the built app. Control numbers: SPEC §5.8 (eight keys), golden B.
+**What came out of it:** Quality gate, 2026-10-30: `pnpm lint` and `pnpm typecheck` clean;
+`pnpm test` 97 files, 1245 passed, 0 failed (4 new), then the speed project 2 passed; coverage
+statements 99.45 %, lines 99.9 %. `pnpm e2e` 40 passed, 0 failed, 26.1 s (1 new).
+
+Decided here (ADR 002):
+- Notes are editable in play mode too: a table is where they get written.
+- The last box is "Other notes", not "Notes", so it does not share its name with the tab.
+- `setNote` is a screen's action, not the engine's; it has its own toast text, and
+  `toast.test.tsx`'s list of actions names it.
+- `sheet.test.tsx`'s "every section is empty" check skips Notes, which this row filled.
+
+Found, not fixed: nothing.
+
+Changelog: "The Notes tab keeps eight notes (appearance to allies, and other notes); each saves
+when you leave it, with Undo."
