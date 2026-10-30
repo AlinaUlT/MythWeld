@@ -5458,3 +5458,133 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-36 The choices badge opens every pending choice
+
+**Hat:** List every choice not made, each answered from its options
+**Depends on:** SHEET-30 (the badge and the empty `ChoicesPanel`), SHEET-23 (`changeCharacter`), ENG-48 (`pendingKeys`)
+**Size:** M
+**Screen:** Yes — no board of its own in `docs/design/mockups/`; BRIEF Part 1 asks for "a badge with a count, like [!1], that opens the list of choices", and the panel is a bottom sheet like `DiceSheet`'s
+**SPEC:** §7.2 ("Что нужно выбрать": the list of unmade choices, with a way to each)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/panels/ChoicesPanel.tsx` — changes (it was an empty frame).
+- `apps/web/src/sheet/panels/choices.ts` — new: the list's model without React (`asksOf`,
+  `toggled`, `answers`, `placed`, `answerEntry`).
+- `packages/system-5e/src/choices.ts` — new: which entries name a choice's keys, where a key
+  path's answer is stored.
+- `apps/web/src/systems.ts` — `SheetSystem` gets `optionType` and `pendingKeys` from that module.
+- `apps/web/src/locales/en/choices.json`, `toast.json` — the words.
+- `apps/web/src/shared/ToastHost.tsx` — `z-20`, so the toast stands above a panel.
+
+#### 2. What is missing now
+
+The badge shows `!7` for golden B without its stored choices and opens `ChoicesPanel`, which
+returns `null`: the person sees nothing, and no screen writes `choices`. Measured on the built-in
+packs: golden B has 7 pending choices, golden A 4, golden C (2014) 1; the goldens as stored have 0.
+
+#### 3. What it should look like when done
+
+1. The badge opens a bottom sheet "Choices to make" with one row per `pendingChoices` entry, then
+   one per `pendingKeys` entry. Each row: what it picks, the entity that asks, "0 of 2".
+2. A row opens its options. Each option is named by its entry (a skill, a stat, a feat, a
+   lineage, an item), or by its key as words when no entry exists (tools have none yet).
+3. Picking up to the count, then "Choose", stores the answer as one change (`makeChoice`) in
+   `choices[<part>]`, in the order picked; the "Undo" toast follows, and Undo puts the row back.
+4. A distribution (an ability-score grant) takes picks in order and shows the number each gets:
+   the soldier's picks give +2 and +1, or +1 each for three.
+5. A size not chosen is answered in `systemData.species.size`, not in `choices`.
+6. A choice made leaves the list; with none left the list says "Nothing left to choose."
+7. Answering each of golden B's seven choices with what its fixture stores gives back
+   exactly the fixture's `choices`, and `pendingChoices` is empty.
+
+#### 4. How to do it
+
+1. `fifthEditionOptionType(grant)` and `FIFTH_EDITION_PENDING_KEYS` in the module; the sheet's
+   `SheetSystem` carries them, so the panel names no game.
+2. `asksOf(computed, system, typeOfEntity)` turns both lists into one `Ask`: its place (a part, or
+   a stored key place), the most it takes (the largest pattern of a distribution), what is stored,
+   what may still be picked.
+3. The detail view keeps its picks in its own state and writes only on "Choose": a pattern
+   `[[2], [1, 1]]` would end at the first pick if each tap wrote, because the engine takes the
+   first pattern with as many numbers as picks.
+4. `answerEntry` builds the entry with `entryOf` and `changeTo`; `changeCharacter` writes it and
+   shows the toast. A refusal (the stored character changed) is said in the panel.
+
+#### 5. Stored data
+
+Nothing stored changes. `choices` and `systemData.species.size` keep their shapes.
+
+#### 6. What a person will see
+
+Opens from the `!N` badge, over the sheet, in play mode and in edit mode alike. States: the list;
+a choice's options (checked marks, or the order picked and its number for a distribution; a
+disabled option once the count is reached); a warning when fewer options can be offered than the
+count; "Nothing left to choose."; "That was not saved: the character changed. Try again." Keys:
+`choices:title`, `back`, `close`, `empty`, `progress`, `pick`, `pickInOrder`, `ways`, `bonus`,
+`short`, `noPlace`, `confirm`, `failed`, `missing`, `what.*`; `toast:done.makeChoice`.
+
+#### 7. Tests
+
+- `apps/web/test/choices.test.tsx` — the seven asks of golden B and the four of golden A; none for
+  the stored goldens; the size ask; picking and the soldier's +2/+1; the list as drawn; answering
+  all seven of golden B's choices gives its fixture's `choices`, AC 17 and initiative +3; the size
+  answer; the undo toast; a stale answer refused.
+- `packages/system-5e/test/choices.test.ts` — the entry type of each proficiency category, the size
+  place.
+- `apps/web/e2e/sheet.spec.ts` — badge, list, two skills, Undo, the soldier's +2/+1, the size.
+- Control numbers from: SPEC §6.7 golden B (its stored `choices`, AC 17, initiative +3) and
+  values measured on the built-in packs: passive Perception 11 without the fighter's skills and
+  13 with them.
+
+#### 8. Checked against the source
+
+Nothing marked `[ПРОВЕРИТЬ]`. The soldier's patterns `[[2, 1], [1, 1, 1]]` are the pack's own data
+(`srd-2024.ts`); the engine's rule (the first pattern with as many numbers as picks) is
+`patternOf` in `gather.ts`.
+
+#### 9. Not in this ticket
+
+- Changing a choice already made: it is not pending, so it is not listed; Undo reverses the last
+  one. Editing a made choice belongs to the wizard and level-up (phase 4).
+- Showing `Computed.warnings`, including `sizeNotOffered`: SHEET-69.
+- Names for tools: no `toolKind` entries exist yet, so a tool shows its key as words.
+
+#### 10. Rake check
+
+- **Everything is data:** the panel names no game; the entry types and the size's place come from
+  the module through `SheetSystem`.
+- **A person's saved data:** every answer is one entry applied to the stored character, refused
+  if it changed, and undone by the toast.
+- **No look in a component / no visible literal:** tokens and parts only; every string is a
+  `choices` or `toast` key.
+- **Missing is not broken:** an option the content lacks shows "Missing: <id>".
+- **Ids are stable:** the answer stores ids and keys, never names.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-30: `pnpm lint` 358 files, no fixes. `pnpm typecheck` clean.
+`pnpm test` 98 files, 1263 passed, 0 failed (22 new), then the speed project 2 passed; coverage
+statements 99.45 % (3485/3504), lines 99.9 % (3056/3059). `pnpm e2e` 41 passed, 0 failed, 36.7 s
+(2 new). Screenshots at 360×800 shown in the chat; not committed.
+
+Differences from §3 and the plan:
+- The toast sat under the panel's scrim, so Undo could not be tapped (found by the e2e run).
+  `ToastHost` is `z-20` now; `toast.test.tsx`'s expected markup follows, and its list of action
+  keys gains `makeChoice`. `sheet.test.tsx` no longer expects `ChoicesPanel` to draw nothing.
+- Options are `aria-pressed` buttons, not radios: lint refuses `aria-checked` on a role chosen
+  at run time.
+
+Found, not fixed:
+- `nameIn` is now copied in four files (`SheetHeader`, `CharactersPage`, `create/draft`,
+  `choices.ts`); one shared helper would do.
+- Nothing on the sheet shows `Computed.warnings`: SHEET-69.
+
+Changelog: "The !N badge on the sheet opens the choices still to make: each shows what it picks
+and who asks (skills, languages, tools, a feat, a lineage, ability scores, a species' size); open
+one, pick, and Choose stores it with Undo."

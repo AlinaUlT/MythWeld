@@ -203,3 +203,69 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
 });
+
+// SHEET-36: golden B without its stored choices has seven to make; the badge opens them.
+test('SHEET-36 the choices badge opens the list; a choice is made and undone', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [{ ...goldenB, choices: {} }]);
+  await page.goto(`characters/${goldenB.id}`);
+  const badge = page.getByRole('button', { name: /choices to make/ });
+  await expect(badge).toHaveText('!7');
+  await badge.tap();
+
+  const sheet = page.getByRole('dialog');
+  await expect(sheet.getByRole('listitem')).toHaveCount(7);
+  await page.screenshot({ path: testInfo.outputPath('choices-list.png') });
+
+  // The fighter's two skills: Choose waits for the second pick.
+  await sheet.getByRole('button', { name: /Skills.*Fighter.*0 of 2/ }).tap();
+  const choose = sheet.getByRole('button', { name: en.choices.confirm, exact: true });
+  await expect(choose).toBeDisabled();
+  await sheet.getByRole('button', { name: 'Perception' }).tap();
+  await expect(choose).toBeDisabled();
+  await sheet.getByRole('button', { name: 'Survival' }).tap();
+  // Two are picked: the others cannot be.
+  await expect(sheet.getByRole('button', { name: 'Athletics' })).toBeDisabled();
+  await expect(choose).toBeEnabled();
+  await page.screenshot({ path: testInfo.outputPath('choices-skills.png') });
+  await choose.tap();
+
+  // It is stored: golden B's passive Perception is 13 with Perception chosen, 11 without.
+  await expect(sheet.getByRole('listitem')).toHaveCount(6);
+  await expect(badge).toHaveText('!6');
+  await expect(page.getByRole('status')).toContainText(en.toast.done.makeChoice);
+  await expect(number(page, 'skills.perception.passive')).toHaveText('13Passive');
+
+  // Undo puts the choice back in the list.
+  await page.getByRole('button', { name: en.toast.undo }).tap();
+  await expect(sheet.getByRole('listitem')).toHaveCount(7);
+  await expect(number(page, 'skills.perception.passive')).toHaveText('11Passive');
+
+  // The soldier's ability scores: picked in order, +2 then +1.
+  await sheet.getByRole('button', { name: /Ability scores.*Soldier/ }).tap();
+  await sheet.getByRole('button', { name: 'Strength' }).tap();
+  await sheet.getByRole('button', { name: 'Constitution' }).tap();
+  await expect(sheet.getByRole('button', { name: 'Strength' })).toContainText('+2');
+  await expect(sheet.getByRole('button', { name: 'Constitution' })).toContainText('+1');
+  await page.screenshot({ path: testInfo.outputPath('choices-abilities.png') });
+  await sheet.getByRole('button', { name: en.choices.confirm, exact: true }).tap();
+  await expect(sheet.getByRole('listitem')).toHaveCount(6);
+});
+
+test('SHEET-36 a species size not chosen is answered in the list', async ({ page }) => {
+  await saveRows(page, [
+    {
+      ...goldenB,
+      systemData: { ...goldenB.systemData, species: { id: 'srd-2024:species/human' } },
+    },
+  ]);
+  await page.goto(`characters/${goldenB.id}`);
+  await page.getByRole('button', { name: '1 choices to make' }).tap();
+  const sheet = page.getByRole('dialog');
+  await sheet.getByRole('button', { name: /Size/ }).tap();
+  await sheet.getByRole('button', { name: 'Small', exact: true }).tap();
+  await sheet.getByRole('button', { name: en.choices.confirm, exact: true }).tap();
+  await expect(sheet.getByText(en.choices.empty)).toBeVisible();
+  await expect(page.getByRole('button', { name: /choices to make/ })).toHaveCount(0);
+});

@@ -127,6 +127,8 @@ describe('SHEET-23 the undo toast', () => {
       'gainInspiration',
       'spendInspiration',
       'levelUp',
+      // SHEET-36: the sheet's own, made by the choices list and not by an action of the module.
+      'makeChoice',
     ];
     expect(Object.keys(en.toast.done)).toEqual([...actions, 'other']);
     for (const action of actions) expect(doneKeyOf(action)).toBe(action);
@@ -167,7 +169,7 @@ describe('SHEET-23 the undo toast', () => {
     const stored = fifthEditionCharacterSchema.parse(await database.characters.get(a.id));
     expect(stored.systemData.state.hp.current).toBe(12);
     expect(renderToStaticMarkup(<ToastHost />)).toBe(
-      '<div role="status" class="pointer-events-none fixed inset-x-4 bottom-[calc(var(--dock-height,0px)+16px)]"></div>',
+      '<div role="status" class="pointer-events-none fixed inset-x-4 bottom-[calc(var(--dock-height,0px)+16px)] z-20"></div>',
     );
   });
 

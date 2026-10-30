@@ -26,6 +26,7 @@
     "gainInspiration": "Inspiration gained",
     "spendInspiration": "Inspiration spent",
     "levelUp": "{{name}} level gained",
+    "makeChoice": "Choice made",
     "other": "Change made"
   }
 }

@@ -4,12 +4,14 @@
 // SHEET-24: what My characters names under a character's name is its module's too.
 // SHEET-27: the manual form makes a character through its system's maker, with its rules bases.
 // SHEET-30: so is what the sheet's header and dock read, and the module `compute()` runs.
-import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
+// SHEET-36: so is what the choices list needs to name an option and to answer a key path.
+import type { Computed, ContentIndex, GrantOf, SystemModule } from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
   EDITION_RULES,
   type EditionTerms,
   FIFTH_EDITION_HEADER_NUMBERS,
+  FIFTH_EDITION_PENDING_KEYS,
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
   type FifthEditionEntity,
@@ -19,6 +21,7 @@ import {
   fifthEditionHitPoints,
   fifthEditionListLine,
   fifthEditionModule,
+  fifthEditionOptionType,
   type HeaderCasting,
   type HeaderHitPoints,
   type HeaderNumber,
@@ -29,6 +32,7 @@ import {
   madeByHand,
   openFifthEditionCharacter,
   openFifthEditionPack,
+  type PendingKeyAnswer,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
@@ -121,6 +125,10 @@ export interface SheetSystem {
   classLine: ListLine;
   /** The header's stats row, left to right. */
   numbers: readonly HeaderNumber[];
+  /** SHEET-36: the entity type a grant's offered keys are entries of, to name them. */
+  optionType: (grant: GrantOf<FifthEditionEntity>) => string | undefined;
+  /** SHEET-36: the key paths a person answers, by path. */
+  pendingKeys: Readonly<Record<string, PendingKeyAnswer>>;
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
@@ -132,6 +140,8 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     module: fifthEditionModule,
     classLine: fifthEditionClassLine,
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
+    optionType: fifthEditionOptionType,
+    pendingKeys: FIFTH_EDITION_PENDING_KEYS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
   },

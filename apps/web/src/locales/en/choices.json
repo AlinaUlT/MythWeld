@@ -1,1 +1,36 @@
-{}
+{
+  "title": "Choices to make",
+  "close": "Close",
+  "back": "Back to the list",
+  "empty": "Nothing left to choose.",
+  "progress": "{{done}} of {{count}}",
+  "pick": "Choose {{count}}",
+  "pickInOrder": "Choose in order. The first pick gets the first number.",
+  "ways": "{{count}} picks: {{numbers}}",
+  "bonus": "+{{value}}",
+  "short": "{{count}} more cannot be offered from what this character has.",
+  "noPlace": "This app does not save this choice yet.",
+  "confirm": "Choose",
+  "failed": "That was not saved: the character changed. Try again.",
+  "missing": "Missing: {{id}}",
+  "what": {
+    "skill": "Skills",
+    "save": "Saving throws",
+    "armor": "Armor",
+    "weapon": "Weapons",
+    "tool": "Tools",
+    "language": "Languages",
+    "mastery": "Weapon mastery",
+    "abilityScore": "Ability scores",
+    "feat": "Feat",
+    "lineage": "Lineage",
+    "species": "Species",
+    "subclass": "Subclass",
+    "background": "Background",
+    "feature": "Feature",
+    "spell": "Spell",
+    "item": "Item",
+    "size": "Size",
+    "other": "Choice"
+  }
+}
