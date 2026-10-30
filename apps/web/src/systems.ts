@@ -4,9 +4,20 @@
 // SHEET-24: what My characters names under a character's name is its module's too.
 // SHEET-27: the manual form makes a character through its system's maker, with its rules bases.
 // SHEET-30: so is what the sheet's header and dock read, and the module `compute()` runs.
-import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
+// SHEET-50: so is what the Gear tab reads and does.
+import type {
+  ActionResult,
+  Computed,
+  ContentIndex,
+  EntityFinder,
+  LogStamp,
+  SystemModule,
+} from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
+  ATTUNEMENT_LIMIT,
+  CARRIED_PATH,
+  containedWeightPath,
   EDITION_RULES,
   type EditionTerms,
   FIFTH_EDITION_HEADER_NUMBERS,
@@ -19,16 +30,25 @@ import {
   fifthEditionHitPoints,
   fifthEditionListLine,
   fifthEditionModule,
+  type GearWarning,
+  gearWarnings,
   type HeaderCasting,
   type HeaderHitPoints,
   type HeaderNumber,
+  type InventoryRefusal,
   type ListLinePart,
   MAX_LEVEL,
   type MadeByHand,
   type ManualCharacterAsk,
   madeByHand,
+  moveItem,
+  needsAttunement,
   openFifthEditionCharacter,
   openFifthEditionPack,
+  rowWeightPath,
+  setAttuned,
+  setEquipped,
+  type Unchanged,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
@@ -114,6 +134,33 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
 
 export type { MadeByHand, ManualCharacterAsk };
 
+/** An action on a row of the inventory (SHEET-50): the character, the row, and what to set. */
+type InventoryAction<T> = (
+  character: AppCharacter,
+  find: EntityFinder<FifthEditionEntity>,
+  uid: string,
+  to: T,
+  stamp: LogStamp,
+) => ActionResult<AppCharacter, InventoryRefusal | Unchanged>;
+
+/** SHEET-50: what the Gear tab needs of a system: its weight paths, its actions, its rules. */
+export interface SheetInventory {
+  /** The path of the weight of everything carried, in pounds. */
+  carriedPath: string;
+  /** The path of one row's own weight, and of the weight of what is inside it. */
+  rowWeightPath(uid: string): string;
+  containedWeightPath(uid: string): string;
+  /** How many magic items a creature is attuned to at most. */
+  attunementLimit: number;
+  /** Whether the item needs attunement; `false` for an entity that is not an item. */
+  needsAttunement(entity: FifthEditionEntity | undefined): boolean;
+  setEquipped: InventoryAction<boolean>;
+  setAttuned: InventoryAction<boolean>;
+  moveItem: InventoryAction<string | undefined>;
+  /** What the worn and attuned rows give warnings of. */
+  warnings(computed: AppComputed): readonly GearWarning[];
+}
+
 /** What the sheet reads of one system: its module, and what its header and dock name. */
 export interface SheetSystem {
   module: SystemModule<AppCharacter, FifthEditionEntity>;
@@ -124,6 +171,7 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  inventory: SheetInventory;
 }
 
 /** Each system's sheet, by system id. */
@@ -134,6 +182,17 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    inventory: {
+      carriedPath: CARRIED_PATH,
+      rowWeightPath,
+      containedWeightPath,
+      attunementLimit: ATTUNEMENT_LIMIT,
+      needsAttunement: (entity) => entity?.type === 'item' && needsAttunement(entity),
+      setEquipped,
+      setAttuned,
+      moveItem,
+      warnings: gearWarnings,
+    },
   },
 };
 

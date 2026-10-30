@@ -1,1 +1,29 @@
-{}
+{
+  "title": "Gear",
+  "carried": "Carrying",
+  "attunedCount": "Attuned {{count}} of {{limit}}",
+  "empty": "Nothing carried yet.",
+  "missing": "Missing: {{id}}",
+  "quantity": "×{{count}}",
+  "weight": "Weight",
+  "holds": "Inside",
+  "noWeight": "—",
+  "worn": "Worn",
+  "attuned": "Attuned",
+  "wornFor": "Worn: {{name}}",
+  "attunedFor": "Attuned: {{name}}",
+  "insideFor": "Where {{name}} is carried",
+  "loose": "Carried loose",
+  "inside": "In {{name}}",
+  "warn": {
+    "attunementLimit": "Attuned to {{attuned}} magic items; no more than {{limit}} at a time.",
+    "attunementCopies": "Attuned to {{attuned}} copies of {{name}}; no more than one copy of an item.",
+    "oneAtATime": "{{item}} counts for nothing: {{worn}} is already worn, and only one counts at a time."
+  },
+  "problem": {
+    "noRow": "That item is no longer in the inventory.",
+    "noContainer": "The place you chose is no longer in the inventory.",
+    "insideItself": "An item cannot be inside itself or inside what it holds.",
+    "changed": "The inventory changed since. Try again."
+  }
+}

@@ -214,10 +214,10 @@ describe('SHEET-30 tabs', () => {
 
   it('creates every section and panel empty, for the rows that fill them', () => {
     const sheet = sheetOf(goldenB);
-    // Fourteen files; Conditions stands on two tabs.
+    // Fourteen files; Conditions stands on two tabs. SHEET-50 filled Items: its own test draws it.
     const sections = [...new Set(SHEET_TABS.flatMap(({ sections }) => sections))];
     expect(sections).toHaveLength(14);
-    for (const Section of [...sections, Inspiration]) {
+    for (const Section of [...sections.filter((each) => each.name !== 'Items'), Inspiration]) {
       expect(draw(sheet, <Section />)).toBe('');
     }
     for (const Panel of [RestPanel, ActionsMenu, ChoicesPanel]) {

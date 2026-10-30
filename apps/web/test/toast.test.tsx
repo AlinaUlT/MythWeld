@@ -127,6 +127,11 @@ describe('SHEET-23 the undo toast', () => {
       'gainInspiration',
       'spendInspiration',
       'levelUp',
+      'equipItem',
+      'unequipItem',
+      'attuneItem',
+      'endAttunement',
+      'moveItem',
     ];
     expect(Object.keys(en.toast.done)).toEqual([...actions, 'other']);
     for (const action of actions) expect(doneKeyOf(action)).toBe(action);

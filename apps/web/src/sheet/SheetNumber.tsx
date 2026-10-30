@@ -4,7 +4,7 @@
 import type { TFunction } from 'i18next';
 import { type PointerEvent, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { shownDistance } from '../settings/units';
+import { shownDistance, shownWeight } from '../settings/units';
 import { useSettings } from '../settings/useSettings';
 import type { AppComputed } from '../systems';
 import { useSheet } from './SheetContext';
@@ -26,20 +26,25 @@ export function signed(value: number, t: SheetT): string {
   return value < 0 ? t('signed.minus', { value: -value }) : t('signed.plus', { value });
 }
 
-/** How a number is written: as it is, with its sign, or as a distance stored in feet. */
-export type NumberFormat = 'plain' | 'signed' | 'distance';
+/** How a number is written: as it is, with its sign, or as a distance stored in feet (SHEET-50: a weight in pounds). */
+export type NumberFormat = 'plain' | 'signed' | 'distance' | 'weight';
 
 export function formatNumber(
   value: number | undefined,
   format: NumberFormat,
   t: SheetT,
   distance: Parameters<typeof shownDistance>[1],
+  weight: Parameters<typeof shownWeight>[1] = 'lb',
 ): string {
   if (value === undefined) return t('noValue');
   if (format === 'signed') return signed(value, t);
   if (format === 'distance') {
     const shown = shownDistance(value, distance);
     return t(`distance.${shown.unit}`, { value: shown.value });
+  }
+  if (format === 'weight') {
+    const shown = shownWeight(value, weight);
+    return t(`weight.${shown.unit}`, { value: shown.value });
   }
   return String(value);
 }
@@ -105,12 +110,12 @@ export function SheetNumber({
   labelAfter = false,
 }: SheetNumberProps) {
   const { t } = useTranslation('sheet');
-  const { distance } = useSettings();
+  const { distance, weight } = useSettings();
   const sheet = useSheet();
   const handlers = usePress(rolls ? () => sheet.roll(path) : undefined, () =>
     sheet.breakdown(path),
   );
-  const value = formatNumber(numberAt(sheet.computed, path), format, t, distance);
+  const value = formatNumber(numberAt(sheet.computed, path), format, t, distance, weight);
   const name = <span className={labelClassName}>{label}</span>;
   return (
     <button type="button" data-path={path} className={className} {...handlers}>

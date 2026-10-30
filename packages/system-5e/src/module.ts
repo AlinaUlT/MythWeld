@@ -39,6 +39,7 @@ import { spellUsesGrants } from './spell-uses';
 import { spellcastingSteps } from './spellcasting';
 import { trainingSteps, untrainedEffects } from './training';
 import { unconsciousNamed, unconsciousWarnings } from './unconscious';
+import { weightSteps } from './weight';
 
 // ENG-13: fifth edition's module (ADR 004 item 1), what the core asks of it: the character's
 // level, the entities its `systemData` names, a stat's defaults, the grants a class taken after
@@ -62,6 +63,7 @@ import { unconsciousNamed, unconsciousWarnings } from './unconscious';
 // SHEET-14: a class of a multiclass character asks its multiclass prerequisites too.
 // SHEET-18: more attuned rows than the limit warn (`attunement.ts`). SHEET-63: so do two copies.
 // SHEET-61: a condition the character is immune to is withheld, with a warning (`defenses.ts`).
+// SHEET-50 adds what the inventory weighs, by row and in all (`weight.ts`).
 
 /** A stat's defaults but its highest score (SPEC §5.3): the modifier, a save (ENG-13 §8). */
 export const FIFTH_EDITION_STAT_DEFAULTS: Pick<StatDefaults, 'modFormula' | 'hasSave'> = {
@@ -208,6 +210,7 @@ export const fifthEditionModule: SystemModule<FifthEditionCharacter, FifthEditio
     ...spellDiceSteps(),
     ...inspirationSteps(),
     ...defenseSteps(input),
+    ...weightSteps(input),
   }),
 
   // Each skill's stat, which an effect may set; the character's size.

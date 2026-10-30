@@ -22,3 +22,22 @@ export function shownDistance(feet: number, unit: Settings['distance']): ShownDi
   if (unit === 'sq') return { value: Math.floor(feet / FEET_PER_SQUARE), unit: 'sq' };
   return { value: feet, unit: 'ft' };
 }
+
+// SHEET-50: a stored weight, always in pounds (SPEC §7.5), as the person's `weight` setting shows
+// it. A kilogram is shown at its true size, 0.45359237 kg to the pound, since no rules text sets a
+// table rate for weight as it does for a distance; shown to a tenth, a pound to a hundredth.
+
+/** Kilograms in one pound. */
+export const KG_PER_POUND = 0.45359237;
+
+/** A weight in the unit it is shown in. */
+export interface ShownWeight {
+  value: number;
+  unit: Settings['weight'];
+}
+
+/** `pounds` in the shown unit; a pound is kept to a hundredth, a kilogram to a tenth. */
+export function shownWeight(pounds: number, unit: Settings['weight']): ShownWeight {
+  if (unit === 'kg') return { value: Math.round(pounds * KG_PER_POUND * 10) / 10, unit: 'kg' };
+  return { value: Math.round(pounds * 100) / 100, unit: 'lb' };
+}

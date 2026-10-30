@@ -39,6 +39,10 @@
     "m": "{{value, number}} m",
     "sq": "{{value, number}} sq"
   },
+  "weight": {
+    "lb": "{{value, number}} lb",
+    "kg": "{{value, number}} kg"
+  },
   "noValue": "—",
   "hp": {
     "label": "Hit points",

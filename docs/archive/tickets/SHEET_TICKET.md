@@ -5458,3 +5458,149 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+### SHEET-50 The Gear tab equips items
+
+**Hat:** The Gear tab equips items
+**Depends on:** SHEET-30 (the frame), ENG-44 (worn items), ENG-63 and SHEET-18 and SHEET-63 (attuned
+rows and their warnings), SHEET-23 (the Undo toast)
+**Size:** M
+**Screen:** Yes — the Gear tab of the sheet. No board draws it: `V3-Sheet` draws the tab bar only,
+and BRIEF P4 names it in one line ("items with worn and attuned toggles, weight, coins …").
+**SPEC:** §7.2 ("Equipment: wear and attune, AC and attacks change at once; weight; containers"),
+§6.2 (every number has a breakdown), §7.5 (stored pounds), §8.2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/Items.tsx` — changes (was an empty stub).
+- `packages/system-5e/src/inventory.ts` — new: `setEquipped`, `setAttuned`, `moveItem`,
+  `gearWarnings`.
+- `packages/system-5e/src/weight.ts` — new: `weightSteps` and the weight paths; `module.ts`
+  adds it to `derive`.
+- `apps/web/src/systems.ts` — `SheetSystem.inventory`, what the tab reads and does.
+- `apps/web/src/settings/units.ts` — `shownWeight`; `sheet/SheetNumber.tsx` — format `weight`.
+- `apps/web/src/locales/en/gear.json`, `sheet.json` (`weight.*`), `toast.json` (five actions).
+
+#### 2. What is missing now
+
+Measured on `30f4382`: `Items.tsx` returns `null`. Nothing sets a row's `equipped` or `attuned`
+except a hand-written entry; no action moves a row into a container; no path gives a weight
+(`grep -rn weight packages/system-5e/src` finds only the item schema and the custom row's field);
+the `weight` setting (lb / kg) is stored and shown nowhere.
+
+#### 3. What it should look like when done
+
+1. Golden B's Gear tab lists Chain Mail and Greatsword, each with "Worn" pressed, 55 lb and 6 lb,
+   and "Carrying 61 lb". Neither has an "Attuned" switch (neither needs attunement).
+2. Tapping "Worn: Chain Mail" puts it away: AC 17 becomes 11 (10 + DEX 1) at once; the toast says
+   "Chain Mail put away"; Undo wears it again, AC 17.
+3. A made-up charm (+1 AC, needs attunement): worn alone, AC stays 17; worn and attuned, 18. The
+   count reads "Attuned 1 of 3".
+4. A fourth attuned row, two attuned copies of one item, and a second armor worn each show a
+   warning in the tab, never a block.
+5. A weight is a computed number: `weight.row.<uid>` (quantity times one item's weight),
+   `weight.in.<uid>` (what the rows inside a row weigh, each with what it holds) and
+   `weight.carried` (every row once), each with a breakdown whose steps add up. An item with no
+   weight, one no pack has, and a custom row without a weight weigh 0 and show "—".
+6. In edit mode each row has a select that puts it inside another row or carries it loose; a row
+   cannot go inside itself or inside what it holds. Play mode shows no select.
+7. Weights show in the unit the Settings page chose: pounds to a hundredth, kilograms to a tenth.
+8. Every change is one log entry, so it shows the Undo toast and survives a reload.
+
+#### 4. How to do it
+
+1. `weight.ts`: a derived step per row, per container and one for the whole; a step reads its
+   rows' paths (`kind: 'path'`), so the breakdown names them.
+2. `inventory.ts`: each action builds one change of the whole `systemData.inventory` list, since a
+   log path does not step into a list (`readAt`), and goes through `settled`. `moveItem` refuses
+   a missing row, a missing container and a row inside itself or what it holds.
+3. `gearWarnings(computed)` picks the three warnings about rows out of `computed.warnings`.
+4. `systems.ts` gives the tab those through `SheetSystem.inventory`, so no component names a
+   system.
+5. `Items.tsx`: rows as cards, a container's rows indented under it; Worn and Attuned as pressed
+   buttons (44 px); the container select in edit mode only; each change made with
+   `changeCharacter`. Every visible string is a `gear` key.
+
+Decisions made here (ADR 002):
+- **Worn and attuned work in play mode; the container select needs edit mode.** Putting on
+  armor is play; where a row is kept is the sheet's structure (SPEC §7.2).
+- **The "Attuned" switch shows** for an item that needs attunement, a row already attuned, and a
+  row whose item is not known (a custom row, a missing item), so an attunement can always end.
+- **A kilogram is 0.45359237 kg to the pound**, not a table rate: no rules text sets one for
+  weight, as it does for a distance (SHEET-30). It is display only; the stored unit is pounds.
+- **Putting a row away keeps its switches.** No action here takes a row away, so none ends with
+  `withDropped` (SHEET-22): an item put away is still carried.
+
+#### 5. Stored data
+
+Nothing stored changes. The weight paths are computed, not stored.
+
+#### 6. What a person will see
+
+The Gear tab at 360×800 (opens from the dock): a heading "Gear" with "Attuned n of 3" at its right,
+"Carrying 66 lb", then the warnings, then one card per row.
+- Empty: "Nothing carried yet." Full: the cards. A row no pack has: "Missing: <id>".
+- A card: name, "×n" when n is not 1, its weight at the right or "—"; under a container "Inside
+  <weight>"; then "Worn", "Attuned" (as above) and, in edit mode, the select.
+- Keys of `gear`: `title`, `carried`, `attunedCount`, `empty`, `missing`, `quantity`, `weight`,
+  `holds`, `noWeight`, `worn`, `attuned`, `wornFor`, `attunedFor`, `insideFor`, `loose`, `inside`,
+  `warn.attunementLimit|attunementCopies|oneAtATime`,
+  `problem.noRow|noContainer|insideItself|changed`. `toast.done`: `equipItem`, `unequipItem`,
+  `attuneItem`, `endAttunement`, `moveItem`. `sheet`: `weight.lb|kg`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/weight.test.ts` — `describe('SHEET-50 what the inventory weighs')`.
+- `packages/system-5e/test/inventory.test.ts` — wearing, attuning, moving, refusals.
+- `apps/web/test/gear.test.tsx` — the tab's states and warnings, and the units.
+- `apps/web/e2e/gear.spec.ts` — golden B in Chromium: wear, Undo, attune, reload, container.
+- Control numbers from: SPEC §6.7 golden B (AC 17, chain mail 55 lb and greatsword 6 lb in the
+  pack), and sums worked out by hand: 61; 61 + 5 + 1 + 2 + 6 = 75; 61 lb = 27.7 kg.
+
+#### 8. Checked against the source
+
+- Weights are the packs' own (`srd-2024.ts`: chain mail 55, greatsword 6), read in ENG-10.
+- Attunement and "one armor, one shield" are SHEET-18's and ENG-44's §8; nothing new.
+- SRD 5.1 and 5.2.1 give no rule for what a container weighs or holds; the app only sums.
+
+#### 9. Not in this ticket
+
+- Adding or removing a row, and changing its quantity: SHEET-52 (custom entries, with
+  `withDropped` for a row taken away) and the library's "Add to character" (phase 3).
+- A carrying capacity, or encumbrance: no stat for it exists; not in SPEC §7.2.
+- Coins: SHEET-51. A long press on a weight opening its breakdown: SHEET-33 (the number
+  is a `SheetNumber` already).
+- A container's capacity: no field holds one.
+
+#### 10. Rake check
+
+- **Every number has a breakdown:** the weights are paths of `compute()`, each with steps that
+  add up (tested). "Attuned n of 3" counts the person's own stored switches and a constant
+  of the module; it is not a computed value.
+- **The core names no game:** the rules are in `system-5e`; the tab reads them through `SheetSystem`.
+- **Stored units:** pounds; kilograms only on screen.
+- **No look in a component:** parts, slots and tokens only. **No string literal:** `gear` keys.
+- **Missing is not broken / warnings never block:** a missing item shows its id; a fourth
+  attuned row still attunes.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-30, on `30f4382` plus this ticket: `pnpm lint` 360 files, no fixes;
+`pnpm typecheck` all projects `Done`; `pnpm test` 99 files, 1263 passed, 0 failed (22 new: 5
+weight, 8 actions, 9 tab), then the speed project 2 passed; `pnpm e2e` 41 passed, 0 failed, 27.4 s
+(2 new).
+
+Differences from §3: none. One older test changed: `sheet.test.tsx` expected every section
+empty; Items is now filled, so that test skips it and `gear.test.tsx` draws it.
+
+Found, not fixed:
+- Putting an item away leaves a stored switch of its effect in place, and `phases.ts` warns
+  `toggleGone` for it while the item is not worn (ENG-17). Not measured here: no test of this
+  ticket stores a switch.
+- The kilogram rate (§4) is mine, not a rules text's; the owner may want the table's 1 lb = 0.5 kg.
+
+Changelog: "The Gear tab lists what a character carries: each item can be worn or attuned, and AC
+and attacks change at once; it shows what each weighs and the total, in pounds or kilograms, and
+in edit mode puts an item inside a container; warnings show past three attuned items."

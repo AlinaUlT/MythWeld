@@ -26,6 +26,11 @@
     "gainInspiration": "Inspiration gained",
     "spendInspiration": "Inspiration spent",
     "levelUp": "{{name}} level gained",
+    "equipItem": "{{name}} worn",
+    "unequipItem": "{{name}} put away",
+    "attuneItem": "{{name}} attuned",
+    "endAttunement": "{{name}} no longer attuned",
+    "moveItem": "{{name}} moved",
     "other": "Change made"
   }
 }
