@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-10-30 · SHEET-55 · The sheet's header shows inspiration as stars, one for each the house
+  rules allow; a tap on an empty star gains one and on a filled star spends one, with Undo.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.

@@ -214,10 +214,10 @@ describe('SHEET-30 tabs', () => {
 
   it('creates every section and panel empty, for the rows that fill them', () => {
     const sheet = sheetOf(goldenB);
-    // Fourteen files; Conditions stands on two tabs.
+    // Fourteen files (the inspiration stars are SHEET-55's); Conditions stands on two tabs.
     const sections = [...new Set(SHEET_TABS.flatMap(({ sections }) => sections))];
     expect(sections).toHaveLength(14);
-    for (const Section of [...sections, Inspiration]) {
+    for (const Section of sections) {
       expect(draw(sheet, <Section />)).toBe('');
     }
     for (const Panel of [RestPanel, ActionsMenu, ChoicesPanel]) {
@@ -237,5 +237,67 @@ describe('SHEET-68 squares', () => {
     expect(shownDistance(25, 'sq')).toEqual({ value: 5, unit: 'sq' });
     expect(shownDistance(4, 'sq')).toEqual({ value: 0, unit: 'sq' });
     expect(formatNumber(30, 'distance', t, 'sq')).toBe('6 sq');
+  });
+});
+
+describe('SHEET-55 inspiration stars', () => {
+  // The goldens store the edition's own maximum of 1 and hold none; the owner's house rule is 3.
+  // SRD 5.1 "Inspiration": spending it gives advantage on one roll. SRD 5.2.1 "Heroic
+  // Inspiration": expending it rerolls one die (ENG-19 §8).
+  const holding = (golden: typeof goldenA | typeof goldenB, held: number, max: number) => ({
+    ...golden,
+    systemData: {
+      ...golden.systemData,
+      houseRules: { ...golden.systemData.houseRules, inspirationMax: max },
+      state: { ...golden.systemData.state, inspiration: held },
+    },
+  });
+  const stars = (html: string) => html.match(/<polygon/g)?.length ?? 0;
+  const filled = (html: string) => html.match(/<polygon[^>]*fill="currentColor"/g)?.length ?? 0;
+
+  it('draws one star for the stored maximum, empty, with nothing beside it when it is the rules', () => {
+    const html = draw(sheetOf(goldenB), <Inspiration />);
+    expect(stars(html)).toBe(1);
+    expect(filled(html)).toBe(0);
+    expect(html).toContain('aria-label="Heroic Inspiration 0 of 1"');
+    expect(html).toContain('aria-label="Gain Heroic Inspiration"');
+    expect(html).not.toContain('Rules:');
+  });
+
+  it("draws three stars with two filled at the owner's maximum, the 2014 rule beside them", () => {
+    const html = draw(sheetOf(holding(goldenA, 2, 3)), <Inspiration />);
+    expect(stars(html)).toBe(3);
+    expect(filled(html)).toBe(2);
+    expect(html).toContain('aria-label="Inspiration 2 of 3"');
+    expect(html.match(/aria-label="Spend Inspiration"/g)).toHaveLength(2);
+    expect(html.match(/aria-label="Gain Inspiration"/g)).toHaveLength(1);
+    expect(html).toContain('Rules: 1');
+    expect(html).toContain('title="Spend it for advantage on one d20 test."');
+  });
+
+  it('says a reroll for the 2024 rules, and sits in the header row', () => {
+    const sheet = sheetOf(holding(goldenB, 3, 3));
+    expect(filled(draw(sheet, <Inspiration />))).toBe(3);
+    expect(draw(sheet, <Inspiration />)).toContain('title="Spend it to roll one die again."');
+    expect(header(sheet)).toContain('aria-label="Heroic Inspiration 3 of 3"');
+  });
+
+  it('gains and spends one at a time, up to the house maximum', () => {
+    const sheet = sheetOf(holding(goldenA, 2, 3));
+    const stamp = {
+      id: crypto.randomUUID(),
+      at: '2026-10-30T10:00:00.000Z',
+      by: { role: 'player' as const, name: 'Golden A' },
+    };
+    const gained = sheet.system.gainInspiration(sheet.character, stamp);
+    expect(gained.ok && gained.character.systemData.state.inspiration).toBe(3);
+    if (!gained.ok) throw new Error(gained.message);
+    expect(sheet.system.gainInspiration(gained.character, stamp)).toMatchObject({
+      ok: false,
+      code: 'atMax',
+      max: 3,
+    });
+    const spent = sheet.system.spendInspiration(sheet.character, stamp);
+    expect(spent.ok && spent.character.systemData.state.inspiration).toBe(1);
   });
 });

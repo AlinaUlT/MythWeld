@@ -4,6 +4,7 @@ import { PROF_PATH } from './checks';
 import { classesOf } from './classes';
 import type { FifthEditionEntity } from './entity-types';
 import type { ListLinePart } from './list-line';
+import { rulesOf } from './rulesets';
 
 // SHEET-30: what the sheet's pinned header names for a fifth-edition character (board `V3-Sheet`,
 // BRIEF P4, ADR 013 items 1 and 2): each class with its level, the paths of the stats row, each
@@ -81,4 +82,33 @@ export function fifthEditionHitPoints({
 }: Pick<FifthEditionCharacter, 'systemData'>): HeaderHitPoints {
   const { current, temp } = systemData.state.hp;
   return { current, temp, maxPath: 'hp.max' };
+}
+
+// SHEET-55: the header's inspiration stars (ADR 009 item 5).
+
+/**
+ * The inspiration the header draws: how many the character holds, the house rules' maximum (the
+ * number of stars), the edition's own maximum shown beside it, what spending one does, and the
+ * edition's word for it.
+ */
+export interface HeaderInspiration {
+  term: 'inspiration' | 'heroicInspiration';
+  held: number;
+  max: number;
+  editionMax: number;
+  use: 'advantage' | 'reroll';
+}
+
+export function fifthEditionInspiration(
+  character: Pick<FifthEditionCharacter, 'ruleset' | 'systemData'>,
+): HeaderInspiration {
+  const { inspiration, terms } = rulesOf(character);
+  const { houseRules, state } = character.systemData;
+  return {
+    term: terms.inspiration,
+    held: state.inspiration,
+    max: houseRules.inspirationMax,
+    editionMax: inspiration.max,
+    use: inspiration.use,
+  };
 }

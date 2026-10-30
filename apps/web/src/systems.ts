@@ -17,10 +17,13 @@ import {
   fifthEditionCasting,
   fifthEditionClassLine,
   fifthEditionHitPoints,
+  fifthEditionInspiration,
   fifthEditionListLine,
   fifthEditionModule,
+  gainInspiration,
   type HeaderCasting,
   type HeaderHitPoints,
+  type HeaderInspiration,
   type HeaderNumber,
   type ListLinePart,
   MAX_LEVEL,
@@ -29,6 +32,7 @@ import {
   madeByHand,
   openFifthEditionCharacter,
   openFifthEditionPack,
+  spendInspiration,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
@@ -124,6 +128,12 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** SHEET-55: the inspiration held, its maxima and what spending it does (ADR 009 item 5). */
+  inspiration(character: AppCharacter): HeaderInspiration;
+  /** One more inspiration, as a log entry. */
+  gainInspiration: typeof gainInspiration;
+  /** One inspiration spent, as a log entry. */
+  spendInspiration: typeof spendInspiration;
 }
 
 /** Each system's sheet, by system id. */
@@ -134,6 +144,9 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    inspiration: fifthEditionInspiration,
+    gainInspiration,
+    spendInspiration,
   },
 };
 

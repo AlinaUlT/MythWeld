@@ -5458,3 +5458,110 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-55 Inspiration is tracked as stars
+
+**Hat:** Draw inspiration as stars the person taps
+**Depends on:** SHEET-30, SHEET-23, ENG-59, ENG-19
+**Size:** S
+**Screen:** Yes — the header of the sheet, board `V3-Sheet` (the two stars filled, one empty, beside
+the class line); `docs/design/BRIEF.md` P4 and the "Also on the sheet (ADR 009)" paragraph.
+**SPEC:** §7.2 (play mode changes trackers; every change has "Undo"); ADR 009 item 5
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/header/Inspiration.tsx` — changes (SHEET-30's empty stub).
+- `apps/web/src/locales/en/inspiration.json` — changes: the namespace SHEET-30 made empty.
+- `apps/web/src/systems.ts` — `SheetSystem` gains `inspiration`, `gainInspiration`, `spendInspiration`.
+- `packages/system-5e/src/sheet-header.ts` — `fifthEditionInspiration`, the module's side.
+
+#### 2. What is missing now
+
+`Inspiration()` returns `null`; `inspiration.json` is `{}`. The sheet shows no stars, and no
+screen runs `gainInspiration` or `spendInspiration` (ENG-59). Measured with `grep -rn
+"gainInspiration" apps/web/src`: no match before this ticket.
+
+#### 3. What it should look like when done
+
+1. One eight-pointed star for each of the house rules' `inspirationMax` (3 by default, the
+   stored 1 on a golden), filled for each one held.
+2. Tapping an empty star gains one; tapping a filled star spends one. Each is one log entry with
+   the "Undo" toast already there (`gainInspiration` and `spendInspiration` have toast text).
+3. The group's name reads "<term> <held> of <max>", the term being the edition's word
+   ("Inspiration", "Heroic Inspiration" in 2024).
+4. When the house maximum is not the edition's, the edition's shows beside the stars: "Rules: 1".
+5. What spending does is the group's description: advantage on one d20 test (2014), a reroll of
+   one die (2024).
+
+#### 4. How to do it
+
+1. `fifthEditionInspiration(character)` gives `{ term, held, max, editionMax, use }` from
+   `rulesOf(character).inspiration`, `terms.inspiration` and the stored house rules.
+2. `SheetSystem` carries it with the module's two actions, so the component asks no system by name.
+3. The component builds a `LogStamp` (random id, now, the character's name as the player), runs
+   the action and hands the entry to `changeCharacter` (SHEET-23). A refusal, or a write that
+   does not go through, is a `console.warn`, as everywhere else.
+4. The star is an SVG polygon in `currentColor` (`text-strong` token); nothing else is drawn.
+
+#### 5. Stored data
+
+Nothing stored changes. `state.inspiration` and `houseRules.inspirationMax` exist (ENG-33).
+
+#### 6. What a person will see
+
+The header's second line, after the choices badge. Keys in `inspiration`: `name.inspiration`
+"Inspiration", `name.heroicInspiration` "Heroic Inspiration", `summary` "{{name}} {{held}} of
+{{max}}", `gain` "Gain {{name}}", `spend` "Spend {{name}}", `rulesMax` "Rules: {{max}}",
+`use.advantage` and `use.reroll`. At the maximum every star is filled and only Spend is offered;
+with none held only Gain.
+
+#### 7. Tests
+
+- `apps/web/test/sheet.test.tsx` — golden B as stored: one empty star, no "Rules:". Golden A with
+  a maximum of 3 and 2 held: three stars, two filled, "Rules: 1", the advantage text. Golden B
+  with 3 of 3: the reroll text, and the stars in the header. The module's gain stops at the house
+  maximum, spend takes one off.
+- `apps/web/e2e/sheet.spec.ts` — tap an empty star: 1 of 3 becomes 2 of 3 and the toast says
+  "Inspiration gained"; Undo returns to 1; tapping a filled star leaves 0.
+- Control numbers from: the numbers set in the test (held and maximum), and ENG-59's tests.
+
+#### 8. Checked against the source
+
+Nothing new to check. The edition's maximum of 1 and what spending does are ENG-19 §8's
+(SRD 5.1 "Inspiration", SRD 5.2.1 "Heroic Inspiration"); the house maximum of 3 is the owner's
+(ADR 009 item 5).
+
+#### 9. Not in this ticket
+
+- The DM's setting for the maximum: the table link's phase (ADR 009 item 13).
+- Granting inspiration on a long rest, and the "lost" notice: ENG-64 and the Rest panel (SHEET-35).
+- A rolled d20 with advantage from spending: the roll dialog (SHEET-39).
+- Tap targets of 44 px: the header row is 20 px high; accessibility is the POL theme's.
+
+#### 10. Rake check
+
+- **Everything is data / no game named:** the component reads `SheetSystem`, not `5e`.
+- **No look in a component:** the colour is the `strong` token; the star is `currentColor`.
+- **No visible literal:** every string is an `inspiration` key.
+- **Manual overrides / compute:** inspiration is a stored tracker, not a computed number.
+- **A person's saved data:** a change is written through the history, so Undo works and a stale
+  copy is refused.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-30: `pnpm lint && pnpm typecheck && pnpm test` exit 0. `pnpm test`: 96
+files, 1245 passed, 0 failed (4 new), then the speed project 2 passed. `pnpm e2e`: 40 passed,
+0 failed, 26.2 s (1 new).
+
+Differences from §3: none. The group is a `<fieldset>` (the lint rule asks for it over
+`role="group"`).
+
+Found, not fixed: the stars are 18 px wide, below the 44 px a thumb needs; the header line has no
+room for more (§9).
+
+Changelog: "The sheet's header shows inspiration as stars, one for each the house rules allow; a
+tap on an empty star gains one and on a filled star spends one, with Undo."

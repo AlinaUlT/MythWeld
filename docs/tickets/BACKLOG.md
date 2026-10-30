@@ -256,7 +256,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-52 | Custom entries are added as free text | S | 🔲 |
 | SHEET-53 | The About tab shows the origin details | S | 🔲 |
 | SHEET-54 | The Notes tab keeps free text | XS | 🔲 |
-| SHEET-55 | Inspiration is tracked as stars | S | 🔲 |
+| SHEET-55 | Inspiration is tracked as stars | S | ✅ 2026-10-30 |
 | SHEET-56 | The portrait makes a round token | S | 🔲 |
 | SHEET-57 | Custom sections hold the person's own lists | S | 🔲 |
 | SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | 🔲 |
@@ -376,9 +376,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   naming the species or lineage, each effect and a manual edit. The stored character has no
   alignment field: the row adds one (a migration, SPEC §5.8) or keeps it in `notes`.
 - **SHEET-54** — SPEC §5.8 `notes`.
-- **SHEET-55** — ADR 009 item 5. Found by ENG-19: the inspiration stars hold the house rule's
-  `inspirationMax` and show the edition's `inspiration.max` (1 in both SRDs) next to it; spending
-  one does `inspiration.use` (advantage in 2014, a reroll of one die in 2024).
 - **SHEET-56** — ADR 009 item 6, ADR 015 item 2, board `V3-Token`: the person's image, an animated
   picture or a short video included, kept in the blobs table on the device (ADR 005 item 10); the
   token is the image in a round frame (SHEET-03's slot). Found by SHEET-25: Copy copies the blob

@@ -1,1 +1,14 @@
-{}
+{
+  "name": {
+    "inspiration": "Inspiration",
+    "heroicInspiration": "Heroic Inspiration"
+  },
+  "summary": "{{name}} {{held}} of {{max}}",
+  "gain": "Gain {{name}}",
+  "spend": "Spend {{name}}",
+  "rulesMax": "Rules: {{max}}",
+  "use": {
+    "advantage": "Spend it for advantage on one d20 test.",
+    "reroll": "Spend it to roll one die again."
+  }
+}

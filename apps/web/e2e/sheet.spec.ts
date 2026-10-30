@@ -203,3 +203,30 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
 });
+
+test('SHEET-55 a tap on a star gains or spends inspiration, and "Undo" puts it back', async ({
+  page,
+}, testInfo) => {
+  const withStars = {
+    ...goldenB,
+    systemData: {
+      ...goldenB.systemData,
+      houseRules: { ...goldenB.systemData.houseRules, inspirationMax: 3 },
+      state: { ...goldenB.systemData.state, inspiration: 1 },
+    },
+  };
+  await saveRows(page, [withStars]);
+  await page.goto(`characters/${goldenB.id}`);
+
+  const header = page.getByRole('banner');
+  await expect(header.getByRole('group', { name: 'Heroic Inspiration 1 of 3' })).toBeVisible();
+  await expect(header).toContainText('Rules: 1');
+  await header.getByRole('button', { name: 'Gain Heroic Inspiration' }).first().tap();
+  await expect(header.getByRole('group', { name: 'Heroic Inspiration 2 of 3' })).toBeVisible();
+  await expect(page.getByText(en.toast.done.gainInspiration)).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('sheet-inspiration.png') });
+  await page.getByRole('button', { name: en.toast.undo }).tap();
+  await expect(header.getByRole('group', { name: 'Heroic Inspiration 1 of 3' })).toBeVisible();
+  await header.getByRole('button', { name: 'Spend Heroic Inspiration' }).tap();
+  await expect(header.getByRole('group', { name: 'Heroic Inspiration 0 of 3' })).toBeVisible();
+});
