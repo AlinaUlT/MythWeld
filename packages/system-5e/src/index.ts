@@ -21,6 +21,7 @@ export * from './defenses';
 export * from './entity-types';
 export * from './equipment';
 export * from './exhaustion';
+export * from './feature-groups';
 export * from './hit-dice';
 export * from './hit-points';
 export * from './inspiration';

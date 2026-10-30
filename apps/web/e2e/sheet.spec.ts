@@ -203,3 +203,38 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
 });
+
+test('SHEET-48 the Features tab groups by source, and Use spends a use of Second Wind', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=features`);
+
+  const panel = page.getByRole('tabpanel');
+  await expect(panel.getByRole('heading', { level: 2 })).toHaveText([
+    'Human',
+    'Fighter',
+    'Soldier',
+  ]);
+  await expect(panel).toContainText('1 back on a short rest, all on a long rest');
+  const uses = panel.getByRole('status', { name: 'Second Wind: 2 of 2 uses left' });
+  await expect(uses).toHaveText('2 of 2 left');
+
+  // A feature opens its description in place; the text it has is its summary, else a line.
+  await panel.getByRole('button', { name: /^Second Wind/ }).tap();
+  await expect(panel.getByRole('button', { name: en.description.seeFull })).toBeVisible();
+
+  await panel.getByRole('button', { name: en.features.uses.use }).tap();
+  await expect(panel.getByRole('status', { name: 'Second Wind: 1 of 2 uses left' })).toHaveText(
+    '1 of 2 left',
+  );
+  const toast = page.getByRole('status').filter({ hasText: 'Second Wind used' });
+  await expect(toast).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('features.png') });
+
+  await toast.getByRole('button', { name: en.toast.undo }).tap();
+  await expect(panel.getByRole('status', { name: 'Second Wind: 2 of 2 uses left' })).toHaveText(
+    '2 of 2 left',
+  );
+});

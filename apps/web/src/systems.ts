@@ -4,11 +4,13 @@
 // SHEET-24: what My characters names under a character's name is its module's too.
 // SHEET-27: the manual form makes a character through its system's maker, with its rules bases.
 // SHEET-30: so is what the sheet's header and dock read, and the module `compute()` runs.
+// SHEET-48: and so are the groups of the Features tab.
 import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
   EDITION_RULES,
   type EditionTerms,
+  type FeatureGroup,
   FIFTH_EDITION_HEADER_NUMBERS,
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
@@ -16,6 +18,7 @@ import {
   type FifthEditionPack,
   fifthEditionCasting,
   fifthEditionClassLine,
+  fifthEditionFeatureGroups,
   fifthEditionHitPoints,
   fifthEditionListLine,
   fifthEditionModule,
@@ -124,6 +127,8 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** The Features tab's cards: each source with its features, uses and switches (ADR 009 item 2). */
+  featureGroups(character: AppCharacter, computed: AppComputed): readonly FeatureGroup[];
 }
 
 /** Each system's sheet, by system id. */
@@ -134,6 +139,7 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    featureGroups: fifthEditionFeatureGroups,
   },
 };
 

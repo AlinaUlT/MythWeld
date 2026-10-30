@@ -5458,3 +5458,158 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-48 The Features tab groups features by source
+
+**Hat:** The Features tab groups features by source
+**Depends on:** SHEET-20 (`recoveryOf`), SHEET-22 (`withDropped`), SHEET-23 (`changeCharacter`),
+SHEET-30 (the empty `FeatureList`, `useSheet`), SHEET-31 (`Description`), ENG-17 (toggles),
+ENG-30 (`useResource`, `setToggle`)
+**Size:** M
+**Screen:** Yes — board `V3-Features`; BRIEF P4 (Features by source; ADR 009 item 2)
+**SPEC:** §7.2 (the sheet's tabs), §6.1 (the UI reads only `Computed`); ADR 009 item 2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/FeatureList.tsx` — changes: fills SHEET-30's empty file.
+- `packages/system-5e/src/feature-groups.ts` — new: `fifthEditionFeatureGroups`, the cards and
+  their rows (which feature stands under which source; each row's uses, recovery and switches).
+- `apps/web/src/sheet/featureActions.ts` — new: `spendUse`, `switchFeature`.
+- `apps/web/src/systems.ts` — `SheetSystem.featureGroups`.
+- `apps/web/src/locales/en/features.json` — the tab's English text.
+- Tests: `packages/system-5e/test/feature-groups.test.ts`, `apps/web/test/features.test.tsx`,
+  one test in `apps/web/e2e/sheet.spec.ts`; `apps/web/test/sheet.test.tsx` no longer expects the
+  Features file to draw nothing.
+
+#### 2. What is missing now
+
+Measured on 2026-10-30, on `30f4382`:
+- `apps/web/src/sheet/sections/FeatureList.tsx` is 5 lines and returns `null`;
+  `locales/en/features.json` is `{}`. The Features tab is empty.
+- Nothing in the app lists a character's features by source: `grep -rn "featureGroups"` finds
+  nothing.
+
+#### 3. What it should look like when done
+
+On the built-in packs, golden B (human fighter 1, Soldier, Defense) and golden A (hill dwarf
+cleric 1, Life):
+1. Golden B has three cards in this order: "Human · species", "Fighter · class · level 1",
+   "Soldier · background". Alert is under Human; Fighting Style, Defense, Second Wind and Weapon
+   Mastery are under Fighter; Savage Attacker is under Soldier.
+2. Second Wind shows two full circles, "2 of 2 left", the line "1 back on a short rest, all on a
+   long rest" under its name, and a "Use" button.
+3. With 1 spent: one full circle, "1 of 2 left". With 2 spent: "0 of 2 left" and "Use" disabled.
+4. "Use" spends one use through the history: the stored `state.resources.secondWind` is 1, the
+   toast says "Second Wind used", and its "Undo" brings the stored value back.
+5. Golden A's Cleric card names its subclass on the line below: "Subclass: Life"; the Domain
+   feature stands under the Cleric.
+6. A feature that has a toggled effect shows a switch with the toggle's label, on or off as the
+   character stores it (else the toggle's default); tapping it stores the switch.
+7. A feat the character gave itself, or one no source led to, stands under "Feats".
+8. Each row opens its description in place (SHEET-31); a closed row draws none of it.
+9. A character with no features shows "This character has no features yet."
+10. At 360×800 nothing scrolls sideways and no card is squeezed.
+
+#### 4. How to do it
+
+1. `fifthEditionFeatureGroups(character, computed)`: for each gathered `feature` or `feat`, walk
+   up `HadEntity.from` to the first species, class or background; a lineage is passed through
+   (it becomes the species card's line); a subclass leads to the class that has it
+   (`classesOf`), and the subclass becomes the class card's line; no source gives `feats`.
+   Cards come out species, classes in the order gathered, background, feats.
+2. A row's uses are the resources whose grant sits on the feature (`ResourceGiven.from`), each
+   read with `resourceUses` and `recoveryOf`; its switches are its effects with a `toggle`,
+   on as `state.toggles` says, else the default.
+3. The tab draws each card with `Part` and tokens, each row with `Description`, and the uses and
+   switches under the row's button, outside it (SHEET-31 §4 item 3).
+4. `spendUse` and `switchFeature` build the entry with the engine's `useResource` and
+   `setToggle`, and `changeCharacter` writes it with its toast. A refusal writes nothing.
+
+Technical choices (ADR 002):
+- **The grouping is the module's.** Species, class and background are fifth edition's words
+  (ADR 004), so the walk lives in `system-5e`, and the component reads `system.featureGroups`.
+- **A feat under what gave it.** The board puts Defense under Fighter and Savage Attacker under
+  Soldier, so a feat is grouped as a feature is; "Feats" holds the feats nothing gave.
+- **No "Always on" guess.** The label shows only for a `passive` feature (`activation`), never
+  inferred from effects.
+- **More than 10 uses** are told in words, with no circles.
+
+#### 5. Stored data
+
+Nothing stored changes. A use spent is `state.resources.<key>`, a switch `state.toggles.<part>`:
+both already exist (ENG-30).
+
+#### 6. What a person will see
+
+The Features tab at 360×800: a card per source; its heading in the heading font with the kind in
+12 px capitals ("species", "class · level 1", "background", "feats"); under a class, "Subclass:
+<name>"; under a species, "Lineage: <name>". A row is SHEET-31's. Under a row with uses: circles,
+"<left> of <max> left", a 44 px "Use". Under a row with a switch: its label and the switch.
+States: empty ("This character has no features yet."), full. No loading or error: the sheet's
+frame has loaded the character.
+
+English keys (`features`): `empty`, `kind.{species,class,background,feats}`, `feats`,
+`detail.{class,species}`, `alwaysOn`, `uses.{left,use,label}`,
+`recovery.{all,count,separator,events.short,events.long}`. An event with no key shows its own name.
+
+#### 7. Tests
+
+- `packages/system-5e/test/feature-groups.test.ts` — `describe('SHEET-48 the Features tab
+  groups')`: §3 items 1, 2, 3, 5, 6, 7 on the goldens and on one feat made for the test.
+- `apps/web/test/features.test.tsx` — `describe('SHEET-48 the Features tab')`: §3 items 1–3, 5, 8;
+  `describe('SHEET-48 the Use button and the switches')`: item 4 and the refusals, on a fake
+  database.
+- `apps/web/e2e/sheet.spec.ts` — the tab at 360×800, Use, the toast, Undo (items 1–4, 10).
+- Control values from: SPEC §6.7 (golden A and B), the pack's Second Wind grant
+  (`packages/content/src/packs/srd-2024.ts`: 1 on `short`, `all` on `long`) and the Fighter
+  table's 2 uses at level 1.
+
+#### 8. Checked against the source
+
+SRD 5.2.1, Fighter, "Second Wind": two uses at level 1, one back on a short rest, all on a long
+rest. Read in the pack, which the SPEC §6.7 golden B already computes. No other rule is added.
+
+#### 9. Not in this ticket
+
+- Giving a use back by hand: the toast's Undo and a rest (SHEET-45) do.
+- Actions listed by timing: SHEET-49. Custom features: SHEET-52.
+- Spells a feature grants: SHEET-46.
+- The SRD's feature texts: phase 3; a row says its source has no text.
+
+#### 10. Rake check
+
+- **The core names no game.** The grouping is in `system-5e`; `engine` is untouched.
+- **A number on screen has a source.** Uses and recovery come from `resourceUses` and
+  `recoveryOf`; the use count carries `data-path="resources.<key>.max"`.
+- **No look in a component.** Tokens, `Part` and the `chip` part; the lint passes.
+- **No visible string in a component.** Every text is a `features` key or the entity's own data.
+- **Missing is not broken.** A feature whose source is gone stands under Feats.
+- **A stored-shape change needs a migration.** None changes (§5).
+
+#### 11. What came out of it
+
+<!-- Filled at the end. Never left empty. -->
+Measured on 2026-10-30, on `30f4382` plus this change:
+- `pnpm lint`: `Checked 358 files`, no fixes. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: `Test Files 98 passed (98)`, `Tests 1255 passed (1255)`, 23.93 s; speed `2 passed`.
+  14 tests are new: 6 in `feature-groups.test.ts`, 8 in `features.test.tsx`.
+- `pnpm e2e`: `40 passed`, 31.3 s; 1 is new (`sheet.spec.ts`). Screenshot at 360×800 shown in
+  the chat, not committed.
+- First screenshot showed the cards squeezed by the tab's flex column (the heading and the Use
+  button cut); `shrink-0` on a card fixed it.
+- Differs from §3: the Life subclass is named "Life" in the pack, so the line reads "Subclass:
+  Life".
+- Changed outside the hat, because this ticket changed it: `sheet.test.tsx` no longer expects the
+  Features file to draw nothing.
+- Found, not fixed:
+  - Golden C (2014, wizard 3 then paladin 3) shows no cards: the built-in SRD 5.1 pack has no
+    wizard or paladin features yet. Phase 3 (CONT) fills them.
+  - A refused change (a character changed elsewhere meanwhile) is silent on this tab; the toast
+    has no wording for a refused write.
+- Changelog: "The Features tab shows what gave the character each feature: the species, each
+  class with its subclass, the background and the feats; a feature with uses shows its circles,
+  what brings them back and a Use button, and a feature with a switch shows it."

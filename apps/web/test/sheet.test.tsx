@@ -1,6 +1,6 @@
 import { compute } from '@grimoire/engine';
 import { fifthEditionCharacterSchema } from '@grimoire/system-5e';
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -23,6 +23,7 @@ import { SheetDice } from '../src/sheet/SheetDice';
 import { barShares, SheetDock } from '../src/sheet/SheetDock';
 import { SheetHeader } from '../src/sheet/SheetHeader';
 import { formatNumber, numberAt } from '../src/sheet/SheetNumber';
+import { FeatureList } from '../src/sheet/sections/FeatureList';
 import { SHEET_TABS, tabOf } from '../src/sheet/tabs';
 import { type AppCharacter, sheetSystemOf } from '../src/systems';
 
@@ -215,9 +216,13 @@ describe('SHEET-30 tabs', () => {
   it('creates every section and panel empty, for the rows that fill them', () => {
     const sheet = sheetOf(goldenB);
     // Fourteen files; Conditions stands on two tabs.
-    const sections = [...new Set(SHEET_TABS.flatMap(({ sections }) => sections))];
+    const sections = [
+      ...new Set(SHEET_TABS.flatMap(({ sections }) => [...sections] as ComponentType[])),
+    ];
     expect(sections).toHaveLength(14);
-    for (const Section of [...sections, Inspiration]) {
+    // SHEET-48 filled the Features tab's file.
+    const empty = sections.filter((section) => section !== FeatureList);
+    for (const Section of [...empty, Inspiration]) {
       expect(draw(sheet, <Section />)).toBe('');
     }
     for (const Panel of [RestPanel, ActionsMenu, ChoicesPanel]) {

@@ -1,1 +1,29 @@
-{}
+{
+  "empty": "This character has no features yet.",
+  "kind": {
+    "species": "species",
+    "class": "class · level {{level}}",
+    "background": "background",
+    "feats": "feats"
+  },
+  "feats": "Feats",
+  "detail": {
+    "class": "Subclass: {{name}}",
+    "species": "Lineage: {{name}}"
+  },
+  "alwaysOn": "Always on",
+  "uses": {
+    "left": "of {{max}} left",
+    "use": "Use",
+    "label": "{{name}}: {{left}} of {{max}} uses left"
+  },
+  "recovery": {
+    "all": "all on a {{event}}",
+    "count": "{{count}} back on a {{event}}",
+    "separator": ", ",
+    "events": {
+      "short": "short rest",
+      "long": "long rest"
+    }
+  }
+}
