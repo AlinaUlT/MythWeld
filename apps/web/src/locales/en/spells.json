@@ -1,1 +1,37 @@
-{}
+{
+  "casting": {
+    "dc": "Save DC",
+    "attack": "Attack",
+    "granted": "Granted spells"
+  },
+  "slots": {
+    "title": "Spell slots",
+    "level": "Level {{level}}",
+    "pact": "Pact, level {{level}}",
+    "summary": "{{name}}: {{left}} of {{max}} slots left"
+  },
+  "list": {
+    "title": "Spells"
+  },
+  "empty": "This character has no spells and no spell slots.",
+  "cantrip": "Cantrip",
+  "level": "Level {{level}}",
+  "prepared": "Prepared",
+  "known": "Known",
+  "from": "from {{source}}",
+  "noSlot": "no spell slot",
+  "limit": "{{max}}/{{events}}",
+  "events": {
+    "short": "SR",
+    "long": "LR",
+    "dawn": "dawn",
+    "turn": "turn",
+    "manual": "manual",
+    "revive": "revive"
+  },
+  "eventsSeparator": "/",
+  "left": "{{left}} left",
+  "separator": " · ",
+  "missing": "Missing: {{id}}",
+  "otherEdition": "A {{edition}} spell on a {{ruleset}} character"
+}

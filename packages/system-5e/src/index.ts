@@ -36,6 +36,7 @@ export * from './rests';
 export * from './rolls';
 export * from './rulesets';
 export * from './sheet-header';
+export * from './sheet-spells';
 export * from './size';
 export * from './spell-dice';
 export * from './spell-uses';

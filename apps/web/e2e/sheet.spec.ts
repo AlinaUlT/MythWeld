@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { goldenA } from '../../../packages/system-5e/test/golden/characters-2014.ts';
+import { goldenA, goldenC2014 } from '../../../packages/system-5e/test/golden/characters-2014.ts';
 import { goldenB } from '../../../packages/system-5e/test/golden/characters-2024.ts';
 import { DB_NAME } from '../src/db/db';
 import { en } from '../src/i18n/namespaces';
@@ -178,6 +178,34 @@ test("SHEET-30 a caster's header shows the spellcasting line", async ({ page }, 
   await expect(number(page, 'classes.cleric.spell.attack')).toHaveText('Attack+5');
   await expect(number(page, 'ac.total')).toHaveText('18AC');
   await page.screenshot({ path: testInfo.outputPath('sheet-caster.png') });
+});
+
+test('SHEET-46 the Spells tab shows the slot grid and the granted spells', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenA, goldenC2014]);
+
+  // Golden A: a cleric 1: two level 1 slots, Bless and Cure Wounds from the Life domain.
+  await page.goto(`characters/${goldenA.id}?tab=spells`);
+  const panel = page.getByRole('tabpanel');
+  await expect(number(page, 'classes.cleric.spell.dc').nth(1)).toHaveText('Save DC13');
+  await expect(panel.getByRole('button', { name: 'Level 1: 2 of 2 slots left' })).toBeVisible();
+  await expect(panel.locator('[data-slot="left"]')).toHaveCount(2);
+  const rows = panel.getByRole('listitem');
+  await expect(rows).toHaveText([
+    'BlessLevel 1 · from Life2014',
+    'Cure WoundsLevel 1 · from Life2014',
+  ]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('spells-a.png') });
+
+  // Golden C: levels 1 and 2 only, 4 and 3 slots; a line for each of its two casting classes.
+  await page.goto(`characters/${goldenC2014.id}?tab=spells`);
+  await expect(panel.getByRole('button', { name: 'Level 1: 4 of 4 slots left' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'Level 2: 3 of 3 slots left' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: /^Level 3/ })).toHaveCount(0);
+  await expect(panel.locator('[data-slot="left"]')).toHaveCount(7);
+  await page.screenshot({ path: testInfo.outputPath('spells-c.png') });
 });
 
 test('SHEET-30 a character not on the device says so', async ({ page }) => {

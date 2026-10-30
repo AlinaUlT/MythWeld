@@ -4,6 +4,7 @@
 // SHEET-24: what My characters names under a character's name is its module's too.
 // SHEET-27: the manual form makes a character through its system's maker, with its rules bases.
 // SHEET-30: so is what the sheet's header and dock read, and the module `compute()` runs.
+// SHEET-46: and so is what the Spells tab reads: its slot columns, its spells, its granted casting.
 import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
@@ -16,9 +17,12 @@ import {
   type FifthEditionPack,
   fifthEditionCasting,
   fifthEditionClassLine,
+  fifthEditionGrantedCasting,
   fifthEditionHitPoints,
   fifthEditionListLine,
   fifthEditionModule,
+  fifthEditionSlots,
+  fifthEditionSpells,
   type HeaderCasting,
   type HeaderHitPoints,
   type HeaderNumber,
@@ -29,6 +33,8 @@ import {
   madeByHand,
   openFifthEditionCharacter,
   openFifthEditionPack,
+  type SheetSpell,
+  type SlotColumn,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
@@ -124,6 +130,16 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** The Spells tab's slot columns: a spell level with slots, then the pact magic slots. */
+  slots(character: AppCharacter, computed: AppComputed): readonly SlotColumn[];
+  /** The spells to list: those a class holds, then those a feature grants. */
+  spells(
+    character: AppCharacter,
+    computed: AppComputed,
+    index: ContentIndex<AppPack['entities'][number]>,
+  ): readonly SheetSpell[];
+  /** The DC and attack of the spells a feature grants with a stat of its own (ENG-51). */
+  grantedCasting(computed: AppComputed): readonly HeaderCasting[];
 }
 
 /** Each system's sheet, by system id. */
@@ -134,6 +150,9 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    slots: fifthEditionSlots,
+    spells: fifthEditionSpells,
+    grantedCasting: fifthEditionGrantedCasting,
   },
 };
 

@@ -5458,3 +5458,94 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-46 The Spells tab shows the slot grid
+
+**Hat:** Show a character's spells and slots on the Spells tab
+**Depends on:** SHEET-30, SHEET-31
+**Size:** M
+**Screen:** Yes — the Spells tab; board `V3-Spells` in `docs/design/mockups/`, BRIEF Part 5 row "P4 Character sheet"
+**SPEC:** §7.2 (the tabs, play mode); ADR 009 item 4, ADR 010 items 9 and 10, ADR 014 item 7
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/SpellList.tsx` — changes (was an empty section).
+- `packages/system-5e/src/sheet-spells.ts` — new: the slot columns, the spells to list, the casting of granted spells. Pure, reads `Computed`.
+- `apps/web/src/systems.ts` — changes: `SheetSystem` gets `slots`, `spells`, `grantedCasting`.
+- `apps/web/src/locales/en/spells.json` — changes: the tab's words.
+
+#### 2. What is missing now
+
+`SpellList()` returns `null`. A caster's Spells tab is empty. `SheetSystem` has no reader for slots or spells.
+
+#### 3. What it should look like when done
+
+1. A caster's tab starts with one line per casting class: its stat, "Save DC", "Attack". Golden A: `WIS`, `Save DC 13`, `Attack +5`.
+2. A stat a `spell` grant names (ENG-51) gets a line of its own, marked "Granted spells".
+3. The slot grid has one column per spell level that has a slot, then the pact magic slots. Golden A: one column, "Level 1", two circles. Golden C (2014): "Level 1" with 4 and "Level 2" with 3; no column for level 3.
+4. A spent slot is a hollow circle, shown before the filled ones. The column says "N of M slots left" to a screen reader. A long press opens the breakdown of the maximum.
+5. The spells follow: each class's list sorted by level then name, then the spells a feature grants. A class's spell says "Prepared" or "Known".
+6. A granted spell says "from <source>". When the grant has its own uses it adds "no spell slot" and the limit, for example "1/LR", and "N left" once one is spent.
+7. Each spell shows its edition. A spell of the other edition than the character's shows in warning colours with "A 2024 spell on a 2014 character"; it is never hidden or blocked.
+8. A spell no pack has shows "Missing: <id>".
+9. A character with no casting, no slots and no spells sees "This character has no spells and no spell slots."
+
+#### 4. How to do it
+
+1. `sheet-spells.ts`: `fifthEditionSlots` reads `spell.slots.level1..9` and the pact paths with `whole()`, and the spent counts from `state`. `fifthEditionSpells` lists `systemData.spells` (prepared first, each id once) and every reached `spell` grant's `fixed` and chosen ids, with the grant's `part`, and its uses through `resourceUses` and `recoveryOf` when it has a `key`. `fifthEditionGrantedCasting` lists the stats the grants name.
+2. `systems.ts`: the three readers go on `SheetSystem`; the section never imports the module.
+3. `SpellList.tsx`: three blocks, each from those readers; the entity lookup is `finderOf`.
+4. A spell's row opens nothing. The cast panel is SHEET-47.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Spells tab, 360×800, opened from the dock. States: caster (casting lines, grid, list), non-caster (the one sentence), spent slots, granted spell with uses, spell of another edition, missing spell. Keys, all in `spells`: `casting.dc` "Save DC", `casting.attack` "Attack", `casting.granted` "Granted spells", `slots.level` "Level {{level}}", `slots.pact` "Pact, level {{level}}", `slots.summary` "{{name}}: {{left}} of {{max}} slots left", `empty`, `cantrip`, `level`, `prepared`, `known`, `from`, `noSlot` "no spell slot", `limit` "{{max}}/{{events}}", `events.*` ("SR", "LR", "dawn", …), `left`, `missing`, `otherEdition`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-spells.test.ts` — the columns, the spells, the limit, the granted casting.
+- `apps/web/test/spells.test.tsx` — the tab on the goldens.
+- `apps/web/e2e/sheet.spec.ts` — the tab at 360×800 on golden A and C.
+- Control numbers from: golden A 2 slots, DC 13, attack +5, Bless and Cure Wounds from the Life domain (`golden-values.test.ts`, ENG-15); golden C slots 4 and 3 (SRD 5.1 multiclass table, ENG-15 §8); Intelligence 8 gives a modifier of −1, so a granted Intelligence DC is 8 − 1 + 2 = 9 and the attack −1 + 2 = +1 (worked by hand).
+
+#### 8. Checked against the source
+
+Nothing to check: the slot counts and DCs are ENG-15's, already checked there. No rule is added.
+
+#### 9. Not in this ticket
+
+- Casting from a row, the cast panel, "Don't use a spell slot": SHEET-47.
+- A tap on a circle to spend or give back a slot by hand: no row owned it; SHEET-69.
+- Preparing and learning spells: no phase 2 row; the lists are read as stored.
+
+#### 10. Rake check
+
+- **Missing is not broken:** a spell no pack has is a row saying so.
+- **Prerequisites warn, never block:** the other-edition note is a warning.
+- **Everything is data:** the abilities' names come from the stat entities, not from the code.
+- **The UI reads only `Computed`:** the readers take paths from it; the circles are counts of its numbers.
+- **No look in a component, no visible literal:** tokens and `spells` keys only; the unit lint passes.
+- **Stored units:** nothing stored.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-30, on `30f4382` plus this ticket: `pnpm lint` 357 files, no fixes. `pnpm typecheck` exit 0. `pnpm test` 98 files, 1263 passed, 0 failed (22 new), 24.45 s; then the speed project 1 file, 2 passed. `pnpm e2e` 40 passed, 0 failed, 32.9 s (1 new).
+
+Differences from §3 and the board:
+- The board's granted spell has no level on its line; the tab shows the level on every row.
+- The board's casting chips (the stat, "Save DC 13", "Attack +5") are drawn with the header's `SheetNumber`s, so they have the same tap and breakdown.
+- `sheet.test.tsx`'s "every section is empty" test drops the Spells section, which now draws.
+
+Found, not fixed:
+- A slot cannot be spent or given back by a tap on its circle: SHEET-69.
+- The same stat's DC is on the tab twice for a character whose class casts with it and whose grant names it too: they are two numbers at two paths (`classes.<key>.spell.dc`, `abilities.<stat>.spell.dc`) and may differ; both are shown.
+
+Changelog: "The Spells tab shows a caster's spell save DC and attack, the slots as a grid of circles, one column per spell level, and the spells they know, prepared or are granted, with the limit of a granted spell such as 1/LR."

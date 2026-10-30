@@ -247,7 +247,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-43 | The death saves tracker follows a dying character | S | 🔲 |
 | SHEET-44 | The Combat tab lists the attacks | S | 🔲 |
 | SHEET-45 | The Rest frames show what comes back | M | 🔲 |
-| SHEET-46 | The Spells tab shows the slot grid | M | 🔲 |
+| SHEET-46 | The Spells tab shows the slot grid | M | ✅ 2026-10-30 |
 | SHEET-47 | The cast panel casts a spell | M | 🔲 |
 | SHEET-48 | The Features tab groups features by source | M | 🔲 |
 | SHEET-49 | The Turn tab lists actions by timing | S | 🔲 |
@@ -262,6 +262,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | 🔲 |
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
+| SHEET-69 | A slot circle spends or gives back a slot | XS | 🔲 |
 
 - **SHEET-26** — SPEC §5.8, §12 stage 2: an older file migrates; a file that fails its checks is
   refused with the reason, and nothing of it is saved.
@@ -343,13 +344,9 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   Found by ENG-61: a long rest lowers exhaustion in both editions, but SRD 5.1's only "provided
   that the creature has also ingested some food and drink"; the 2014 Rest frame says so, and a
   person whose character did not eat sets the level back (SHEET-42).
-- **SHEET-46** — ADR 010 item 9, ADR 009 item 4, board `V3-Spells`. Found by ENG-57: a granted
-  spell's own uses are the resource of its `spell` grant's `key` (`resources.<key>.max`, spent in
-  `state.resources`); `castSpell` takes the grant's part as `grant`. The sheet shows them on the
-  spell's row ("1/LR, no spell slot", ADR 010 item 10). The resource's label is its entity's name,
-  so two spell grants of one entity (a trait's spells at levels 3 and 5) give two resources with
-  one label: the sheet pairs each with its spell through the grant's `key`. Found by ENG-49 (see
-  SHEET-28): the tab shows each spell's edition or warns.
+- **SHEET-69** — found by SHEET-46: the BRIEF says play mode changes the trackers, slots among them,
+  but the grid only shows them. A tap on a circle calls `spendSlot` or `regainSlot` (ENG-20) through
+  `changeCharacter`, so the Undo toast follows; pact slots are `'pact'`.
 - **SHEET-47** — ADR 010 item 10, ADR 011 item 2, board `V3-Cast`: the summary, "See full
   description", "Cast", "Don't use a spell slot"; the dice at a higher slot (ENG-50); a new
   concentration ends the old one with a confirmation (SPEC §6.4). Found by SHEET-17: the dialog
