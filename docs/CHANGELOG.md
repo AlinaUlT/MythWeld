@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-10-30 · SHEET-53 · The About tab shows species, size, background, alignment,
+  languages and armor, weapon and tool training; in edit mode the alignment can be written, with
+  Undo.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.

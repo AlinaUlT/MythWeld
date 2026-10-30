@@ -31,6 +31,8 @@ export const FIFTH_EDITION_PACK_MIGRATIONS: readonly Migration[] = [
   (file) => ({ ...file }),
   // 8 → 9: SHEET-08: seven simple entity types are new, and no version 8 pack has one.
   (file) => ({ ...file }),
+  // 9 → 10: SHEET-53 changed a character's `systemData` only.
+  (file) => ({ ...file }),
 ];
 
 /** A fifth-edition content pack: its entities are fifth edition's union (ENG-32). */

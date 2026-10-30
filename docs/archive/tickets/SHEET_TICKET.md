@@ -5458,3 +5458,99 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-53 The About tab shows the origin details
+
+**Hat:** Fill the About tab
+**Depends on:** SHEET-30
+**Size:** S
+**Screen:** Yes — the About tab; board `V3-About`, `docs/design/BRIEF.md` Part 5
+**SPEC:** §5.8 (the stored character), §7.2; ADR 009 item 3
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/AboutList.tsx` — changes (was an empty file).
+`packages/system-5e/src/character.ts`, `pack.ts`, `system.ts` — the new field and the version.
+`apps/web/src/locales/en/about.json` — the words. `apps/web/public/schema/5e/pack.schema.json` —
+the published schema, which names the version.
+
+#### 2. What is missing now
+
+`AboutList` returns `null`: the tab is empty. The stored character has no alignment field
+(`systemData` has `species`, `background`, `languageSource`, no alignment).
+
+#### 3. What it should look like when done
+
+1. The tab lists species, size, background, alignment, languages, then armor, weapons and tools.
+2. Golden B shows Human, "Medium (Human)", Soldier, "Light armor, Medium armor, Heavy armor,
+   Shields", "Simple weapons, Martial weapons", "Playing cards"; alignment reads "Not set".
+3. In edit mode the alignment is a text field. Enter or leaving it writes the change through
+   `changeCharacter`, so it shows the toast and can be undone; an empty field clears it.
+4. The written alignment is still there after a reload.
+
+#### 4. How to do it
+
+`systemData.alignment` is optional free text. It lives in the fifth-edition module, not in the
+core, because the core names no game (ADR 004). Free text, not a list: the editions word the
+choices differently and homebrew adds its own (ADR 002, a technical choice). Names come from the
+character's packs (`content.index`, `computed.byKey`); armor and weapon groups, which name no
+entity, are worded in `about.json`; a key no pack names shows as words made from the key.
+
+#### 5. Stored data
+
+`FIFTH_EDITION_SCHEMA_VERSION` 9 → 10. Character step 9 → 10 and pack step 9 → 10 return the file
+as it is, since the field is new and optional. Tests in `character.test.ts`. The published pack
+schema and the version in every golden and built-in pack are updated.
+
+#### 6. What a person will see
+
+Board `V3-About` at 360 px, from the About tab. Empty values say "Not set" or "None". Keys:
+`about.*` (title, species, size, sizeFrom, background, alignment, alignmentPlaceholder,
+languages, proficiencies, armor, weapons, tools, none, notSet, missing, groups.*).
+
+#### 7. Tests
+
+- `packages/system-5e/test/character.test.ts` — version 9 files open at 10, both steps leave a
+  file as it is, the alignment parses.
+- `apps/web/test/about.test.tsx` — golden B's rows, the alignment shown, the field in edit mode.
+- `apps/web/test/history.test.ts` — the alignment set, cleared and undone through the history.
+- `apps/web/e2e/sheet.spec.ts` — the tab, writing the alignment, a reload.
+- Control values: golden B's definition (SPEC §6.7) and its pack data.
+
+#### 8. Checked against the source
+
+The armor and weapon training shown is what the built-in 2024 pack gives the fighter (checked by
+the tickets that wrote the pack); it was not read from the SRD again here.
+
+#### 9. Not in this ticket
+
+- Skills, which the board's About draws: the Skills section of the Main tab (SHEET-32) owns them.
+- Names for tool kinds and languages the built-in packs do not carry as entries.
+- Editing the species, background, languages or proficiencies: they come from choices.
+
+#### 10. Rake check
+
+- No string literal in a component: every word is an `about` key.
+- Stored shape changed: version bumped, migration and test added.
+- Missing is not broken: a missing id shows `Missing: <id>`.
+- The change is a log entry, so Undo works; nothing reaches the network.
+
+#### 11. What came out of it
+
+Quality gate, 2026-10-30: `pnpm lint` 355 files, no fixes; `pnpm typecheck` clean; `pnpm test`
+97 files, 1248 passed, 0 failed, then the speed project 1 file, 2 passed; `pnpm e2e` 40 passed, 0 failed, 28.3 s (1 new).
+
+Differences from §3 and the board:
+- Languages show "None" for golden B: its language choices are not made, and an unmade choice is
+  not a proficiency yet. The header's choices badge covers it.
+- Tools show "Playing cards" made from the key: the built-in packs have no `toolKind` entry for it.
+- The board's Skills line is left to SHEET-32.
+
+Found, not fixed: the built-in packs have no `language` or `toolKind` entries (a content ticket).
+
+Changelog: "The About tab shows species, size, background, alignment, languages and armor, weapon
+and tool training; in edit mode the alignment can be written, with Undo."

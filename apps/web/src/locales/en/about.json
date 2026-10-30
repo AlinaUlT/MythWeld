@@ -1,1 +1,26 @@
-{}
+{
+  "title": "About {{name}}",
+  "species": "Species",
+  "size": "Size",
+  "sizeFrom": "{{size}} ({{source}})",
+  "background": "Background",
+  "alignment": "Alignment",
+  "alignmentPlaceholder": "Not written yet",
+  "languages": "Languages",
+  "proficiencies": "Proficiencies",
+  "armor": "Armor",
+  "weapons": "Weapons",
+  "tools": "Tools",
+  "none": "None",
+  "notSet": "Not set",
+  "missing": "Missing: {{id}}",
+  "separator": ", ",
+  "groups": {
+    "light": "Light armor",
+    "medium": "Medium armor",
+    "heavy": "Heavy armor",
+    "shield": "Shields",
+    "simple": "Simple weapons",
+    "martial": "Martial weapons"
+  }
+}

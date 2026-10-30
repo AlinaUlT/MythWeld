@@ -203,3 +203,30 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
 });
+
+test('SHEET-53 the About tab shows the origin, and Edit writes the alignment, kept after a reload', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=about`);
+  const about = page.getByRole('tabpanel');
+  await expect(about).toContainText('About Golden B');
+  await expect(about).toContainText('Human');
+  await expect(about).toContainText('Medium (Human)');
+  await expect(about).toContainText('Soldier');
+  await expect(about).toContainText(en.about.groups.heavy);
+  await expect(about).toContainText(en.about.groups.martial);
+  await expect(about).toContainText(en.about.notSet);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('about-play.png') });
+
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  const field = page.getByLabel(en.about.alignment);
+  await field.fill('Neutral good');
+  await field.press('Enter');
+  await expect(page.getByRole('status')).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole('tabpanel')).toContainText('Neutral good');
+  await page.screenshot({ path: testInfo.outputPath('about-written.png') });
+});

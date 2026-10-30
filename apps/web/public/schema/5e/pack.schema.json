@@ -20,7 +20,7 @@
     },
     "systemSchemaVersion": {
       "type": "number",
-      "const": 9
+      "const": 10
     },
     "title": {
       "$ref": "#/$defs/__schema2"

@@ -182,3 +182,36 @@ describe('SHEET-23 the history', () => {
     expect(await database.history.get(idOf(2))).toEqual(newer);
   });
 });
+
+describe('SHEET-53 the alignment is written through the history', () => {
+  const written = (n: number, character: AppCharacter, after: string | undefined) =>
+    entryOf(
+      { id: idOf(n), at: timeOf(n), by: { role: 'player', name: 'Wren' } },
+      {
+        action: 'setAlignment',
+        subject: 'alignment',
+        changes: [changeTo(character, ['systemData', 'alignment'], after)],
+      },
+    );
+
+  it('sets the alignment, changes it, clears it, and undoes each', async () => {
+    const stored = async () =>
+      fifthEditionCharacterSchema.parse(await database.characters.get(a.id)).systemData.alignment;
+    expect(await stored()).toBeUndefined();
+
+    const first = await recordChange(a.id, written(1, a, 'Neutral good'), timeOf(1), database);
+    expect(first.ok).toBe(true);
+    expect(await stored()).toBe('Neutral good');
+
+    const current = fifthEditionCharacterSchema.parse(await database.characters.get(a.id));
+    expect((await recordChange(a.id, written(2, current, undefined), timeOf(2), database)).ok).toBe(
+      true,
+    );
+    expect(await stored()).toBeUndefined();
+
+    expect((await undoChange(idOf(2), timeOf(3), database)).ok).toBe(true);
+    expect(await stored()).toBe('Neutral good');
+    expect((await undoChange(idOf(1), timeOf(4), database)).ok).toBe(true);
+    expect(await stored()).toBeUndefined();
+  });
+});

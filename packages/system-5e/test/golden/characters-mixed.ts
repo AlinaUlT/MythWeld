@@ -20,7 +20,7 @@ export const goldenF = {
   createdAt: '2026-10-05T09:00:00.000Z',
   updatedAt: '2026-10-05T09:00:00.000Z',
   system: '5e',
-  systemSchemaVersion: 9,
+  systemSchemaVersion: 10,
   ruleset: '2024',
   allowMixedRulesets: true,
   kind: 'pc',

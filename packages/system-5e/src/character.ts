@@ -72,6 +72,8 @@ export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
   (file) => ({ ...file }),
   // 8 → 9 (SHEET-08): seven simple entity types are new, and no version 8 file has one.
   (file) => ({ ...file }),
+  // 9 → 10 (SHEET-53): `alignment` is new and optional, and nothing in version 9 stored one.
+  (file) => ({ ...file }),
 ];
 
 /** The successes, or the failures, that end a run of death saves (ENG-33 §8). */
@@ -287,6 +289,11 @@ export const fifthEditionDataSchema = z
     /** The species, with the size chosen from its list when it offers more than one. */
     species: z.strictObject({ id: entityIdSchema, size: entityKeySchema.optional() }).optional(),
     background: z.strictObject({ id: entityIdSchema }).optional(),
+    /**
+     * SHEET-53: the alignment as the person wrote it. Free text, since the editions name the
+     * choices differently and homebrew adds its own; absent until one is written.
+     */
+    alignment: visibleTextSchema.optional(),
     /**
      * The base AC calculation the person picked (ENG-47): the module's own, or an `ac.formulas`
      * effect's part. Without it, the highest counts.
