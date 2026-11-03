@@ -1,1 +1,34 @@
-{}
+{
+  "casting": {
+    "dc": "Save DC",
+    "attack": "Attack"
+  },
+  "slots": {
+    "title": "Spell slots",
+    "level": "Level {{level}}",
+    "pact": "Pact, level {{level}}",
+    "left": "{{left}} of {{max}} left",
+    "group": "{{name}}, {{left}} of {{max}} left"
+  },
+  "list": {
+    "title": "Spells",
+    "empty": "No spells yet.",
+    "cantrip": "Cantrip",
+    "level": "Level {{level}}",
+    "missing": "Missing: {{id}}",
+    "notPrepared": "Not prepared",
+    "otherRuleset": "Rules of {{ruleset}}, not this character's",
+    "from": "from {{name}}",
+    "noSlot": "no spell slot",
+    "uses": "{{left}}/{{max}} {{recovery}}",
+    "separator": " · ",
+    "recovery": {
+      "long": "LR",
+      "short": "SR",
+      "dawn": "dawn",
+      "turn": "turn",
+      "manual": "manual",
+      "revive": "revive"
+    }
+  }
+}

@@ -19,6 +19,8 @@ import {
   fifthEditionHitPoints,
   fifthEditionListLine,
   fifthEditionModule,
+  fifthEditionSlots,
+  fifthEditionSpellRows,
   type HeaderCasting,
   type HeaderHitPoints,
   type HeaderNumber,
@@ -29,6 +31,8 @@ import {
   madeByHand,
   openFifthEditionCharacter,
   openFifthEditionPack,
+  type SlotColumn,
+  type SpellRow,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
@@ -124,6 +128,14 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** SHEET-46: the slot grid, one column per spell level that has slots (ADR 010 item 9). */
+  slots(character: AppCharacter, computed: AppComputed): readonly SlotColumn[];
+  /** SHEET-46: the spell list, each line with its source and its own uses (ADR 010 item 10). */
+  spells(
+    character: AppCharacter,
+    computed: AppComputed,
+    index: ContentIndex<FifthEditionEntity>,
+  ): readonly SpellRow[];
 }
 
 /** Each system's sheet, by system id. */
@@ -134,6 +146,8 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    slots: fifthEditionSlots,
+    spells: fifthEditionSpellRows,
   },
 };
 

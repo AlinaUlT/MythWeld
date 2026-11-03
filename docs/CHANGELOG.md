@@ -11,6 +11,8 @@ Format:
 
 ---
 
+- 2026-11-03 · SHEET-46 · The Spells tab shows the casting stat, save DC and attack, the slot
+  grid with spent slots as empty circles, and the spells with their edition, source and 1/LR uses.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its
   Actions: Copy makes a copy, Export saves it as a file, and Delete removes it with Undo; Link for
   the DM and Transfer are marked as coming later.

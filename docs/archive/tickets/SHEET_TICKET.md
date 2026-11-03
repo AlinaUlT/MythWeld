@@ -5458,3 +5458,112 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+---
+
+### SHEET-46 The Spells tab shows the slot grid
+
+**Hat:** Draw the Spells tab
+**Depends on:** SHEET-30, ENG-15, ENG-20, ENG-57
+**Size:** M
+**Screen:** Yes — the Spells tab; board `V3-Spells` in `docs/design/mockups/`, `docs/design/BRIEF.md` Part 5 (P4)
+**SPEC:** §7.2 (the sheet's tabs), §6.4 (slots)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/SpellList.tsx` — changes (empty before). Also:
+`packages/system-5e/src/spell-list.ts` — new (the slot grid and the spell rows, pure);
+`packages/system-5e/src/index.ts` — exports it; `apps/web/src/systems.ts` — `SheetSystem.slots` and
+`.spells`; `apps/web/src/locales/en/spells.json` — the tab's strings.
+
+#### 2. What is missing now
+
+`SpellList()` returns `null`: the Spells tab is empty (SHEET-30 §11, "The tabs are still empty").
+
+#### 3. What it should look like when done
+
+1. At the top, each casting class's stat, "Save DC n" and "Attack +n", each a `SheetNumber` (golden A:
+   WIS, Save DC 13, Attack +5).
+2. The slot grid: one column per spell level the character has slots of, circles two per row, a
+   full circle for a slot still there. Golden A: one column, 2 circles. Golden C (2014): columns 1
+   and 2 with 4 and 3 circles, none for level 3 (SPEC §6.7). Pact slots are a column of their own.
+3. The spell list: what each class knows or has prepared, then what each spell grant gives; each
+   line with its level ("Cantrip", "Level n"), its edition badge, and for a grant "from <source>".
+4. A grant with its own uses reads "no spell slot · 1/1 LR" (ADR 010 item 10).
+5. A spell of the other edition than the character's shows a warning line; a spell no pack has
+   shows "Missing: <id>"; a known spell of a class that prepares, not prepared, says so.
+6. A character with no spells shows "No spells yet." and no grid.
+
+#### 4. How to do it
+
+1. `spell-list.ts`: `fifthEditionSlots(character, computed)` reads `spell.slots.level<N>`,
+   `spell.pact.*` and the spent counts; `fifthEditionSpellRows(character, computed, index)` reads
+   `systemData.spells` and the `spell` grants in `computed.grants`, with `resourceUses` for the
+   uses of a grant with a `key` (ENG-57).
+2. Put both on `SheetSystem`; the section calls them through `useSheet()`.
+3. Draw the three blocks; every string is an i18next key in `spells`.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+The Spells tab at 360×800, as board `V3-Spells` draws it. States: no spells (one line of text), a
+caster with slots, a character with spells and no slots. Keys: `spells.casting.*`, `spells.slots.*`,
+`spells.list.*`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/spell-list.test.ts` — slot columns, spent counts, pact column, row
+  order, grant source and uses, not-prepared, other edition, missing spell, empty.
+- `apps/web/test/sheet.test.tsx` — the tab drawn for golden A, a spent slot, golden C, golden B.
+- `apps/web/e2e/sheet.spec.ts` — the tab on the phone, from the database.
+- Control numbers from: SPEC §6.7 golden A (2 level 1 slots, DC 13, attack +5), golden C (4 and 3
+  slots in 2014).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is new. The slot counts are ENG-15's, which SPEC §6.7 proves.
+
+#### 9. Not in this ticket
+
+- Casting, "Don't use a spell slot", the summary: SHEET-47.
+- Tapping a circle to spend or give back a slot: no row owns it yet (see §11).
+- An edition badge from the pack's name on each spell's source: the source line names the granting
+  entity, as the board does.
+
+#### 10. Rake check
+
+- No rule in a component: the grid and the rows are `system-5e`'s, the component draws them.
+- Missing is not broken: a missing spell or source is a row of text, never a crash.
+- No look in a component, no literal string: tokens and `spells` keys only; lint passes.
+- Everything is data: stat names come from the stat entities, not from code.
+
+#### 11. What came out of it
+
+Measured on 2026-11-03, on `30f4382`:
+
+- `pnpm lint`: `Checked 356 files`, no fixes. `pnpm typecheck`: 6 projects `Done`.
+- `pnpm test`: 97 files, 1257 passed, 0 failed, then the speed project 2 passed. 16 are new: 11 in
+  `spell-list.test.ts`, 5 in `sheet.test.tsx`.
+- `pnpm e2e`: 40 passed, 0 failed, 28.1 s; 1 is new.
+
+Differences from §3 and the board:
+- Golden A's list holds Bless and Cure Wounds from its Life domain grant, so the first test run,
+  which expected only the prepared spells, was wrong, not the code.
+- The board's sample "Level 3: one slot from a magic item" note is not built: nothing in the data
+  says where a slot came from.
+- Decided here (ADR 002): a class's own spells are listed before granted ones, then everything is
+  ordered by spell level.
+
+Found, not fixed:
+- Circles only show; no tap spends or gives back a slot. `spendSlot` and `regainSlot` exist
+  (ENG-20) but no row puts them on the sheet; SHEET-47 spends through a cast only.
+- A stat a `spell` grant names has its own DC and attack (`abilities.<stat>.spell.*`, ENG-51); the
+  tab's top line still shows casting classes only, as the header does.
+
+Changelog: "The Spells tab shows the casting stat, save DC and attack, the slot grid with spent
+slots as empty circles, and the spells with their edition, source and 1/LR uses."

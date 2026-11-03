@@ -1,6 +1,6 @@
 import { compute } from '@grimoire/engine';
 import { fifthEditionCharacterSchema } from '@grimoire/system-5e';
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -23,6 +23,7 @@ import { SheetDice } from '../src/sheet/SheetDice';
 import { barShares, SheetDock } from '../src/sheet/SheetDock';
 import { SheetHeader } from '../src/sheet/SheetHeader';
 import { formatNumber, numberAt } from '../src/sheet/SheetNumber';
+import { SpellList } from '../src/sheet/sections/SpellList';
 import { SHEET_TABS, tabOf } from '../src/sheet/tabs';
 import { type AppCharacter, sheetSystemOf } from '../src/systems';
 
@@ -215,9 +216,13 @@ describe('SHEET-30 tabs', () => {
   it('creates every section and panel empty, for the rows that fill them', () => {
     const sheet = sheetOf(goldenB);
     // Fourteen files; Conditions stands on two tabs.
-    const sections = [...new Set(SHEET_TABS.flatMap(({ sections }) => sections))];
+    const sections: ComponentType[] = [
+      ...new Set(SHEET_TABS.flatMap(({ sections }) => sections as readonly ComponentType[])),
+    ];
     expect(sections).toHaveLength(14);
-    for (const Section of [...sections, Inspiration]) {
+    // SHEET-46 filled the Spells tab's section.
+    const empty = [...sections, Inspiration].filter((each) => each !== SpellList);
+    for (const Section of empty) {
       expect(draw(sheet, <Section />)).toBe('');
     }
     for (const Panel of [RestPanel, ActionsMenu, ChoicesPanel]) {
@@ -237,5 +242,52 @@ describe('SHEET-68 squares', () => {
     expect(shownDistance(25, 'sq')).toEqual({ value: 5, unit: 'sq' });
     expect(shownDistance(4, 'sq')).toEqual({ value: 0, unit: 'sq' });
     expect(formatNumber(30, 'distance', t, 'sq')).toBe('6 sq');
+  });
+});
+
+describe('SHEET-46 the Spells tab', () => {
+  const spells = (golden: object) => draw(sheetOf(golden), <SpellList />);
+
+  it('golden A (cleric 1, 2014): Wisdom, save DC 13, attack +5, 2 full slots of level 1', () => {
+    const sheet = sheetOf(goldenA);
+    const html = draw(sheet, <SpellList />);
+    expect(html).toContain('>WIS<');
+    expect(textAt(html, 'classes.cleric.spell.dc')).toEqual(['Save DC 13']);
+    expect(textAt(html, 'classes.cleric.spell.attack')).toEqual(['Attack +5']);
+    expect(html).toContain('Level 1, 2 of 2 left');
+    expect(html.match(/data-full="true"/g)).toHaveLength(2);
+    expect(html).not.toContain('data-full="false"');
+  });
+
+  it('shows a spent slot as an empty circle', () => {
+    const spent = structuredClone(goldenA);
+    spent.systemData.state.slotsSpent = { '1': 1 };
+    const html = spells(spent);
+    expect(html).toContain('Level 1, 1 of 2 left');
+    expect(html.match(/data-full="true"/g)).toHaveLength(1);
+    expect(html.match(/data-full="false"/g)).toHaveLength(1);
+  });
+
+  it("lists golden A's domain spells with their source and edition", () => {
+    const html = spells(goldenA);
+    expect(html).toContain('Bless');
+    expect(html).toContain('Cure Wounds');
+    expect(html).toContain('Level 1 · from ');
+    expect(html).toContain('>2014<');
+    expect(html).not.toContain('Missing:');
+  });
+
+  it('golden C (2014): a column for each of the 4 and 3 slots, none for level 3', () => {
+    const html = spells(goldenC2014);
+    expect(html).toContain('Level 1, 4 of 4 left');
+    expect(html).toContain('Level 2, 3 of 3 left');
+    expect(html).not.toContain('Level 3, ');
+  });
+
+  it('says so for a character with no spells, and draws no grid or chips', () => {
+    const html = spells(goldenB);
+    expect(html).toContain(en.spells.list.empty);
+    expect(html).not.toContain('data-full');
+    expect(html).not.toContain(en.spells.casting.dc);
   });
 });

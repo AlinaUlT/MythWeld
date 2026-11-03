@@ -42,7 +42,7 @@ const withTemp = {
   },
 };
 
-const number = (page: Page, path: string) => page.locator(`[data-path="${path}"]`);
+const number = (page: Pick<Page, 'locator'>, path: string) => page.locator(`[data-path="${path}"]`);
 
 test('SHEET-30 the sheet pins the header above the dock, every number from Computed', async ({
   page,
@@ -202,4 +202,30 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   await page.goto(`characters/${goldenB.id}`);
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
+});
+
+test('SHEET-46 the Spells tab shows the casting line, the slot grid and the spell list', async ({
+  page,
+}, testInfo) => {
+  // Golden A: cleric 1 (2014), 2 slots of level 1, one spent; the Life domain grants Bless and Cure
+  // Wounds (SPEC §6.7).
+  const spent = {
+    ...goldenA,
+    systemData: {
+      ...goldenA.systemData,
+      state: { ...goldenA.systemData.state, slotsSpent: { '1': 1 } },
+    },
+  };
+  await saveRows(page, [spent]);
+  await page.goto(`characters/${goldenA.id}?tab=spells`);
+
+  const panel = page.getByRole('tabpanel');
+  await expect(panel).toContainText('WIS');
+  await expect(number(panel, 'classes.cleric.spell.dc')).toHaveText('Save DC13');
+  await expect(panel.getByLabel('Level 1, 1 of 2 left')).toBeVisible();
+  const list = panel.getByRole('list', { name: en.spells.list.title });
+  await expect(list).toContainText('Bless');
+  await expect(list).toContainText('Cure Wounds');
+  await expect(list).not.toContainText('Missing:');
+  await page.screenshot({ path: testInfo.outputPath('sheet-spells.png') });
 });
