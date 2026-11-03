@@ -1,6 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import { goldenA } from '../../../packages/system-5e/test/golden/characters-2014.ts';
-import { goldenB } from '../../../packages/system-5e/test/golden/characters-2024.ts';
+import { goldenB, goldenB4 } from '../../../packages/system-5e/test/golden/characters-2024.ts';
 import { DB_NAME } from '../src/db/db';
 import { en } from '../src/i18n/namespaces';
 
@@ -469,9 +469,11 @@ test('SHEET-33 a long press, or the context menu, opens where a number comes fro
   await page.getByRole('button', { name: en.common.close }).first().click();
   await expect(sheet).toBeHidden();
 
-  // A short tap opens nothing for now (the roll dialog is SHEET-39); the context menu opens it.
+  // A short tap rolls (SHEET-39) and opens no breakdown; the context menu opens the breakdown.
   await athletics.click();
   await expect(sheet).toBeHidden();
+  await expect(page.getByRole('dialog', { name: en.roll.title })).toBeVisible();
+  await page.keyboard.press('Escape');
   await number(page, 'abilities.str.score').click({ button: 'right' });
   await expect(page.getByTestId('breakdown-summary')).toHaveText(
     'Strength score 17 = Base 15, Soldier +2',
@@ -482,4 +484,129 @@ test('SHEET-33 a long press, or the context menu, opens where a number comes fro
   // A header number reads as it does there: speed in feet.
   await number(page, 'speed.walk').click({ button: 'right' });
   await expect(page.getByTestId('breakdown-summary')).toContainText('Speed walking 30 ft');
+});
+
+/** The d20 faces a roll shows, and which of them it kept. */
+async function facesOf(page: Page) {
+  return page
+    .getByTestId('roll-result')
+    .locator('[data-face]')
+    .evaluateAll((dice) =>
+      dice.map((die) => ({
+        face: Number(die.getAttribute('data-face')),
+        kept: die.getAttribute('data-kept') === 'true',
+      })),
+    );
+}
+
+test('SHEET-39 a tap rolls the number: d20 + 5, the dice shown, the total their sum', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  await number(page, 'skills.athletics.total').click();
+
+  const dialog = page.getByRole('dialog', { name: en.roll.title });
+  await expect(page.getByTestId('roll-formula')).toHaveText('1d20 + 5 (Athletics)');
+  await expect(page.getByTestId('roll-mode')).toHaveText(en.roll.mode.normal);
+  await page.screenshot({ path: testInfo.outputPath('roll-before.png') });
+
+  await dialog.getByRole('button', { name: en.roll.roll, exact: true }).click();
+  const [die] = await facesOf(page);
+  const total = Number(await page.getByTestId('roll-total').textContent());
+  expect(die?.face).toBeGreaterThanOrEqual(1);
+  expect(die?.face).toBeLessThanOrEqual(20);
+  expect(total).toBe((die?.face ?? 0) + 5);
+  await expect(dialog.getByRole('button', { name: en.roll.again })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('roll-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('roll-light.png') });
+
+  // Advantage rolls two d20 and keeps the higher; Disadvantage as well switches the mode back.
+  await dialog.getByRole('button', { name: en.roll.advantage, exact: true }).click();
+  await expect(page.getByTestId('roll-formula')).toHaveText('2d20kh1 + 5 (Athletics)');
+  await dialog.getByRole('button', { name: en.roll.again }).click();
+  const two = await facesOf(page);
+  expect(two).toHaveLength(2);
+  expect(two.filter(({ kept }) => kept)).toHaveLength(1);
+  const higher = Math.max(...two.map(({ face }) => face));
+  expect(two.find(({ kept }) => kept)?.face).toBe(higher);
+  expect(Number(await page.getByTestId('roll-total').textContent())).toBe(higher + 5);
+  await dialog.getByRole('button', { name: en.roll.disadvantage, exact: true }).click();
+  await expect(page.getByTestId('roll-formula')).toHaveText('1d20 + 5 (Athletics)');
+
+  // Both rolls are in the character's roll log.
+  const logged = await page.evaluate(
+    (name) =>
+      new Promise<number>((resolve, reject) => {
+        const request = indexedDB.open(name);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const count = request.result.transaction('rollLog').objectStore('rollLog').count();
+          count.onsuccess = () => resolve(count.result);
+        };
+      }),
+    DB_NAME,
+  );
+  expect(logged).toBe(2);
+  await dialog.getByRole('button', { name: en.roll.done }).click();
+  await expect(dialog).toBeHidden();
+});
+
+test('SHEET-39 Remarkable Athlete’s advantage shows as a source, and a long press still opens the breakdown', async ({
+  page,
+}) => {
+  await saveRows(page, [goldenB4]);
+  await page.goto(`characters/${goldenB4.id}`);
+  await number(page, 'skills.athletics.total').click();
+  await expect(page.getByTestId('roll-formula')).toHaveText('2d20kh1 + 6 (Athletics)');
+  await expect(page.getByTestId('roll-mode')).toHaveText(en.roll.mode.advantage);
+  await expect(page.getByRole('dialog').getByRole('listitem')).toContainText(
+    'Remarkable Athlete: advantage',
+  );
+});
+
+test('SHEET-39 rolling initiative interrupts a knock-out’s rest, with its Undo toast', async ({
+  page,
+}) => {
+  const resting = {
+    ...goldenB,
+    systemData: {
+      ...goldenB.systemData,
+      state: { ...goldenB.systemData.state, hp: { current: 0, temp: 0 }, knockedOut: 'resting' },
+    },
+  };
+  await saveRows(page, [resting]);
+  await page.goto(`characters/${goldenB.id}`);
+  await number(page, 'init.total').click();
+  await expect(page.getByTestId('roll-formula')).toHaveText('1d20 + 3 (Initiative)');
+  await page.getByRole('dialog').getByRole('button', { name: en.roll.roll, exact: true }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: en.toast.done.rollInitiative }),
+  ).toBeVisible();
+});
+
+test('SHEET-39 in 2014 a spent inspiration gives advantage and is spent with the roll', async ({
+  page,
+}) => {
+  const inspired = {
+    ...goldenA,
+    systemData: {
+      ...goldenA.systemData,
+      state: { ...goldenA.systemData.state, inspiration: 1 },
+    },
+  };
+  await saveRows(page, [inspired]);
+  await page.goto(`characters/${goldenA.id}`);
+  await number(page, 'skills.insight.total').click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: new RegExp(en.roll.inspiration) }).click();
+  await expect(page.getByTestId('roll-formula')).toContainText('2d20kh1');
+  await dialog.getByRole('button', { name: en.roll.roll, exact: true }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: en.toast.done.spendInspiration }),
+  ).toBeVisible();
+  // Held no more, the switch is not offered again.
+  await expect(dialog.getByRole('button', { name: new RegExp(en.roll.inspiration) })).toBeHidden();
 });

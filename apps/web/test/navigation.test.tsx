@@ -1,9 +1,7 @@
 import { readdirSync } from 'node:fs';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import i18n from '../src/i18n';
 import { en } from '../src/i18n/namespaces';
-import { RollDialog } from '../src/shared/RollDialog';
 import { paths, sheetPath } from '../src/shell/routes';
 
 const localeFiles = readdirSync(new URL('../src/locales/en/', import.meta.url))
@@ -81,12 +79,5 @@ describe('SHEET-11 navigation', () => {
       sheet: 'Character',
       dice: 'Dice',
     });
-  });
-
-  it('creates the shared pieces empty, for the rows that fill them', () => {
-    // SHEET-30: the sheet passes the roll dialog its number's path. SHEET-33 filled the breakdown.
-    for (const Piece of [RollDialog]) {
-      expect(renderToStaticMarkup(<Piece path="init.total" onClose={() => {}} />)).toBe('');
-    }
   });
 });

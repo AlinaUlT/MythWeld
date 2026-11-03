@@ -75,10 +75,14 @@ export interface PanelRoll {
   roller: Roller;
   id: string;
   now: Date;
+  /** SHEET-39: what the log calls the roll, when it is not the formula's text ("Athletics"). */
+  label?: string;
+  /** SHEET-39: the computed path of the number the roll adds to the d20. */
+  path?: string;
 }
 
 /** The roll as its record, one breakdown entry for the formula, and what rolling it met. */
-export function rollWith({ formula, read, die, roller, id, now }: PanelRoll): {
+export function rollWith({ formula, read, die, roller, id, now, label, path }: PanelRoll): {
   record: RollRecord;
   warnings: readonly RollPartWarning[];
 } {
@@ -91,7 +95,8 @@ export function rollWith({ formula, read, die, roller, id, now }: PanelRoll): {
         name: roller.name,
         ...(roller.actorId !== undefined && { actorId: roller.actorId }),
       },
-      label: formula.text,
+      label: label ?? formula.text,
+      ...(path !== undefined && { path }),
       visibility: 'public',
       parts: [{ label: formula.text, formula }],
       modifiers: [],

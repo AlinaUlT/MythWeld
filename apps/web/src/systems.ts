@@ -10,7 +10,10 @@ import {
   ABOUT_LISTS,
   type AboutListName,
   type AboutShown,
+  attackOutcome,
   type ChecksShown,
+  criticalDamage,
+  d20Formula,
   EDITION_RULES,
   type EditionTerms,
   FIFTH_EDITION_HEADER_NUMBERS,
@@ -27,6 +30,8 @@ import {
   fifthEditionListLine,
   fifthEditionModule,
   fifthEditionPathParts,
+  fifthEditionRollTest,
+  fifthEditionSituational,
   gainInspiration,
   type HeaderCasting,
   type HeaderHitPoints,
@@ -40,6 +45,10 @@ import {
   openFifthEditionCharacter,
   openFifthEditionPack,
   type PathPart,
+  type RollTest,
+  rollInitiative,
+  rollModeOf,
+  type Situational,
   spendInspiration,
 } from '@grimoire/system-5e';
 
@@ -124,7 +133,7 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
   },
 ];
 
-export type { AboutListName, MadeByHand, ManualCharacterAsk, PathPart };
+export type { AboutListName, MadeByHand, ManualCharacterAsk, PathPart, RollTest, Situational };
 
 /** What the sheet reads of one system: its module, and what its header and dock name. */
 export interface SheetSystem {
@@ -136,6 +145,19 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** The d20 test the number at `path` is, or none when it does not roll (SHEET-39). */
+  rollTest(computed: AppComputed, path: string): RollTest | undefined;
+  /** The situational effects that name one of a test's `roll.*` targets (SHEET-39). */
+  situational(computed: AppComputed, targets: readonly string[]): readonly Situational[];
+  /** The mode sources of these signs give: 1 advantage, −1 disadvantage, 0 neither. */
+  rollMode: typeof rollModeOf;
+  /** The d20 formula of a roll in a mode. */
+  d20: typeof d20Formula;
+  /** What an attack roll's natural face does: a critical hit, an automatic miss, or by total. */
+  attackOutcome: typeof attackOutcome;
+  criticalDamage: typeof criticalDamage;
+  /** The entry for rolling initiative: it interrupts a knock-out's short rest (SHEET-19). */
+  rollInitiative: typeof rollInitiative;
   /** The parts a computed path is named by in a breakdown (SHEET-33). */
   pathParts(path: string): readonly PathPart[];
   /** The stats, saves, skills and passive values the Main tab shows (SHEET-32). */
@@ -163,6 +185,13 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     hitPoints: fifthEditionHitPoints,
     checks: fifthEditionChecks,
     pathParts: fifthEditionPathParts,
+    rollTest: fifthEditionRollTest,
+    situational: fifthEditionSituational,
+    rollMode: rollModeOf,
+    d20: d20Formula,
+    attackOutcome,
+    criticalDamage,
+    rollInitiative,
     about: fifthEditionAbout,
     aboutLists: ABOUT_LISTS,
     terms: (ruleset) => EDITION_RULES[ruleset].terms,

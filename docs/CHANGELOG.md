@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-03 · SHEET-39 · Tap an ability, save, skill or initiative on the sheet to roll it: the d20 of its mode (advantage, disadvantage, inspiration in 2014), the dice shown, the total, every roll kept in the log.
 - 2026-11-03 · SHEET-33 · Long-press a number on the sheet to see where it comes from: each part with its source, and a manual edit marked as one.
 - 2026-11-03 · SHEET-32 · The Main tab shows the ability tiles, the saving throws, the skills grouped by their stat with proficiency dots, and the passive checks.
 - 2026-11-03 · SHEET-28 · The new-character form's Equipment step adds items with a quantity, and warns when an item is of the other edition or in no ticked pack.

@@ -1,1 +1,35 @@
-{}
+{
+  "title": "Roll",
+  "formula": "{{formula}} ({{name}})",
+  "doesNotRoll": "This number does not roll.",
+  "advantage": "Advantage",
+  "disadvantage": "Disadvantage",
+  "inspiration": "Spend inspiration",
+  "inspirationHint": "Advantage on this roll",
+  "mode": {
+    "normal": "A straight d20",
+    "advantage": "Rolling with advantage: the higher d20 counts",
+    "disadvantage": "Rolling with disadvantage: the lower d20 counts"
+  },
+  "sources": "From the sheet",
+  "source": {
+    "advantage": "{{label}}: advantage",
+    "disadvantage": "{{label}}: disadvantage"
+  },
+  "situational": "Situational",
+  "roll": "Roll",
+  "again": "Roll again",
+  "done": "Done",
+  "total": "Total",
+  "natural": "Natural {{face}}",
+  "outcome": {
+    "criticalHit": "Critical hit",
+    "automaticMiss": "Automatic miss",
+    "byTotal": "Compare the total with the target"
+  },
+  "damage": "Damage",
+  "rollDamage": "Roll damage",
+  "rollCritical": "Roll critical damage",
+  "damageTotal": "Damage {{total}}",
+  "failed": "The roll could not be made."
+}

@@ -6288,3 +6288,98 @@ Found, not fixed: nothing.
 Changelog: "Long-press a number on the sheet to see where it comes from: each part with its source, and a manual edit marked as one."
 
 ---
+
+### SHEET-39 Tapping a number rolls it in the roll dialog
+
+**Hat:** Tapping a number rolls it in the roll dialog
+**Depends on:** SHEET-30, SHEET-32, SHEET-37 (the roll log), SHEET-38 (the fair die and the record), SHEET-19 (`rollInitiative`), SHEET-55 (inspiration), ENG-34 (roll modes, `attackOutcome`, `criticalDamage`)
+**Size:** M
+**Screen:** Yes — board `V3-Roll` in `docs/design/mockups/`; `docs/design/BRIEF.md` Part 2 P5 "Sheet 1" and Part 5 "P5 Roll dialog and breakdown"
+**SPEC:** §7.2, §6.5 (dice), §6.4 (rolls and modes)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/shared/RollDialog.tsx` — changes: the dialog itself.
+- `apps/web/src/sheet/roll.ts` — new: the mode, the formula, the kept face, `rollTestWith`.
+- `packages/system-5e/src/sheet-roll.ts` — new: `fifthEditionRollTest`, `fifthEditionSituational`.
+- `apps/web/src/systems.ts` — changes: `SheetSystem` carries the test, the situational list, `rollModeOf`, `d20Formula`, `attackOutcome`, `criticalDamage`, `rollInitiative`.
+- `apps/web/src/shared/dice.ts`, `DicePanel.tsx` — change: `rollWith` takes a label and a path; `Faces` is exported.
+- `apps/web/src/sheet/breakdown.ts` — changes: `stepLabel` is shared with the dialog.
+- `apps/web/src/locales/en/roll.json` — changes: the words.
+
+#### 2. What is missing now
+
+Measured on `fd2ce18`: `RollDialog` returns `null`; a tap on Athletics, a save, a skill, a stat or initiative does nothing, although `SheetNumber` already calls `sheet.roll(path)`.
+
+#### 3. What it should look like when done
+
+1. A tap on a number that rolls opens "Roll" over the sheet. Golden B's Athletics shows `1d20 + 5 (Athletics)` and "A straight d20".
+2. The mode is the sign of every source of the number's mode path (`skills.athletics.mode`, ENG-34) and the dialog's own: the Advantage and Disadvantage switches, a situational effect switched on, and, in 2014 only, a spent inspiration. Any advantage and any disadvantage cancel. Advantage rolls `2d20kh1`, disadvantage `2d20kl1`. Golden B4's Athletics opens in advantage: `2d20kh1 + 6`, with "Remarkable Athlete: advantage" as a source; golden B's Stealth opens in disadvantage (chain mail).
+3. "Roll" rolls the formula with the fair die, shows each die (a die not kept is struck through), the natural face and the total, and the button becomes "Roll again". Total = kept face + the number shown on the sheet.
+4. Every roll is logged with the character as `by.actorId`, the test's name as its label and the number's path.
+5. Initiative: after each roll the dialog calls `rollInitiative`, which interrupts a knock-out's short rest; its refusals (`unchanged`, `dead`) are not shown.
+6. 2014: the inspiration chip appears while one is held; a roll made with it on spends one (one change with its Undo toast) and switches it off. 2024: no chip.
+7. A weapon or spell attack shows "Critical hit" for a 20 or a face at or above `crit.range`, "Automatic miss" for a 1. A weapon attack offers "Roll damage", or "Roll critical damage" after a critical hit, which rolls each dice term of the damage formula twice.
+8. A path that does not roll, including `toString`, shows "This number does not roll." and nothing throws.
+9. The gate is green.
+
+#### 4. How to do it
+
+1. The module says which numbers are d20 tests and where their mode and targets are (`fifthEditionRollTest`), and which situational effects name a test's targets (`fifthEditionSituational`); the app asks through `SheetSystem` and writes no path.
+2. `signsOf` joins the steps' `value`s with the dialog's own signs; `system.rollMode` decides.
+3. `rollTestWith` builds `d20Formula(mode) ± number`, rolls it with `rollWith` and reads the kept face and the outcome.
+4. `RollDialog` holds the switches and the last roll; logging and the two actions run after the roll.
+
+Technical choices (ADR 002): one dialog for every kind of test, the kind decided by the module; the roll is never replayed, "Roll again" is a new roll; the damage roll is offered only for a weapon attack with a damage path.
+
+#### 5. Stored data
+
+Nothing stored changes. Rolls go to the existing roll log.
+
+#### 6. What a person will see
+
+A bottom sheet at 360×800: the formula, the two switches (and inspiration, and the situational chips), the mode in words, the sources from the sheet as chips, the result card with the dice, the natural face and a large total, "Roll"/"Roll again" and "Done". Keys in `roll`: `title`, `formula`, `advantage`, `disadvantage`, `inspiration`, `mode.*`, `source.*`, `situational`, `roll`, `again`, `done`, `outcome.*`, `rollDamage`, `rollCritical`, `damageTotal`, `doesNotRoll`, `failed`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-roll.test.ts` — 7 tests: each test kind, a skill's stat from its key path, the greatsword attack, paths that do not roll, Remarkable Athlete's mode steps, situational effects.
+- `apps/web/test/roll.test.tsx` — 13 tests: the mode with and without switches; the rolls with scripted dice (a 14 gives 19; advantage keeps the higher, disadvantage the lower); the attack outcomes; the doubled damage dice; the dialog's markup for B, B4, 2014 and 2024 inspiration, and a path that does not roll.
+- `apps/web/e2e/sheet.spec.ts` — 4 tests: a real roll (total = face + 5, the advantage pair, the log holds 2 rolls), Remarkable Athlete's source, initiative's interruption with its toast, 2014 inspiration spent; the SHEET-33 test now expects a tap to open the roll dialog.
+- Control numbers from: SPEC §6.7 golden B (Athletics +5, greatsword 2d6, Strength +3 and proficiency +2 to hit), golden B4 (Athletics +6, advantage), golden A.
+
+#### 8. Checked against the source
+
+- SRD 5.1 and 5.2.1, "Advantage and Disadvantage": any advantage and any disadvantage cancel, however many of each (ENG-34 §8, which this ticket reads, not re-derives).
+- Inspiration: 2014's gives advantage (`rulesOf(...).inspiration.use`, ENG-59); 2024's rerolls a die, which this ticket does not do.
+
+#### 9. Not in this ticket
+
+- "I roll myself" in the dialog: the dice panel counts typed faces (SHEET-38); the dialog always rolls with the fair die.
+- 2024's heroic inspiration reroll.
+- Situational numeric bonuses; only advantage and disadvantage ones are offered.
+- "Send to DM" and "Secret to DM": the table link (ADR 005 item 6).
+- The Combat tab's attack rows (SHEET-44), the death save tracker (SHEET-43) and the cast panel (SHEET-47), which open this dialog with their own paths.
+
+#### 10. Rake check
+
+- **Everything is data:** no stat, skill or path name in the app; the module names the tests.
+- **A rule in one place:** the cancelling rule is `rollModeOf`, the outcome `attackOutcome`, the doubling `criticalDamage`.
+- **Missing is not broken:** a path that does not roll says so.
+- **No visible literal, no look literal:** `roll` keys; parts and tokens.
+- **No external request:** the die is the platform's.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-03: `pnpm lint` 382 files, no fixes; `pnpm typecheck` clean; `pnpm test` 108 files, 1348 passed, 0 failed, 23.5 s (19 new, from 1329; the navigation test of empty pieces left), then speed 2 passed; coverage statements 99.27 % (3585/3611), lines 99.87 % (3146/3150); `pnpm e2e` 53 passed, 0 failed, 42.7 s (4 new). Screenshots at 360×800 shown in the chat.
+
+Differences from §3: none.
+
+Found, not fixed:
+- The dialog does not honor the setting "I roll myself" (§9): a person with it on still gets a fair roll here. Own row needed.
+- An `<output>` has the role `status`, as the toast does; the e2e finds the toast by its text.
+
+Changelog: "Tap an ability, save, skill or initiative on the sheet to roll it: the d20 of its mode (advantage, disadvantage, inspiration in 2014), the dice shown, the total, every roll kept in the log."
+
+---

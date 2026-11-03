@@ -61,6 +61,40 @@ export function stepsAt(computed: AppComputed, path: string) {
   return Object.hasOwn(computed.breakdown, path) ? (computed.breakdown[path] ?? []) : [];
 }
 
+/** What a step is called: its source's name, a path by its parts, a rule by its name. */
+export function stepLabel(
+  computed: AppComputed,
+  system: Pick<SheetSystem, 'pathParts'>,
+  step: ReturnType<typeof stepsAt>[number],
+  t: BreakdownT,
+): string {
+  switch (step.kind) {
+    case 'base':
+      return t('step.base');
+    case 'default':
+      return t(`step.default.${step.of}`);
+    case 'grant':
+    case 'effect':
+    case 'entity':
+    case 'condition':
+      return nameIn(step.label);
+    case 'cap':
+      return t('step.cap');
+    case 'level':
+      return t('step.level');
+    case 'formula':
+      return t('step.formula', { formula: step.formula });
+    case 'path':
+      return pathName(computed, system, step.path, t);
+    case 'rule':
+      return t(`rule.${step.rule}`, { defaultValue: capital(wordsOf(step.rule).toLowerCase()) });
+    case 'override':
+      return t('manual');
+    default:
+      return t('step.unknown');
+  }
+}
+
 export function breakdownOf(
   computed: AppComputed,
   system: Pick<SheetSystem, 'pathParts'>,
@@ -73,41 +107,15 @@ export function breakdownOf(
   const shown = said.length === 0 ? steps : said;
   const lines = shown.map((step, at): BreakdownLine => {
     const line = { change: step.change, first: at === 0, manual: false };
-    switch (step.kind) {
-      case 'base':
-        return { ...line, label: t('step.base') };
-      case 'default':
-        return { ...line, label: t(`step.default.${step.of}`) };
-      case 'grant':
-      case 'effect':
-      case 'entity':
-      case 'condition':
-        return { ...line, label: nameIn(step.label) };
-      case 'cap':
-        return { ...line, label: t('step.cap') };
-      case 'level':
-        return { ...line, label: t('step.level') };
-      case 'formula':
-        return { ...line, label: t('step.formula', { formula: step.formula }) };
-      case 'path':
-        return { ...line, label: pathName(computed, system, step.path, t) };
-      case 'rule':
-        return {
-          ...line,
-          label: t(`rule.${step.rule}`, {
-            defaultValue: capital(wordsOf(step.rule).toLowerCase()),
-          }),
-        };
-      case 'override':
-        return {
-          ...line,
-          label: t('manual'),
-          manual: true,
-          ...(step.note !== undefined && step.note !== '' && { note: step.note }),
-        };
-      default:
-        return { ...line, label: t('step.unknown') };
+    if (step.kind === 'override') {
+      return {
+        ...line,
+        label: t('manual'),
+        manual: true,
+        ...(step.note !== undefined && step.note !== '' && { note: step.note }),
+      };
     }
+    return { ...line, label: stepLabel(computed, system, step, t) };
   });
   return { name: pathName(computed, system, path, t), total: numberAt(computed, path), lines };
 }
