@@ -108,7 +108,7 @@ export function SheetNumber({
   const { distance } = useSettings();
   const sheet = useSheet();
   const handlers = usePress(rolls ? () => sheet.roll(path) : undefined, () =>
-    sheet.breakdown(path),
+    sheet.breakdown(path, format),
   );
   const value = formatNumber(numberAt(sheet.computed, path), format, t, distance);
   const name = <span className={labelClassName}>{label}</span>;

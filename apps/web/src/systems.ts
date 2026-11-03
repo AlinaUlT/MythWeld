@@ -26,6 +26,7 @@ import {
   fifthEditionInspiration,
   fifthEditionListLine,
   fifthEditionModule,
+  fifthEditionPathParts,
   gainInspiration,
   type HeaderCasting,
   type HeaderHitPoints,
@@ -38,6 +39,7 @@ import {
   madeByHand,
   openFifthEditionCharacter,
   openFifthEditionPack,
+  type PathPart,
   spendInspiration,
 } from '@grimoire/system-5e';
 
@@ -122,7 +124,7 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
   },
 ];
 
-export type { AboutListName, MadeByHand, ManualCharacterAsk };
+export type { AboutListName, MadeByHand, ManualCharacterAsk, PathPart };
 
 /** What the sheet reads of one system: its module, and what its header and dock name. */
 export interface SheetSystem {
@@ -134,6 +136,8 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** The parts a computed path is named by in a breakdown (SHEET-33). */
+  pathParts(path: string): readonly PathPart[];
   /** The stats, saves, skills and passive values the Main tab shows (SHEET-32). */
   checks(computed: AppComputed): ChecksShown;
   /** The inspiration held, its stars and the edition's own maximum (ADR 009 item 5, SHEET-55). */
@@ -158,6 +162,7 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
     checks: fifthEditionChecks,
+    pathParts: fifthEditionPathParts,
     about: fifthEditionAbout,
     aboutLists: ABOUT_LISTS,
     terms: (ruleset) => EDITION_RULES[ruleset].terms,

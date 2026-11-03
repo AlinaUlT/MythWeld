@@ -39,7 +39,7 @@ export function BottomSheet({ title, onClose, children }: BottomSheetProps) {
         className="relative flex max-h-[85dvh] flex-col bg-surface pb-3"
       >
         <header className="flex shrink-0 items-center gap-1 py-2 pl-5">
-          <h2 id={titleId} className="min-w-0 grow truncate font-heading text-24 font-bold">
+          <h2 id={titleId} className="min-w-0 grow font-heading text-22 leading-tight font-bold">
             {title}
           </h2>
           <Part

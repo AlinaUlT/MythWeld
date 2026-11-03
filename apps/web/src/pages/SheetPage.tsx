@@ -21,6 +21,7 @@ import { SheetContext, type SheetValue } from '../sheet/SheetContext';
 import { SheetDice } from '../sheet/SheetDice';
 import { SheetDock } from '../sheet/SheetDock';
 import { SheetHeader } from '../sheet/SheetHeader';
+import type { NumberFormat } from '../sheet/SheetNumber';
 import { SHEET_TABS, type SheetTabId, tabOf } from '../sheet/tabs';
 import { Page } from '../shell/Page';
 import { paths } from '../shell/routes';
@@ -33,7 +34,8 @@ export const SWIPE_PX = 56;
 
 /** What the sheet has open over it, if anything. */
 type Open =
-  | { kind: 'roll' | 'breakdown'; path: string }
+  | { kind: 'roll'; path: string }
+  | { kind: 'breakdown'; path: string; format: NumberFormat | undefined }
   | { kind: 'numberPad'; mode: NumberPadMode }
   | { kind: 'rest' | 'actions' | 'choices' };
 
@@ -81,7 +83,7 @@ function Frame({ character, system }: { character: AppCharacter; system: SheetSy
     system,
     editing,
     roll: (path) => setOpen({ kind: 'roll', path }),
-    breakdown: (path) => setOpen({ kind: 'breakdown', path }),
+    breakdown: (path, format) => setOpen({ kind: 'breakdown', path, format }),
   };
 
   const showTab = (next: SheetTabId) => {
@@ -142,7 +144,9 @@ function Frame({ character, system }: { character: AppCharacter; system: SheetSy
         />
         <SheetDice />
         {open?.kind === 'roll' && <RollDialog path={open.path} onClose={close} />}
-        {open?.kind === 'breakdown' && <BreakdownSheet path={open.path} onClose={close} />}
+        {open?.kind === 'breakdown' && (
+          <BreakdownSheet path={open.path} format={open.format} onClose={close} />
+        )}
         {open?.kind === 'numberPad' && <NumberPad mode={open.mode} onClose={close} />}
         {open?.kind === 'rest' && <RestPanel onClose={close} />}
         {open?.kind === 'actions' && <ActionsMenu onClose={close} />}

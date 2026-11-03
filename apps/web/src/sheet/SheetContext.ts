@@ -14,8 +14,8 @@ export interface SheetValue {
   editing: boolean;
   /** Opens the roll dialog for the number at `path` (SHEET-39). */
   roll(path: string): void;
-  /** Opens the breakdown of the number at `path` (SHEET-33). */
-  breakdown(path: string): void;
+  /** Opens the breakdown of the number at `path`, written as `format` (SHEET-33). */
+  breakdown(path: string, format?: 'plain' | 'signed' | 'distance'): void;
 }
 
 export const SheetContext = createContext<SheetValue | undefined>(undefined);

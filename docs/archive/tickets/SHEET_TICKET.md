@@ -6200,3 +6200,91 @@ Found, not fixed: nothing.
 Changelog: "The Main tab shows the six ability tiles, the saving throws, the skills grouped by their stat with proficiency dots, and passive Perception."
 
 ---
+
+### SHEET-33 A long press opens a number's breakdown
+
+**Hat:** A long press opens a number's breakdown
+**Depends on:** SHEET-30 (`SheetNumber`, the frame's `breakdown`), SHEET-11 (the empty `BreakdownSheet`), ENG-17 (the `override` step), ENG-40 (reserved path names)
+**Size:** S
+**Screen:** Yes — board `V3-Roll` in `docs/design/mockups/`; `docs/design/BRIEF.md` Part 2 P5 "Sheet 2" and Part 5 "P5 Roll dialog and breakdown"
+**SPEC:** §7.2, §6.2 (every number has a breakdown), §6.1 step 7 (manual edits)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/shared/BreakdownSheet.tsx` — changes: the sheet itself.
+- `apps/web/src/sheet/breakdown.ts` — new: `breakdownOf`, `pathName`, `stepsAt`.
+- `packages/system-5e/src/sheet-paths.ts` — new: `fifthEditionPathParts`, which parts of a path name an entry.
+- `apps/web/src/systems.ts` — changes: `SheetSystem.pathParts`.
+- `apps/web/src/sheet/SheetContext.ts`, `SheetNumber.tsx`, `apps/web/src/pages/SheetPage.tsx` — change: the breakdown opens with its number's format.
+- `apps/web/src/shared/BottomSheet.tsx` — changes: the title wraps instead of being cut.
+- `apps/web/src/locales/en/breakdown.json` — changes: the words.
+
+#### 2. What is missing now
+
+Measured on `240ad12`: `BreakdownSheet` returns `null`; a long press on any number opens nothing, although `SheetNumber` already calls `sheet.breakdown(path)`.
+
+#### 3. What it should look like when done
+
+1. A long press (500 ms) or the context menu on a `SheetNumber` opens "Where this number comes from" over the sheet; Escape, the close button and the dim close it. A tap does not.
+2. Its summary line: golden B's Athletics reads `Athletics +5 = Strength modifier +3, Proficiency bonus +2`; Strength's score reads `Strength score 17 = Base 15, Soldier +2` (SPEC §6.7). Each part is also its own line with its source.
+3. A zero-valued path step (a bonus slot nothing filled) is left out, unless nothing else is left.
+4. An override step shows as "Manual edit", with "Replaces the computed number" and the person's note.
+5. The number is written as it was on the sheet (signed, plain or a distance), because the sheet passes the number's format.
+6. A path with no steps, including `toString`, `constructor` and `__proto__`, shows "No steps are kept for this number." and nothing throws: `Computed.breakdown` is read as an own field only.
+7. The gate is green.
+
+#### 4. How to do it
+
+1. `fifthEditionPathParts(path)`: `abilities.<k>`, `checks.<k>`, `skills.<k>`, `classes.<k>` name the entry; every other segment is a word; `prof` is one word.
+2. `breakdownOf` makes a line for each step kind: base, default, grant, effect, entity, condition, cap, level, formula, path (named by its parts), rule (by its name), override.
+3. `BreakdownSheet` draws the summary and the lines in a `BottomSheet`.
+
+Technical choices (ADR 002): the module says which segments of a path are keys, so the app writes no stat or skill name (D3); words for the rest are locale keys with the key's own words as the fallback, so a new rule never shows blank; the format travels with the open sheet so the breakdown never guesses it.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+A bottom sheet at 360×800 over the dimmed sheet: the title (two lines at this width), the summary, one row for each part. Empty: the "no steps" line. Keys in `breakdown`: `title`, `summary`, `summaryNone`, `separator`, `none`, `manual`, `manualHint`, `step.*`, `word.*`, `rule.*`.
+
+#### 7. Tests
+
+- `apps/web/test/breakdown.test.tsx` — 7 tests: Athletics' parts; the summary and lines; Strength's base and the Soldier's +2; a manual edit with its note; reserved paths; path names; Passive Perception 13.
+- `packages/system-5e/test/sheet-paths.test.ts` — 3 tests.
+- `apps/web/e2e/sheet.spec.ts` — 1 test: long press, context menu, a tap that opens nothing, a header number in feet.
+- `apps/web/test/navigation.test.tsx` — the breakdown left the "empty pieces" list.
+- Control numbers from: SPEC §6.7 golden B (Athletics +5, Strength 17 = 15 + 2, passive Perception 13).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts.
+
+#### 9. Not in this ticket
+
+- Overriding a number by hand: SHEET-34. Pinning the AC calculation: SHEET-35.
+- Opening a part's own breakdown from its line.
+- The roll dialog: SHEET-39.
+
+#### 10. Rake check
+
+- **A shown number has a breakdown:** every `SheetNumber` opens one; a path without steps says so.
+- **Manual overrides win and are labelled:** "Manual edit".
+- **Everything is data:** names come from `byKey` and the module's path parts.
+- **Own fields only:** `Object.hasOwn` on `breakdown` and `byKey`.
+- **No visible literal:** `breakdown` keys.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-03: `pnpm lint` 378 files, no fixes; `pnpm typecheck` clean; `pnpm test` 106 files, 1329 passed, 0 failed, 24.2 s (10 new, from 1319), then speed 2 passed; coverage statements 99.41 % (3544/3565), lines 99.9 % (3110/3113); `pnpm e2e` 49 passed, 0 failed, 38.9 s (1 new). Screenshots at 360×800 shown in the chat.
+
+Differences from §3: the shared sheet's title was cut ("Where this number comes …") at 360 px; it wraps now for every panel that uses `BottomSheet`.
+
+Found, not fixed: nothing.
+
+Changelog: "Long-press a number on the sheet to see where it comes from: each part with its source, and a manual edit marked as one."
+
+---

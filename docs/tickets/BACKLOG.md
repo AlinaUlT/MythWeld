@@ -234,7 +234,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-30 | The sheet's frame pins the header above the dock | M | ✅ 2026-10-29 |
 | SHEET-31 | An entry's description opens in place | S | ✅ 2026-10-29 |
 | SHEET-32 | The Main tab shows every check bonus | S | ✅ 2026-11-03 |
-| SHEET-33 | A long press opens a number's breakdown | S | 🔲 |
+| SHEET-33 | A long press opens a number's breakdown | S | ✅ 2026-11-03 |
 | SHEET-34 | A manual edit overrides a number | S | 🔲 |
 | SHEET-35 | The AC breakdown pins its base calculation | XS | 🔲 |
 | SHEET-36 | The choices badge opens every pending choice | M | 🔲 |
@@ -268,12 +268,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   warning and a popup, or a sign that opens it: a checkbox for each, either, both or neither,
   and "Create" stays on. ENG-68's warning `abilityBonusConflict` says when, its `source` what is
   ticked. Board `V3-Conflict`. Phase 4's creation wizard shows the same.
-- **SHEET-33** — SPEC §7.2, BRIEF P5 sheet 2, board `V3-Roll`. Found by ENG-17: the breakdown's
-  kind `override` is shown as "Manual edit" (SPEC §6.1 step 7). Found by ENG-40: an override's
-  path or an effect's target may be one step such as `toString` (`computedPathSchema`).
-  `compute()` handles it (`overrideNoPath`), but `Computed.values` and `Computed.breakdown` are
-  plain objects, so `values['toString']` gives a function, not `undefined`. The screen reads only
-  own fields, or the path schema refuses ENG-40's `RESERVED_KEYS` as a step.
 - **SHEET-34** — found by ENG-17: an override applies only when its value is a number on a number
   path (`overrideNotANumber` otherwise), so the override editor stores a number there. Found by
   ENG-43: an override of a skill's stat applies only when its value is one of its keys (a stat's

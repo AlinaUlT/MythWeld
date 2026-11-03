@@ -442,3 +442,44 @@ test('SHEET-32 the Main tab shows every check bonus: tiles, saves, skills by sta
   await page.evaluate(() => document.documentElement.classList.remove('dark'));
   await page.screenshot({ path: testInfo.outputPath('main-light.png') });
 });
+
+test('SHEET-33 a long press, or the context menu, opens where a number comes from', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  const athletics = number(page, 'skills.athletics.total');
+  const sheet = page.getByRole('dialog', { name: en.breakdown.title });
+
+  // A long press (500 ms) on Athletics +5.
+  const box = await athletics.boundingBox();
+  await page.mouse.move((box?.x ?? 0) + 20, (box?.y ?? 0) + 10);
+  await page.mouse.down();
+  await page.waitForTimeout(650);
+  await page.mouse.up();
+  await expect(sheet).toBeVisible();
+  await expect(page.getByTestId('breakdown-summary')).toHaveText(
+    'Athletics +5 = Strength modifier +3, Proficiency bonus +2',
+  );
+  await expect(sheet.getByRole('listitem')).toHaveCount(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('breakdown-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('breakdown-light.png') });
+  await page.getByRole('button', { name: en.common.close }).first().click();
+  await expect(sheet).toBeHidden();
+
+  // A short tap opens nothing for now (the roll dialog is SHEET-39); the context menu opens it.
+  await athletics.click();
+  await expect(sheet).toBeHidden();
+  await number(page, 'abilities.str.score').click({ button: 'right' });
+  await expect(page.getByTestId('breakdown-summary')).toHaveText(
+    'Strength score 17 = Base 15, Soldier +2',
+  );
+  await page.keyboard.press('Escape');
+  await expect(sheet).toBeHidden();
+
+  // A header number reads as it does there: speed in feet.
+  await number(page, 'speed.walk').click({ button: 'right' });
+  await expect(page.getByTestId('breakdown-summary')).toContainText('Speed walking 30 ft');
+});

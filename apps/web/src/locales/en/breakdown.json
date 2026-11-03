@@ -1,1 +1,61 @@
-{}
+{
+  "title": "Where this number comes from",
+  "summary": "{{name}} {{total}} = {{parts}}",
+  "summaryNone": "{{name}} {{total}}",
+  "separator": ", ",
+  "none": "No steps are kept for this number.",
+  "manual": "Manual edit",
+  "manualHint": "Replaces the computed number",
+  "step": {
+    "base": "Base",
+    "default": {
+      "stat": "Default for a stat",
+      "system": "Default for the system"
+    },
+    "cap": "Highest allowed",
+    "level": "Character level",
+    "formula": "Formula {{formula}}",
+    "unknown": "A step this app cannot name"
+  },
+  "word": {
+    "abilities": "",
+    "skills": "",
+    "checks": "",
+    "total": "",
+    "mod": "modifier",
+    "score": "score",
+    "save": "save",
+    "saveProf": "save proficiency",
+    "saveBonus": "save bonus",
+    "prof": "proficiency",
+    "proficiencyBonus": "proficiency bonus",
+    "bonus": "bonus",
+    "passive": "passive",
+    "mode": "roll mode",
+    "check": "check",
+    "all": "all",
+    "ac": "AC",
+    "init": "Initiative",
+    "hp": "Hit points",
+    "max": "maximum",
+    "speed": "Speed",
+    "walk": "walking",
+    "d20": "d20"
+  },
+  "rule": {
+    "proficiencyBonus": "Proficiency bonus",
+    "passiveBase": "Passive base",
+    "unarmoredAC": "Unarmored",
+    "acCalcChosen": "Armor class calculation chosen",
+    "armorStrength": "Armor strength requirement",
+    "criticalHit": "Critical hit",
+    "fixedDamage": "Fixed damage",
+    "heavyWeapon": "Heavy weapon",
+    "hitPointsMinimum": "Hit points raised to the minimum",
+    "hitPointsMultiplier": "Hit points multiplier",
+    "speedFloor": "Speed cannot go below 0",
+    "speedMultiplier": "Speed multiplier",
+    "untrainedArmor": "Armor worn without training",
+    "untrainedShield": "Shield worn without training"
+  }
+}
