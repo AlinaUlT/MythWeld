@@ -1,19 +1,36 @@
 // SHEET-30: the header's portrait token, the character's first letter in a round frame (board
-// V3-Sheet) until SHEET-56 makes it from the person's image. Its i18n namespace is `token`.
-import { Slot } from '../../theme/Slot';
+// V3-Sheet). SHEET-56: made from the person's image in the frame they picked, an animated picture
+// or a video included; a tap opens the portrait panel (board V3-Token, which the board links from
+// here). While motion is stopped it shows one still frame. Its i18n namespace is `token`.
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { usePortrait, useStill } from '../../shared/Portrait';
+import { TokenFace, TokenPanel } from '../panels/TokenPanel';
 import { useSheet } from '../SheetContext';
 
 export function Token() {
+  const { t } = useTranslation('token');
   const { character } = useSheet();
+  const [open, setOpen] = useState(false);
+  const { frame, source } = usePortrait(character.portraitBlobId);
+  const still = useStill();
   return (
-    <Slot as="span" name="token-frame-ring" className="mr-2.5 ml-0.5 flex shrink-0 rounded-full">
-      <Slot
-        as="span"
-        name="portrait"
-        className="flex size-10.5 items-center justify-center rounded-full font-heading text-21 font-bold text-on-strong"
+    <>
+      <button
+        type="button"
+        aria-label={t('open')}
+        onClick={() => setOpen(true)}
+        className="mr-1 ml-px flex size-12 shrink-0 items-center justify-center"
       >
-        {Array.from(character.name)[0]?.toLocaleUpperCase()}
-      </Slot>
-    </Slot>
+        <TokenFace
+          name={character.name}
+          frame={frame}
+          {...(source !== undefined && { source })}
+          still={still}
+          className="size-10.5 text-21"
+        />
+      </button>
+      {open && <TokenPanel onClose={() => setOpen(false)} />}
+    </>
   );
 }

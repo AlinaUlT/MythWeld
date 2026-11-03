@@ -27,6 +27,7 @@
     "spendInspiration": "Inspiration spent",
     "levelUp": "{{name}} level gained",
     "setNote": "Note saved",
+    "setPortrait": "Portrait set",
     "other": "Change made"
   }
 }

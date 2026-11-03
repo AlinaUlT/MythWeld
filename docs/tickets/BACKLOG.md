@@ -257,7 +257,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-53 | The About tab shows the origin details | S | ✅ 2026-11-03 |
 | SHEET-54 | The Notes tab keeps free text | XS | ✅ 2026-11-03 |
 | SHEET-55 | Inspiration is tracked as stars | S | ✅ 2026-11-03 |
-| SHEET-56 | The portrait makes a round token | S | 🔲 |
+| SHEET-56 | The portrait makes a round token | S | ✅ 2026-11-03 |
 | SHEET-57 | Custom sections hold the person's own lists | S | 🔲 |
 | SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | 🔲 |
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
@@ -371,12 +371,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   (free text now; with effects in phase 5), board `V3-Add`. The stored shape has both already: an
   inventory row's `custom`, and the character's own entities (`localEntities`). Found by SHEET-22:
   removing one ends with `withDropped` (`trackers.ts`).
-- **SHEET-56** — ADR 009 item 6, ADR 015 item 2, board `V3-Token`: the person's image, an animated
-  picture or a short video included, kept in the blobs table on the device (ADR 005 item 10); the
-  token is the image in a round frame (SHEET-03's slot). Found by SHEET-25: Copy copies the blob
-  under a new id and Delete drops it (`apps/web/src/db/characterActions.ts`), whatever the blob
-  row holds. Found by SHEET-05: CSS cannot stop an
-  animated picture or a video, so while `motionIsStill()` is true the token shows a still frame.
 - **SHEET-57** — ADR 009 items 7 and 8, board `V3-Add`: Mounts, Pets, Familiars, Notes or any
   named list, each entry free text; a companion is such an entry with its small stat block as text.
   A companion with a sheet of its own waits for the table link (ADR 014 item 9). A stored-shape

@@ -5758,3 +5758,146 @@ Changelog: "The About tab shows the species and lineage, background, size, align
 and the armor, weapon, tool and skill proficiencies; the alignment is written in edit mode."
 
 ---
+
+### SHEET-56 The portrait makes a round token
+
+**Hat:** Make a round token from the person's image
+**Depends on:** SHEET-03, SHEET-05, SHEET-07, SHEET-25, SHEET-30
+**Size:** S
+**Screen:** Yes — the portrait panel and the header's token; board `V3-Token`, its row in
+`docs/design/BRIEF.md` Part 5 ("P4 Character sheet")
+**SPEC:** §11 (the `blobs` table); ADR 005 item 10, ADR 009 item 6, ADR 015 items 2 and 6
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/panels/TokenPanel.tsx` — new: the panel and `TokenFace`.
+- `apps/web/src/shared/Portrait.tsx` — new: `PortraitView`, `usePortrait`, `useStill`.
+- `apps/web/src/db/portraits.ts` — new: the portrait row, its frames, `checkPortraitFile`.
+- `apps/web/src/sheet/portrait.ts` — new: `savePortrait`.
+- `apps/web/src/shared/BottomSheet.tsx` — new: the shell a sheet panel is drawn in.
+- `apps/web/src/sheet/header/Token.tsx`, `apps/web/src/pages/CharactersPage.tsx` — draw the token.
+- `apps/web/src/db/db.ts` — `BlobRow` names the portrait's fields. `locales/en/token.json`,
+  `common.json`, `toast.json`.
+
+#### 2. What is missing now
+
+Measured on `895f404`: `Token()` draws the first letter of the name in the `token-frame-ring`
+slot and nothing opens from it; `token.json` is `{}`. `BlobRow` is `{ id: string }`; no code
+writes a `blobs` row. `Character.portraitBlobId` is in the schema (SHEET-25 copies and drops the
+row it names) and is never set. A card on My characters shows the letter.
+
+#### 3. What it should look like when done
+
+1. A tap on the header's token opens the Portrait panel: the title, a round preview, "Choose an
+   image of <name>" with "Stays on this device", "Token" with its note, three frames (Thin, Ring,
+   Double), and "Use as token".
+2. A chosen image, animated picture or short video is a draft: the preview and the frames show it
+   at once; closing the panel drops it. A file that is not an image or a video, or is over 20 MB,
+   is refused with its reason and nothing is stored.
+3. "Use as token" stores the bytes and the frame in the `blobs` table, in the row
+   `portraitBlobId` names (made, and named in the character, when there was none), and closes the
+   panel. Naming the row is one change with the toast "Portrait set" and Undo. A later picture or
+   frame replaces what the row holds, in place, with no toast.
+4. The header's token and the card on My characters show the picture, cut round, in the picked
+   frame (the header only): each frame is its own slot, `token-frame-thin|ring|double`. Ring is
+   the default.
+5. While motion is stopped (`motionIsStill()`: Settings' still motion, or the system's reduced
+   motion) an image shows as one still frame on a canvas, a video as its first frame, paused.
+6. Copy keeps the picture and the frame; Delete drops them (SHEET-25, unchanged).
+7. Nothing is sent anywhere: the picture is made from the bytes on the device.
+
+#### 4. How to do it
+
+1. `portraits.ts`: the frames, the default, the 20 MB limit, `portraitOfRow` (a row that does not
+   read gives the default frame and no picture), `checkPortraitFile`.
+2. `savePortrait(characterId, { frame, picture? })`: merge into the row, put it, and when the
+   character had no `portraitBlobId`, name it through `changeCharacter`; drop the row if that
+   is refused.
+3. `Portrait.tsx`: `usePortrait(blobId)` watches the row (`liveQuery`) and makes an object URL
+   from the bytes; `PortraitView` draws the letter, `img`, `video` or a still canvas.
+4. `TokenPanel` in `BottomSheet`; `Token` opens it.
+
+#### 5. Stored data
+
+No stored shape of a character changes: `portraitBlobId` is already in the schema. The `blobs`
+row gains optional fields (`kind`, `bytes`, `type`, `frame`); the table's key and indexes do not
+change, so no Dexie version bump. The bytes are an `ArrayBuffer`, not a `Blob`, which every
+browser's IndexedDB stores alike. The frame is kept in the portrait row, not in the character, so
+it needs no migration; Copy and Delete move the whole row.
+
+#### 6. What a person will see
+
+The sheet at 360×800: the token in the header, 48 px to touch. The panel is a sheet from the
+bottom (85 % of the height at most). States: no picture (the letter), a draft, the saved picture,
+an error line in red. Keys in `token`: `open` "Change portrait", `alt` "Portrait of {{name}}",
+`title`, `choose`, `stays`, `tokenTitle`, `tokenNote`, `frame`, `frames.thin|ring|double`, `use`,
+`tooBig` "That file is over {{max}} MB.", `notMedia` "Choose an image or a short video.", `failed`.
+`common.close` "Close"; `toast.done.setPortrait` "Portrait set".
+
+#### 7. Tests
+
+- `apps/web/test/portrait.test.tsx` — `SHEET-56 the portrait row`, `…drawing the portrait`,
+  `…storing the portrait`: 16 tests: reading a row, the file check, the markup of each state, the
+  panel, storing with its toast and Undo, replacing in place, a frame alone, a missing character,
+  Copy and Delete.
+- `apps/web/e2e/sheet.spec.ts` — two tests: choose, pick Double, refuse a PDF, use, the header
+  and the list show it round, reload; reduced motion shows a canvas, not an image.
+- `apps/web/test/toast.test.tsx` — the toast key list knows `setPortrait`.
+- Control numbers from: board `V3-Token` (three frames: Thin, Ring, Double); the limit is
+  decided here (§11).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts.
+
+#### 9. Not in this ticket
+
+- Removing a picture (back to the letter): not asked by the row or the board.
+- Cropping and moving the picture inside the circle: `object-cover` centres it.
+- The token in the initiative tracker: phase 7's tracker (ADR 009).
+- The picture in the creation form's step 4: SHEET-27 is closed without it; phase 4's wizard.
+- A picture shared inside a campaign: the table link (ADR 005 item 10).
+
+#### 10. Rake check
+
+- **No look in a component:** the frames are the three slots of SHEET-03; the circle and the fit
+  are theme classes; no colour is written.
+- **No visible literal:** every string is a `token`, `common` or `toast` key, `alt` included.
+- **No external requests:** `URL.createObjectURL` over bytes already on the device.
+- **A person's saved data:** a picture is replaced in place, never deleted by choosing another; a
+  row that does not read gives the letter, not an error; Undo of the first picture leaves the
+  row (the person may choose again).
+- **Reduced motion:** `motionIsStill()` decides, as SHEET-05 wrote.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-03, on `895f404` plus this ticket: `pnpm lint` 367 files, no fixes;
+`pnpm typecheck` clean; `pnpm test` 101 files, 1291 passed, 0 failed, 34.0 s (16 new), then the
+speed project 2 passed; coverage statements 99.45 % (3495/3514), lines 99.9 % (3068/3071);
+`pnpm e2e` 44 passed, 0 failed, 38.4 s (2 new). Screenshots at 360×800 shown in the chat.
+
+Differences from §3 and the board:
+- Decided here (ADR 002): the frame is kept in the portrait's blob row, so a frame can be chosen
+  before an image and no character migration is needed (SHEET-53 owns the wave's one stored-shape
+  change). The limit is 20 MB, room for a short loop and not for a film.
+- The first screenshot showed the preview's double ring cut at the top of the panel; the body now
+  has 8 px above it.
+- A token in the list has no frame ring; the board's list shows the plain circle.
+- Undo of the first picture removes the name from the character and leaves the blob row, so
+  choosing again reuses nothing; one unused row at most per Undo.
+- An animated picture's still frame is the whole picture's first frame, drawn on a canvas; a
+  video's is its first frame (`#t=0.001`).
+
+Found, not fixed:
+- A video's frame at `#t=0.001` and `autoplay` of a muted loop were not run in a browser here (the
+  e2e uses a PNG); the markup is tested, the playback is not.
+- SHEET-25's tests store `bytes: 'the portrait'` (text). `portraitOfRow` reads such a row as no
+  picture, and its tests still pass.
+
+Changelog: "Tap the token on the sheet to choose an image of your character, an animated picture
+or a short video included, and a frame; it is cut round and stays on the device. My characters
+shows it too."
+
+---

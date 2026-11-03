@@ -325,3 +325,77 @@ test('SHEET-53 the About tab shows the origin details; edit mode writes the alig
   await page.reload();
   await expect(row('Alignment')).toHaveText('Neutral good');
 });
+
+// A 1 × 1 red PNG: a picture's content is never read, so any image stands for a portrait.
+const RED_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+test('SHEET-56 the portrait makes a round token, kept on the device', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  const header = page.getByRole('banner');
+  await expect(header.locator('img')).toHaveCount(0);
+  await expect(header.locator('[data-skin-slot="token-frame-ring"]')).toHaveCount(1);
+
+  await header.getByRole('button', { name: en.token.open }).tap();
+  const dialog = page.getByRole('dialog', { name: en.token.title });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText(en.token.stays);
+  await dialog
+    .locator('input[type="file"]')
+    .setInputFiles({ name: 'iren.png', mimeType: 'image/png', buffer: RED_PNG });
+  await dialog.getByText(en.token.frames.double).tap();
+  await expect(dialog.locator('img').first()).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('token-panel.png') });
+
+  // A file that is not a picture is refused with its reason, and nothing is stored.
+  await dialog
+    .locator('input[type="file"]')
+    .setInputFiles({ name: 'sheet.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF') });
+  await expect(dialog.getByRole('alert')).toHaveText(en.token.notMedia);
+
+  await dialog.getByRole('button', { name: en.token.use }).tap();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('status')).toContainText(en.toast.done.setPortrait);
+  await expect(header.locator('img')).toHaveCount(1);
+  await expect(header.locator('[data-skin-slot="token-frame-double"]')).toHaveCount(1);
+  await expect(header.locator('img')).toHaveCSS('object-fit', 'cover');
+  const round = await header.locator('[data-skin-slot="portrait"]').evaluate((element) => {
+    const { borderTopLeftRadius, overflow } = getComputedStyle(element);
+    return { borderTopLeftRadius, overflow };
+  });
+  expect(round.overflow).toBe('hidden');
+  expect(Number.parseFloat(round.borderTopLeftRadius)).toBeGreaterThan(20);
+  await page.screenshot({
+    path: testInfo.outputPath('token-header.png'),
+    clip: { x: 0, y: 0, width: 360, height: 160 },
+  });
+
+  // On the device: after a reload, and in the My characters list.
+  await page.reload();
+  await expect(page.getByRole('banner').locator('img')).toHaveCount(1);
+  await page.goto('characters');
+  await expect(page.locator('img').first()).toBeVisible();
+});
+
+test('SHEET-56 reduced motion shows the picture as one still frame', async ({ page }) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  await page.getByRole('banner').getByRole('button', { name: en.token.open }).tap();
+  const dialog = page.getByRole('dialog', { name: en.token.title });
+  await dialog
+    .locator('input[type="file"]')
+    .setInputFiles({ name: 'iren.png', mimeType: 'image/png', buffer: RED_PNG });
+  await dialog.getByRole('button', { name: en.token.use }).tap();
+  await expect(page.getByRole('banner').locator('img')).toHaveCount(1);
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.reload();
+  const header = page.getByRole('banner');
+  await expect(header.locator('canvas')).toHaveCount(1);
+  await expect(header.locator('img')).toHaveCount(0);
+});

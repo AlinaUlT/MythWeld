@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-11-03 · SHEET-56 · Tap the token on the sheet to choose an image of the character, an
+  animated picture or a short video included, and a frame; it is cut round and stays on the
+  device. My characters shows it too.
 - 2026-11-03 · SHEET-53 · The About tab shows the species and lineage, background, size,
   alignment, languages and the armor, weapon, tool and skill proficiencies; the alignment is
   written in edit mode.

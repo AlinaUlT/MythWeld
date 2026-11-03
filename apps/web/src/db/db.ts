@@ -48,9 +48,18 @@ export interface HistoryRow extends StoredObject {
   at: string;
 }
 
-/** A file the person added (a portrait, an uploaded PDF form), keyed by its uuid. */
+/**
+ * A file the person added (a portrait, an uploaded PDF form), keyed by its uuid. SHEET-56: a
+ * portrait is `kind: 'portrait'` with its picture's `bytes` and `type` (a media type) and the
+ * token `frame` the person picked; a row with a frame and no bytes is a frame chosen before an
+ * image. Copy and Delete (SHEET-25) move the whole row, whatever it holds.
+ */
 export interface BlobRow {
   id: string;
+  kind?: string;
+  bytes?: ArrayBuffer;
+  type?: string;
+  frame?: string;
 }
 
 export class GrimoireDb extends Dexie {

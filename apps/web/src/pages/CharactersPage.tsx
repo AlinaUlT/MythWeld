@@ -27,12 +27,12 @@ import {
   copyTarget,
   deleteTarget,
 } from '../shared/CharacterActions';
+import { PortraitView, usePortrait, useStill } from '../shared/Portrait';
 import { Page } from '../shell/Page';
 import { paths, sheetPath } from '../shell/routes';
 import { type AppCharacter, listLineOf } from '../systems';
 import { motionStyle } from '../theme/motions';
 import { Part } from '../theme/Part';
-import { Slot } from '../theme/Slot';
 
 /** How far a card slides open: its four actions, 60 px each (board V3-Characters). */
 export const ACTIONS_PX = 240;
@@ -81,15 +81,17 @@ export function listLineText(
     .join(t('separator'));
 }
 
-function Portrait({ name }: { name: string }) {
+// SHEET-56: a card shows the person's picture, cut round, when there is one.
+function Portrait({ name, blobId }: { name: string; blobId?: string }) {
+  const { source } = usePortrait(blobId);
+  const still = useStill();
   return (
-    <Slot
-      as="span"
-      name="portrait"
-      className="flex size-14 shrink-0 items-center justify-center rounded-full text-24 font-bold text-on-strong"
-    >
-      {Array.from(name)[0]?.toLocaleUpperCase()}
-    </Slot>
+    <PortraitView
+      name={name}
+      className="size-14 shrink-0 text-24"
+      {...(source !== undefined && { source })}
+      still={still}
+    />
   );
 }
 
@@ -103,7 +105,10 @@ function OpenedCard({ character, t }: { character: AppCharacter; t: CharactersT 
       draggable={false}
       className={`${card} h-full pr-14`}
     >
-      <Portrait name={character.name} />
+      <Portrait
+        name={character.name}
+        {...(character.portraitBlobId !== undefined && { blobId: character.portraitBlobId })}
+      />
       <span className="flex min-w-0 grow flex-col gap-0.5">
         <span className="flex items-center gap-2">
           <span className="truncate text-19 font-bold">{character.name}</span>
