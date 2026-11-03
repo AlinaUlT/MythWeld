@@ -6646,3 +6646,90 @@ Found, not fixed: a person cannot add a pack item to a character after it is mad
 Changelog: "The Gear tab lists what you carry with its weight; switch an item worn or attuned and AC and attacks change at once, set how many, put an item inside another, or remove it, each with Undo."
 
 ---
+
+### SHEET-46 The Spells tab shows the slot grid
+
+**Hat:** The Spells tab shows the slot grid
+**Depends on:** SHEET-30 (the tab's place, the header's casting row), SHEET-31 (descriptions in place), SHEET-28 (the edition note of ENG-49), ENG-57 (a granted spell's own uses), ENG-20 (`spendSlot`, `regainSlot`), SHEET-23 (Undo)
+**Size:** M
+**Screen:** Yes — board `V3-Spells` in `docs/design/mockups/`; `docs/design/BRIEF.md` Part 2 P4 (Spells) and Part 5 "P4 Character sheet"
+**SPEC:** §7.2 (the Spells tab); ADR 010 items 9 and 10, ADR 009 item 4
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/SpellList.tsx` — changes: the tab itself.
+- `packages/system-5e/src/sheet-spells.ts` — new: `fifthEditionSpells`: the slot columns, the class lists, the granted spells.
+- `apps/web/src/systems.ts` — changes: `SheetSystem.spells`, `spendSlot`, `regainSlot`.
+- `apps/web/src/locales/en/spells.json` — changes: the words.
+
+#### 2. What is missing now
+
+Measured on `0272d8f`: `SpellList` returns `null`; the Spells tab is empty, though the header already shows a caster's DC and attack.
+
+#### 3. What it should look like when done
+
+1. At the top, spellcasting at a glance for each casting class: "Cleric · WIS", Save DC and Attack, each a number with its breakdown; golden A shows Save DC 13 and Attack +5 (SPEC §6.7). The attack rolls (SHEET-39).
+2. The slot grid: a column for each spell level the character has slots of, two circles to a row, filled while one is left, "N of M left" under it. Golden A has one column, Level 1, two circles; golden C (wizard 3, paladin 3) has Level 1 with four and Level 2 with three (SRD 5.1's multiclass table). Pact magic's slots are a column of their own, "Pact · level N".
+3. A tap on a filled circle spends a slot, on a hollow one gives one back; each is one change with its Undo toast.
+4. Each class or subclass the character stores spells for is a card with "Prepared" and "Known" (a known spell that is not prepared), sorted by level and name; a cantrip is "Cantrip".
+5. Spells the features grant are a card "From your features": golden A's Bless and Cure Wounds read "Level 1 · from Life · always prepared".
+6. A granted spell with uses of its own reads "Level 1 · 1/LR · no spell slot · from <source>" and "1 of 1 uses left", the uses being the resource of its grant's key.
+7. Every spell shows its edition when the character mixes editions or the spell is of the other one; a spell of the other edition warns in amber (with mixing on or off). A spell no pack holds, or a class that is not there, shows "Missing: <id>".
+8. Each spell opens its description in place (SHEET-31). A character who casts nothing: "No spells yet."
+9. The gate is green.
+
+#### 4. How to do it
+
+1. `fifthEditionSpells` reads the slot maximums at `slotsPath(level)` and pact's two paths, the spent counts from the trackers, the stored lists, and the `spell` grants `compute()` reached (`fixed` and chosen).
+2. The tab reads each spell through the character's finder (its own entries first, then the packs).
+3. Slots run `spendSlot` and `regainSlot` through `perform`.
+
+Technical choices (ADR 002): a circle is a button, with a hit area of 44 px around a 28 px circle; the grant's own uses are told apart by its key, as ENG-57 §11 says; the "Cast" button is not here: it opens the cast panel (SHEET-47).
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Cards at 360×800: Spellcasting, Spell slots, one card for each class with spells, From your features. Keys in `spells`: `none`, `missing`, `casting`, `castingOf`, `saveDc`, `attack`, `slots`, `level`, `pact`, `slotsLeft`, `spend`, `regain`, `cantrip`, `prepared`, `known`, `granted`, `from`, `alwaysPrepared`, `noSlot`, `limit`, `or`, `usesLeft`, `separator`, `recovery.*`, `otherRuleset`, `otherRulesetNotMixing`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-spells.test.ts` — 8 tests: golden A's column, a spent slot, a multiclass caster's four and three, spent never above the maximum, pact magic's column, no slots, the Life domain's granted spells, the stored lists, a grant's own uses by key.
+- `apps/web/test/spells.test.tsx` — 10 tests: golden A's glance, slots and granted spells; a spent slot; golden C's columns; the lists' order; the edition warnings with mixing on and off; missing ids; a spell with uses of its own; no spells.
+- `apps/web/e2e/sheet.spec.ts` — 1 test: DC 13 and +5, the grid, a tap that spends and Undo, a tap that gives back, a description opened.
+- Control numbers from: SPEC §6.7 golden A (DC 13, attack +5, 2 slots), SRD 5.1's multiclass spellcaster table (caster level 4: four level 1 and three level 2 slots).
+
+#### 8. Checked against the source
+
+SRD 5.1, Multiclassing, "Spell Slots": the caster level is the full casters' levels plus half the half casters', rounded down: 3 + 1 = 4 for golden C; level 4 has four first-level and three second-level slots. SRD 5.1, Cleric: two first-level slots at level 1; the Life domain's Bless and Cure Wounds are always prepared.
+
+#### 9. Not in this ticket
+
+- Casting: the cast panel and its "Don't use a spell slot" (SHEET-47).
+- Preparing and learning spells: phase 4's level-up and the library.
+- Slots a magic item gives: they come into the grid when an effect adds to the level's slots; no pack has one yet.
+- The 2024 pack holds no spell yet (phase 3).
+
+#### 10. Rake check
+
+- **Everything is data:** levels, names and ownership from `Computed` and the packs; no spell or class is written in the app.
+- **A shown number has a breakdown:** DC and attack are `SheetNumber`s.
+- **Missing is not broken:** a missing spell or owner says so.
+- **A person's saved data:** a slot tap is a logged, undoable change.
+- **No visible literal, no look literal:** `spells` keys; parts and tokens.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-03: `pnpm lint` 396 files, no fixes; `pnpm typecheck` clean; `pnpm test` 115 files, 1417 passed, 0 failed, 26.9 s (18 new, from 1399), then speed 2 passed; coverage statements 99.1 % (3746/3780), lines 99.81 % (3285/3291); `pnpm e2e` 57 passed, 0 failed, 45.6 s (1 new). Screenshot at 360×800 shown in the chat.
+
+Differences from §3: none.
+
+Found, not fixed: nothing.
+
+Changelog: "The Spells tab shows spellcasting at a glance, the slot grid (tap a circle to spend or give back a slot), each class's prepared and known spells and the spells your features grant, with their edition."
+
+---

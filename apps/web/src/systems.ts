@@ -36,6 +36,7 @@ import {
   fifthEditionPendingKey,
   fifthEditionRollTest,
   fifthEditionSituational,
+  fifthEditionSpells,
   type GearShown,
   gainInspiration,
   type HeaderCasting,
@@ -52,15 +53,18 @@ import {
   type PathPart,
   type PendingKeyAnswer,
   type RollTest,
+  regainSlot,
   removeRow,
   rollInitiative,
   rollModeOf,
   type Situational,
+  type SpellsShown,
   setRowAttuned,
   setRowContainer,
   setRowEquipped,
   setRowQuantity,
   spendInspiration,
+  spendSlot,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
@@ -154,6 +158,7 @@ export type {
   PendingKeyAnswer,
   RollTest,
   Situational,
+  SpellsShown,
 };
 
 /** What the sheet reads of one system: its module, and what its header and dock name. */
@@ -181,6 +186,10 @@ export interface SheetSystem {
   rollInitiative: typeof rollInitiative;
   /** How the pending key at `path` is answered, or none when this system cannot (SHEET-36). */
   pendingKey(path: string): PendingKeyAnswer | undefined;
+  /** The slots, spell lists and granted spells of the Spells tab (SHEET-46). */
+  spells(character: AppCharacter, computed: AppComputed): SpellsShown;
+  spendSlot: typeof spendSlot;
+  regainSlot: typeof regainSlot;
   /** The rows of the Gear tab, their weight and the rules they break (SHEET-50). */
   gear(
     character: AppCharacter,
@@ -222,6 +231,9 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     checks: fifthEditionChecks,
     features: fifthEditionFeatures,
     gear: fifthEditionGear,
+    spells: fifthEditionSpells,
+    spendSlot,
+    regainSlot,
     setRowEquipped,
     setRowAttuned,
     setRowQuantity,

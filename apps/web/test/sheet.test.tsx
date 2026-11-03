@@ -29,6 +29,7 @@ import { Items } from '../src/sheet/sections/Items';
 import { NotesText } from '../src/sheet/sections/NotesText';
 import { SavingThrows } from '../src/sheet/sections/SavingThrows';
 import { Skills } from '../src/sheet/sections/Skills';
+import { SpellList } from '../src/sheet/sections/SpellList';
 import { SHEET_TABS, tabOf } from '../src/sheet/tabs';
 import { type AppCharacter, sheetSystemOf } from '../src/systems';
 
@@ -235,6 +236,7 @@ describe('SHEET-30 tabs', () => {
       Skills,
       FeatureList,
       Items,
+      SpellList,
     ];
     for (const Section of [...sections, Inspiration].filter((each) => !filled.includes(each))) {
       expect(draw(sheet, <Section />)).toBe('');

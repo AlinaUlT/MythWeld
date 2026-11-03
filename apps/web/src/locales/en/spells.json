@@ -1,1 +1,35 @@
-{}
+{
+  "none": "No spells yet.",
+  "missing": "Missing: {{id}}",
+  "casting": "Spellcasting",
+  "castingOf": "{{name}} · {{ability}}",
+  "saveDc": "Save DC",
+  "attack": "Attack",
+  "slots": "Spell slots",
+  "level": "Level {{level}}",
+  "pact": "Pact · level {{level}}",
+  "slotsLeft": "{{left}} of {{max}} left",
+  "spend": "Spend a {{name}} slot",
+  "regain": "Give back a {{name}} slot",
+  "cantrip": "Cantrip",
+  "prepared": "Prepared",
+  "known": "Known",
+  "granted": "From your features",
+  "from": "from {{name}}",
+  "alwaysPrepared": "always prepared",
+  "noSlot": "no spell slot",
+  "limit": "{{max}}/{{events}}",
+  "or": " or ",
+  "usesLeft": "{{left}} of {{max}} uses left",
+  "separator": " · ",
+  "recovery": {
+    "short": "SR",
+    "long": "LR",
+    "dawn": "dawn",
+    "turn": "turn",
+    "manual": "reset",
+    "revive": "revival"
+  },
+  "otherRuleset": "From the {{ruleset}} rules, not this character's rules base. It may not fit.",
+  "otherRulesetNotMixing": "From the {{ruleset}} rules, and mixing editions is off. It may not fit."
+}

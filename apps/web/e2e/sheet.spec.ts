@@ -801,3 +801,44 @@ test('SHEET-50 the Gear tab equips items: AC and attacks change at once, each ch
   await expect(armorClass).toHaveText('18AC');
   await expect(chain).toHaveCount(1);
 });
+
+test('SHEET-46 the Spells tab shows the slot grid; a tap spends or gives back a slot, with Undo', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenA]);
+  await page.goto(`characters/${goldenA.id}?tab=spells`);
+  const tab = page.getByRole('tabpanel');
+
+  // Golden A (SPEC §6.7): spell save DC 13, attack +5, two level 1 slots.
+  await expect(number(page, 'classes.cleric.spell.dc').last()).toHaveText('Save DC13');
+  await expect(number(page, 'classes.cleric.spell.attack').last()).toHaveText('Attack+5');
+  const column = tab.locator('[data-slot="1"]');
+  await expect(column.locator('[data-left="true"]')).toHaveCount(2);
+  await expect(column.getByTestId('slots-left')).toHaveText('2 of 2 left');
+  await expect(tab.locator('[data-spell="srd-2014:spell/bless"]')).toContainText(
+    'Level 1 · from Life · always prepared',
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('spells-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('spells-light.png') });
+
+  // A tap on a filled circle spends a slot; Undo gives it back.
+  await column.getByRole('button', { name: 'Spend a Level 1 slot' }).first().click();
+  await expect(column.getByTestId('slots-left')).toHaveText('1 of 2 left');
+  await expect(column.locator('[data-left="true"]')).toHaveCount(1);
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(column.getByTestId('slots-left')).toHaveText('2 of 2 left');
+
+  // A tap on a hollow circle gives one back.
+  await column.getByRole('button', { name: 'Spend a Level 1 slot' }).first().click();
+  await column.getByRole('button', { name: 'Give back a Level 1 slot' }).click();
+  await expect(column.getByTestId('slots-left')).toHaveText('2 of 2 left');
+
+  // A spell opens its description in place.
+  await tab
+    .locator('[data-spell="srd-2014:spell/bless"]')
+    .getByRole('button', { name: /Bless/ })
+    .click();
+  await expect(tab.getByRole('button', { name: en.description.seeFull }).first()).toBeVisible();
+});
