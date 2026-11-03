@@ -10,7 +10,7 @@ import {
   setToggle,
   useResource as spendResource,
 } from '@grimoire/engine';
-import { type ReactNode, useId } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Description } from '../../shared/Description';
 import { Part } from '../../theme/Part';
@@ -18,6 +18,7 @@ import { perform } from '../changes';
 import { nameIn } from '../names';
 import { useSheet } from '../SheetContext';
 import { SheetNumber } from '../SheetNumber';
+import { SwitchRow } from '../SwitchRow';
 import { wordsOf } from './AboutList';
 
 /** More uses than this are shown as the number alone. */
@@ -110,30 +111,11 @@ function Uses({ resource, name }: { resource: string; name?: string }) {
 
 function Switch({ part, label, on }: { part: string; label: string; on: boolean }) {
   const { character, computed } = useSheet();
-  const id = useId();
-  const flip = () =>
-    perform(character, (stamp) => setToggle(character, computed, { part, on: !on }, stamp)).catch(
+  const flip = (next: boolean) =>
+    perform(character, (stamp) => setToggle(character, computed, { part, on: next }, stamp)).catch(
       (error: unknown) => console.error(error),
     );
-  return (
-    <div className="flex min-h-control items-center gap-3">
-      <span id={id} className="grow text-14">
-        {label}
-      </span>
-      <Part
-        as="button"
-        type="button"
-        name="chip"
-        role="switch"
-        aria-checked={on}
-        aria-labelledby={id}
-        onClick={flip}
-        className="flex h-7 w-12 shrink-0 items-center bg-track p-0.5 aria-checked:justify-end aria-checked:bg-strong"
-      >
-        <span className="size-6 rounded-full bg-muted aria-hidden:bg-muted" />
-      </Part>
-    </div>
-  );
+  return <SwitchRow label={label} on={on} onChange={flip} />;
 }
 
 /** The entity `id` the character has: a pack's, or its own (a character's own entries are not in the packs). */

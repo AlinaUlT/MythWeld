@@ -6553,3 +6553,96 @@ Found, not fixed: nothing.
 Changelog: "The Features tab groups features under the species, each class with its subclass, the background and your own feats; each opens its description, and uses and switches work in place."
 
 ---
+
+### SHEET-50 The Gear tab equips items
+
+**Hat:** The Gear tab equips items
+**Depends on:** SHEET-30 (the tab's place), SHEET-31 (descriptions in place), SHEET-18 and SHEET-63 (attunement warnings), SHEET-22 (`withDropped`), ENG-44 (worn items), ENG-63 (the inventory's rows), SHEET-23 (Undo)
+**Size:** M
+**Screen:** Yes — board `V3-Sheet` in `docs/design/mockups/`; `docs/design/BRIEF.md` Part 2 P4 (Equipment) and Part 5 "P4 Character sheet"
+**SPEC:** §7.2 (the Equipment tab), §7.5 (stored units are pounds)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/Items.tsx` — changes: the tab itself.
+- `packages/system-5e/src/inventory.ts` — new: `setRowEquipped`, `setRowAttuned`, `setRowQuantity`, `setRowContainer`, `removeRow`.
+- `packages/system-5e/src/sheet-gear.ts` — new: `fifthEditionGear`, the rows in order, the weight, the rules broken.
+- `apps/web/src/sheet/SwitchRow.tsx` — new: the labelled switch; the Features tab (SHEET-48) uses it too.
+- `apps/web/src/settings/units.ts` — changes: `shownWeight`.
+- `apps/web/src/systems.ts` — changes: `SheetSystem.gear` and the five actions.
+- `apps/web/src/locales/en/gear.json`, `toast.json` — change: the words, five toast keys.
+
+#### 2. What is missing now
+
+Measured on `328abaa`: `Items` returns `null`; the Gear tab shows nothing but the coins' empty place; no code turns a row's `equipped` or `attuned` on from the sheet.
+
+#### 3. What it should look like when done
+
+1. The tab lists the inventory in the order kept: golden B shows Chain Mail ×1 · 55 lb and Greatsword ×1 · 6 lb, and "Carrying 61 lb" (SRD 5.2.1 weights). Each row opens its description in place.
+2. A "Worn" switch on each item row. Taking golden B's chain mail off changes the header's AC from 17 to 11 (10 + Dexterity 1, SPEC §6.7) at once; Undo puts 17 back.
+3. An "Attuned" switch on a row whose item asks for attunement (or is attuned). A fourth attunement is never refused: the tab warns in amber, "Attuned to 4 magic items: no more than 3 at a time"; so does a second armor worn.
+4. A quantity stepper (a whole number from 1); the weight follows: a row weighs its item's weight times its quantity, a custom row its own.
+5. "Kept in": a row may be put inside another row, drawn under it and indented, with "N inside" on the container; never inside itself or inside what it holds. Its weight still counts.
+6. A remove button: the row goes, the rows inside it go to where it was, and what its item gave that no longer applies goes with it (`withDropped`). Undo brings the row back.
+7. A row whose item no pack holds shows "Missing: <id>" and can still be removed; an empty inventory says "Nothing is carried."
+8. Every change is one change with its toast and Undo. Weight shows in pounds or, with the setting, in kilograms to a tenth.
+9. The gate is green.
+
+#### 4. How to do it
+
+1. The module's five actions write the whole inventory list as one change (ENG-63: a log path steps only through objects); `removeRow` ends with `withDropped`.
+2. `fifthEditionGear` walks the rows, each under its container, sums the weight and gives the equipment's warnings (`attunementLimit`, `attunementCopies` as character rules, `oneAtATime` as a step rule).
+3. The tab runs each action through `perform`, with the row's name as the entry's label.
+
+Technical choices (ADR 002): a row taken away puts its contents where it was, not away with it, since a person who drops a backpack still holds what was in it; any row may be a container, as the stored shape says; the kilogram is the pound's own definition, 0.45359237 kg, since the SRDs give no table rate for weight as they do for distance.
+
+#### 5. Stored data
+
+Nothing stored changes. `inventory` and its row shape exist (ENG-63).
+
+#### 6. What a person will see
+
+A card at 360×800 headed "Items" with "Carrying 61 lb", amber warnings, and for each row its name and "×1 · 55 lb", then Worn, Attuned (when it applies), How many with − and +, "Kept in" with its list and a remove button. Keys in `gear`: `title`, `none`, `missing`, `carrying`, `weight.*`, `qty`, `inside`, `worn`, `attuned`, `quantity`, `less`, `more`, `keptIn`, `noContainer`, `remove`, `warn.*`; in `toast`: `setEquipped`, `setAttuned`, `setQuantity`, `moveItem`, `removeItem`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/inventory.test.ts` — 15 tests: the view, with weights, nesting and the rules broken; each action with Undo, refusals and `unchanged`; AC 17 → 11 with the armor off; removing a row with its contents moved.
+- `apps/web/test/gear.test.tsx` — 10 tests: golden B's rows, weights and switches; a nested row; the attunement switch, the amber warning, a missing row, the empty tab; kilograms.
+- `apps/web/e2e/sheet.spec.ts` — 1 test: AC 17 → 11 → 17, a charm's attunement (+1), a quantity, a container, a removal with Undo.
+- Control numbers from: SPEC §6.7 golden B (AC 17, 11 unarmored), SRD 5.2.1's chain mail (55 lb) and greatsword (6 lb), and the pound's definition (61 lb = 27.7 kg, 55 lb = 24.9 kg, 6 lb = 2.7 kg).
+
+#### 8. Checked against the source
+
+- SRD 5.1 and 5.2.1, Attunement: three items at a time, and one copy of an item (SHEET-18 §8, SHEET-63 §8, which this ticket reads).
+- SRD 5.1 and 5.2.1, armor: one armor and one shield at a time (ENG-44 §8).
+- Weights: the packs' own (`srd-2024.ts`), which the ticket reads, not re-types.
+- The kilogram: no SRD rate; the international pound is exactly 0.45359237 kg.
+
+#### 9. Not in this ticket
+
+- Adding an item from the packs after creation: the library (phase 3); a free-text item: SHEET-52.
+- Coins: SHEET-51.
+- A capacity for a container, or the encumbrance rules.
+- Which weapon is held in which hand.
+
+#### 10. Rake check
+
+- **Stored units are pounds:** conversion only on screen (`shownWeight`).
+- **A person's saved data:** every change is logged and undoable; a refused action writes nothing.
+- **Missing is not broken:** a missing item shows its id and can be removed.
+- **Rules warn, never block:** attunement and armor limits are amber lines.
+- **No visible literal, no look literal:** `gear` keys; parts and tokens.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-03: `pnpm lint` 393 files, no fixes; `pnpm typecheck` clean; `pnpm test` 113 files, 1399 passed, 0 failed, 26.3 s (25 new, from 1374), then speed 2 passed; coverage statements 99.09 % (3724/3758), lines 99.81 % (3267/3273); `pnpm e2e` 56 passed, 0 failed, 45.8 s (1 new). Screenshots at 360×800 shown in the chat.
+
+Differences from §3: none.
+
+Found, not fixed: a person cannot add a pack item to a character after it is made, except by the form (SHEET-28) or a file. The library's "Add to character" belongs to phase 3.
+
+Changelog: "The Gear tab lists what you carry with its weight; switch an item worn or attuned and AC and attacks change at once, set how many, put an item inside another, or remove it, each with Undo."
+
+---

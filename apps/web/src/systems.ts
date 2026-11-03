@@ -27,6 +27,7 @@ import {
   fifthEditionChecks,
   fifthEditionClassLine,
   fifthEditionFeatures,
+  fifthEditionGear,
   fifthEditionHitPoints,
   fifthEditionInspiration,
   fifthEditionListLine,
@@ -35,6 +36,7 @@ import {
   fifthEditionPendingKey,
   fifthEditionRollTest,
   fifthEditionSituational,
+  type GearShown,
   gainInspiration,
   type HeaderCasting,
   type HeaderHitPoints,
@@ -50,9 +52,14 @@ import {
   type PathPart,
   type PendingKeyAnswer,
   type RollTest,
+  removeRow,
   rollInitiative,
   rollModeOf,
   type Situational,
+  setRowAttuned,
+  setRowContainer,
+  setRowEquipped,
+  setRowQuantity,
   spendInspiration,
 } from '@grimoire/system-5e';
 
@@ -140,6 +147,7 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
 export type {
   AboutListName,
   FeatureGroup,
+  GearShown,
   MadeByHand,
   ManualCharacterAsk,
   PathPart,
@@ -173,6 +181,17 @@ export interface SheetSystem {
   rollInitiative: typeof rollInitiative;
   /** How the pending key at `path` is answered, or none when this system cannot (SHEET-36). */
   pendingKey(path: string): PendingKeyAnswer | undefined;
+  /** The rows of the Gear tab, their weight and the rules they break (SHEET-50). */
+  gear(
+    character: AppCharacter,
+    computed: AppComputed,
+    find: (id: string) => FifthEditionEntity | undefined,
+  ): GearShown;
+  setRowEquipped: typeof setRowEquipped;
+  setRowAttuned: typeof setRowAttuned;
+  setRowQuantity: typeof setRowQuantity;
+  setRowContainer: typeof setRowContainer;
+  removeRow: typeof removeRow;
   /** The groups of the Features tab: what gave each feature (ADR 009 item 2, SHEET-48). */
   features(character: AppCharacter, computed: AppComputed): FeatureGroup[];
   /** The parts a computed path is named by in a breakdown (SHEET-33). */
@@ -202,6 +221,12 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     hitPoints: fifthEditionHitPoints,
     checks: fifthEditionChecks,
     features: fifthEditionFeatures,
+    gear: fifthEditionGear,
+    setRowEquipped,
+    setRowAttuned,
+    setRowQuantity,
+    setRowContainer,
+    removeRow,
     pathParts: fifthEditionPathParts,
     pendingKey: fifthEditionPendingKey,
     rollTest: fifthEditionRollTest,

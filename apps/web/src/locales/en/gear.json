@@ -1,1 +1,26 @@
-{}
+{
+  "title": "Items",
+  "none": "Nothing is carried.",
+  "missing": "Missing: {{id}}",
+  "carrying": "Carrying {{weight}}",
+  "weight": {
+    "lb": "{{value, number}} lb",
+    "kg": "{{value, number}} kg"
+  },
+  "qty": "×{{qty}}",
+  "inside": "{{count}} inside",
+  "separator": " · ",
+  "worn": "Worn",
+  "attuned": "Attuned",
+  "quantity": "How many",
+  "less": "One less {{name}}",
+  "more": "One more {{name}}",
+  "keptIn": "Kept in",
+  "noContainer": "Not in anything",
+  "remove": "Remove {{name}}",
+  "warn": {
+    "attunementLimit": "Attuned to {{attuned}} magic items: no more than {{limit}} at a time.",
+    "attunementCopies": "Attuned to {{attuned}} copies of one item: no more than one copy.",
+    "oneAtATime": "Only one armor and one shield count at a time: another is worn and counts for nothing."
+  }
+}

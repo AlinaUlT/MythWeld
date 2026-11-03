@@ -724,3 +724,80 @@ test('SHEET-48 the Features tab groups features by source; a use and a switch ar
   await expect(raging).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByRole('status').filter({ hasText: /switched/ })).toBeVisible();
 });
+
+test('SHEET-50 the Gear tab equips items: AC and attacks change at once, each change with Undo', async ({
+  page,
+}, testInfo) => {
+  const charm = {
+    id: 'character:item/charm-1',
+    type: 'item',
+    ruleset: 'any',
+    name: { en: 'Charm of Ward' },
+    source: { pack: 'character' },
+    category: 'gear',
+    weight: 0.5,
+    magic: { rarity: 'rare', attunement: true },
+    effects: [{ id: 'ward', target: 'ac.bonus', op: 'add', value: 1, when: '@attuned' }],
+  };
+  await saveRows(page, [
+    {
+      ...goldenB,
+      localEntities: [charm],
+      systemData: {
+        ...goldenB.systemData,
+        inventory: [
+          ...goldenB.systemData.inventory,
+          {
+            uid: 'e1000000-0000-4000-8000-000000000001',
+            itemId: charm.id,
+            qty: 1,
+            equipped: true,
+            attuned: false,
+          },
+        ],
+      },
+    },
+  ]);
+  await page.goto(`characters/${goldenB.id}?tab=gear`);
+  const tab = page.getByRole('tabpanel');
+  const chain = tab.locator('[data-row="5f6a7b8c-9d0e-4f1a-8b2c-3d4e5f6a7b8c"]');
+  const sword = tab.locator('[data-row="6a7b8c9d-0e1f-4a2b-9c3d-4e5f6a7b8c9d"]');
+  const ward = tab.locator('[data-row="e1000000-0000-4000-8000-000000000001"]');
+  const armorClass = page.getByRole('banner').locator('[data-path="ac.total"]');
+
+  // Chain mail 55 lb, a greatsword 6 lb and the charm 0.5 lb.
+  await expect(tab.getByTestId('carried')).toHaveText('Carrying 61.5 lb');
+  await expect(armorClass).toHaveText('17AC');
+  await page.screenshot({ path: testInfo.outputPath('gear-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('gear-light.png') });
+
+  // Taking the armor off drops AC 17 to 10 + Dexterity 1 = 11 at once; Undo puts it back.
+  await chain.getByRole('switch', { name: 'Worn' }).click();
+  await expect(armorClass).toHaveText('11AC');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(armorClass).toHaveText('17AC');
+
+  // Attuned, the charm adds +1 to AC; past three attunements it would warn, never refuse.
+  await ward.getByRole('switch', { name: 'Attuned' }).click();
+  await expect(armorClass).toHaveText('18AC');
+
+  // How many: the weight follows.
+  await ward.getByRole('button', { name: 'One more Charm of Ward' }).click();
+  await expect(ward.getByTestId('row-qty')).toHaveText('2');
+  await expect(tab.getByTestId('carried')).toHaveText('Carrying 62 lb');
+
+  // Kept in: the greatsword goes inside the chain mail, under it and indented.
+  await sword.getByLabel('Kept in').selectOption({ label: 'Chain Mail' });
+  await expect(chain).toContainText('1 inside');
+  await expect(tab.getByTestId('carried')).toHaveText('Carrying 62 lb');
+
+  // Removing the chain mail takes its AC with it and puts the sword out on its own.
+  await chain.getByRole('button', { name: 'Remove Chain Mail' }).click();
+  await expect(armorClass).toHaveText('12AC');
+  await expect(chain).toHaveCount(0);
+  await expect(sword.getByLabel('Kept in')).toHaveValue('');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(armorClass).toHaveText('18AC');
+  await expect(chain).toHaveCount(1);
+});

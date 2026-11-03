@@ -31,6 +31,11 @@
     "setNote": "Note saved",
     "setPortrait": "Portrait set",
     "setChoice": "Choice made",
+    "setEquipped": "{{name}}: worn changed",
+    "setAttuned": "{{name}}: attunement changed",
+    "setQuantity": "{{name}}: quantity changed",
+    "moveItem": "{{name}} moved",
+    "removeItem": "{{name}} removed",
     "other": "Change made"
   }
 }

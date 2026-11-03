@@ -22,3 +22,22 @@ export function shownDistance(feet: number, unit: Settings['distance']): ShownDi
   if (unit === 'sq') return { value: Math.floor(feet / FEET_PER_SQUARE), unit: 'sq' };
   return { value: feet, unit: 'ft' };
 }
+
+/**
+ * SHEET-50: kilograms in one pound. The SRDs give no rate for weight, as they do for distance, so
+ * the pound's own definition is used: the international avoirdupois pound is exactly 0.45359237 kg.
+ */
+export const KILOGRAMS_PER_POUND = 0.45359237;
+
+/** A weight in the unit it is shown in. */
+export interface ShownWeight {
+  value: number;
+  unit: Settings['weight'];
+}
+
+/** `pounds` in the shown unit, kilograms rounded to a tenth; pounds stay as they are. */
+export function shownWeight(pounds: number, unit: Settings['weight']): ShownWeight {
+  if (unit === 'kg')
+    return { value: Math.round(pounds * KILOGRAMS_PER_POUND * 10) / 10, unit: 'kg' };
+  return { value: pounds, unit: 'lb' };
+}
