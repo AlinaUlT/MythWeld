@@ -183,7 +183,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | 5 | SHEET-25, 27, 30, 31, 38, 68 | Wave 4 is closed |
 | 6 | SHEET-26, 28, 32, 33, 36, 39, 46, 48, 50, 53, 54, 55, 56 | Wave 5 is closed |
 | 7 | SHEET-29, 34, 40, 41, 42, 43, 44, 45, 47, 49, 51, 52, 57, 58 | Wave 6 is closed |
-| 8 | SHEET-35, 59, 69 | Wave 7 is closed |
+| 8 | SHEET-35, 59, 69, 70 | Wave 7 is closed |
 | 9 | SHEET-60 | Every other row is closed |
 
 | ID | Hat | Size | Status |
@@ -237,7 +237,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-33 | A long press opens a number's breakdown | S | ✅ 2026-11-03 |
 | SHEET-34 | A manual edit overrides a number | S | 🔲 |
 | SHEET-35 | The AC breakdown pins its base calculation | XS | 🔲 |
-| SHEET-36 | The choices badge opens every pending choice | M | 🔲 |
+| SHEET-36 | The choices badge opens every pending choice | M | ✅ 2026-11-03 |
 | SHEET-37 | Rolls are kept in the roll log | S | ✅ 2026-10-29 |
 | SHEET-38 | The dice panel rolls any formula fairly | M | ✅ 2026-10-29 |
 | SHEET-39 | Tapping a number rolls it in the roll dialog | M | ✅ 2026-11-03 |
@@ -263,6 +263,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 | SHEET-69 | The roll dialog counts the faces a person types | S | 🔲 |
+| SHEET-70 | The header keeps the class line whole beside the choices badge | XS | 🔲 |
 
 - **SHEET-29** — found by ENG-37 (ADR 017): when the race or species and the background come from
   different editions and both raise ability scores, the manual form (BRIEF P3 step 6) shows a
@@ -277,11 +278,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 - **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates:
   `Computed.candidates['ac.base']`, each `{ key, value, steps }`; a pin that does not apply is not
   among them and warns `acCalcNotApplying`.
-- **SHEET-36** — SPEC §7.2, "What needs choosing": the grants' `pendingChoices` and
-  `Computed.pendingKeys`, each answered from the list. Found by ENG-48: a size not chosen is in
-  `Computed.pendingKeys` (`{ path, options }`); the answer is written to
-  `systemData.species.size`, not to `choices`. A stored size the species does not offer warns
-  `stepRule` `sizeNotOffered`.
 - **SHEET-40** — ADR 010 item 6, ADR 013 item 1, boards `V3-Keypad` and `V3-TempHP`. Found by
   ENG-20: damage returns the concentration save's DC (`outcome.concentrationDc`); the screen rolls
   it and calls `endConcentration` on a failure. Found by ENG-65: the pad offers knocking out
@@ -358,6 +354,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   `readHistory` lists the kept changes, newest first; `undoChange` reverses any one of them, and
   refuses as `changed` where a later change wrote over its place.
 - **SHEET-69** — found by SHEET-39: the dice panel counts the faces a person typed when "I roll myself" is on (SHEET-38, SPEC §6.5); the roll dialog always rolls with the fair die. The dialog's d20 (one or two) and a weapon's damage dice take typed faces through `typedDie` (`shared/dice.ts`), and the dialog's field for each die is the panel's (`diceFields`).
+- **SHEET-70** — found by SHEET-36: with the choices badge shown, the header's class line is cut to "Fig…" at 360×800 (`SheetHeader.tsx`, board `V3-Sheet`). The line and the badges wrap or the badge moves, so the class and its level stay readable.
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
 

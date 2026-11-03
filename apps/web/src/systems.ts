@@ -30,6 +30,7 @@ import {
   fifthEditionListLine,
   fifthEditionModule,
   fifthEditionPathParts,
+  fifthEditionPendingKey,
   fifthEditionRollTest,
   fifthEditionSituational,
   gainInspiration,
@@ -45,6 +46,7 @@ import {
   openFifthEditionCharacter,
   openFifthEditionPack,
   type PathPart,
+  type PendingKeyAnswer,
   type RollTest,
   rollInitiative,
   rollModeOf,
@@ -133,7 +135,15 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
   },
 ];
 
-export type { AboutListName, MadeByHand, ManualCharacterAsk, PathPart, RollTest, Situational };
+export type {
+  AboutListName,
+  MadeByHand,
+  ManualCharacterAsk,
+  PathPart,
+  PendingKeyAnswer,
+  RollTest,
+  Situational,
+};
 
 /** What the sheet reads of one system: its module, and what its header and dock name. */
 export interface SheetSystem {
@@ -158,6 +168,8 @@ export interface SheetSystem {
   criticalDamage: typeof criticalDamage;
   /** The entry for rolling initiative: it interrupts a knock-out's short rest (SHEET-19). */
   rollInitiative: typeof rollInitiative;
+  /** How the pending key at `path` is answered, or none when this system cannot (SHEET-36). */
+  pendingKey(path: string): PendingKeyAnswer | undefined;
   /** The parts a computed path is named by in a breakdown (SHEET-33). */
   pathParts(path: string): readonly PathPart[];
   /** The stats, saves, skills and passive values the Main tab shows (SHEET-32). */
@@ -185,6 +197,7 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     hitPoints: fifthEditionHitPoints,
     checks: fifthEditionChecks,
     pathParts: fifthEditionPathParts,
+    pendingKey: fifthEditionPendingKey,
     rollTest: fifthEditionRollTest,
     situational: fifthEditionSituational,
     rollMode: rollModeOf,

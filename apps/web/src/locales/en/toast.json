@@ -30,6 +30,7 @@
     "levelUp": "{{name}} level gained",
     "setNote": "Note saved",
     "setPortrait": "Portrait set",
+    "setChoice": "Choice made",
     "other": "Change made"
   }
 }

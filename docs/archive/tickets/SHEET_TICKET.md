@@ -6383,3 +6383,87 @@ Found, not fixed:
 Changelog: "Tap an ability, save, skill or initiative on the sheet to roll it: the d20 of its mode (advantage, disadvantage, inspiration in 2014), the dice shown, the total, every roll kept in the log."
 
 ---
+
+### SHEET-36 The choices badge opens every pending choice
+
+**Hat:** The choices badge opens every pending choice
+**Depends on:** SHEET-30 (the badge and the panel's place), ENG-11 and ENG-48 (`pendingChoices`, `pendingKeys`), SHEET-23 (Undo)
+**Size:** M
+**Screen:** Yes — board `V3-Sheet` in `docs/design/mockups/` (the `[!1]` badge); `docs/design/BRIEF.md` Part 2 P4 and Part 5 "P4 Character sheet"
+**SPEC:** §7.2 "What needs choosing", §8.2 (an unmade choice is a pending choice, not an error)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/panels/ChoicesPanel.tsx` — changes: the panel itself.
+- `apps/web/src/sheet/choices.ts` — new: picks needed, names, the entry a pick makes.
+- `packages/system-5e/src/sheet-choices.ts` — new: `fifthEditionPendingKey`, where a pending key's answer is stored.
+- `apps/web/src/systems.ts` — changes: `SheetSystem.pendingKey`.
+- `apps/web/src/locales/en/choices.json`, `toast.json`, `breakdown.json` — change: the words, the toast `setChoice`, the word "size".
+- `apps/web/test/sheet.test.tsx`, `toast.test.tsx` — change: the panel left the empty list; `setChoice` joined the sheet's actions.
+
+#### 2. What is missing now
+
+Measured on `836ad78`: `ChoicesPanel` returns `null`; the header's badge counts `pendingChoices.length + pendingKeys.length` and opens nothing.
+
+#### 3. What it should look like when done
+
+1. Tapping the badge opens "What needs choosing". Golden B with its seven choices taken out and its size taken out shows 8 sections, as the badge says: `!8`.
+2. Each grant's pending choice shows the entry that gives it ("Fighter", "Soldier"), what it gives ("Skill proficiency: choose 2 more"), the picks made as chips (tap one to take it back) and the options left, each named from the packs. Soldier's ability scores also say they give +2 +1 or +1 +1 +1 "in the order you pick".
+3. A pick is stored as `choices[<part>]`, the picks in the order made; taking back the last one removes the stored choice (the schema holds no empty list). Each is one change with its Undo toast "Choice made".
+4. A pending key, the size of a species that offers several (Small or Medium for the 2024 human), is answered from its list and stored where the module keeps it, `systemData.species.size`; a key the module cannot answer says so and its options are off.
+5. Picks show on the sheet at once: Survival goes from +1 to +3 when the fighter picks it; Undo brings +1 back and the badge its count.
+6. Nothing pending: "Nothing is left to choose."; an entry a pack no longer has shows "Missing: <id>".
+7. The gate is green.
+
+#### 4. How to do it
+
+1. `fifthEditionPendingKey(path)` gives the entry type that names a key and the change that stores it; only `size` today.
+2. `choices.ts`: `picksOf` (the count, or the longest pattern's), `picksLeft`, `patternsOf`, `pickName` (an entry's name, else the key's name among the entries of the grant's type, else the key's words), `choiceEntry`, `storedPicks`.
+3. The panel lists `computed.pendingChoices`, then `computed.pendingKeys`.
+
+Technical choices (ADR 002): each pick is written at once, not collected and confirmed, so Undo is per pick and a half-made choice stays visible; the answer of a pending key is the module's, as ENG-48 decided (the size is not in `choices`); a part's source entry is read from the part id's text before `#`.
+
+#### 5. Stored data
+
+Nothing stored changes. `choices` and `systemData.species.size` exist.
+
+#### 6. What a person will see
+
+A bottom sheet at 360×800: a section for each pending choice with its heading, a grey line, picked chips, then the options as 44 px rows. Keys in `choices`: `title`, `nothing`, `need`, `needOne`, `cannotAnswer`, `patterns`, `picked`, `pick`, `remove`, `missing`, `kind.*`.
+
+#### 7. Tests
+
+- `apps/web/test/choices.test.tsx` — 11 tests: nothing left; golden B's seven choices pending; what a choice gives and its options; a pick made as a chip; the size as a pending key; the entry a pick makes, the removal of the last one, own-field reading, the module's answer for the size; the counts, the patterns and the names.
+- `apps/web/e2e/sheet.spec.ts` — 1 test: `!8`, the panel, a size pick, two skill picks, the badge's count, Survival +3, Undo.
+- Control numbers from: SPEC §6.7 golden B (its seven choices; Wisdom 12; proficiency +2) and SRD 5.2.1's background ability score patterns.
+
+#### 8. Checked against the source
+
+SRD 5.2.1, Backgrounds: the ability score increase is +2 and +1, or +1 to each of three of its scores (the grant's `patterns`, ENG-37).
+
+#### 9. Not in this ticket
+
+- A jump from each choice to the place it affects: the choice is answered in the list.
+- Changing a choice already made that is no longer pending: the About tab and later rows.
+- Level-up choices: phase 4.
+
+#### 10. Rake check
+
+- **Missing is not broken:** a missing entry shows "Missing: <id>"; an unmade choice is listed, not an error.
+- **A person's saved data:** each pick is a logged, undoable change.
+- **Everything is data:** names from the packs; the size's place is the module's.
+- **No visible literal:** `choices` keys.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-03: `pnpm lint` 385 files, no fixes; `pnpm typecheck` clean; `pnpm test` 109 files, 1359 passed, 0 failed, 24.9 s (11 new, from 1348), then speed 2 passed; coverage statements 99.28 % (3590/3616), lines 99.87 % (3150/3154); `pnpm e2e` 54 passed, 0 failed, 47.3 s (1 new). Screenshot at 360×800 shown in the chat.
+
+Differences from §3: none.
+
+Found, not fixed: with the choices badge in the header, the class line is cut to "Fig…" at 360 px. The header's layout is SHEET-30's.
+
+Changelog: "The choices badge on the sheet opens a list of every choice still to make; each is answered in place, with Undo."
+
+---

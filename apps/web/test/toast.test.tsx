@@ -128,8 +128,8 @@ describe('SHEET-23 the undo toast', () => {
       'spendInspiration',
       'levelUp',
     ];
-    // The actions the sheet's own screens make (SHEET-54: a note; SHEET-56: a portrait), each named by its row.
-    const sheetActions = ['setNote', 'setPortrait'];
+    // The actions the sheet's own screens make (SHEET-54: a note; SHEET-56: a portrait; SHEET-36: a choice), each named by its row.
+    const sheetActions = ['setNote', 'setPortrait', 'setChoice'];
     expect(Object.keys(en.toast.done)).toEqual([...actions, ...sheetActions, 'other']);
     for (const action of [...actions, ...sheetActions]) expect(doneKeyOf(action)).toBe(action);
   });

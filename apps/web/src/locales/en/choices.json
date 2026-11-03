@@ -1,1 +1,21 @@
-{}
+{
+  "title": "What needs choosing",
+  "nothing": "Nothing is left to choose.",
+  "need": "{{kind}}: choose {{count}} more",
+  "needOne": "Choose one.",
+  "cannotAnswer": "This choice cannot be made here.",
+  "patterns": "Give {{patterns}}, in the order you pick.",
+  "or": " or ",
+  "picked": "Picked",
+  "pick": "Pick {{name}}",
+  "remove": "Take back {{name}}",
+  "missing": "Missing: {{id}}",
+  "kind": {
+    "proficiency": "proficiency",
+    "entity": "Entry",
+    "abilityScore": "Ability scores",
+    "spell": "Spell",
+    "item": "Item",
+    "resource": "Resource"
+  }
+}

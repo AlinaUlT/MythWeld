@@ -40,7 +40,8 @@
     "max": "maximum",
     "speed": "Speed",
     "walk": "walking",
-    "d20": "d20"
+    "d20": "d20",
+    "size": "size"
   },
   "rule": {
     "proficiencyBonus": "Proficiency bonus",

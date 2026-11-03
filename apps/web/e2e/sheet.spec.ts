@@ -610,3 +610,48 @@ test('SHEET-39 in 2014 a spent inspiration gives advantage and is spent with the
   // Held no more, the switch is not offered again.
   await expect(dialog.getByRole('button', { name: new RegExp(en.roll.inspiration) })).toBeHidden();
 });
+
+test('SHEET-36 the choices badge opens every pending choice, each answered from its list', async ({
+  page,
+}, testInfo) => {
+  const undecided = {
+    ...goldenB,
+    choices: {},
+    systemData: { ...goldenB.systemData, species: { id: 'srd-2024:species/human' } },
+  };
+  await saveRows(page, [undecided]);
+  await page.goto(`characters/${goldenB.id}`);
+  // Seven grants and the size are pending: golden B's own seven choices, taken out, and the size.
+  const badge = page.getByRole('banner').getByRole('button', { name: /choices to make/ });
+  await expect(badge).toHaveText('!8');
+  await badge.click();
+  const panel = page.getByRole('dialog', { name: en.choices.title });
+  await expect(panel.getByRole('heading', { level: 3 })).toHaveCount(8);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('choices-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('choices-light.png') });
+
+  // The size: one pick answers it, and the badge counts one fewer.
+  await panel.getByRole('button', { name: 'Pick Small' }).click();
+  await expect(page.getByRole('status').filter({ hasText: en.toast.done.setChoice })).toBeVisible();
+  await expect(panel.getByRole('heading', { level: 3 })).toHaveCount(7);
+
+  // The fighter's two skills: the first pick leaves the choice open with a chip to take it back.
+  const fighter = panel.locator('[data-part="srd-2024:class/fighter#skills"]');
+  await fighter.getByRole('button', { name: 'Pick Perception' }).click();
+  await expect(fighter).toContainText('choose 1 more');
+  await expect(fighter.getByRole('button', { name: 'Take back Perception' })).toBeVisible();
+  await fighter.getByRole('button', { name: 'Pick Survival' }).click();
+  await expect(panel.getByRole('heading', { level: 3 })).toHaveCount(6);
+
+  // The choice is on the sheet: Wisdom 12 gives +1 and, now proficient in Survival, the bonus +2 makes +3.
+  await panel.getByRole('button', { name: en.common.close }).first().click();
+  await expect(badge).toHaveText('!6');
+  await expect(number(page, 'skills.survival.total')).toHaveText('Survival+3');
+
+  // Undo takes the last pick back.
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(number(page, 'skills.survival.total')).toHaveText('Survival+1');
+  await expect(badge).toHaveText('!7');
+});
