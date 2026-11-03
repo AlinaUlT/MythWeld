@@ -22,6 +22,14 @@ export interface ManualClass {
   readonly subclass?: EntityId;
 }
 
+/** SHEET-28: an item the manual form starts the inventory with: not worn, not attuned. */
+export interface ManualItem {
+  /** The row's own id: the app makes it, as it makes the character's. */
+  readonly uid: string;
+  readonly itemId: EntityId;
+  readonly qty: number;
+}
+
 /** What the manual form asks for. `id` and `at` come from the app: the module makes no ids. */
 export interface ManualCharacterAsk {
   readonly id: string;
@@ -38,6 +46,8 @@ export interface ManualCharacterAsk {
   readonly classes: readonly ManualClass[];
   /** Stat key → base score, any whole number (SPEC §7.4). */
   readonly scores: Readonly<Record<string, number>>;
+  /** SHEET-28: the starting inventory, in the order listed. */
+  readonly inventory?: readonly ManualItem[];
 }
 
 /** The method key the manual form's scores are stored with: typed, not made by a method. */
@@ -95,7 +105,13 @@ export function manualCharacter(ask: ManualCharacterAsk): FifthEditionCharacter 
       })),
       feats: [],
       spells: {},
-      inventory: [],
+      inventory: (ask.inventory ?? []).map(({ uid, itemId, qty }) => ({
+        uid,
+        itemId,
+        qty,
+        equipped: false,
+        attuned: false,
+      })),
       currency: Object.fromEntries(COINS.map((coin) => [coin, 0])) as Record<
         (typeof COINS)[number],
         number

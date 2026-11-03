@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { contentOf, installBuiltInPacks } from '../src/content/packs';
 import {
   askOf,
+  type Draft,
   levelsLeft,
   newDraft,
   optionsOf,
@@ -9,10 +10,13 @@ import {
   statsOf,
   subclassOptionsOf,
   typedScore,
+  withItem,
+  withItemQty,
+  withoutItem,
   withPack,
   withRuleset,
 } from '../src/pages/create/draft';
-import { warningsAbout } from '../src/pages/create/warnings';
+import { itemWarnings, warningsAbout } from '../src/pages/create/warnings';
 import { MANUAL_FORM_SYSTEMS } from '../src/systems';
 
 // The built-in packs (SHEET-08) and golden B's inputs (SPEC §6.7). The id and time are test data.
@@ -36,6 +40,7 @@ describe('SHEET-27 the manual form', () => {
       name: '',
       classes: [],
       scores: {},
+      items: [],
     });
   });
 
@@ -170,5 +175,76 @@ describe('SHEET-27 the manual form', () => {
     expect(warningsAbout(result.computed, 'srd-2014:species/dwarf')).toEqual([
       { key: 'otherRulesetNotMixing', values: { ruleset: '2014' } },
     ]);
+  });
+});
+
+describe('SHEET-28 the equipment step', () => {
+  const chain = 'srd-2024:item/chain-mail';
+  const old = 'srd-2014:item/shield';
+  const uid = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
+
+  it('offers the rules base’s items, or both editions’ when mixing, by name', () => {
+    const draft = { ...newDraft(form, packs), packs: ['srd-2014', 'srd-2024'] };
+    const { entities } = indexOf(draft);
+    const ids = (mix: boolean) =>
+      optionsOf(entities, 'item', { ...draft, mix }).map(({ id }) => id);
+    const g = (slug: string) => `srd-2024:item/${slug}`;
+    // The packs' source: SRD 5.2.1's five items, SRD 5.1's three; sorted by name, then id.
+    expect(ids(false)).toEqual([chain, g('glaive'), g('greataxe'), g('greatsword'), g('halberd')]);
+    expect(ids(true)).toEqual([
+      'srd-2014:item/chain-mail',
+      chain,
+      g('glaive'),
+      g('greataxe'),
+      g('greatsword'),
+      g('halberd'),
+      old,
+      'srd-2014:item/warhammer',
+    ]);
+  });
+
+  it('adds a row, adds to its quantity on a second pick, keeps 1 to 999, and removes it', () => {
+    const none = newDraft(form, packs);
+    const one = withItem(none, chain, uid(1));
+    expect(one.items).toEqual([{ uid: uid(1), id: chain, qty: 1 }]);
+    const two = withItem(one, chain, uid(2));
+    expect(two.items).toEqual([{ uid: uid(1), id: chain, qty: 2 }]);
+    expect(withItemQty(two, chain, -5).items[0]?.qty).toBe(1);
+    expect(withItemQty(two, chain, 5000).items[0]?.qty).toBe(999);
+    expect(withoutItem(two, chain).items).toEqual([]);
+    expect(none.items).toEqual([]);
+  });
+
+  it('stores each item as an unworn, unattuned inventory row, in the order listed', () => {
+    let draft: Draft = {
+      ...newDraft(form, packs),
+      classes: [{ id: 'srd-2024:class/fighter', level: 1 }],
+      scores: { str: '15', dex: '13', con: '14', int: '8', wis: '12', cha: '10' },
+    };
+    draft = withItem(draft, chain, uid(1));
+    draft = withItem(draft, 'srd-2024:item/greatsword', uid(2));
+    draft = withItemQty(draft, 'srd-2024:item/greatsword', 1);
+    const keys = statsOf(indexOf(draft), draft).map(({ key }) => key);
+    const ask = askOf(draft, keys, { ...made, unnamed: 'x' });
+    const { character, computed } = form.make(ask, indexOf(draft));
+    expect(character.systemData.inventory).toEqual([
+      { uid: uid(1), itemId: chain, qty: 1, equipped: false, attuned: false },
+      { uid: uid(2), itemId: 'srd-2024:item/greatsword', qty: 2, equipped: false, attuned: false },
+    ]);
+    expect(computed.warnings).toEqual([]);
+  });
+
+  it('says an item of the other edition is, with mixing on or off, and one no pack holds is missing', () => {
+    const both = { ...newDraft(form, packs), packs: ['srd-2024', 'srd-2014'] };
+    const { entities } = indexOf(both);
+    expect(itemWarnings(entities, both, chain)).toEqual([]);
+    expect(itemWarnings(entities, both, old)).toEqual([
+      { key: 'otherRulesetNotMixing', values: { ruleset: '2014' } },
+    ]);
+    expect(itemWarnings(entities, { ...both, mix: true }, old)).toEqual([
+      { key: 'otherRuleset', values: { ruleset: '2014' } },
+    ]);
+    const only = indexOf(newDraft(form, packs)).entities;
+    expect(itemWarnings(only, both, old)).toEqual([{ key: 'missing', values: { id: old } }]);
   });
 });

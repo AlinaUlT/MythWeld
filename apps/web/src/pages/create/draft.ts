@@ -35,6 +35,17 @@ export interface DraftClass {
   subclass?: EntityId;
 }
 
+/** SHEET-28: an item the form starts the inventory with; one row per item, `qty` of it. */
+export interface DraftItem {
+  /** The inventory row's own id, made when the item is added. */
+  uid: string;
+  id: EntityId;
+  qty: number;
+}
+
+/** The most of one item the form's stepper adds up to. */
+export const MAX_ITEM_QTY = 999;
+
 /** The form as the person left it. */
 export interface Draft {
   system: string;
@@ -49,6 +60,8 @@ export interface Draft {
   classes: readonly DraftClass[];
   /** Stat key → the text in its field. */
   scores: Readonly<Record<string, string>>;
+  /** SHEET-28: the starting inventory. */
+  items: readonly DraftItem[];
 }
 
 /** What a score field counts as while it holds no whole number: the field's starting text. */
@@ -78,7 +91,33 @@ export function newDraft(form: ManualFormSystem, installed: readonly InstalledPa
     name: '',
     classes: [],
     scores: {},
+    items: [],
   };
+}
+
+/**
+ * SHEET-28: the form with one more of the item `id`: a new row, or one more on its row. `uid` is
+ * the new row's own id; the form's caller makes it, so this stays pure.
+ */
+export function withItem(draft: Draft, id: EntityId, uid: string): Draft {
+  return draft.items.some((item) => item.id === id)
+    ? withItemQty(draft, id, 1)
+    : { ...draft, items: [...draft.items, { uid, id, qty: 1 }] };
+}
+
+/** SHEET-28: the form with the item `id`'s quantity moved by `by`, kept from 1 to the most. */
+export function withItemQty(draft: Draft, id: EntityId, by: number): Draft {
+  return {
+    ...draft,
+    items: draft.items.map((item) =>
+      item.id === id ? { ...item, qty: Math.min(MAX_ITEM_QTY, Math.max(1, item.qty + by)) } : item,
+    ),
+  };
+}
+
+/** SHEET-28: the form without the item `id`. */
+export function withoutItem(draft: Draft, id: EntityId): Draft {
+  return { ...draft, items: draft.items.filter((item) => item.id !== id) };
 }
 
 /** The form on another rules base; without mixing, its packs become that rules base's. */
@@ -209,5 +248,6 @@ export function askOf(
       ...(subclass !== undefined && { subclass }),
     })),
     scores: Object.fromEntries(stats.map((key) => [key, scoreOf(draft, key)])),
+    inventory: draft.items.map(({ uid, id, qty }) => ({ uid, itemId: id, qty })),
   };
 }

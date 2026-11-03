@@ -158,4 +158,21 @@ describe('SHEET-27 the manual form makes a character', () => {
     const { values } = compute(made, index2014, fifthEditionModule);
     expect([values['hp.max'], values['ac.total'], values['init.total']]).toEqual([12, 18, 0]);
   });
+
+  it('SHEET-28 writes the starting items as unworn, unattuned rows, none by default', () => {
+    expect(madeByHand(askOf(goldenB), index2024).character.systemData.inventory).toEqual([]);
+    const uid = '00000000-0000-4000-8000-000000000001';
+    const made = madeByHand(
+      {
+        ...askOf(goldenB),
+        inventory: [{ uid, itemId: 'srd-2024:item/greatsword', qty: 2 }],
+      },
+      index2024,
+    );
+    expect(made.character.systemData.inventory).toEqual([
+      { uid, itemId: 'srd-2024:item/greatsword', qty: 2, equipped: false, attuned: false },
+    ]);
+    // Not worn: nothing in the numbers changes (golden B's own values: HP 12).
+    expect(made.computed.values['hp.max']).toBe(12);
+  });
 });

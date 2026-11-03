@@ -83,3 +83,32 @@ test('SHEET-27 a mix that may not fit warns in amber and still creates', async (
   await page.getByRole('button', { name: c.create }).click();
   await expect(page).toHaveURL(/characters\/[0-9a-f-]{36}$/);
 });
+
+test('SHEET-28 the equipment step adds items, counts them and warns for the other edition', async ({
+  page,
+}, testInfo) => {
+  await page.goto('characters/new');
+  await page.getByLabel(c.equipment.add).selectOption({ label: 'Chain Mail' });
+  await page.getByLabel(c.equipment.add).selectOption({ label: 'Greatsword' });
+  await page.getByLabel(c.equipment.add).selectOption({ label: 'Greatsword' });
+  await expect(page.getByTestId('item-qty')).toHaveText(['1', '2']);
+  await page.getByRole('button', { name: 'One less Greatsword' }).click();
+  await expect(page.getByTestId('item-qty')).toHaveText(['1', '1']);
+  await page.getByRole('button', { name: 'Remove Chain Mail' }).click();
+  await expect(page.getByTestId('item-qty')).toHaveText(['1']);
+
+  // Mixing on, a 2014 item: it shows its edition and warns.
+  await page.getByRole('switch', { name: c.rules.mix }).check({ force: true });
+  await page.getByRole('checkbox', { name: 'SRD 5.1' }).check();
+  await page.getByLabel(c.equipment.add).selectOption({ label: 'Shield · 2014' });
+  await expect(page.getByRole('listitem', { name: 'Shield' })).toContainText('Shield · 2014');
+  await expect(
+    page.getByText("From the 2014 rules, not this character's rules base. It may not fit."),
+  ).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.getByLabel(c.equipment.add).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('create-equipment.png') });
+
+  await page.getByRole('button', { name: c.create }).click();
+  await expect(page).toHaveURL(/characters\/[0-9a-f-]{36}$/);
+});

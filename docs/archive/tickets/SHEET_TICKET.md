@@ -6029,3 +6029,89 @@ Changelog: "My characters has Import file: it reads a character file, migrates a
 refuses one that fails its checks with the reason, and never replaces a character it already has."
 
 ---
+
+### SHEET-28 The manual form's equipment step adds items
+
+**Hat:** The manual form's equipment step adds items
+**Depends on:** SHEET-27 (the manual form), ENG-49 (the `missing` warning for looked-up ids)
+**Size:** S
+**Screen:** Yes — `V3-Create` in `docs/design/mockups/`; `docs/design/BRIEF.md` Part 2 P3 step 9 and Part 5 "P3 Character creation"
+**SPEC:** §7.4 (manual mode); ADR 005 item 3 (mixed editions)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/pages/create/EquipmentStep.tsx` — changes: the step lists items and picks more.
+- `apps/web/src/pages/create/draft.ts` — changes: `Draft.items`, `withItem`, `withItemQty`, `withoutItem`, `askOf` gives `inventory`.
+- `apps/web/src/pages/create/warnings.ts` — changes: `itemWarnings`.
+- `packages/system-5e/src/manual.ts` — changes: `ManualItem`, `ManualCharacterAsk.inventory`; the maker writes the rows.
+- `apps/web/src/locales/en/create.json` — changes: the `equipment` keys.
+
+#### 2. What is missing now
+
+Measured on `688eb74`: `EquipmentStep` shows the text "Coming later"; `madeByHand` always writes `inventory: []`; the form has no way to hold an item. `compute()` looks an item up only once it is worn (`equipmentOf`), so a starting item of the other edition, or one no ticked pack holds, gets no warning at all.
+
+#### 3. What it should look like when done
+
+1. The step offers the items of the ticked packs: the rules base's, or every edition's when "Mix editions" is on, sorted by name then id. With the 2024 pack alone: Chain Mail, Glaive, Greataxe, Greatsword, Halberd. With both packs and mixing: the 2014 Chain Mail first, then the five of 2024, then Shield and Warhammer.
+2. A picked item is a row with its name, a quantity from 1 to 999 with − and + buttons, and a remove button. The same item picked again adds one to its row.
+3. With mixing on, each row's name carries its edition (`Shield · 2014`). An item of the other edition shows the amber warning `otherRuleset` (mixing on) or `otherRulesetNotMixing` (off). An item no ticked pack holds shows `Missing: <id>`. Nothing blocks "Create".
+4. "Create" stores each row as `{ uid, itemId, qty, equipped: false, attuned: false }`, in the order listed. Nothing is worn, so no number changes (the bar's AC stays); wearing is SHEET-50.
+5. With no pack ticked the step says so.
+6. The gate is green: `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e`.
+
+#### 4. How to do it
+
+1. `manual.ts`: `ManualItem { uid, itemId, qty }`; `ManualCharacterAsk.inventory` (optional); `manualCharacter` maps it to rows, unworn and unattuned. The app makes the `uid`, as it makes the character's id.
+2. `draft.ts`: `DraftItem`, `Draft.items`, three pure edits; `withItem` takes the new row's `uid` so it stays pure.
+3. `warnings.ts`: `itemWarnings(entities, draft, id)` — not found: `missing`; found and `shareRuleset` false: the two edition keys. It uses the engine's `shareRuleset`, so the rule is not written again.
+4. `EquipmentStep.tsx`: the rows and the picker, built from `Part` and the shared `Picker`/`Warnings`.
+
+Technical choices (ADR 002): one row per item with a quantity, not one row per copy; a stepper, not a typed field, so no "not a number" state exists; the check is in the form, because `compute()` does not look up an unworn item and the ticket's job is the starting list.
+
+#### 5. Stored data
+
+Nothing stored changes. `inventory` and its row shape exist (ENG-63); the form fills a list that was always empty.
+
+#### 6. What a person will see
+
+The Equipment card at the end of the form (360×800). Empty: only "Add an item" with "Pick an item". Filled: rows, then the picker. Warning: an amber line in the row. No pack: "No ticked pack holds items. Tick a content pack above."
+Keys in `create`: `equipment.add` "Add an item", `pick` "Pick an item", `none`, `more` "One more {{name}}", `less` "One less {{name}}", `remove` "Remove {{name}}"; warnings reuse `warn.*`.
+
+#### 7. Tests
+
+- `apps/web/test/create.test.ts` — `SHEET-28 the equipment step`, 4 tests: the options per rules base and mixing; adding, counting, clamping, removing; the rows made; the three warnings.
+- `packages/system-5e/test/manual.test.ts` — 1 test: the rows, and none by default.
+- `apps/web/e2e/create.spec.ts` — 1 test: add, count, remove, then a 2014 item with the warning, and Create.
+- Control numbers from: the packs' own item lists (source files), golden B's inputs for the character.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts. ADR 005 item 3.5's "a badge shows each entry's edition" is shown when mixing, as the other pickers do.
+
+#### 9. Not in this ticket
+
+- Wearing, attuning, weight, containers, coins: SHEET-50, SHEET-51.
+- A custom item as free text: SHEET-52.
+- Starting equipment from a class or background: phase 4's wizard.
+- The spell side of ENG-49's note: SHEET-46.
+
+#### 10. Rake check
+
+- **Missing is not broken:** a missing item shows `Missing: <id>` and the form still creates.
+- **No visible literal:** every string is a `create` key.
+- **No look in a component:** parts and tokens only.
+- **Edition rule in one place:** `shareRuleset` from the engine.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-03: `pnpm lint` 370 files, no fixes; `pnpm typecheck` clean; `pnpm test` 102 files, 1308 passed, 0 failed, 22.7 s (5 new, from 1303 on `688eb74`), then speed 2 passed; coverage statements 99.45 % (3496/3515), lines 99.9 % (3069/3072); `pnpm e2e` 47 passed, 0 failed, 49.5 s (1 new). Screenshot at 360×800 shown in the chat.
+
+Differences from §3: none.
+
+Found, not fixed: a starting item is never worn, so the form's AC bar ignores armor. Wearing is SHEET-50.
+
+Changelog: "The new-character form's Equipment step adds items with a quantity and warns when an item is of the other edition or in no ticked pack."
+
+---
