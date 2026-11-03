@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-03 · SHEET-48 · The Features tab groups features under the species, each class with its subclass, the background and your own feats; each opens its description, and uses and switches work in place.
 - 2026-11-03 · SHEET-36 · The choices badge on the sheet opens a list of every choice still to make; each is answered in place, with Undo.
 - 2026-11-03 · SHEET-39 · Tap an ability, save, skill or initiative on the sheet to roll it: the d20 of its mode (advantage, disadvantage, inspiration in 2014), the dice shown, the total, every roll kept in the log.
 - 2026-11-03 · SHEET-33 · Long-press a number on the sheet to see where it comes from: each part with its source, and a manual edit marked as one.

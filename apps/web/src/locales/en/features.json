@@ -1,1 +1,46 @@
-{}
+{
+  "none": "No features yet.",
+  "separator": ",",
+  "missing": "Missing: {{id}}",
+  "group": {
+    "species": "Species",
+    "race": "Race",
+    "class": "Class",
+    "background": "Background",
+    "feats": "Feats",
+    "classLevel": "class · level {{level}}"
+  },
+  "source": {
+    "species": "species",
+    "race": "race",
+    "class": "class",
+    "background": "background"
+  },
+  "subclass": {
+    "chosen": "Subclass: {{name}}",
+    "chosenAt": "Subclass: chosen at level {{level}}"
+  },
+  "left": "{{left}} of {{max}} left",
+  "use": "Use {{name}}",
+  "useButton": "Use",
+  "recovery": {
+    "all": {
+      "short": "all on a short rest",
+      "long": "all on a long rest",
+      "dawn": "all at dawn",
+      "turn": "all at the start of your turn",
+      "manual": "all when you reset it",
+      "revive": "all on coming back to life"
+    },
+    "allOther": "all on {{event}}",
+    "count": {
+      "short": "back on a short rest",
+      "long": "back on a long rest",
+      "dawn": "back at dawn",
+      "turn": "back at the start of your turn",
+      "manual": "back when you reset it",
+      "revive": "back on coming back to life"
+    },
+    "countOther": "back on {{event}}"
+  }
+}

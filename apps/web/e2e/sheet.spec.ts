@@ -655,3 +655,72 @@ test('SHEET-36 the choices badge opens every pending choice, each answered from 
   await expect(number(page, 'skills.survival.total')).toHaveText('Survival+1');
   await expect(badge).toHaveText('!7');
 });
+
+test('SHEET-48 the Features tab groups features by source; a use and a switch are changes with Undo', async ({
+  page,
+}, testInfo) => {
+  const furious = {
+    id: 'character:feat/furious',
+    type: 'feat',
+    ruleset: 'any',
+    name: { en: 'Furious' },
+    source: { pack: 'character' },
+    effects: [
+      {
+        id: 'rage',
+        target: 'checks.str.bonus',
+        op: 'add',
+        value: 1,
+        toggle: { label: { en: 'Raging' }, default: false },
+      },
+    ],
+  };
+  await saveRows(page, [
+    {
+      ...goldenB,
+      localEntities: [furious],
+      systemData: { ...goldenB.systemData, feats: [{ id: furious.id }] },
+    },
+  ]);
+  await page.goto(`characters/${goldenB.id}?tab=features`);
+  const tab = page.getByRole('tabpanel');
+  await expect(tab.getByRole('heading', { level: 2 })).toHaveText([
+    'Human',
+    'Fighter',
+    'Soldier',
+    'Feats',
+  ]);
+  await expect(tab).toContainText('class · level 1');
+  await expect(tab.getByTestId('subclass')).toHaveText('Subclass: chosen at level 3');
+
+  // Second Wind: 2 of 2, "1 back on a short rest, all on a long rest" (SRD 5.2.1).
+  const wind = tab.locator('[data-feature="srd-2024:feature/fighter-second-wind"]');
+  await expect(wind.getByTestId('uses-left')).toHaveText('2 of 2 left');
+  await expect(wind.getByTestId('recovery')).toHaveText(
+    /1\s*back on a short rest,\s*all on a long rest/,
+  );
+  await page.screenshot({ path: testInfo.outputPath('features-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('features-light.png') });
+
+  await wind.getByRole('button', { name: 'Use secondWind' }).click();
+  await expect(wind.getByTestId('uses-left')).toHaveText('1 of 2 left');
+  await expect(page.getByRole('status').filter({ hasText: /Second Wind used/ })).toBeVisible();
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(wind.getByTestId('uses-left')).toHaveText('2 of 2 left');
+
+  // A feature opens its description in place.
+  await wind
+    .getByRole('button', { name: /Second Wind/ })
+    .first()
+    .click();
+  await expect(wind.getByRole('button', { name: en.description.seeFull })).toBeVisible();
+
+  // The feat's switch: off by default, on after a tap, with its own toast.
+  const feat = tab.locator('[data-feature="character:feat/furious"]');
+  const raging = feat.getByRole('switch', { name: 'Raging' });
+  await expect(raging).toHaveAttribute('aria-checked', 'false');
+  await raging.click();
+  await expect(raging).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('status').filter({ hasText: /switched/ })).toBeVisible();
+});

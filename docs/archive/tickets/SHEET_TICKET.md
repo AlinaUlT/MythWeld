@@ -6467,3 +6467,89 @@ Found, not fixed: with the choices badge in the header, the class line is cut to
 Changelog: "The choices badge on the sheet opens a list of every choice still to make; each is answered in place, with Undo."
 
 ---
+
+### SHEET-48 The Features tab groups features by source
+
+**Hat:** The Features tab groups features by source
+**Depends on:** SHEET-30 (the tab's place), SHEET-31 (descriptions in place), SHEET-20 (`recoveryOf`), ENG-17 (uses, switches), SHEET-23 (Undo)
+**Size:** M
+**Screen:** Yes — board `V3-Features` in `docs/design/mockups/`; `docs/design/BRIEF.md` Part 2 P4 (Features) and Part 5 "P4 Character sheet"
+**SPEC:** §7.2 (the Features tab); ADR 009 item 2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/FeatureList.tsx` — changes: the tab itself.
+- `packages/system-5e/src/sheet-features.ts` — new: `fifthEditionFeatures`, the groups.
+- `apps/web/src/systems.ts` — changes: `SheetSystem.features`.
+- `apps/web/src/locales/en/features.json` — changes: the words.
+
+#### 2. What is missing now
+
+Measured on `65dec65`: `FeatureList` returns `null`; the Features tab is empty.
+
+#### 3. What it should look like when done
+
+1. Golden B's tab shows three cards in this order: Human (species), Fighter (class · level 1) and Soldier (background); golden A's shows Dwarf (race), Cleric and Acolyte.
+2. A feature a feature gives, or a feat a feature gives, stays in the card of the one that gave it: Versatile's Alert is in Human's card, Soldier's Savage Attacker in Soldier's, Fighting Style's Defense in Fighter's. A lineage's traits (Hill Dwarf's Dwarven Toughness) are in the species' card; a subclass's features (Life's Disciple of Life) are in its class's card.
+3. The class card names its subclass on the line below: "Subclass: Life" for golden A, "Subclass: chosen at level 3" for golden B (the level is the class entry's `subclassLevel`).
+4. The character's own feats (`systemData.feats`) are a last card, "Feats".
+5. Each feature opens its description in place (SHEET-31).
+6. A feature with uses shows one circle for each use (filled while left), "2 of 2 left" and a "Use" button, which is disabled with none left. Second Wind reads "1 back on a short rest, all on a long rest" (SRD 5.2.1); the count is a number with its own breakdown path. A use is one change with its Undo toast.
+7. A feature with a toggled effect shows its switch in its stored state, else its default; a tap is one change with its Undo toast.
+8. No feature at all: "No features yet."
+9. The gate is green.
+
+#### 4. How to do it
+
+1. The module finds each feature's root: it follows `HadEntity.from` up to the first entity the character itself names, and maps that entity's type to a group; items and spells have none.
+2. Each row carries the resource keys its entity's grants give and its toggled effects, so the screen asks nothing else.
+3. The tab reads names from the gathered entities, so a character's own entries show too (they are not in the packs).
+
+Technical choices (ADR 002): the grouping rule is the module's, since the group kinds are fifth edition's; a use and a switch are the core's actions (`useResource`, `setToggle`) run through `perform`; more than 12 uses show the number alone.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Cards at 360×800, each with its name, a grey source line, and rows that open in place; Second Wind's circles, count and "Use" under its row. Keys in `features`: `none`, `missing`, `separator`, `group.*`, `source.*`, `subclass.*`, `left`, `use`, `useButton`, `recovery.*`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-features.test.ts` — 7 tests: golden B's groups and rows, Alert with Versatile, Second Wind's resource, the subclass level; golden A's lineage and subclass; a made-up feat's own group with its switch; no group at all.
+- `apps/web/test/features.test.tsx` — 8 tests: both goldens' headings and source lines, the subclass line, Second Wind's circles and recovery text, a use spent and none left, a switch stored and by default, no features.
+- `apps/web/e2e/sheet.spec.ts` — 1 test: the groups, a use and its Undo, a description opened, a switch.
+- Control numbers from: SPEC §6.7 golden A and B and the SRDs' class tables (Fighter's subclass at level 3, Second Wind's 2 uses).
+
+#### 8. Checked against the source
+
+SRD 5.2.1, Fighter: Second Wind, two uses at level 1, one use back on a short rest and all on a long rest; subclass at level 3. SRD 5.1, Cleric: the Divine Domain at level 1.
+
+#### 9. Not in this ticket
+
+- Regaining a single use by hand: a rest gives them back (SHEET-45).
+- Each feature's action timing and "Always on": the Turn tab (SHEET-49).
+- Features of an item or a spell: the Gear and Spells tabs.
+- Custom features written as text: SHEET-52.
+
+#### 10. Rake check
+
+- **Everything is data:** names from the packs and the character's entries; the groups from `from`.
+- **Missing is not broken:** an id that is not gathered shows "Missing: <id>".
+- **A shown number has a breakdown:** the recovery count is a `SheetNumber`.
+- **No visible literal, no look literal:** `features` keys; tokens and parts.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-03: `pnpm lint` 388 files, no fixes; `pnpm typecheck` clean; `pnpm test` 111 files, 1374 passed, 0 failed, 22.8 s (15 new, from 1359), then speed 2 passed; coverage statements 99.15 % (3644/3675), lines 99.81 % (3199/3205); `pnpm e2e` 55 passed, 0 failed, 45.0 s (1 new). Screenshots at 360×800 shown in the chat.
+
+Differences from §3: none. The first draft read each feature from the packs' index, which has no character's own entries; it reads the gathered entities now (a test caught it).
+
+Found, not fixed: nothing.
+
+Changelog: "The Features tab groups features under the species, each class with its subclass, the background and your own feats; each opens its description, and uses and switches work in place."
+
+---

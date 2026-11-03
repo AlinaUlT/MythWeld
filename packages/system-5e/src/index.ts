@@ -38,6 +38,7 @@ export * from './rolls';
 export * from './rulesets';
 export * from './sheet-checks';
 export * from './sheet-choices';
+export * from './sheet-features';
 export * from './sheet-header';
 export * from './sheet-paths';
 export * from './sheet-roll';

@@ -16,6 +16,7 @@ import {
   d20Formula,
   EDITION_RULES,
   type EditionTerms,
+  type FeatureGroup,
   FIFTH_EDITION_HEADER_NUMBERS,
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
@@ -25,6 +26,7 @@ import {
   fifthEditionCasting,
   fifthEditionChecks,
   fifthEditionClassLine,
+  fifthEditionFeatures,
   fifthEditionHitPoints,
   fifthEditionInspiration,
   fifthEditionListLine,
@@ -137,6 +139,7 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
 
 export type {
   AboutListName,
+  FeatureGroup,
   MadeByHand,
   ManualCharacterAsk,
   PathPart,
@@ -170,6 +173,8 @@ export interface SheetSystem {
   rollInitiative: typeof rollInitiative;
   /** How the pending key at `path` is answered, or none when this system cannot (SHEET-36). */
   pendingKey(path: string): PendingKeyAnswer | undefined;
+  /** The groups of the Features tab: what gave each feature (ADR 009 item 2, SHEET-48). */
+  features(character: AppCharacter, computed: AppComputed): FeatureGroup[];
   /** The parts a computed path is named by in a breakdown (SHEET-33). */
   pathParts(path: string): readonly PathPart[];
   /** The stats, saves, skills and passive values the Main tab shows (SHEET-32). */
@@ -196,6 +201,7 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
     checks: fifthEditionChecks,
+    features: fifthEditionFeatures,
     pathParts: fifthEditionPathParts,
     pendingKey: fifthEditionPendingKey,
     rollTest: fifthEditionRollTest,
