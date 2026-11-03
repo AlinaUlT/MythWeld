@@ -128,8 +128,10 @@ describe('SHEET-23 the undo toast', () => {
       'spendInspiration',
       'levelUp',
     ];
-    expect(Object.keys(en.toast.done)).toEqual([...actions, 'other']);
-    for (const action of actions) expect(doneKeyOf(action)).toBe(action);
+    // The actions the sheet's own screens make (SHEET-54: a note), each named by its row.
+    const sheetActions = ['setNote'];
+    expect(Object.keys(en.toast.done)).toEqual([...actions, ...sheetActions, 'other']);
+    for (const action of [...actions, ...sheetActions]) expect(doneKeyOf(action)).toBe(action);
   });
 
   it('says a refused undo in its place, with no "Undo"', () => {

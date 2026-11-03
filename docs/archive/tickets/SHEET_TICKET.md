@@ -5458,3 +5458,45 @@ Found, not fixed: nothing.
 Changelog: "A character on My characters swiped left, or its ⋯, opens its Actions: Copy makes a
 copy, Export saves it as a file, and Delete removes it with Undo; Link for the DM and Transfer
 are marked as coming later."
+
+### SHEET-54 The Notes tab keeps free text · XS
+
+**Hat:** Keep the Notes tab's free text
+**Where:** `apps/web/src/sheet/sections/NotesText.tsx` — the field and `noteEntry`;
+`apps/web/src/sheet/changes.ts` — new: `playerEntry`, the entry every sheet change is built with
+**Depends on:** SHEET-23, SHEET-30
+**Screen:** Notes tab of the sheet; board `V3-Sheet`, BRIEF Part 5 sheet row (Notes: plain text)
+
+**What it should look like when done:**
+1. The Notes tab shows one labelled text field, "Notes", with the placeholder "Write anything
+   about this character."; it holds `notes.free` (SPEC §5.8), empty when the key is not there.
+2. Typing saves nothing. When the field loses focus with a different text, one change is stored
+   (`changeCharacter`, action `setNote`) and the toast says "Note saved" with Undo.
+3. Text with no visible character is no note (the schema refuses it): the key is removed, and
+   Undo puts the old text back. The same text again makes no change.
+4. The text is on the device after a reload. Undo takes the text back; a change made over a newer
+   note is refused and writes nothing.
+5. The field is written in play mode and in edit mode: a note is the person's words, not a number
+   the rules compute.
+
+**Tests:** `apps/web/test/notes.test.tsx` (`SHEET-54 the Notes tab`, `SHEET-54 saving the note`) —
+the field's markup, `noteEntry` for add, change, clear and same text, store, toast, Undo and the
+refused change on a fake database, on golden B of SPEC §6.7; `apps/web/e2e/sheet.spec.ts` — type,
+leave the field, toast, reload, Undo; `apps/web/test/sheet.test.tsx`, `toast.test.tsx` — the
+empty-section list and the toast's key list know the new section and `setNote`. Control numbers:
+the texts are the tests' own; no rules number is involved.
+
+**What came out of it:**
+- Decided here (ADR 002): `notes.free` is the only key this tab writes, so SPEC §5.8's other keys
+  (`appearance` and the rest) are for the rows that show them. The save is on blur, so one Undo
+  reverses a whole writing, not one key press.
+- `playerEntry` is new and general: it builds a log entry from the player with a place's value
+  before and after. The rows after this one (inspiration, hit points, rests) build theirs with it.
+- Gate: lint 356 files clean; typecheck clean; `pnpm test` 97 files, 1249 passed, 0 failed, 32.8 s
+  (8 new), speed project 2 passed; coverage statements 99.45 %, lines 99.9 %; `pnpm e2e` 40
+  passed, 0 failed, 32.4 s (1 new). Screenshot at 360×800 shown in the chat.
+- Found, not fixed: nothing.
+- Changelog: "The Notes tab keeps free text: it is saved when the field loses focus, with a "Note
+  saved" toast and Undo."
+
+---

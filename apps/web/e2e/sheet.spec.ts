@@ -203,3 +203,37 @@ test('SHEET-68 the sheet shows speed in squares once Settings picks them', async
   // Golden B's speed is 30 feet; SRD 5.2.1 "Playing on a Grid": 30 feet is 6 squares.
   await expect(number(page, 'speed.walk')).toHaveText('6 sqSpeed');
 });
+
+test('SHEET-54 the Notes tab keeps free text, saved when the field loses focus', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=notes`);
+  const field = page.getByRole('textbox', { name: en.notes.label });
+  await expect(field).toHaveValue('');
+  await expect(field).toHaveAttribute('placeholder', en.notes.placeholder);
+
+  await field.fill('Met the smith at dusk.\nShe owes me a favour.');
+  // Typing alone saves nothing: no toast yet.
+  await expect(page.getByRole('status')).not.toContainText(en.toast.done.setNote);
+  await page.getByRole('tab', { name: 'Main' }).tap();
+  await expect(page.getByRole('status')).toContainText(en.toast.done.setNote);
+  await page.getByRole('tab', { name: 'Notes' }).tap();
+  await expect(field).toHaveValue('Met the smith at dusk.\nShe owes me a favour.');
+  await page.screenshot({ path: testInfo.outputPath('notes.png') });
+
+  // The text is on the device: it is still there after a reload.
+  await page.reload();
+  await expect(page.getByRole('textbox', { name: en.notes.label })).toHaveValue(
+    'Met the smith at dusk.\nShe owes me a favour.',
+  );
+
+  // Undo takes it back.
+  await page.getByRole('textbox', { name: en.notes.label }).fill('A second thought.');
+  await page.getByRole('tab', { name: 'Main' }).tap();
+  await page.getByRole('button', { name: en.toast.undo }).tap();
+  await page.getByRole('tab', { name: 'Notes' }).tap();
+  await expect(page.getByRole('textbox', { name: en.notes.label })).toHaveValue(
+    'Met the smith at dusk.\nShe owes me a favour.',
+  );
+});
