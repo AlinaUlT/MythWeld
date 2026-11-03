@@ -11,8 +11,9 @@ import { GrimoireDb } from '../src/db/db';
 import '../src/i18n';
 import i18n from '../src/i18n';
 import { currentToast, hideToast, undoToast } from '../src/shared/undo';
+import { FREE_NOTE, noteEntry } from '../src/sheet/changes';
 import { SheetContext, type SheetValue } from '../src/sheet/SheetContext';
-import { FREE_NOTE, NotesText, noteEntry } from '../src/sheet/sections/NotesText';
+import { NotesText } from '../src/sheet/sections/NotesText';
 import { type AppCharacter, sheetSystemOf } from '../src/systems';
 
 // SHEET-54: golden B of SPEC §6.7 is the stored character; its note is the test's own text.

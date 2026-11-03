@@ -7,6 +7,9 @@
 import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
+  ABOUT_LISTS,
+  type AboutListName,
+  type AboutShown,
   EDITION_RULES,
   type EditionTerms,
   FIFTH_EDITION_HEADER_NUMBERS,
@@ -14,6 +17,7 @@ import {
   type FifthEditionCharacter,
   type FifthEditionEntity,
   type FifthEditionPack,
+  fifthEditionAbout,
   fifthEditionCasting,
   fifthEditionClassLine,
   fifthEditionHitPoints,
@@ -116,7 +120,7 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
   },
 ];
 
-export type { MadeByHand, ManualCharacterAsk };
+export type { AboutListName, MadeByHand, ManualCharacterAsk };
 
 /** What the sheet reads of one system: its module, and what its header and dock name. */
 export interface SheetSystem {
@@ -130,6 +134,12 @@ export interface SheetSystem {
   hitPoints(character: AppCharacter): HeaderHitPoints;
   /** The inspiration held, its stars and the edition's own maximum (ADR 009 item 5, SHEET-55). */
   inspiration(character: AppCharacter): InspirationShown;
+  /** The origin details and proficiencies the About tab shows (ADR 009 item 3, SHEET-53). */
+  about(character: AppCharacter, computed: AppComputed): AboutShown;
+  /** Each About list's proficiency category, and the entity type that names its keys. */
+  aboutLists: Readonly<Record<AboutListName, { category: string; type: string }>>;
+  /** The words of the edition's species and lineage: a race and a subrace in 2014. */
+  terms: (ruleset: AppRuleset) => EditionTerms;
   /** Gains or spends one inspiration; the action's entry, not yet stored. */
   gainInspiration: typeof gainInspiration;
   spendInspiration: typeof spendInspiration;
@@ -143,6 +153,9 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    about: fifthEditionAbout,
+    aboutLists: ABOUT_LISTS,
+    terms: (ruleset) => EDITION_RULES[ruleset].terms,
     inspiration: fifthEditionInspiration,
     gainInspiration,
     spendInspiration,

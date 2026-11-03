@@ -54,3 +54,35 @@ export async function perform(
   if (!made.ok) return made;
   return changeCharacter(character.id, made.entry, undefined, database);
 }
+
+/** The key of the Notes tab's own note (SHEET-54). */
+export const FREE_NOTE = 'free';
+
+/**
+ * The change that makes the stored note `key` the text `text`; none when it already is. Text with
+ * no visible character is no note: the key is removed (`notes` holds visible text only).
+ * SHEET-53: the About tab keeps the character's alignment as the note `alignment`.
+ */
+export function noteEntry(
+  character: AppCharacter,
+  text: string,
+  now?: string,
+  key = FREE_NOTE,
+): LogEntry | undefined {
+  const stored = character.notes[key];
+  const after = /\S/.test(text) ? text : undefined;
+  if (after === stored) return undefined;
+  return playerEntry(
+    character,
+    'setNote',
+    key,
+    [
+      {
+        path: ['notes', key],
+        ...(stored !== undefined && { before: stored }),
+        ...(after !== undefined && { after }),
+      },
+    ],
+    now,
+  );
+}

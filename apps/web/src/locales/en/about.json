@@ -1,1 +1,34 @@
-{}
+{
+  "title": "About {{name}}",
+  "terms": {
+    "race": "Race",
+    "species": "Species",
+    "subrace": "Subrace",
+    "lineage": "Lineage"
+  },
+  "background": "Background",
+  "size": "Size",
+  "alignment": "Alignment",
+  "alignmentNone": "Not set",
+  "languages": "Languages",
+  "proficiencies": "Proficiencies",
+  "armor": "Armor",
+  "weapons": "Weapons",
+  "tools": "Tools",
+  "skills": "Skills",
+  "none": "None",
+  "separator": ", ",
+  "missing": "Missing: {{id}}",
+  "keys": {
+    "armor": {
+      "light": "Light armor",
+      "medium": "Medium armor",
+      "heavy": "Heavy armor",
+      "shield": "Shields"
+    },
+    "weapon": {
+      "simple": "Simple weapons",
+      "martial": "Martial weapons"
+    }
+  }
+}

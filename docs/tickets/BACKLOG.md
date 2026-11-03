@@ -254,7 +254,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-50 | The Gear tab equips items | M | 🔲 |
 | SHEET-51 | Coins change by quick steps | XS | 🔲 |
 | SHEET-52 | Custom entries are added as free text | S | 🔲 |
-| SHEET-53 | The About tab shows the origin details | S | 🔲 |
+| SHEET-53 | The About tab shows the origin details | S | ✅ 2026-11-03 |
 | SHEET-54 | The Notes tab keeps free text | XS | ✅ 2026-11-03 |
 | SHEET-55 | Inspiration is tracked as stars | S | ✅ 2026-11-03 |
 | SHEET-56 | The portrait makes a round token | S | 🔲 |
@@ -371,10 +371,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   (free text now; with effects in phase 5), board `V3-Add`. The stored shape has both already: an
   inventory row's `custom`, and the character's own entities (`localEntities`). Found by SHEET-22:
   removing one ends with `withDropped` (`trackers.ts`).
-- **SHEET-53** — ADR 009 item 3, board `V3-About`: background, alignment, languages, armor, weapon
-  and tool proficiencies. Found by ENG-48: the size shown is `Computed.keys.size`, with steps
-  naming the species or lineage, each effect and a manual edit. The stored character has no
-  alignment field: the row adds one (a migration, SPEC §5.8) or keeps it in `notes`.
 - **SHEET-56** — ADR 009 item 6, ADR 015 item 2, board `V3-Token`: the person's image, an animated
   picture or a short video included, kept in the blobs table on the device (ADR 005 item 10); the
   token is the image in a round frame (SHEET-03's slot). Found by SHEET-25: Copy copies the blob

@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-11-03 · SHEET-53 · The About tab shows the species and lineage, background, size,
+  alignment, languages and the armor, weapon, tool and skill proficiencies; the alignment is
+  written in edit mode.
 - 2026-11-03 · SHEET-55 · The header shows inspiration as stars; a tap on an empty star gains one
   and a tap on a filled star spends one, with Undo; the edition's own maximum shows beside the
   stars when the house rule allows more.

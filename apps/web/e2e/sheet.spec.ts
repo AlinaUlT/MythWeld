@@ -290,3 +290,38 @@ test('SHEET-55 the header draws inspiration as stars; a tap gains or spends one'
   await expect(star(true)).toHaveCount(3);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
 });
+
+test('SHEET-53 the About tab shows the origin details; edit mode writes the alignment', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenA]);
+  await page.goto(`characters/${goldenA.id}?tab=about`);
+  const panel = page.getByRole('tabpanel');
+  await expect(panel.getByRole('heading', { name: 'About Golden A' })).toBeVisible();
+  const row = (label: string) => panel.locator(`dt:text-is("${label}") + dd`);
+  // A hill dwarf cleric with the Acolyte background (SPEC §6.7 golden A); the 2014 words.
+  await expect(row('Race')).toHaveText('Dwarf');
+  await expect(row('Subrace')).toHaveText('Hill Dwarf');
+  await expect(row('Background')).toHaveText('Acolyte');
+  await expect(row('Size')).toHaveText('Medium');
+  await expect(row('Alignment')).toHaveText('Not set');
+  await expect(row('Languages')).toContainText('Dwarvish');
+  await expect(row('Armor')).toContainText('Heavy armor');
+  await expect(row('Weapons')).toContainText('Simple weapons');
+  await expect(row('Skills')).toContainText('Medicine');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+
+  // Edit mode makes the alignment a field; leaving it saves one change.
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  const field = page.getByRole('textbox', { name: 'Alignment' });
+  await field.fill('Neutral good');
+  await page.getByRole('tab', { name: 'Notes' }).tap();
+  await expect(page.getByRole('status')).toContainText(en.toast.done.setNote);
+  await page.getByRole('tab', { name: 'About' }).tap();
+  await expect(page.getByRole('textbox', { name: 'Alignment' })).toHaveValue('Neutral good');
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await expect(row('Alignment')).toHaveText('Neutral good');
+  await page.screenshot({ path: testInfo.outputPath('about.png') });
+  await page.reload();
+  await expect(row('Alignment')).toHaveText('Neutral good');
+});

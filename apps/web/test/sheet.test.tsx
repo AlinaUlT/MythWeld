@@ -23,6 +23,7 @@ import { SheetDice } from '../src/sheet/SheetDice';
 import { barShares, SheetDock } from '../src/sheet/SheetDock';
 import { SheetHeader } from '../src/sheet/SheetHeader';
 import { formatNumber, numberAt } from '../src/sheet/SheetNumber';
+import { AboutList } from '../src/sheet/sections/AboutList';
 import { NotesText } from '../src/sheet/sections/NotesText';
 import { SHEET_TABS, tabOf } from '../src/sheet/tabs';
 import { type AppCharacter, sheetSystemOf } from '../src/systems';
@@ -221,7 +222,7 @@ describe('SHEET-30 tabs', () => {
     ];
     expect(sections).toHaveLength(14);
     // A row that fills a section takes it from this list; its own test draws it.
-    const filled: ComponentType[] = [NotesText, Inspiration];
+    const filled: ComponentType[] = [NotesText, Inspiration, AboutList];
     for (const Section of [...sections, Inspiration].filter((each) => !filled.includes(each))) {
       expect(draw(sheet, <Section />)).toBe('');
     }

@@ -5624,3 +5624,137 @@ filled star spends one, with Undo; the edition's own maximum shows beside the st
 rule allows more."
 
 ---
+
+### SHEET-53 The About tab shows the origin details
+
+**Hat:** Show the origin details on the About tab
+**Depends on:** SHEET-30, SHEET-54
+**Size:** S
+**Screen:** Yes — the sheet's About tab; board `V3-About`, its row in `docs/design/BRIEF.md` Part 5
+("P4 Character sheet")
+**SPEC:** §5.8 (`notes`), §6.2 (`Computed.keys`, `proficiencies`), §7.2; ADR 009 item 3
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/AboutList.tsx` — changes (was an empty stub): the tab.
+- `packages/system-5e/src/about.ts` — new: `fifthEditionAbout`, `ABOUT_LISTS`.
+- `apps/web/src/systems.ts` — `SheetSystem.about`, `aboutLists`, `terms`.
+- `apps/web/src/sheet/changes.ts` — `noteEntry` moves here from the Notes tab, with a key.
+- `apps/web/src/sheet/names.ts` — new: `nameIn`, shared with the header.
+- `apps/web/src/locales/en/about.json` (filled).
+
+#### 2. What is missing now
+
+Measured on `483d642`: `AboutList()` returns `null`; `about.json` is `{}`. `Computed.proficiencies`
+holds every proficiency a grant gave, as `{ category, key, level, from }`, and
+`Computed.keys['size']` the chosen size, but nothing on the sheet reads them. The stored character
+has no alignment field: `CharacterDoc.notes` holds visible text under any entity key.
+
+#### 3. What it should look like when done
+
+1. The tab is a card headed "About <name>" with rows: the species (the word is "Race" in 2014,
+   "Species" in 2024), the lineage ("Subrace" / "Lineage", only when one is gathered), the
+   background, the size, the alignment, the languages; then "Proficiencies": Armor, Weapons, Tools,
+   and Skills.
+2. Golden A (hill dwarf cleric 1, Acolyte): Race Dwarf, Subrace Hill Dwarf, Background Acolyte,
+   Size Medium; languages Common, Dwarvish, Celestial, Elvish; armor Light, Medium, Heavy, Shield;
+   weapons Simple weapons, Battleaxe, Handaxe, Light hammer, Warhammer; tools Masons tools; skills
+   Insight, Religion, Medicine, Persuasion.
+3. A name is the pack entry's. A key no entry names is `about.json`'s words (armor groups, weapon
+   categories) or the key's own words ("lightHammer" is "Light hammer"). A species or background
+   id its pack no longer has reads "Missing: <id>". A list with nothing in it reads "None".
+4. The alignment is `notes.alignment`: in play mode text ("Not set" until written); in edit mode a
+   field, saved when it loses focus as one change with the "Note saved" toast and Undo. Text with no
+   visible character removes the note.
+5. No number is shown, so nothing here needs a breakdown. The tab stays 360 px wide.
+
+#### 4. How to do it
+
+1. `fifthEditionAbout(character, computed)`: the species, background, lineages (gathered entities
+   of type `lineage`), the size key, and for each list the keys of its proficiency category, each
+   once, with a level above 0. `ABOUT_LISTS` gives each list's category and the entity type whose
+   `byKey` entries name its keys.
+2. `SheetSystem` carries them, so the tab never names the edition.
+3. `noteEntry(character, text, now, key)` is the Notes tab's change with the key as a parameter.
+4. `AboutList` draws the rows; `Alignment` is the one that can be a field.
+
+#### 5. Stored data
+
+Nothing stored changes shape. The alignment is a note under `notes.alignment`, a place the stored
+shape already has (`notes` is a record of visible text), so no `schemaVersion` bump and no
+migration. This is the second of the two ways the row named; see §11.
+
+#### 6. What a person will see
+
+The sheet's About tab at 360×800, opened from the dock. States: a character with no species or
+background (rows "None"), a pack not installed ("Missing: <id>", beside the sheet's own banner),
+full. Keys in `about`: `title` "About {{name}}", `terms.race|species|subrace|lineage`,
+`background`, `size`, `alignment`, `alignmentNone` "Not set", `languages`, `proficiencies`,
+`armor`, `weapons`, `tools`, `skills`, `none`, `separator`, `missing`, and `keys.armor.*`,
+`keys.weapon.*`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/about.test.ts` — `SHEET-53 the origin details of golden A`, `…of other
+  characters`: 6 tests. Golden A's lists were read off the grants in `srd-2014.ts`, not from a run.
+- `apps/web/test/about.test.tsx` — 9 tests: the rows of golden A and B, the words of a key,
+  "Missing", the alignment in play and edit mode, and its note stored and undone.
+- `apps/web/e2e/sheet.spec.ts` — one test: the rows of golden A, edit mode, the alignment saved
+  and still there after a reload, 360 px wide.
+- Control numbers from: SPEC §6.7 golden A and B; the grants of `srd-2014.ts` / `srd-2024.ts`.
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts are decided here. Which proficiencies a character has is
+`compute()`'s (ENG-09, ENG-46); this tab lists them.
+
+#### 9. Not in this ticket
+
+- A breakdown of the size: `BreakdownSheet` shows numbers (SHEET-33); a key's steps
+  (`Computed.keys['size'].steps`) have no screen yet.
+- Choosing an unmade size or language: SHEET-36 (pending choices).
+- Tool kind entries in the pack: no `toolKind` entry exists in `srd-2014.ts` or `srd-2024.ts`, so
+  Mason's tools reads "Masons tools" (see §11).
+- The alignment in the manual form and the creation wizard: SHEET-27 is closed without it; phase 4.
+
+#### 10. Rake check
+
+- **Everything is data, the core names no game:** the tab reads `SheetSystem`; the lists, the
+  terms and the entity types come from the fifth-edition module.
+- **Ids are stable, missing is not broken:** an id a pack lacks shows "Missing: <id>".
+- **No look in a component:** tokens and parts only (`card`, `field`, `divide-line`).
+- **No visible literal:** every string is an `about` key; the words of a key come from the data.
+- **A person's saved data:** the alignment is one undoable change; no stored shape changes.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-03, on `483d642` plus this ticket: `pnpm lint` 361 files, no fixes;
+`pnpm typecheck` clean; `pnpm test` 100 files, 1275 passed, 0 failed, 33.1 s (15 new), then the
+speed project 2 passed; coverage statements 99.45 % (3495/3514), lines 99.9 % (3068/3071);
+`pnpm e2e` 42 passed, 0 failed, 35.3 s (1 new). Screenshot at 360×800 shown in the chat.
+
+Differences from §3 and the board:
+- Decided here (ADR 002): the alignment stays in `notes`, as the row allowed, not in a new field.
+  It adds no migration, so it cannot touch a saved character; a phase that wants it first-class
+  (the wizard, the PDF) adds the field and a migration that moves `notes.alignment`. Free text,
+  because SRD 5.1 and 5.2.1 name nine alignments only as examples.
+- The alignment is written in edit mode only (play mode changes only the trackers, SPEC §7.2);
+  the Notes tab of SHEET-54 is written in both.
+- The board shows "Skills" under Proficiencies and a species line; the size row is added from the
+  row's note.
+
+Found, not fixed:
+- Neither SRD pack has `toolKind` entries (the fifth-edition module defines the type), so a tool
+  proficiency such as `masonsTools` is named by its key's words ("Masons tools", not "Mason's
+  tools"). The content phase (CONT, not open yet) adds them; this tab then shows their names
+  with no change.
+- A weapon or armor proficiency by an item's own key shows the pack item's name only for the
+  items the pack holds (the Warhammer); the others show the key's words ("Battleaxe",
+  "Light hammer").
+
+Changelog: "The About tab shows the species and lineage, background, size, alignment, languages
+and the armor, weapon, tool and skill proficiencies; the alignment is written in edit mode."
+
+---
