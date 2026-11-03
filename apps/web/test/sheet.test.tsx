@@ -221,8 +221,8 @@ describe('SHEET-30 tabs', () => {
     ];
     expect(sections).toHaveLength(14);
     // A row that fills a section takes it from this list; its own test draws it.
-    const filled: ComponentType[] = [NotesText];
-    for (const Section of [...sections.filter((each) => !filled.includes(each)), Inspiration]) {
+    const filled: ComponentType[] = [NotesText, Inspiration];
+    for (const Section of [...sections, Inspiration].filter((each) => !filled.includes(each))) {
       expect(draw(sheet, <Section />)).toBe('');
     }
     for (const Panel of [RestPanel, ActionsMenu, ChoicesPanel]) {

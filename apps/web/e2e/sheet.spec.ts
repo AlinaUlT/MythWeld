@@ -237,3 +237,56 @@ test('SHEET-54 the Notes tab keeps free text, saved when the field loses focus',
     'Met the smith at dusk.\nShe owes me a favour.',
   );
 });
+
+test('SHEET-55 the header draws inspiration as stars; a tap gains or spends one', async ({
+  page,
+}, testInfo) => {
+  // The owner's house maximum of 3, two held; golden B is a 2024 character, so its word is
+  // "Heroic Inspiration" and the edition's own maximum of 1 shows beside the stars.
+  const house = {
+    ...goldenB,
+    systemData: {
+      ...goldenB.systemData,
+      houseRules: { ...goldenB.systemData.houseRules, inspirationMax: 3 },
+      state: { ...goldenB.systemData.state, inspiration: 2 },
+    },
+  };
+  await saveRows(page, [house]);
+  await page.goto(`characters/${goldenB.id}`);
+  const stars = page.getByRole('group', { name: /Heroic Inspiration/ });
+  await expect(stars).toBeVisible();
+  await expect(page.getByText('Rules: 1')).toBeVisible();
+  const star = (filled: boolean) => page.locator(`[data-filled="${filled}"]`);
+  await expect(star(true)).toHaveCount(2);
+  await expect(star(false)).toHaveCount(1);
+  await page.screenshot({
+    path: testInfo.outputPath('inspiration-header.png'),
+    clip: { x: 0, y: 0, width: 360, height: 180 },
+  });
+
+  // A star is 20 px wide; its touch area reaches 14 px above and below it, 48 px in all.
+  const box = await star(false).boundingBox();
+  const reached = await page.evaluate(
+    ({ x, y }) => document.elementFromPoint(x, y)?.closest('button')?.dataset.filled,
+    { x: (box?.x ?? 0) + 10, y: (box?.y ?? 0) - 12 },
+  );
+  expect(reached).toBe('false');
+
+  // An empty star gains one.
+  await star(false).tap();
+  await expect(page.getByRole('status')).toContainText(en.toast.done.gainInspiration);
+  await expect(star(true)).toHaveCount(3);
+  await expect(star(false)).toHaveCount(0);
+
+  // A filled star spends one; Undo brings it back.
+  await star(true).first().tap();
+  await expect(page.getByRole('status')).toContainText(en.toast.done.spendInspiration);
+  await expect(star(true)).toHaveCount(2);
+  await page.getByRole('button', { name: en.toast.undo }).tap();
+  await expect(star(true)).toHaveCount(3);
+
+  // The change is on the device.
+  await page.reload();
+  await expect(star(true)).toHaveCount(3);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+});

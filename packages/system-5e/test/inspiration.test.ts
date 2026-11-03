@@ -4,6 +4,7 @@ import {
   DEFAULT_HOUSE_RULES,
   FIFTH_EDITION_SYSTEM,
   type FifthEditionCharacter,
+  fifthEditionInspiration,
   fifthEditionModule,
   gainInspiration,
   INSPIRATION_LONG_REST_PATH,
@@ -345,5 +346,37 @@ describe('ENG-64 a long rest gives the inspiration a trait names', () => {
     expect(longRest(ice, index2024Resourceful, frozenStamp).ok).toBe(true);
     expect(ice).toEqual(copy);
     expect(frozenStamp).toEqual(stamp);
+  });
+});
+
+describe('SHEET-55 the inspiration the sheet shows', () => {
+  // The editions' own maximum and use are ENG-19 §8's: SRD 5.1, Inspiration, "You either have
+  // inspiration or you don't" (1, advantage); SRD 5.2.1, Heroic Inspiration, "you can expend it to
+  // reroll any die" (1, reroll). The goldens hold none, with a house maximum of 1.
+  it('gives golden A (2014): none held, one star, one at most, spent as advantage', () => {
+    expect(fifthEditionInspiration(holding(goldenA, 0))).toEqual({
+      held: 0,
+      max: 1,
+      rules: { max: 1, use: 'advantage' },
+      term: 'inspiration',
+    });
+  });
+
+  it('gives golden B (2024): none held, one star, one at most, spent as a reroll', () => {
+    expect(fifthEditionInspiration(holding(goldenB, 0))).toEqual({
+      held: 0,
+      max: 1,
+      rules: { max: 1, use: 'reroll' },
+      term: 'heroicInspiration',
+    });
+  });
+
+  it("gives the owner's house maximum of 3 and the two held, beside the edition's 1", () => {
+    expect(fifthEditionInspiration(holding(goldenB, 2, true))).toEqual({
+      held: 2,
+      max: 3,
+      rules: { max: 1, use: 'reroll' },
+      term: 'heroicInspiration',
+    });
   });
 });

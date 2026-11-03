@@ -1,1 +1,9 @@
-{}
+{
+  "label": {
+    "inspiration": "Inspiration {{held}} of {{max}}",
+    "heroicInspiration": "Heroic Inspiration {{held}} of {{max}}"
+  },
+  "gain": "Gain inspiration",
+  "spend": "Spend inspiration",
+  "rules": "Rules: {{max}}"
+}

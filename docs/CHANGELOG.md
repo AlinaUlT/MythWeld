@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-11-03 · SHEET-55 · The header shows inspiration as stars; a tap on an empty star gains one
+  and a tap on a filled star spends one, with Undo; the edition's own maximum shows beside the
+  stars when the house rule allows more.
 - 2026-11-03 · SHEET-54 · The Notes tab keeps free text: it is saved when the field loses focus,
   with a "Note saved" toast and Undo.
 - 2026-10-29 · SHEET-25 · A character on My characters swiped left, or its ⋯, opens its

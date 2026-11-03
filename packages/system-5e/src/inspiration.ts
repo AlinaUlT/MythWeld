@@ -9,6 +9,7 @@ import type { LogChange } from '@grimoire/schema';
 import { INSPIRATION_PATH, settled, type Unchanged, whole } from './actions';
 import type { FifthEditionCharacter } from './character';
 import { zeroStep } from './checks';
+import { rulesOf } from './rulesets';
 
 // ENG-59: inspiration is gained or spent one at a time, each one log entry, up to the house
 // rules' maximum: the bound the stored shape checks (ENG-33). The edition's own maximum,
@@ -102,4 +103,33 @@ export function spendInspiration(
     return { ok: false, code: 'noInspiration', message: 'The character holds no inspiration.' };
   }
   return inspired(character, stamp, 'spendInspiration', held - 1);
+}
+
+// SHEET-55: what the sheet's stars show (ADR 009 item 5): the inspiration held, the house rules'
+// maximum (the number of stars), and the edition's own maximum and use beside it.
+
+/** The inspiration of a character as the sheet draws it. */
+export interface InspirationShown {
+  /** The inspiration held now. */
+  held: number;
+  /** The house rules' maximum: the stars drawn. */
+  max: number;
+  /** The edition's own maximum, and what spending one does (ENG-19 §8). */
+  rules: { max: number; use: 'advantage' | 'reroll' };
+  /** The edition's word for it: "Inspiration", or "Heroic Inspiration" (ENG-19). */
+  term: 'inspiration' | 'heroicInspiration';
+}
+
+/** The inspiration held, the house rules' maximum, the edition's maximum, use and word. */
+export function fifthEditionInspiration(
+  character: Pick<FifthEditionCharacter, 'ruleset' | 'systemData'>,
+): InspirationShown {
+  const { houseRules, state } = character.systemData;
+  const { inspiration, terms } = rulesOf(character);
+  return {
+    held: state.inspiration,
+    max: houseRules.inspirationMax,
+    rules: { max: inspiration.max, use: inspiration.use },
+    term: terms.inspiration,
+  };
 }

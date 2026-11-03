@@ -5500,3 +5500,127 @@ the texts are the tests' own; no rules number is involved.
   saved" toast and Undo."
 
 ---
+
+### SHEET-55 Inspiration is tracked as stars
+
+**Hat:** Track inspiration as stars
+**Depends on:** SHEET-23, SHEET-30
+**Size:** S
+**Screen:** Yes — the sheet's header; board `V3-Sheet`, its row in `docs/design/BRIEF.md` Part 5
+("P4 Character sheet")
+**SPEC:** §6.4 (trackers), §7.2; ADR 009 item 5
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/header/Inspiration.tsx` — changes (was an empty stub): the stars.
+- `packages/system-5e/src/inspiration.ts` — `fifthEditionInspiration`: what the stars show.
+- `apps/web/src/systems.ts` — `SheetSystem.inspiration`, `gainInspiration`, `spendInspiration`.
+- `apps/web/src/sheet/changes.ts` — `perform` and `playerStamp`: run a module's action as the
+  player and store its entry with its toast.
+- `apps/web/src/sheet/SheetHeader.tsx` — the stars get a row of their own.
+- `apps/web/src/locales/en/inspiration.json` (filled).
+
+#### 2. What is missing now
+
+Measured on `2a3ba95`: `Inspiration()` returns `null`; `inspiration.json` is `{}`. The engine
+holds `gainInspiration` and `spendInspiration` (ENG-59), and the toast has their texts, but no
+screen calls them. `SheetSystem` has nothing for inspiration, and no sheet code runs a module's
+action.
+
+#### 3. What it should look like when done
+
+1. The header shows one eight-pointed star per house-rules maximum (`houseRules.inspirationMax`):
+   golden B shows 1 empty star; a character with maximum 3 and 2 held shows 2 filled, 1 empty.
+2. A tap on an empty star gains one (`gainInspiration`); a tap on a filled star spends one
+   (`spendInspiration`). Each is one change with its toast, "Inspiration gained" or "Inspiration
+   spent", and Undo. A refusal (`atMax`, `noInspiration`) writes nothing.
+3. When the house maximum is not the edition's own (`rulesOf(...).inspiration.max`, 1 in both
+   SRDs), "Rules: 1" stands beside the stars; when they are equal it is not shown.
+4. The group is named "Inspiration 2 of 3", or "Heroic Inspiration 2 of 3" for a 2024 character
+   (`terms.inspiration`).
+5. Each star is 20 px wide with a touch area 48 px tall; the polygon is the board's.
+6. The header stays 360 px wide at 360×800 and the class line stays visible.
+
+#### 4. How to do it
+
+1. `fifthEditionInspiration(character)` gives `{ held, max, rules: { max, use }, term }`.
+2. `SheetSystem` gets `inspiration`, `gainInspiration`, `spendInspiration`; the component asks the
+   sheet's system, never the edition.
+3. `perform(character, action)` stamps the action as the player, and stores its entry through
+   `changeCharacter`.
+4. `Inspiration` draws a `fieldset` with a hidden legend and one button per star.
+
+#### 5. Stored data
+
+Nothing stored changes. `state.inspiration` and `houseRules.inspirationMax` are ENG-33's.
+
+#### 6. What a person will see
+
+The sheet at 360×800, under the name and above the stats row: a row 32 px high with the stars at
+the left and, only when needed, "Rules: 1" in muted text. States: none held (all empty), some,
+all filled. Keys in `inspiration`: `label.inspiration` "Inspiration {{held}} of {{max}}",
+`label.heroicInspiration` "Heroic Inspiration {{held}} of {{max}}", `gain` "Gain inspiration",
+`spend` "Spend inspiration", `rules` "Rules: {{max}}".
+
+#### 7. Tests
+
+- `packages/system-5e/test/inspiration.test.ts` — `SHEET-55 the inspiration the sheet shows`: 3
+  tests, golden A, golden B and the owner's 3.
+- `apps/web/test/inspiration.test.tsx` — `SHEET-55 the inspiration stars`, `SHEET-55 gaining and
+  spending`: 8 tests: the markup, the board's polygon, gain, spend, Undo, refusals, the stamp.
+- `apps/web/e2e/sheet.spec.ts` — one test: 2 of 3 filled and "Rules: 1", the touch area, a tap
+  gains, a tap spends, Undo, the state after a reload, 360 px wide.
+- Control numbers from: SPEC §6.7 golden A and B (none held, house maximum 1); the polygon's
+  points copied from board `V3-Sheet`.
+
+#### 8. Checked against the source
+
+ADR 009 item 5 marks the SRD's rule `[ПРОВЕРИТЬ]`; it was checked by ENG-19 §8 and ENG-59: SRD 5.1
+"Inspiration": "You either have inspiration or you don't", so the edition's maximum is 1 (spent as
+advantage); SRD 5.2.1 "Heroic Inspiration": the same maximum 1 (spent as a reroll). Both are in
+`rulesets/2014.ts` and `2024.ts`. The default of 3 is the owner's house rule, so the edition's
+number is shown beside it, as ADR 009 item 5 asks.
+
+#### 9. Not in this ticket
+
+- What a spent inspiration does to a roll (advantage, a reroll): SHEET-39's roll dialog.
+- The DM's control of the maximum: the table link (ADR 009 item 13).
+- The house rules' editor for `inspirationMax`: phase 4 (house rules).
+- Inspiration gained by a long rest (`inspiration.longRest`): SHEET-45's Rest frames.
+
+#### 10. Rake check
+
+- **Engine is pure, core names no game:** the component reads `SheetSystem`; the 5e numbers come
+  from `packages/system-5e`.
+- **Rules live in the module:** the maximum, the use and the word come from the edition's rules,
+  not an `if (ruleset === …)` in a component.
+- **No look in a component:** colours are tokens (`text-text`, `text-muted`, `border-line`).
+- **No visible literal:** every string is an `inspiration` key.
+- **A person's saved data:** a refused change writes nothing; every change is undoable.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-03, on `2a3ba95` plus this ticket: `pnpm lint` 357 files, no fixes;
+`pnpm typecheck` clean; `pnpm test` 98 files, 1260 passed, 0 failed, 33.1 s (11 new), then the
+speed project 2 passed; coverage statements 99.45 % (3481/3500), lines 99.9 % (3054/3057);
+`pnpm e2e` 41 passed, 0 failed, 33.6 s (1 new). Screenshot at 360×800 shown in the chat.
+
+Differences from §3 and the board:
+- The board puts the stars on the name's second line, as SHEET-30 expected. With the class line,
+  the edition badge and "Rules: 1" they left no room at 360 px: the first screenshot showed the
+  class line cut to nothing and "Rules: 1" over the Rest button. The stars have a row of their own
+  (32 px), between the name and the stats row. Every character's header is 32 px taller.
+- Decided here (ADR 002): a tap on any filled star spends one and a tap on any empty star gains
+  one, since the engine's actions move by one. The star's size is the board's 18 px; its touch
+  area is 20 × 48 px, which the row's height allows.
+- `INNER` radius of the polygon is 5.2, read from the board's points, not 7 as first guessed.
+
+Found, not fixed: nothing.
+
+Changelog: "The header shows inspiration as stars; a tap on an empty star gains one and a tap on a
+filled star spends one, with Undo; the edition's own maximum shows beside the stars when the house
+rule allows more."
+
+---

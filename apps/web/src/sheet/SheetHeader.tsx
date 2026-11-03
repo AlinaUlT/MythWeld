@@ -3,6 +3,8 @@
 // then Rest, the Edit switch and "⋯"; under them the stats row, and for a caster each casting
 // class's ability, spell save DC and spell attack (ADR 009 item 4). Every number is a
 // `SheetNumber`.
+// SHEET-55: the inspiration stars have a row of their own between the name and the stats: beside
+// the badges at 360 px they pushed the class line out.
 import { STAT_TYPE } from '@grimoire/engine';
 import type { L10n } from '@grimoire/schema';
 import type { TFunction } from 'i18next';
@@ -146,7 +148,6 @@ export function SheetHeader({ onChoices, onRest, onEdit, onActions }: HeaderActi
               {character.ruleset}
             </Part>
             <ChoicesBadge onChoices={onChoices} t={t} />
-            <Inspiration />
           </span>
         </div>
         <Part
@@ -186,6 +187,7 @@ export function SheetHeader({ onChoices, onRest, onEdit, onActions }: HeaderActi
           <Ellipsis aria-hidden className={icon} />
         </Part>
       </div>
+      <Inspiration />
       <StatsRow t={t} />
       <CastingRow t={t} />
     </Slot>
