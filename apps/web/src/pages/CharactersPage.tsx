@@ -33,6 +33,7 @@ import { paths, sheetPath } from '../shell/routes';
 import { type AppCharacter, listLineOf } from '../systems';
 import { motionStyle } from '../theme/motions';
 import { Part } from '../theme/Part';
+import { ImportFile } from './ImportFile';
 
 /** How far a card slides open: its four actions, 60 px each (board V3-Characters). */
 export const ACTIONS_PX = 240;
@@ -298,7 +299,6 @@ function NewCharacterLink() {
 }
 
 function Empty({ t }: { t: CharactersT }) {
-  const { t: tc } = useTranslation();
   return (
     <div className="flex grow flex-col items-center justify-center gap-3 px-4 pb-12 text-center">
       <p className="text-15 text-muted">{t('empty')}</p>
@@ -312,17 +312,7 @@ function Empty({ t }: { t: CharactersT }) {
         <Plus aria-hidden className="size-5" />
         {t('new')}
       </Part>
-      {/* Importing a file comes with SHEET-26. */}
-      <Part
-        as="button"
-        type="button"
-        name="button-secondary"
-        disabled
-        className="flex h-control flex-col items-center justify-center px-5 text-muted"
-      >
-        <span className="text-14 font-semibold">{t('import')}</span>
-        <span className="text-11">{tc('comingLater')}</span>
-      </Part>
+      <ImportFile />
     </div>
   );
 }
@@ -367,6 +357,7 @@ function List({ characters, t }: { characters: readonly ListedCharacter[]; t: Ch
         );
       })}
       <p className="mx-1 mt-1.5 text-13 text-muted">{t('hint')}</p>
+      <ImportFile />
       {actions !== undefined && (
         <CharacterActions
           target={actions.target}

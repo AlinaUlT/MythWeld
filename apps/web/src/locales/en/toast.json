@@ -3,6 +3,8 @@
   "notUndone": "Not undone: it changed since",
   "deleted": "{{name}} deleted",
   "notRestored": "{{name}} could not be brought back",
+  "imported": "{{name}} imported",
+  "importedAgain": "{{name}} imported as a new character: its id was already here",
   "done": {
     "useResource": "{{name}} used",
     "regainResource": "{{name}} regained",

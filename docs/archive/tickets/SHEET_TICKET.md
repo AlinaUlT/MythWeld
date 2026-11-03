@@ -5901,3 +5901,131 @@ or a short video included, and a frame; it is cut round and stays on the device.
 shows it too."
 
 ---
+
+### SHEET-26 A character file imports through its checks
+
+**Hat:** Import a character file through its checks
+**Depends on:** SHEET-10, SHEET-24, SHEET-25
+**Size:** S
+**Screen:** Yes — My characters; its row in `docs/design/BRIEF.md` Part 5 ("P2 Characters list":
+"Import file" as a smaller action, and in the empty state). No board draws it.
+**SPEC:** §5.8 (an older file migrates on import), §12 stage 2 (export and import of a character
+in JSON); ADR 002 (a person's saved data), ADR 008 item 4
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/db/importCharacter.ts` — new: `importCharacterFile`.
+- `apps/web/src/pages/ImportFile.tsx` — new: the button, the file input, the refusal line.
+- `apps/web/src/pages/CharactersPage.tsx` — the empty state's greyed button becomes the real one;
+  the list gets it under its hint.
+- `apps/web/src/db/characters.ts` — `openFile` is exported for the import.
+- `apps/web/src/shared/undo.ts`, `ToastHost.tsx` — the toast kind `imported`.
+- `locales/en/characters.json` (`importRefused.*`), `toast.json`.
+
+#### 2. What is missing now
+
+Measured on `cfaf733`: "Import file" in the empty state is `disabled` with "Coming later"; the
+list with characters has none. Export (SHEET-25) saves `<name>.json`, and nothing reads one back.
+`openFile` (the opener of the system a file names) is private to `characters.ts`.
+
+#### 3. What it should look like when done
+
+1. "Import file" is an enabled button in the empty state and under the hint of a list; it opens
+   the file picker for JSON. The file is read on the device and goes nowhere else.
+2. A file that passes opens as a character at the current versions: an older file migrates
+   (`schemaVersion`, `systemSchemaVersion`), and the result of golden B's file with its later
+   fields taken out is golden B. The new character's sheet opens, with the toast "<name> imported".
+3. The text SHEET-25's Export made, imported after Delete, stores the same row, with the same id.
+4. A file whose id is already on the device never replaces that character: it is stored under a
+   new id, with `updatedAt` now; the toast says "<name> imported as a new character: its id was
+   already here". The first character is untouched.
+5. A file that fails is refused with its reason, in a red line on the page, and nothing is stored:
+   not JSON (`notJson`), JSON that is not one object (`notACharacter`), over 5 MB (`tooBig`),
+   saved by a newer version of either version field (`newer`), a system the app does not have or
+   names none (`unknownSystem`), a schema failure (`invalid`, with the first lines of the checks'
+   own text under it).
+6. The file brings no rolls, no changes and no picture. A picture id it names stays as it is.
+7. The page stays 360 px wide.
+
+#### 4. How to do it
+
+1. `importCharacterFile(text, database, now)`: size, `JSON.parse`, object check, `openFile`,
+   then one transaction: when the id exists, a new id and `updatedAt`; `saveCharacter`.
+2. `ImportFile`: a button that clicks a hidden file input; read the text, run it, show the
+   refusal's key, or `showImported` and navigate to the sheet.
+3. `showImported` puts the toast `imported` on screen, with no "Undo" (the character is deleted
+   like any other, SHEET-25).
+
+#### 5. Stored data
+
+Nothing stored changes shape. An import writes one `characters` row of the current versions; it
+changes no other table.
+
+#### 6. What a person will see
+
+My characters at 360×800: an outlined button with an upload icon, "Import file". States: empty
+list (under "New character"), list with characters (under the hint), a refusal (red line, and
+for `invalid` a small grey line with the checks' text), success (the sheet, with the toast).
+Keys in `characters`: `importRefused.tooBig|notJson|notACharacter|newer|invalid|unknownSystem|
+failed`; in `toast`: `imported`, `importedAgain`.
+
+#### 7. Tests
+
+- `apps/web/test/import-character.test.tsx` — `SHEET-26 importing a character file`, `…what a
+  person sees`: 12 tests: the exported text restored exactly; an older golden B migrated to golden
+  B; golden A; the same id stored as a new one; no rolls, changes or picture; each refusal, with
+  the table empty after it; the markup; the toast.
+- `apps/web/e2e/characters.spec.ts` — two tests: an older file imports and opens its sheet, the
+  same file again is a second character; four refused files, each with its line, nothing stored.
+  The SHEET-24 test now expects the button enabled.
+- Control numbers from: SPEC §6.7 golden B and golden A (the file is the golden; an older file is
+  the golden with `systemSchemaVersion` 2 and the two fields of ENG-56 and ENG-58 taken out).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts. The migration steps are ENG-56 and ENG-58's (`systemSchemaVersion`
+2 to 4); this ticket only runs them.
+
+#### 9. Not in this ticket
+
+- "Export all" and importing characters and packs together (SPEC §11): not a phase 2 row.
+- Importing a pack file: the homebrew phase (HB).
+- Importing a file from Foundry or another tool: phase L1.
+- The free limit's counter and its paid offer after an import: the payment phase (ADR 005 item 2).
+- A picture with the file: Export saves the character row only, so a portrait travels as the id.
+
+#### 10. Rake check
+
+- **A person's saved data:** a refused file stores nothing; a file with a known id never replaces
+  the character; an older file is migrated in memory and stored once, valid.
+- **A stored-shape change needs a migration:** none changes; the import uses the existing chains.
+- **No visible literal:** every string is a `characters` or `toast` key.
+- **No external requests:** `File.text()` on the device.
+- **Missing is not broken:** a picture id with no row shows the letter (SHEET-56).
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-03, on `cfaf733` plus this ticket: `pnpm lint` 370 files, no fixes;
+`pnpm typecheck` clean; `pnpm test` 102 files, 1303 passed, 0 failed, 35.6 s (12 new), then the
+speed project 2 passed; coverage statements 99.45 % (3495/3514), lines 99.9 % (3068/3071);
+`pnpm e2e` 46 passed, 0 failed, 40.1 s (2 new). Screenshot at 360×800 shown in the chat.
+
+Differences from §3:
+- Decided here (ADR 002): a file with a known id becomes a new character, never an overwrite or
+  a question; the limit is 5 MB; the new character's sheet opens at once, so it is not lost under
+  older ones in the list.
+- A file's `rev` and `createdAt` are kept; only a same-id file gets `updatedAt` now.
+- The first run of the e2e found the file input read as a second "Import file" button; it is
+  `aria-hidden` now (the same was done for the portrait's input, SHEET-56).
+
+Found, not fixed:
+- A picture does not travel with Export (the file is the row), so an imported character's
+  `portraitBlobId` names nothing on a new device. Carrying the picture needs a file shape that
+  holds bytes: a decision for the owner (ADR 002, "what the app does for a person"), not made here.
+
+Changelog: "My characters has Import file: it reads a character file, migrates an older one,
+refuses one that fails its checks with the reason, and never replaces a character it already has."
+
+---

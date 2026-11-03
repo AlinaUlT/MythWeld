@@ -36,6 +36,8 @@ function textOf(toast: Toast, t: TFunction<'toast'>, language: string): string {
       return t('deleted', { name: toast.name });
     case 'notRestored':
       return t('notRestored', { name: toast.name });
+    case 'imported':
+      return t(toast.again ? 'importedAgain' : 'imported', { name: toast.name });
   }
 }
 

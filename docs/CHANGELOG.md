@@ -11,6 +11,9 @@ Format:
 
 ---
 
+- 2026-11-03 · SHEET-26 · My characters has Import file: it reads a character file, migrates an
+  older one, refuses one that fails its checks with the reason, and never replaces a character it
+  already has.
 - 2026-11-03 · SHEET-56 · Tap the token on the sheet to choose an image of the character, an
   animated picture or a short video included, and a frame; it is cut round and stays on the
   device. My characters shows it too.

@@ -129,7 +129,7 @@ export function TokenPanel({ onClose }: { onClose: () => void }) {
             accept="image/*,video/*"
             className="sr-only"
             tabIndex={-1}
-            aria-label={t('choose', { name: character.name })}
+            aria-hidden
             onChange={(event) => {
               void choose(event.target.files?.[0]);
               event.target.value = '';

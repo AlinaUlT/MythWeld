@@ -51,7 +51,7 @@ test('SHEET-24 with no character, the list says so and offers + and Import file'
   const box = await newCharacter.first().boundingBox();
   expect(box?.width).toBeGreaterThanOrEqual(44);
   expect(box?.height).toBeGreaterThanOrEqual(44);
-  await expect(page.getByRole('button', { name: en.characters.import })).toBeDisabled();
+  await expect(page.getByRole('button', { name: en.characters.import })).toBeEnabled();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
   await page.screenshot({ path: testInfo.outputPath('characters-empty.png') });
 });
@@ -209,4 +209,68 @@ test('SHEET-25 the card’s ⋯ opens Actions; Export saves the file, Delete has
   await expect(cards(page).first()).toContainText('Golden B');
   await cards(page).first().click();
   await expect(page).toHaveURL(`characters/${goldenB.id}`);
+});
+
+const fileOf = (character: object) => ({
+  name: 'character.json',
+  mimeType: 'application/json',
+  buffer: Buffer.from(JSON.stringify(character)),
+});
+
+test('SHEET-26 Import file stores a character file and opens its sheet', async ({
+  page,
+}, testInfo) => {
+  await page.goto('characters');
+  // An older file: golden B as version 2 of its system's shape lacked two later fields.
+  const old = JSON.parse(JSON.stringify(goldenB));
+  old.systemSchemaVersion = 2;
+  delete old.systemData.languageSource;
+  delete old.systemData.state.deathSaves.stable;
+  await page.locator('input[type="file"]').setInputFiles(fileOf(old));
+  await expect(page).toHaveURL(new RegExp(`characters/${goldenB.id}$`));
+  await expect(page.getByRole('banner').getByRole('heading', { level: 1 })).toHaveText('Golden B');
+  await expect(page.getByRole('status')).toContainText('Golden B imported');
+  await page.screenshot({ path: testInfo.outputPath('imported-sheet.png') });
+
+  // It is stored at the current version: it is on My characters, and opens again after a reload.
+  await page.goto('characters');
+  await expect(cards(page)).toHaveCount(1);
+  await expect(page.getByRole('button', { name: en.characters.import })).toBeVisible();
+
+  // The same file again never replaces it: a second, new character.
+  await page.locator('input[type="file"]').setInputFiles(fileOf(goldenB));
+  await expect(page.getByRole('status')).toContainText('imported as a new character');
+  await expect(page).not.toHaveURL(new RegExp(`characters/${goldenB.id}$`));
+  await page.goto('characters');
+  await expect(cards(page)).toHaveCount(2);
+});
+
+test('SHEET-26 a file that fails its checks is refused with its reason, and nothing is stored', async ({
+  page,
+}, testInfo) => {
+  await page.goto('characters');
+  const input = page.locator('input[type="file"]');
+  const alert = page.getByRole('alert');
+
+  await input.setInputFiles({
+    name: 'a.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{'),
+  });
+  await expect(alert).toHaveText(en.characters.importRefused.notJson);
+  await input.setInputFiles(
+    fileOf({ ...goldenB, systemSchemaVersion: FIFTH_EDITION_SCHEMA_VERSION + 1 }),
+  );
+  await expect(alert).toHaveText(en.characters.importRefused.newer);
+  await input.setInputFiles(fileOf({ ...goldenB, system: 'zz' }));
+  await expect(alert).toHaveText(en.characters.importRefused.unknownSystem);
+  const { name: _name, ...nameless } = goldenB;
+  await input.setInputFiles(fileOf(nameless));
+  await expect(alert).toContainText(en.characters.importRefused.invalid);
+  await expect(alert).toContainText('name');
+  await page.screenshot({ path: testInfo.outputPath('import-refused.png') });
+
+  await expect(page).toHaveURL(/characters$/);
+  await expect(page.getByText(en.characters.empty)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
 });

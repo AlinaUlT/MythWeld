@@ -31,7 +31,7 @@ export type OpenedCharacter = Opened<AppCharacter> | UnknownSystem | NotFound;
 export type SavedCharacter = Opened<AppCharacter> | UnknownSystem;
 
 /** Runs a stored file through the opener of the system it names. */
-function openFile(file: unknown): Opened<AppCharacter> | UnknownSystem {
+export function openFile(file: unknown): Opened<AppCharacter> | UnknownSystem {
   const system =
     typeof file === 'object' && file !== null
       ? (file as Record<string, unknown>).system

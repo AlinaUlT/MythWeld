@@ -20,7 +20,8 @@ export type Toast =
   | { kind: 'changed'; entry: LogEntry }
   | { kind: 'notUndone'; entry: LogEntry }
   | { kind: 'deleted'; name: string; deleted: DeletedCharacter }
-  | { kind: 'notRestored'; name: string };
+  | { kind: 'notRestored'; name: string }
+  | { kind: 'imported'; name: string; again: boolean };
 
 let current: Toast | undefined;
 const listeners = new Set<() => void>();
@@ -44,6 +45,15 @@ export function currentToast(): Toast | undefined {
 /** Hides `toast`, if it is still the one showing. */
 export function hideToast(toast: Toast): void {
   if (current === toast) show(undefined);
+}
+
+/**
+ * SHEET-26: shows that a character file was imported, with no "Undo": the file is still the
+ * person's, and the new character is deleted like any other (SHEET-25). `again` is a file whose
+ * id was already on the device, stored under a new one.
+ */
+export function showImported(name: string, again: boolean): void {
+  show({ kind: 'imported', name, again });
 }
 
 /** Records the change (`recordChange`) and, when it is written, shows its toast. */
