@@ -10,6 +10,7 @@ import {
   ABOUT_LISTS,
   type AboutListName,
   type AboutShown,
+  type ChecksShown,
   EDITION_RULES,
   type EditionTerms,
   FIFTH_EDITION_HEADER_NUMBERS,
@@ -19,6 +20,7 @@ import {
   type FifthEditionPack,
   fifthEditionAbout,
   fifthEditionCasting,
+  fifthEditionChecks,
   fifthEditionClassLine,
   fifthEditionHitPoints,
   fifthEditionInspiration,
@@ -132,6 +134,8 @@ export interface SheetSystem {
   /** Each casting class's ability, spell save DC and spell attack (ADR 009 item 4). */
   casting(character: AppCharacter, computed: AppComputed): readonly HeaderCasting[];
   hitPoints(character: AppCharacter): HeaderHitPoints;
+  /** The stats, saves, skills and passive values the Main tab shows (SHEET-32). */
+  checks(computed: AppComputed): ChecksShown;
   /** The inspiration held, its stars and the edition's own maximum (ADR 009 item 5, SHEET-55). */
   inspiration(character: AppCharacter): InspirationShown;
   /** The origin details and proficiencies the About tab shows (ADR 009 item 3, SHEET-53). */
@@ -153,6 +157,7 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     numbers: FIFTH_EDITION_HEADER_NUMBERS,
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
+    checks: fifthEditionChecks,
     about: fifthEditionAbout,
     aboutLists: ABOUT_LISTS,
     terms: (ruleset) => EDITION_RULES[ruleset].terms,

@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-03 · SHEET-32 · The Main tab shows the ability tiles, the saving throws, the skills grouped by their stat with proficiency dots, and the passive checks.
 - 2026-11-03 · SHEET-28 · The new-character form's Equipment step adds items with a quantity, and warns when an item is of the other edition or in no ticked pack.
 - 2026-MM-DD · AREA-NN · What a person can now see, in one sentence.
 ```

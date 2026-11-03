@@ -58,7 +58,7 @@ test('SHEET-30 the sheet pins the header above the dock, every number from Compu
   await expect(number(page, 'init.total')).toHaveText('+3Init');
   await expect(number(page, 'speed.walk')).toHaveText('30 ftSpeed');
   await expect(number(page, 'prof')).toHaveText('+2Prof');
-  await expect(number(page, 'skills.perception.passive')).toHaveText('13Passive');
+  await expect(header.locator('[data-path="skills.perception.passive"]')).toHaveText('13Passive');
   await expect(header).not.toContainText(en.sheet.casting.dc);
 
   // The dock: 12 of 12 hit points and 5 temporary ones in their own colour; Damage, Heal, tabs.
@@ -398,4 +398,47 @@ test('SHEET-56 reduced motion shows the picture as one still frame', async ({ pa
   const header = page.getByRole('banner');
   await expect(header.locator('canvas')).toHaveCount(1);
   await expect(header.locator('img')).toHaveCount(0);
+});
+
+test('SHEET-32 the Main tab shows every check bonus: tiles, saves, skills by stat, passives', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  const main = page.getByRole('tabpanel');
+
+  // SPEC §6.7 golden B: modifiers +3 +1 +2 −1 +1 +0, scores 17 13 15 8 12 10.
+  await expect(main.locator('[data-path^="checks."]')).toHaveText([
+    'STR+3',
+    'DEX+1',
+    'CON+2',
+    'INT−1',
+    'WIS+1',
+    'CHA+0',
+  ]);
+  await expect(number(page, 'abilities.str.score')).toHaveText('Strength score17');
+  await expect(number(page, 'abilities.str.save')).toHaveText('STR+5');
+  await expect(number(page, 'abilities.con.save')).toHaveText('CON+4');
+  await expect(number(page, 'skills.athletics.total')).toHaveText('Athletics+5');
+  await expect(number(page, 'skills.insight.total')).toHaveText('Insight+3');
+  await expect(main.getByRole('heading', { level: 3 })).toHaveText([
+    'Strength',
+    'Dexterity',
+    'Intelligence',
+    'Wisdom',
+    'Charisma',
+  ]);
+  await expect(main.getByRole('img', { name: en.checks.prof.proficient, exact: true })).toHaveCount(
+    7,
+  );
+
+  // A long press and a tap reach each number's handlers without moving the page.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('main-dark.png') });
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll('[role="tabpanel"]')) el.scrollTop = 600;
+  });
+  await page.screenshot({ path: testInfo.outputPath('main-scrolled.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('main-light.png') });
 });

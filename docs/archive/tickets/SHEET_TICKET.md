@@ -6115,3 +6115,88 @@ Found, not fixed: a starting item is never worn, so the form's AC bar ignores ar
 Changelog: "The new-character form's Equipment step adds items with a quantity and warns when an item is of the other edition or in no ticked pack."
 
 ---
+
+### SHEET-32 The Main tab shows every check bonus
+
+**Hat:** The Main tab shows every check bonus
+**Depends on:** SHEET-30 (the frame and `SheetNumber`), ENG-13 (check totals), ENG-43 (a skill's stat is a key path)
+**Size:** S
+**Screen:** Yes — board `V3-Sheet` in `docs/design/mockups/`; `docs/design/BRIEF.md` Part 2 P4 (Main) and Part 5 "P4 Character sheet"
+**SPEC:** §7.2 (the Main tab), §6.2 (every number has a breakdown)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/sheet-checks.ts` — new: `fifthEditionChecks(computed)` names the stats, saves, skills and passives and their paths.
+- `apps/web/src/sheet/sections/Abilities.tsx`, `SavingThrows.tsx`, `Skills.tsx` — change: filled.
+- `apps/web/src/sheet/ProfDot.tsx` — new: the proficiency dot.
+- `apps/web/src/systems.ts` — changes: `SheetSystem.checks`.
+- `apps/web/src/locales/en/checks.json` — changes: the words.
+
+#### 2. What is missing now
+
+Measured on `0e8a6b4`: the three sections return `null`; the Main tab shows only the header's numbers and the conditions.
+
+#### 3. What it should look like when done
+
+1. Ability tiles, one per stat of the packs in their entries' order: the abbreviation, the check bonus large (`checks.<key>.total`), the score small (`abilities.<key>.score`). Golden B: STR +3 17, DEX +1 13, CON +2 15, INT −1 8, WIS +1 12, CHA +0 10.
+2. Saving throws: one chip for each stat that has a save, with its proficiency dot and `abilities.<key>.save`. Golden B: STR +5, CON +4 (dots filled), the rest equal to the modifier.
+3. Skills grouped under the stat each is rolled with, taken from `Computed.keys['skills.<key>.ability']`, never from the skill's own `ability`; each with its dot (none, half, proficient, expertise) and `skills.<key>.total`. Golden B: Athletics +5, Intimidation +2, Perception +3, Survival +3, Insight +3.
+4. Passive values: one chip for each skill that has `skills.<key>.passive`. Golden B: Passive Perception 13.
+5. Every number is a `SheetNumber`, so each has a handler for a tap (roll, SHEET-39) and a long press (breakdown, SHEET-33).
+6. No pack, no stat: the sections draw nothing and nothing throws.
+7. The gate is green.
+
+#### 4. How to do it
+
+1. `sheet-checks.ts` reads `Computed.byKey.ability` and `.skill`; a save exists where `abilities.<key>.save` is in `values`; the skill's stat is the key path's `key`; groups and skills are sorted (stat `order`, then name).
+2. `SheetSystem.checks`, so the app asks the module and writes no stat or skill itself.
+3. The three sections and `ProfDot`, with parts and tokens only.
+
+Technical choices (ADR 002): the tile's large number is the check total, which equals the modifier until a d20 bonus is added, so "every check bonus" is always the one on screen; the modifier itself stays in the score's breakdown path chain. The module names the paths, as `sheet-header.ts` does for the header.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+The Main tab at 360×800, under the conditions: Abilities (six tiles in a row), Saving throws (3 × 2 chips), Skills by stat in two columns, Passive checks. Keys in `checks`: `abilities`, `score`, `saves`, `skills`, `passives`, `passive`, `prof.*`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-checks.test.ts` — 4 tests: the stats and their paths; the groups, passive and golden B's numbers; a skill moved by an override of its stat; empty packs.
+- `apps/web/test/checks.test.tsx` — 7 tests: golden B's tiles, saves, skills, dots, 37 distinct number buttons; golden A's Insight +5; no pack.
+- `apps/web/e2e/sheet.spec.ts` — 1 test; the SHEET-30 test now looks for the header's passive number inside the header, since the Main tab shows it too.
+- `apps/web/test/sheet.test.tsx` — the three sections joined the `filled` list.
+- Control numbers from: SPEC §6.7 golden A and B (`golden-values.test.ts`, `fixtures-2024.test.ts`).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules facts. The proficiency levels (0, 0.5, 1, 2) are `sumOf`'s own reading of `profLevel`.
+
+#### 9. Not in this ticket
+
+- The roll dialog: SHEET-39. The breakdown sheet: SHEET-33.
+- An advantage or disadvantage mark on a skill: SHEET-39 (`skills.<key>.mode`).
+- Overriding a number by hand: SHEET-34.
+
+#### 10. Rake check
+
+- **Everything is data:** no stat or skill key is written in the app; they come from `byKey`.
+- **A shown number has a breakdown:** every number is a `SheetNumber` with a path.
+- **Skill stat from the key path:** `computed.keys`, tested with an override.
+- **No visible literal, no look literal:** `checks` keys; tokens and parts.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-03: `pnpm lint` 374 files, no fixes; `pnpm typecheck` clean; `pnpm test` 104 files, 1319 passed, 0 failed, 23.7 s (11 new, from 1308), then speed 2 passed; coverage statements 99.4 % (3524/3545), lines 99.9 % (3094/3097); `pnpm e2e` 48 passed, 0 failed, 39.3 s (1 new). Screenshots at 360×800 shown in the chat.
+
+Differences from §3: none.
+
+Found, not fixed: nothing.
+
+Changelog: "The Main tab shows the six ability tiles, the saving throws, the skills grouped by their stat with proficiency dots, and passive Perception."
+
+---

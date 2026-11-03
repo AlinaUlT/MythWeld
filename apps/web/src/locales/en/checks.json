@@ -1,1 +1,14 @@
-{}
+{
+  "abilities": "Abilities",
+  "score": "{{name}} score",
+  "saves": "Saving throws",
+  "skills": "Skills",
+  "passives": "Passive checks",
+  "passive": "Passive {{skill}}",
+  "prof": {
+    "none": "Not proficient",
+    "half": "Half proficiency",
+    "proficient": "Proficient",
+    "expertise": "Expertise"
+  }
+}
