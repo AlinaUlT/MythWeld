@@ -242,7 +242,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-38 | The dice panel rolls any formula fairly | M | ✅ 2026-10-29 |
 | SHEET-39 | Tapping a number rolls it in the roll dialog | M | ✅ 2026-11-03 |
 | SHEET-40 | The number pad changes the hit points | M | 🔲 |
-| SHEET-41 | Concentration shows until it ends | XS | 🔲 |
+| SHEET-41 | Concentration shows until it ends | XS | ✅ 2026-11-04 |
 | SHEET-42 | Conditions are set from the sheet | S | 🔲 |
 | SHEET-43 | The death saves tracker follows a dying character | S | 🔲 |
 | SHEET-44 | The Combat tab lists the attacks | S | 🔲 |
@@ -284,7 +284,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   (`applyDamage`'s `knockOut`) where the edition has it (`rulesOf(character).knockOutToOneHp`,
   2024) and the damage would drop the character to 0; the outcome's `status` `knockedOut` says it
   happened.
-- **SHEET-41** — SPEC §6.4, §7.2: the spell held, and ending it by hand.
 - **SHEET-42** — found by ENG-69: the sheet sets a fifth-edition character's condition through
   the module's `setConditionLevel` (`conditions.ts`), not the core's `setCondition`: only the
   module's ends every attunement when the level kills (exhaustion at its highest, ENG-67). Below

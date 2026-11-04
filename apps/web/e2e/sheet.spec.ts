@@ -842,3 +842,30 @@ test('SHEET-46 the Spells tab shows the slot grid; a tap spends or gives back a 
     .click();
   await expect(tab.getByRole('button', { name: en.description.seeFull }).first()).toBeVisible();
 });
+
+test('SHEET-41 the Combat tab shows the concentration until it ends; Undo brings it back', async ({
+  page,
+}, testInfo) => {
+  const holding = {
+    ...goldenA,
+    systemData: {
+      ...goldenA.systemData,
+      state: { ...goldenA.systemData.state, concentration: 'srd-2014:spell/bless' },
+    },
+  };
+  await saveRows(page, [holding]);
+  await page.goto(`characters/${goldenA.id}?tab=combat`);
+  const card = page.locator('[data-concentration="srd-2014:spell/bless"]');
+  await expect(card).toContainText('Concentration');
+  await expect(card).toContainText('Bless');
+  await expect(card).toContainText('Level 1');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('concentration-dark.png') });
+
+  // Ending it is one change; the card goes, and Undo brings it back.
+  await card.getByRole('button', { name: en.concentration.end }).click();
+  await expect(card).toHaveCount(0);
+  await expect(page.getByRole('status')).toContainText('Concentration ended');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(card).toBeVisible();
+});

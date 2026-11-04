@@ -1,1 +1,7 @@
-{}
+{
+  "title": "Concentration",
+  "missing": "Missing: {{id}}",
+  "cantrip": "Cantrip",
+  "level": "Level {{level}}",
+  "end": "End concentration"
+}

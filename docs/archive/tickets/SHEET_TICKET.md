@@ -6733,3 +6733,29 @@ Found, not fixed: nothing.
 Changelog: "The Spells tab shows spellcasting at a glance, the slot grid (tap a circle to spend or give back a slot), each class's prepared and known spells and the spells your features grant, with their edition."
 
 ---
+
+### SHEET-41 Concentration shows until it ends · XS
+
+**Hat:** The Combat tab shows the concentration until it ends
+**Where:** `apps/web/src/sheet/sections/Concentration.tsx` — the section SHEET-30 left empty; `packages/system-5e/src/casting.ts` — `concentrationOf`; `apps/web/src/systems.ts` — `SheetSystem.concentration`, `endConcentration`
+**Depends on:** SHEET-30 (the section's place), SHEET-31 (descriptions in place), SHEET-23 (Undo), ENG-20 (`endConcentration`)
+**Screen:** Yes — the Combat tab of `docs/design/BRIEF.md` Part 2 P4 ("concentration"); board `V3-Sheet` draws only the Main tab, so the card follows the other tabs' cards. SPEC §6.4, §7.2.
+
+**What it should look like when done:**
+1. A character whose stored state names a spell it concentrates on sees a card "Concentration" on the Combat tab: the spell's name, opening its description in place, with "Level 1" (or "Cantrip") under it, and a button "End concentration".
+2. The card shows until the concentration ends: no spell held, no card.
+3. "End concentration" is one change with its "Undo" toast, "Concentration ended"; Undo brings the card back.
+4. A spell no pack holds reads "Missing: <id>" and can still be ended (SPEC §8.2).
+5. The gate is green.
+
+**Tests:** `apps/web/test/concentration.test.tsx` — 3 tests: Bless held by golden A (SPEC §6.7, a 2014 cleric 1), nothing held, a missing spell; `packages/system-5e/test/casting.test.ts` — 1 test: `concentrationOf` names the spell or none; `apps/web/e2e/sheet.spec.ts` — 1 test: the card, End, the toast, Undo. Control values: Bless is level 1 and a concentration spell in SRD 5.1.
+**What came out of it:**
+Quality gate, 2026-11-04: `pnpm lint` 397 files, no fixes; `pnpm typecheck` clean; `pnpm test` 116 files, 1421 passed, 0 failed, 26.8 s (4 new, from 1417), then speed 2 passed; coverage statements 99.1 % (3747/3781), lines 99.81 % (3286/3292); `pnpm e2e` 58 passed, 0 failed, 53.0 s (1 new). Screenshot at 360×800 shown in the chat.
+
+Differences from the row: none. Technical choices (ADR 002): no confirmation on "End concentration" (SPEC asks one only for a new concentration replacing the old one, SHEET-47); the card is hidden, not an empty line, when nothing is held; the sheet reads the held spell through the module (`concentrationOf`), not from the stored shape.
+
+Found, not fixed: nothing.
+
+Changelog: "The Combat tab shows the spell you concentrate on until it ends, with a button to end it (and Undo)."
+
+---

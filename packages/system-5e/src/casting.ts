@@ -325,6 +325,14 @@ export function regainSlot(
 }
 
 /**
+ * SHEET-41: the spell the character concentrates on, or none. The Combat tab shows it until it
+ * ends.
+ */
+export function concentrationOf(character: FifthEditionCharacter): EntityId | undefined {
+  return character.systemData.state.concentration;
+}
+
+/**
  * The character with no concentration, and the entry, whether or not a pack still has the spell.
  * Refused as `unchanged` when it concentrates on nothing.
  */

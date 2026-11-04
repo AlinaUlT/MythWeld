@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type CastAsk,
   castSpell,
+  concentrationOf,
   endConcentration,
   type FifthEditionCharacter,
   regainSlot,
@@ -238,6 +239,11 @@ describe('ENG-20 slots and concentration', () => {
     expect(result.entry.changes).toEqual([
       { path: CONCENTRATION, before: 'srd-2014:spell/nothing' },
     ]);
+  });
+
+  it('SHEET-41 names the spell held, or none', () => {
+    expect(concentrationOf(caster(goldenA, { concentration: BLESS }))).toBe(BLESS);
+    expect(concentrationOf(caster(goldenA))).toBeUndefined();
   });
 
   it('changes nothing it is given: frozen inputs', () => {

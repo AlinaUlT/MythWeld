@@ -12,10 +12,12 @@ import {
   type AboutShown,
   attackOutcome,
   type ChecksShown,
+  concentrationOf,
   criticalDamage,
   d20Formula,
   EDITION_RULES,
   type EditionTerms,
+  endConcentration,
   type FeatureGroup,
   FIFTH_EDITION_HEADER_NUMBERS,
   FIFTH_EDITION_SYSTEM,
@@ -190,6 +192,9 @@ export interface SheetSystem {
   spells(character: AppCharacter, computed: AppComputed): SpellsShown;
   spendSlot: typeof spendSlot;
   regainSlot: typeof regainSlot;
+  /** The spell the character concentrates on, or none (SHEET-41). */
+  concentration: typeof concentrationOf;
+  endConcentration: typeof endConcentration;
   /** The rows of the Gear tab, their weight and the rules they break (SHEET-50). */
   gear(
     character: AppCharacter,
@@ -234,6 +239,8 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     spells: fifthEditionSpells,
     spendSlot,
     regainSlot,
+    concentration: concentrationOf,
+    endConcentration,
     setRowEquipped,
     setRowAttuned,
     setRowQuantity,
