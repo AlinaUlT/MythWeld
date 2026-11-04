@@ -16,9 +16,11 @@ import {
   attackOutcome,
   type CastWarning,
   type ChecksShown,
+  type CoinsShown,
   type ConditionsShown,
   castSpell,
   castWarnings,
+  changeCoin,
   concentrationOf,
   concentrationSavePath,
   conditionsToAdd,
@@ -43,6 +45,7 @@ import {
   fifthEditionCasting,
   fifthEditionChecks,
   fifthEditionClassLine,
+  fifthEditionCoins,
   fifthEditionConditions,
   fifthEditionDeathSaves,
   fifthEditionFeatures,
@@ -192,6 +195,7 @@ export type {
   AboutListName,
   AttackShown,
   CastWarning,
+  CoinsShown,
   ConditionsShown,
   DamageOutcome,
   DeathSaveOutcome,
@@ -288,6 +292,9 @@ export interface SheetSystem {
   setRowQuantity: typeof setRowQuantity;
   setRowContainer: typeof setRowContainer;
   removeRow: typeof removeRow;
+  /** The money of the Gear tab: each coin with its count, and the steps offered (SHEET-51). */
+  coins: typeof fifthEditionCoins;
+  changeCoin: typeof changeCoin;
   /** The features grouped by when they are used: the Turn tab's lists (SHEET-49). */
   turn: typeof fifthEditionTurn;
   /** The attacks of the equipped weapons: bonus paths, dice, type and mastery (SHEET-44). */
@@ -372,6 +379,8 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     setRowQuantity,
     setRowContainer,
     removeRow,
+    coins: fifthEditionCoins,
+    changeCoin,
     pathParts: fifthEditionPathParts,
     pendingKey: fifthEditionPendingKey,
     rollTest: fifthEditionRollTest,

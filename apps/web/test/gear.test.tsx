@@ -1,5 +1,6 @@
 import { compute } from '@grimoire/engine';
 import { fifthEditionCharacterSchema } from '@grimoire/system-5e';
+import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -8,18 +9,20 @@ import { contentOf, installBuiltInPacks } from '../src/content/packs';
 import i18n from '../src/i18n';
 import { shownWeight } from '../src/settings/units';
 import { SheetContext, type SheetValue } from '../src/sheet/SheetContext';
+import { Coins } from '../src/sheet/sections/Coins';
 import { Items } from '../src/sheet/sections/Items';
 import { type AppCharacter, sheetSystemOf } from '../src/systems';
 
 // SHEET-50: the Gear tab's items on golden B (SPEC §6.7): chain mail (55 lb) and a greatsword
 // (6 lb), both worn (SRD 5.2.1's weights). The charms are made up and need attunement.
+// SHEET-51: its coins: golden B holds none, so each test sets the counts it draws.
 
 void i18n;
 const packs = installBuiltInPacks().packs;
 const CHAIN = '5f6a7b8c-9d0e-4f1a-8b2c-3d4e5f6a7b8c';
 const SWORD = '6a7b8c9d-0e1f-4a2b-9c3d-4e5f6a7b8c9d';
 
-function drawn(change: object = {}): string {
+function drawn(change: object = {}, Section: () => ReactNode = Items): string {
   const character: AppCharacter = fifthEditionCharacterSchema.parse({ ...goldenB, ...change });
   const system = sheetSystemOf(character);
   if (system === undefined) throw new Error('no sheet');
@@ -37,7 +40,7 @@ function drawn(change: object = {}): string {
   return renderToStaticMarkup(
     <MemoryRouter>
       <SheetContext value={sheet}>
-        <Items />
+        <Section />
       </SheetContext>
     </MemoryRouter>,
   );
@@ -169,5 +172,44 @@ describe('SHEET-50 weight in the unit the person chose', () => {
     expect(shownWeight(55, 'kg')).toEqual({ value: 24.9, unit: 'kg' });
     expect(shownWeight(6, 'kg')).toEqual({ value: 2.7, unit: 'kg' });
     expect(shownWeight(0, 'kg')).toEqual({ value: 0, unit: 'kg' });
+  });
+});
+
+describe('SHEET-51 the Gear tab’s coins', () => {
+  const coinsOf = (currency: object) =>
+    drawn({ systemData: { ...goldenB.systemData, currency } }, Coins);
+  const rowOfCoin = (html: string, coin: string) =>
+    html.split(`data-coin="${coin}"`)[1]?.split('</li>')[0] ?? '';
+  const html = coinsOf({ cp: 0, sp: 3, ep: 0, gp: 12, pp: 1200 });
+
+  it('lists the five coins from the lowest, each with its count', () => {
+    expect(text(html)).toContain('|Coins|');
+    const order = ['cp', 'sp', 'ep', 'gp', 'pp'].map((coin) => html.indexOf(`data-coin="${coin}"`));
+    expect(order.every((at, i) => at > 0 && (i === 0 || at > (order[i - 1] ?? 0)))).toBe(true);
+    expect(text(rowOfCoin(html, 'gp'))).toContain('|12|');
+    expect(text(rowOfCoin(html, 'sp'))).toContain('|3|');
+    // A count is written with its thousands apart.
+    expect(text(rowOfCoin(html, 'pp'))).toContain('|1,200|');
+  });
+
+  it('gives each coin a − and a + for the steps 1 and 10, named by the coin', () => {
+    const gold = rowOfCoin(html, 'gp');
+    for (const label of ['Take 10 gold', 'Take 1 gold', 'Add 1 gold', 'Add 10 gold']) {
+      expect(gold).toContain(`aria-label="${label}"`);
+    }
+    expect(text(gold)).toContain('|−10|−1|');
+    expect(text(gold)).toContain('|+1|+10|');
+  });
+
+  it('turns a − off when it would take the count below 0', () => {
+    const gold = rowOfCoin(html, 'gp');
+    // 12 gold: a step of 10 is possible; 3 silver: a step of 10 is not, a step of 1 is.
+    expect(gold).not.toMatch(/aria-label="Take 10 gold"[^>]*disabled/);
+    const silver = rowOfCoin(html, 'sp');
+    expect(silver).toMatch(/aria-label="Take 10 silver"[^>]*disabled/);
+    expect(silver).not.toMatch(/aria-label="Take 1 silver"[^>]*disabled/);
+    const copper = rowOfCoin(html, 'cp');
+    expect(copper).toMatch(/aria-label="Take 1 copper"[^>]*disabled/);
+    expect(copper).not.toMatch(/aria-label="Add 1 copper"[^>]*disabled/);
   });
 });

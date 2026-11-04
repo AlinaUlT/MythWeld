@@ -253,7 +253,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-48 | The Features tab groups features by source | M | ✅ 2026-11-03 |
 | SHEET-49 | The Turn tab lists actions by timing | S | ✅ 2026-11-04 |
 | SHEET-50 | The Gear tab equips items | M | ✅ 2026-11-03 |
-| SHEET-51 | Coins change by quick steps | XS | 🔲 |
+| SHEET-51 | Coins change by quick steps | XS | ✅ 2026-11-04 |
 | SHEET-52 | Custom entries are added as free text | S | 🔲 |
 | SHEET-53 | The About tab shows the origin details | S | ✅ 2026-11-03 |
 | SHEET-54 | The Notes tab keeps free text | XS | ✅ 2026-11-03 |
@@ -271,6 +271,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-74 | A hit die takes the faces a person typed | S | 🔲 |
 | SHEET-75 | A long attribution line wraps in a description | XS | 🔲 |
 | SHEET-76 | The Turn tab lists feats and once-per-turn timings | S | 🔲 |
+| SHEET-77 | A disabled button looks different from an enabled one | XS | 🔲 |
 
 - **SHEET-29** — found by ENG-37 (ADR 017): when the race or species and the background come from
   different editions and both raise ability scores, the manual form (BRIEF P3 step 6) shows a
@@ -285,7 +286,6 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 - **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates:
   `Computed.candidates['ac.base']`, each `{ key, value, steps }`; a pin that does not apply is not
   among them and warns `acCalcNotApplying`.
-- **SHEET-51** — SPEC §7.2: cp, sp, ep, gp, pp with + and −.
 - **SHEET-52** — SPEC §12 stage 2 ("custom item", "custom feature" with text), ADR 009 item 7
   (free text now; with effects in phase 5), board `V3-Add`. The stored shape has both already: an
   inventory row's `custom`, and the character's own entities (`localEntities`). Found by SHEET-22:

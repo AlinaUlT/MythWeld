@@ -14,6 +14,7 @@ export * from './casting';
 export * from './character';
 export * from './checks';
 export * from './classes';
+export * from './coins';
 export * from './combat';
 export * from './conditions';
 export * from './dead';

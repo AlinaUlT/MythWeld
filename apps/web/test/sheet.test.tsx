@@ -23,6 +23,7 @@ import { formatNumber, numberAt } from '../src/sheet/SheetNumber';
 import { Abilities } from '../src/sheet/sections/Abilities';
 import { AboutList } from '../src/sheet/sections/AboutList';
 import { Attacks } from '../src/sheet/sections/Attacks';
+import { Coins } from '../src/sheet/sections/Coins';
 import { Concentration } from '../src/sheet/sections/Concentration';
 import { Conditions } from '../src/sheet/sections/Conditions';
 import { DeathSaves } from '../src/sheet/sections/DeathSaves';
@@ -248,6 +249,7 @@ describe('SHEET-30 tabs', () => {
       Skills,
       FeatureList,
       Items,
+      Coins,
       SpellList,
       Concentration,
       Conditions,

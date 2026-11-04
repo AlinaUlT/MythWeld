@@ -802,6 +802,54 @@ test('SHEET-50 the Gear tab equips items: AC and attacks change at once, each ch
   await expect(chain).toHaveCount(1);
 });
 
+test('SHEET-51 the Gear tab changes coins by steps, each change with Undo', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [
+    {
+      ...goldenB,
+      systemData: {
+        ...goldenB.systemData,
+        currency: { cp: 0, sp: 3, ep: 0, gp: 12, pp: 0 },
+      },
+    },
+  ]);
+  await page.goto(`characters/${goldenB.id}?tab=gear`);
+  const tab = page.getByRole('tabpanel');
+  const gold = tab.locator('[data-coin="gp"]');
+  const silver = tab.locator('[data-coin="sp"]');
+  const copper = tab.locator('[data-coin="cp"]');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await expect(gold.getByTestId('coin-amount')).toHaveText('12');
+  await gold.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('coins-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('coins-light.png') });
+
+  // 12 + 10 = 22, 22 - 1 = 21; one Undo gives back the last step only.
+  await gold.getByRole('button', { name: 'Add 10 gold' }).click();
+  await expect(gold.getByTestId('coin-amount')).toHaveText('22');
+  await expect(page.getByRole('status').filter({ hasText: 'Coins changed' })).toBeVisible();
+  await gold.getByRole('button', { name: 'Take 1 gold' }).click();
+  await expect(gold.getByTestId('coin-amount')).toHaveText('21');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(gold.getByTestId('coin-amount')).toHaveText('22');
+
+  // 3 silver cannot lose 10 or reach below 0: that button is off; steps of 1 reach 0 and stop.
+  await expect(silver.getByRole('button', { name: 'Take 10 silver' })).toBeDisabled();
+  for (const left of ['2', '1', '0']) {
+    await silver.getByRole('button', { name: 'Take 1 silver' }).click();
+    await expect(silver.getByTestId('coin-amount')).toHaveText(left);
+  }
+  await expect(silver.getByRole('button', { name: 'Take 1 silver' })).toBeDisabled();
+  await expect(copper.getByRole('button', { name: 'Take 1 copper' })).toBeDisabled();
+
+  // A count survives a reload: it is stored.
+  await page.reload();
+  await expect(gold.getByTestId('coin-amount')).toHaveText('22');
+  await expect(silver.getByTestId('coin-amount')).toHaveText('0');
+});
+
 test('SHEET-46 the Spells tab shows the slot grid; a tap spends or gives back a slot, with Undo', async ({
   page,
 }, testInfo) => {

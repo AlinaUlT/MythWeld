@@ -1,1 +1,22 @@
-{}
+{
+  "title": "Coins",
+  "name": {
+    "cp": "copper",
+    "sp": "silver",
+    "ep": "electrum",
+    "gp": "gold",
+    "pp": "platinum"
+  },
+  "short": {
+    "cp": "cp",
+    "sp": "sp",
+    "ep": "ep",
+    "gp": "gp",
+    "pp": "pp"
+  },
+  "amount": "{{value, number}}",
+  "minus": "−{{count}}",
+  "plus": "+{{count}}",
+  "take": "Take {{count}} {{name}}",
+  "add": "Add {{count}} {{name}}"
+}

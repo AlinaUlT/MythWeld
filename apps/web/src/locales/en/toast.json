@@ -36,6 +36,7 @@
     "setQuantity": "{{name}}: quantity changed",
     "moveItem": "{{name}} moved",
     "removeItem": "{{name}} removed",
+    "changeCoin": "Coins changed",
     "other": "Change made"
   }
 }

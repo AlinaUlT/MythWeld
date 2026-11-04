@@ -7426,3 +7426,30 @@ Changed data: Second Wind got `activation: 'bonus'` in the built-in 2024 pack; t
 Found, not fixed: SHEET-76 above; the long attribution address (SHEET-75, found by SHEET-47).
 
 Changelog: "The Turn tab lists what you can do on your turn from your features, grouped by when you use them, with your weapon attacks under Action and the uses a feature has left."
+
+---
+
+### SHEET-51 Coins change by quick steps · XS
+
+**Hat:** The Gear tab changes each coin by steps
+**Where:** `apps/web/src/sheet/sections/Coins.tsx` — the section SHEET-30 left empty; `packages/system-5e/src/coins.ts` — new: `changeCoin`, `fifthEditionCoins`, `COIN_STEPS`; `apps/web/src/systems.ts` — `SheetSystem.coins`, `changeCoin`
+**Depends on:** SHEET-30 (the section's place), SHEET-50 (the Gear tab), SHEET-23 (Undo)
+**Screen:** Yes — the Gear tab of `docs/design/BRIEF.md` Part 2 ("coins cp sp ep gp pp with + and −"); board `V3-Sheet` draws only the Main tab, so the card follows the Items card. SPEC §7.2.
+
+**What it should look like when done:**
+1. Under the Items card the Gear tab shows a card "Coins": one row each for cp, sp, ep, gp and pp, from the lowest, each with its count between a "−10" and "−1" on the left and a "+1" and "+10" on the right.
+2. A tap changes that coin by the step. It is one change with its "Undo" toast, "Coins changed"; Undo gives back that step only.
+3. A − that would take a count below 0 is off (`disabled`). The action refuses it too, and writes nothing.
+4. Which coins exist and which steps are offered come from the module (`system.coins`), not from the component.
+5. The count is stored in `systemData.currency` (SPEC §5.8), so it survives a reload.
+6. The gate is green.
+
+**Tests:** `packages/system-5e/test/coins.test.ts` — 8 tests: the five coins in order with the steps 1 and 10; a step up, a step down, down to exactly 0; the refusals (below 0, not a whole number, past the largest whole number, a step of 0 as unchanged); the entry applies again and reverses. `apps/web/test/gear.test.tsx` — 3 tests: the coins and their counts (with the thousands apart), the four buttons named by the coin, the − turned off below 0. `apps/web/e2e/sheet.spec.ts` — 1 test: golden B with 12 gp and 3 sp: 12 + 10 = 22, 22 − 1 = 21, Undo back to 22, silver down 3 → 0 and stopped, a reload. Control values: golden B holds no coins (`character-parts.ts`: all five are 0); every count in a test is written by hand from the start and the steps.
+**What came out of it:**
+Quality gate, 2026-11-04: `pnpm lint` 424 files, no fixes; `pnpm typecheck` clean; `pnpm test` 131 files, 1512 passed, 0 failed, 31.3 s (11 new, from 1501), then speed 2 passed; coverage statements 99.06 % (3914/3951), lines 99.82 % (3430/3436); `pnpm e2e` 77 passed, 0 failed, 1.3 min (1 new). After the full e2e run, one line was added to the test (a scroll to the card before the screenshot) and that test ran again alone: 1 passed. Screenshots at 360×800 shown in the chat.
+
+Differences from the row: none. Technical choices (ADR 002): the steps are 1 and 10, both ways (the SPEC says "quick +/−" and does not name a step); the steps and the coins come from the module, so a system with other coins changes no component; a − that would go below 0 is off, not clamped to 0; no coin is converted into another; a typed amount is not in this ticket.
+
+Found, not fixed: a disabled button looks the same as an enabled one (the Items card's "One less" at quantity 1, and the coins' "−10" at a count under 10): new row SHEET-77, XS.
+
+Changelog: "The Gear tab shows your coins, cp sp ep gp pp, each with − and + buttons for steps of 1 and 10, and Undo."
