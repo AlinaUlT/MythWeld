@@ -41,3 +41,13 @@ export function shownWeight(pounds: number, unit: Settings['weight']): ShownWeig
     return { value: Math.round(pounds * KILOGRAMS_PER_POUND * 10) / 10, unit: 'kg' };
   return { value: pounds, unit: 'lb' };
 }
+
+/**
+ * SHEET-52: the pounds a weight typed in `unit` is stored as (SPEC §7.5: stored units are pounds),
+ * to a hundredth. Kilograms go through the pound's own definition, as `shownWeight` does the other
+ * way. Pounds stay as they are.
+ */
+export function storedWeight(value: number, unit: Settings['weight']): number {
+  if (unit === 'kg') return Math.round((value / KILOGRAMS_PER_POUND) * 100) / 100;
+  return value;
+}

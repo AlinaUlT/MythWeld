@@ -12,6 +12,8 @@ import {
   type AboutListName,
   type AboutShown,
   type AttackShown,
+  addCustomFeature,
+  addCustomItem,
   applyDamage,
   applyHealing,
   attackOutcome,
@@ -88,6 +90,7 @@ import {
   type RollTest,
   regainSlot,
   removeConditionOf,
+  removeCustomFeature,
   removeRow,
   restNeedsFood,
   revive,
@@ -300,6 +303,10 @@ export interface SheetSystem {
   setRowQuantity: typeof setRowQuantity;
   setRowContainer: typeof setRowContainer;
   removeRow: typeof removeRow;
+  /** The free text a person adds in edit mode: items, and features of their own (SHEET-52). */
+  addCustomItem: typeof addCustomItem;
+  addCustomFeature: typeof addCustomFeature;
+  removeCustomFeature: typeof removeCustomFeature;
   /** The money of the Gear tab: each coin with its count, and the steps offered (SHEET-51). */
   coins: typeof fifthEditionCoins;
   changeCoin: typeof changeCoin;
@@ -387,6 +394,9 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     setRowQuantity,
     setRowContainer,
     removeRow,
+    addCustomItem,
+    addCustomFeature,
+    removeCustomFeature,
     coins: fifthEditionCoins,
     changeCoin,
     pathParts: fifthEditionPathParts,

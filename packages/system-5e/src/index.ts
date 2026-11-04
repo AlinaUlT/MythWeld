@@ -17,6 +17,7 @@ export * from './classes';
 export * from './coins';
 export * from './combat';
 export * from './conditions';
+export * from './custom';
 export * from './dead';
 export * from './death-saves';
 export * from './defenses';

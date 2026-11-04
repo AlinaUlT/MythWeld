@@ -14,10 +14,12 @@ import { type OpenedCharacter, openCharacter } from '../db/characters';
 import { BreakdownSheet } from '../shared/BreakdownSheet';
 import { RollDialog } from '../shared/RollDialog';
 import { ActionsMenu } from '../sheet/panels/ActionsMenu';
+import { AddPanel } from '../sheet/panels/AddPanel';
 import { CastPanel } from '../sheet/panels/CastPanel';
 import { ChoicesPanel } from '../sheet/panels/ChoicesPanel';
 import { NumberPad, type NumberPadMode } from '../sheet/panels/NumberPad';
 import { RestPanel } from '../sheet/panels/RestPanel';
+import { SheetAdd } from '../sheet/SheetAdd';
 import { SheetContext, type SheetValue } from '../sheet/SheetContext';
 import { SheetDice } from '../sheet/SheetDice';
 import { SheetDock } from '../sheet/SheetDock';
@@ -39,7 +41,7 @@ type Open =
   | { kind: 'breakdown'; path: string; format: NumberFormat | undefined }
   | { kind: 'numberPad'; mode: NumberPadMode }
   | { kind: 'cast'; spell: string; part: string | undefined }
-  | { kind: 'rest' | 'actions' | 'choices' };
+  | { kind: 'rest' | 'actions' | 'choices' | 'add' };
 
 type Loaded = { status: 'loading' } | { status: 'failed' } | OpenedCharacter;
 
@@ -146,6 +148,7 @@ function Frame({ character, system }: { character: AppCharacter; system: SheetSy
           onNumberPad={(mode) => setOpen({ kind: 'numberPad', mode })}
         />
         <SheetDice />
+        <SheetAdd onAdd={() => setOpen({ kind: 'add' })} />
         {open?.kind === 'roll' && <RollDialog path={open.path} onClose={close} />}
         {open?.kind === 'breakdown' && (
           <BreakdownSheet path={open.path} format={open.format} onClose={close} />
@@ -155,6 +158,7 @@ function Frame({ character, system }: { character: AppCharacter; system: SheetSy
         {open?.kind === 'rest' && <RestPanel onClose={close} />}
         {open?.kind === 'actions' && <ActionsMenu onClose={close} />}
         {open?.kind === 'choices' && <ChoicesPanel onClose={close} />}
+        {open?.kind === 'add' && <AddPanel onClose={close} />}
       </Slot>
     </SheetContext>
   );

@@ -4,7 +4,7 @@
 // every number is read from `Computed`; the rules the equipment breaks, a fourth attunement or two
 // armors worn, are warned in amber and never refused (SPEC §8.2). Every change is one change with
 // its "Undo" toast. Adding an item from the packs is the creation form's (SHEET-28) and, later, the
-// library's; a free-text item is SHEET-52's.
+// library's; a free-text item is SHEET-52's (the "+" in edit mode), and its words show under its name.
 import { finderOf } from '@grimoire/engine';
 import { Minus, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -103,6 +103,14 @@ export function Items() {
                 </div>
               ) : (
                 <Description entity={found}>{line}</Description>
+              )}
+              {row.note !== undefined && (
+                <p
+                  className="px-4 pb-2 text-13 whitespace-pre-line text-muted"
+                  data-testid="row-note"
+                >
+                  {row.note}
+                </p>
               )}
               <div className="flex flex-col gap-1 px-4 pb-3">
                 {row.itemId !== undefined && (

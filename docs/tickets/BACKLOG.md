@@ -254,7 +254,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-49 | The Turn tab lists actions by timing | S | ✅ 2026-11-04 |
 | SHEET-50 | The Gear tab equips items | M | ✅ 2026-11-03 |
 | SHEET-51 | Coins change by quick steps | XS | ✅ 2026-11-04 |
-| SHEET-52 | Custom entries are added as free text | S | 🔲 |
+| SHEET-52 | Custom entries are added as free text | S | ✅ 2026-11-04 |
 | SHEET-53 | The About tab shows the origin details | S | ✅ 2026-11-03 |
 | SHEET-54 | The Notes tab keeps free text | XS | ✅ 2026-11-03 |
 | SHEET-55 | Inspiration is tracked as stars | S | ✅ 2026-11-03 |
@@ -274,14 +274,11 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-77 | A disabled button looks different from an enabled one | XS | 🔲 |
 | SHEET-78 | A second context menu on the same number opens its breakdown | XS | 🔲 |
 | SHEET-79 | A skill's stat is overridden from the sheet | S | 🔲 |
+| SHEET-80 | A custom entry is edited after it is added | S | 🔲 |
 
 - **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates:
   `Computed.candidates['ac.base']`, each `{ key, value, steps }`; a pin that does not apply is not
   among them and warns `acCalcNotApplying`.
-- **SHEET-52** — SPEC §12 stage 2 ("custom item", "custom feature" with text), ADR 009 item 7
-  (free text now; with effects in phase 5), board `V3-Add`. The stored shape has both already: an
-  inventory row's `custom`, and the character's own entities (`localEntities`). Found by SHEET-22:
-  removing one ends with `withDropped` (`trackers.ts`).
 - **SHEET-57** — ADR 009 items 7 and 8, board `V3-Add`: Mounts, Pets, Familiars, Notes or any
   named list, each entry free text; a companion is such an entry with its small stat block as text.
   A companion with a sheet of its own waits for the table link (ADR 014 item 9). A stored-shape
@@ -299,6 +296,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 - **SHEET-77** — found by SHEET-51: a button with `disabled` (the Items card's "One less" at quantity 1, the Coins card's "−10" under 10, the override form's Save with nothing to save) is drawn like an enabled one, so a person taps it and nothing happens. The button parts show it off (lower contrast, no press) from a token, so a skin can change it (ADR 015).
 - **SHEET-78** — found by SHEET-34: `usePress` (`SheetNumber.tsx`) sets its long-press flag when the context menu opens a breakdown and clears it only on a left press or a click, so a second right-click on the same number, after the breakdown closed, does nothing. Touch is not affected (a pointer down clears it). The flag is cleared when the breakdown opens or closes.
 - **SHEET-79** — found by SHEET-34: an override of a key path (ENG-43: a skill's stat, `skills.<key>.ability`) applies only when its value is one of the path's keys (`overrideNotAKey`). SHEET-34's form edits number paths only. The Main tab draws a skill's stat only as its group's heading, and `Computed.keys` holds a key and its steps, not the keys it may take. The row gives a skill a place to open its stat's breakdown, with the stats as the choice, and stores the key (`setOverride` takes a key then, or a twin action does).
+- **SHEET-80** — found by SHEET-52: a custom item (a row's `custom` name and weight, its `note`) and a custom feature (a `character:feat/<slug>` entity's `name` and `text`) cannot be changed once added; a typing error means remove and add again. The panel's forms open on the entry with its words, and a save is one change with Undo (a custom feature's id stays, SPEC §5.1).
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
 

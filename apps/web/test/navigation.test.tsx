@@ -33,6 +33,7 @@ describe('SHEET-11 navigation', () => {
     expect(localeFiles).toEqual([
       'about',
       'actions',
+      'add',
       'attacks',
       'breakdown',
       'cast',

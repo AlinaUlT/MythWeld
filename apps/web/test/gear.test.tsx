@@ -213,3 +213,36 @@ describe('SHEET-51 the Gear tab’s coins', () => {
     expect(copper).not.toMatch(/aria-label="Add 1 copper"[^>]*disabled/);
   });
 });
+
+describe('SHEET-52 a custom item', () => {
+  const ROPE = 'e1000000-0000-4000-8000-0000000000aa';
+  const html = drawn(
+    inventory([
+      ...goldenB.systemData.inventory,
+      {
+        uid: ROPE,
+        custom: { name: 'Rope', weight: 10 },
+        qty: 2,
+        equipped: false,
+        attuned: false,
+        note: '50 feet of hemp',
+      },
+    ]),
+  );
+
+  it('is listed by its own name with its weight and its words', () => {
+    const row = rowOf(html, ROPE);
+    expect(text(row)).toContain('|Rope|');
+    expect(text(row)).toContain('×2 · 20 lb');
+    expect(text(row)).toContain('|50 feet of hemp|');
+    // Chain mail 55 + greatsword 6 + 2 ropes of 10 = 81.
+    expect(text(html)).toContain('|Carrying 81 lb|');
+  });
+
+  it('can be counted, kept in something and removed as any row, but not worn', () => {
+    const row = rowOf(html, ROPE);
+    expect(row).toContain('aria-label="One more Rope"');
+    expect(row).toContain('aria-label="Remove Rope"');
+    expect(text(row)).not.toContain('Worn');
+  });
+});

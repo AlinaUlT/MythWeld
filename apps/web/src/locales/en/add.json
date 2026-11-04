@@ -1,0 +1,25 @@
+{
+  "title": "Add to the sheet",
+  "item": {
+    "title": "Custom item",
+    "note": "Armor, weapon or gear of your own"
+  },
+  "feature": {
+    "title": "Custom feature",
+    "note": "A trait or feat of your own, as text"
+  },
+  "name": "Name",
+  "weight": "Weight ({{unit}})",
+  "weightHint": "Leave empty when it weighs nothing worth counting.",
+  "quantity": "How many",
+  "text": "Description",
+  "textPlaceholder": "Its words, as you want to read them",
+  "add": "Add",
+  "back": "Back",
+  "refused": {
+    "noName": "Give it a name.",
+    "badWeight": "A weight is a number above 0.",
+    "badQuantity": "How many is a whole number from 1.",
+    "other": "It could not be added."
+  }
+}

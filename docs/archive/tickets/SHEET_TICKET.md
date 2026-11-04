@@ -7696,3 +7696,91 @@ Differences from the row: none. Technical choices (ADR 002): the ticks write the
 Found, not fixed: nothing.
 
 Changelog: "When your species or race and your background both raise ability scores, the new-character form warns and a popup lets you take one, both or neither; the live numbers follow each tick, and Create stays on."
+
+---
+
+### SHEET-52 Custom entries are added as free text
+
+**Hat:** Edit mode adds a custom item and a custom feature as text
+**Depends on:** SHEET-50 (the Gear tab), SHEET-48 (the Features tab), SHEET-22 (`withDropped`), SHEET-23 (Undo)
+**Size:** S
+**Screen:** Yes — edit mode's "Add to the sheet"; board `V3-Add` in `docs/design/mockups/`, its row in `docs/design/BRIEF.md` Part 5 ("P4"). ADR 009 item 7, SPEC §12 stage 2.
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/panels/AddPanel.tsx` — new: the list and the two forms.
+- `packages/system-5e/src/custom.ts` — new: `addCustomItem`, `addCustomFeature`, `removeCustomFeature`, `customFeatureId`.
+- `apps/web/src/sheet/SheetAdd.tsx` — new: the "+" in edit mode; `apps/web/src/pages/SheetPage.tsx` — change: mounts it and the panel.
+- `apps/web/src/sheet/sections/Items.tsx` — change: a row's words show under its name. `apps/web/src/sheet/sections/FeatureList.tsx` — change: a "Remove" button on a feat of the character's own in edit mode.
+- `apps/web/src/settings/units.ts` — change: `storedWeight`. `apps/web/src/systems.ts` — change: `SheetSystem.addCustomItem`, `addCustomFeature`, `removeCustomFeature`.
+- `apps/web/src/locales/en/add.json` — new namespace; `toast.json`, `sheet.json`, `features.json` — new keys.
+
+#### 2. What is missing now
+
+The stored shape holds both already: an inventory row's `custom` (`inventoryRowSchema`) and the character's own entities (`localEntities`, pack `character`). Nothing writes either: `grep -rn "custom:" apps/web/src` finds no writer, and the Gear tab draws a custom row's name (SHEET-50) but a person cannot make one.
+
+#### 3. What it should look like when done
+
+1. In edit mode a round "+" ("Add to the sheet") shows at the left, 16 px above the dock, on every tab. Play mode shows none.
+2. It opens a sheet "Add to the sheet" with two rows: "Custom item" ("Armor, weapon or gear of your own") and "Custom feature" ("A trait or feat of your own, as text").
+3. Custom item: fields Name, Weight (in the person's unit), How many (1 to 999, starting at 1), Description. "Add" is off until the name shows a character, the weight (when typed) is a number above 0 and the count is a whole number from 1.
+4. The item is a new last row of the Gear tab: its name, "×2 · 20 lb" for two of 10 lb, its words under the name. Chain mail 55 lb + greatsword 6 lb + two ropes of 10 lb is "Carrying 81 lb". It has no "Worn" switch; the stepper, "Kept in" and "Remove" work as on any row.
+5. Custom feature: fields Name and Description. It appears under "Feats" on the Features tab, opens its description in place, and "See full description" shows its words with "Source: your own entry". In edit mode it has "Remove <name>".
+6. Each add and the removal is one change with its "Undo" toast ("Rope added", "Keen Eyes added", "Keen Eyes removed"); Undo reverses it. Both are stored: a reload keeps them.
+7. Text only: no number changes (golden B keeps AC 17 and 12 hit points).
+8. The gate is green.
+
+#### 4. How to do it
+
+1. `addCustomItem`: a row with `custom: { name, weight? }`, the words in `note`, not worn, not attuned; refused as `noName`, `badWeight`, `badQuantity`. The weight is stored in pounds (SPEC §7.5); the form converts what is typed in kilograms with `storedWeight` (the pound's own definition, 0.45359237 kg, to a hundredth).
+2. `addCustomFeature`: an entity `character:feat/<slug>` (type `feat`, ruleset `any`, name and text in English, no effect) added to `localEntities` and named in `systemData.feats`; one entry, two changes. The slug is made by the app (`custom-` and 8 hex digits) so an id never changes with the name (SPEC §5.1). Refused as `noName`, `badId`, `idUsed`.
+3. `removeCustomFeature` takes it from both lists and ends with `withDropped` (SHEET-22). Removing a custom item is `removeRow` (SHEET-50).
+4. `SheetAdd` and `AddPanel` hold the UI; `FeatureList` and `Items` show the results.
+
+#### 5. Stored data
+
+Nothing stored changes shape: `inventory[].custom` and `note`, `localEntities` and `systemData.feats` exist. No `schemaVersion` bump.
+
+#### 6. What a person will see
+
+At 360×800: the "+" over the dock at the left, mirroring the dice button; the panel as a bottom sheet; the item form is Name, then Weight and How many side by side, a hint under them, Description, and "Back" and "Add"; the feature form is Name, Description, "Back", "Add". A refusal shows in an amber line. Keys: `add.json` (`title`, `item.*`, `feature.*`, `name`, `weight`, `weightHint`, `quantity`, `text`, `textPlaceholder`, `add`, `back`, `refused.*`), `sheet.json` `add`, `features.json` `remove`, `toast.json` `addItem`, `addFeature`, `removeFeature`. Screenshots in the chat.
+
+#### 7. Tests
+
+- `packages/system-5e/test/custom.test.ts` — 13 tests on golden B: the row and its fields; carried (71 lb, 81 lb for two); AC 17 and 12 hit points unchanged; no weight, no words; the refusals; reverse. The feature's entity and both lists; the Features tab's "feats" group; no number or warning changes; the refusals; removal back to the start; reverse.
+- `apps/web/test/add.test.tsx` — 5 tests: the "+" in edit mode only; the panel's two rows; the remove button only on a feat of its own in edit mode; the feat listed under "Feats"; `storedWeight`.
+- `apps/web/test/gear.test.tsx` — 2 tests: a custom row's name, "×2 · 20 lb", its words and the 81 lb total; no "Worn" switch, but a stepper and "Remove".
+- `apps/web/e2e/sheet.spec.ts` — 1 test: no "+" in play mode; the list; the item form's three checks on "Add"; two ropes, 81 lb, its words; Undo; a feature, its description and its source line; a reload; Remove and Undo.
+- Control numbers from: SPEC §6.7 golden B (chain mail 55 lb, greatsword 6 lb, AC 17, 12 hit points), hand-added: 55 + 6 + 10 = 71, + 2 × 10 = 81; 2 kg ÷ 0.45359237 = 4.409 lb, which is 4.41; 0.5 kg is 1.102 lb, which is 1.1.
+
+#### 8. Checked against the source
+
+Nothing rules-bound: free text changes no number (ADR 009 item 7). The weight rate is the pound's definition (SHEET-50 §8). Nothing else to check.
+
+#### 9. Not in this ticket
+
+- Custom items and features with effects: phase 5 (HB).
+- Custom sections and companions: SHEET-57, which adds its rows to this panel's list.
+- A custom stat: later (ADR 009 item 9).
+- Editing an entry's name, weight or words after it is added: new row SHEET-80. A typing error means remove and add again.
+
+#### 10. Rake check
+
+- Everything is data: a custom feature is an entity like any other; the sheet names no game, and `SheetSystem` carries the actions.
+- Ids are stable: the feature's id is made once and never from its name.
+- Stored units are pounds: kilograms are converted on the way in, and shown back by `shownWeight`.
+- Missing is not broken: a custom feature whose entity is missing shows `Missing: <id>` as any entry does.
+- Formulas never run code: none here; the text is plain text, shown as text.
+- No look in a component, no literal string: parts, tokens and `add.json` keys only. Entity names stay bilingual: `name.en` is written; `name.ru` waits for the Russian phase.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` 438 files, no fixes; `pnpm typecheck` clean; `pnpm test` 138 files, 1559 passed, 0 failed, 34.2 s (20 new, from 1539), then speed 2 passed; coverage statements 99.05 % (4000/4038), lines 99.8 % (3506/3513); `pnpm e2e` 81 passed, 0 failed, 1.4 min (1 new). Screenshots at 360×800 shown in the chat.
+
+Differences from the row: none. Technical choices (ADR 002): the board draws the "Add to the sheet" list but not what opens it, so a round "+" over the dock opens it, in edit mode only (the header is full at 360 px: SHEET-70); a custom feature is a feat of the character's own, so the Features tab's existing "Feats" group lists it; the words of a custom item are the row's `note`, as the stored shape has no other place; the form's count runs 1 to 999 as the creation form's stepper does.
+
+Found, not fixed: an entry cannot be edited after it is added (new row SHEET-80, S).
+
+Changelog: "In edit mode a + button adds a custom item (name, weight, how many, description) to the Gear tab or a custom feature (name, description) to the Features tab, as text only; each has Undo, and a custom feature can be removed."

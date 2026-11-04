@@ -10,6 +10,7 @@ import {
   setToggle,
   useResource as spendResource,
 } from '@grimoire/engine';
+import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Description } from '../../shared/Description';
@@ -134,7 +135,7 @@ function Row({
   row: ReturnType<ReturnType<typeof useSheet>['system']['features']>[number]['rows'][number];
 }) {
   const { t } = useTranslation('features');
-  const { character, computed } = useSheet();
+  const { character, computed, content, editing, system } = useSheet();
   const found = hadOf(computed, row.id);
   if (found === undefined) {
     return <p className="px-4 py-2 text-14 text-muted">{t('missing', { id: row.id })}</p>;
@@ -153,6 +154,28 @@ function Row({
       />
     )),
   ];
+  // SHEET-52: a feat of the character's own can be taken away in edit mode.
+  if (editing && character.localEntities.some(({ id }) => id === row.id)) {
+    const name = nameIn(found.name);
+    controls.push(
+      <Part
+        key="remove"
+        as="button"
+        type="button"
+        name="button-secondary"
+        aria-label={t('remove', { name })}
+        onClick={() =>
+          perform(character, (stamp) =>
+            system.removeCustomFeature(character, content.index, { id: row.id }, stamp),
+          ).catch((error: unknown) => console.error(error))
+        }
+        className="flex h-control w-fit items-center gap-2 px-4 text-14"
+      >
+        <X aria-hidden className="size-4" />
+        {t('remove', { name })}
+      </Part>,
+    );
+  }
   return (
     <li className="flex flex-col" data-feature={row.id}>
       <Description entity={found} />

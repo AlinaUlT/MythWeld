@@ -42,5 +42,6 @@
       "revive": "back on coming back to life"
     },
     "countOther": "back on {{event}}"
-  }
+  },
+  "remove": "Remove {{name}}"
 }

@@ -616,6 +616,85 @@ test('SHEET-58 the sheet’s ⋯ menu lists the character’s actions; Export, C
   await expect(cards).toHaveCount(2);
 });
 
+test('SHEET-52 edit mode adds a custom item and a custom feature as text, each with Undo', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=gear`);
+  const add = page.getByRole('button', { name: 'Add to the sheet' });
+  const panel = page.getByRole('dialog', { name: 'Add to the sheet' });
+  const tab = page.getByRole('tabpanel');
+
+  // Play mode locks the structure: no "+". Edit mode shows it.
+  await expect(add).toHaveCount(0);
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await expect(add).toBeVisible();
+  await add.click();
+  await expect(panel.getByTestId('add-menu')).toContainText('Custom item');
+  await expect(panel.getByTestId('add-menu')).toContainText('Custom feature');
+  await page.screenshot({ path: testInfo.outputPath('add-menu-dark.png') });
+
+  // A custom item: a name is needed; a weight must be a number above 0.
+  await panel.getByRole('button', { name: /^Custom item/ }).click();
+  const form = page.getByRole('dialog', { name: 'Custom item' });
+  const addItem = form.getByRole('button', { name: 'Add', exact: true });
+  await expect(addItem).toBeDisabled();
+  await form.getByLabel('Name', { exact: true }).fill('Rope');
+  await expect(addItem).toBeEnabled();
+  await form.getByLabel('Weight (lb)').fill('abc');
+  await expect(addItem).toBeDisabled();
+  await form.getByLabel('Weight (lb)').fill('10');
+  await form.getByLabel('How many').fill('2');
+  await form.getByLabel('Description').fill('50 feet of hemp');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('add-item-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('add-item-light.png') });
+  await addItem.click();
+  await expect(form).toHaveCount(0);
+
+  // Chain mail 55 lb + greatsword 6 lb + two ropes of 10 lb = 81 lb.
+  const rope = tab.locator('[data-row]').filter({ hasText: /^Rope/ });
+  await expect(rope).toContainText('×2 · 20 lb');
+  await expect(rope.getByTestId('row-note')).toHaveText('50 feet of hemp');
+  await expect(tab.getByTestId('carried')).toHaveText('Carrying 81 lb');
+  await expect(page.getByRole('status').filter({ hasText: 'Rope added' })).toBeVisible();
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(rope).toHaveCount(0);
+  await expect(tab.getByTestId('carried')).toHaveText('Carrying 61 lb');
+
+  // A custom feature: a name and its words, on the Features tab under the feats.
+  await page.goto(`characters/${goldenB.id}?tab=features`);
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await add.click();
+  await panel.getByRole('button', { name: /^Custom feature/ }).click();
+  const featureForm = page.getByRole('dialog', { name: 'Custom feature' });
+  await featureForm.getByLabel('Name', { exact: true }).fill('Keen Eyes');
+  await featureForm.getByLabel('Description').fill('You notice what others miss.');
+  await featureForm.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(featureForm).toHaveCount(0);
+  const keen = tab.locator('[data-feature^="character:feat/"]');
+  await expect(keen).toContainText('Keen Eyes');
+  await keen
+    .getByRole('button', { name: /Keen Eyes/ })
+    .first()
+    .click();
+  await keen.getByRole('button', { name: en.description.seeFull }).click();
+  await expect(keen).toContainText('You notice what others miss.');
+  await expect(keen).toContainText(en.description.own);
+  await expect(page.getByRole('status').filter({ hasText: 'Keen Eyes added' })).toBeVisible();
+
+  // It is stored, and edit mode can take it away, with Undo.
+  await page.reload();
+  await expect(tab.locator('[data-feature^="character:feat/"]')).toHaveCount(1);
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await page.getByRole('button', { name: 'Remove Keen Eyes' }).click();
+  await expect(tab.locator('[data-feature^="character:feat/"]')).toHaveCount(0);
+  await expect(page.getByRole('status').filter({ hasText: 'Keen Eyes removed' })).toBeVisible();
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(tab.locator('[data-feature^="character:feat/"]')).toHaveCount(1);
+});
+
 /** The d20 faces a roll shows, and which of them it kept. */
 async function facesOf(page: Page) {
   return page

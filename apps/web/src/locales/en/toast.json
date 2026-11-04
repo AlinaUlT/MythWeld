@@ -37,6 +37,9 @@
     "moveItem": "{{name}} moved",
     "removeItem": "{{name}} removed",
     "changeCoin": "Coins changed",
+    "addItem": "{{name}} added",
+    "addFeature": "{{name}} added",
+    "removeFeature": "{{name}} removed",
     "setOverride": "Manual edit saved",
     "clearOverride": "Manual edit removed",
     "other": "Change made"
