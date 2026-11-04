@@ -102,6 +102,50 @@ which of the three is wrong: the code, the golden value, or my expectation.
 
 ---
 
+## 8 · Several rows in one chat
+
+For rows of one wave, or of waves in a row, that one chat builds one after another.
+
+```
+Grimoire project. Read CLAUDE.md before doing anything.
+
+Build these tickets in this chat, one after another, in this order: <ID, ID, ID>.
+<What is already done and pushed, and the last commit. Start with `git pull --rebase`, and check
+that `git log --oneline` shows "<the last closed ticket's commit line>". If node_modules is
+missing, run `pnpm install --frozen-lockfile`. In the cloud container e2e runs as
+`PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm e2e`. If the session names a development
+branch, push every commit to `main` and to that branch.>
+
+For each ticket, run the normal steps from CLAUDE.md. Read only that ticket's row in
+docs/tickets/BACKLOG.md and the theme header in docs/tickets/<AREA>_TICKET.md, and only the SPEC
+sections and ADRs the row points at. Expand the row from docs/tickets/TEMPLATE.md (the short form
+for XS), build it, get the quality gate green (add pnpm e2e when apps/web is touched), fill §11,
+move the ticket to docs/archive/tickets/, put ✅ and the date in BACKLOG.md and delete the row's
+note under the table, add one line to docs/CHANGELOG.md, make one commit starting with the ticket
+id, push. For a screen ticket, build from its boards in docs/design/mockups/ and its row in
+docs/design/BRIEF.md Part 5.
+
+<Pieces the closed tickets made, to reuse: the files to read, not the old tickets.>
+
+Rules for the run:
+- One ticket = one commit. Never mix two tickets in one commit.
+- Never start the next ticket until the previous one is pushed and its gate is green.
+- If the gate fails, fix it. Do not skip a test. Do not change a golden value.
+- Expected values come from SPEC §6.7, the SRD or the packs' source, never from a run's output.
+- Stop the whole run only for a decision that is mine (ADR 007). Otherwise go straight on.
+- Anything found outside a ticket's hat is not fixed: write it in §11 and as a new BACKLOG row.
+- Between tickets, write at most 2 lines in the chat: the id, the gate line (for example
+  "1501 passed, 0 failed, 29.7 s"), the commit hash. Do not retell the ticket.
+- After the last ticket, write one short report: ids with commit hashes, anything found and not
+  fixed, and the screenshots for the screen tickets (send each one as a file).
+- If the chat gets heavy before the end, stop after a pushed commit and tell me the next id.
+
+<Notes for this batch: what a row decides, what it must not touch.>
+Short answers, plain language, no analogies. Everything new is in English.
+```
+
+---
+
 ## Which prompt reads what
 
 | Prompt | Number | Reads |
@@ -112,3 +156,4 @@ which of the three is wrong: the code, the golden value, or my expectation.
 | Next ticket | 5 | `CLAUDE.md`, `BACKLOG.md` |
 | Open a phase | 6 | `CLAUDE.md`, `BACKLOG.md`, SPEC §12 and what it names |
 | A number looks wrong | 7 | `CLAUDE.md`, SPEC §6.7, the SRD |
+| Several rows in one chat | 8 | `CLAUDE.md`, then for each row: its row, the theme header, what the row names |

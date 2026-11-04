@@ -1181,3 +1181,27 @@ Found, not fixed: nothing.
 Nothing for the changelog; a person sees no change.
 
 ---
+
+---
+
+### OPS-33 The rows found in wave 7 join the waves, and a prompt runs several rows in one chat · XS
+
+**Hat:** The waves hold every open row, and a prompt builds several rows in one chat
+**Where:** `docs/tickets/BACKLOG.md` — the wave table of phase 2; `PROMPTS.md` — prompt 8
+**Depends on:** SHEET-45, 47 and 49 closed
+**Screen:** No
+
+Found by SHEET-45, 47 and 49 (their §11): rows SHEET-72, 74, 75 and 76 were added with no wave, and
+`BACKLOG.md` ended wave 8 at SHEET-35, 59, 69, 70. The owner's prompt for the last batch, five rows
+in one chat, is in no file.
+
+**What it should look like when done:**
+1. Wave 8 holds SHEET-35, 59, 69, 70, 72, 75 and 76. SHEET-74 is wave 9, after wave 8: it reuses the
+   field SHEET-69 makes for typed faces. SHEET-60 is wave 10. The rule on stored shapes names
+   SHEET-76 too, since it changes the packs' shape.
+2. `PROMPTS.md` has prompt 8, "Several rows in one chat", with the owner's rules for the run, and a
+   line for it in the table at the end.
+3. Nothing else changes: no row's hat, size or note.
+
+**Tests:** none; `pnpm lint && pnpm typecheck && pnpm test` stay green.
+**What came out of it:** Quality gate, 2026-11-04: `pnpm lint` 422 files, no fixes; `pnpm typecheck` clean; `pnpm test` 130 files, 1501 passed, 0 failed, 30.1 s, then speed 2 passed (no code touched; e2e not run). Nothing found. No changelog line (nothing a person can see).
