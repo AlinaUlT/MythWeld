@@ -1180,3 +1180,45 @@ test('SHEET-43 exhaustion at its highest level is death; a 2024 revival lowers i
   await expect(page.locator('[data-death-state]')).toHaveCount(0);
   await expect(chip).toHaveText('Exhaustion 5');
 });
+
+test('SHEET-44 the Combat tab lists the attacks; a tap rolls the attack', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=combat`);
+  const row = page.locator('[data-attack="greatsword"]');
+  // Golden B (SPEC §6.7): +5 to hit, 2d6 +3 slashing, mastery Graze.
+  await expect(row).toContainText('Greatsword');
+  await expect(row).toContainText('Melee · Mastery: Graze');
+  await expect(row.locator('[data-path="attacks.greatsword.hit"]')).toHaveText('Attack+5');
+  await expect(row.locator('[data-path="attacks.greatsword.damage"]')).toHaveText('Damage bonus+3');
+  await expect(row).toContainText('2d6');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('attacks-dark.png') });
+
+  // The name opens its description in place.
+  await row.getByRole('button', { name: /Greatsword/ }).click();
+  await expect(row.getByRole('button', { name: en.description.seeFull })).toBeVisible();
+
+  // A tap rolls the attack through the roll dialog: d20 + 5.
+  await row.locator('[data-path="attacks.greatsword.hit"]').click();
+  await expect(page.getByTestId('roll-formula')).toContainText('1d20 + 5');
+  await page.getByRole('button', { name: en.roll.done, exact: true }).click();
+});
+
+test('SHEET-44 the Combat tab says where to equip a weapon when none is equipped', async ({
+  page,
+}) => {
+  const bare = {
+    ...goldenB,
+    systemData: {
+      ...goldenB.systemData,
+      inventory: goldenB.systemData.inventory.map((row) => ({ ...row, equipped: false })),
+    },
+  };
+  await saveRows(page, [bare]);
+  await page.goto(`characters/${goldenB.id}?tab=combat`);
+  await expect(page.getByRole('tabpanel')).toContainText(
+    'No attack. Equip a weapon on the Gear tab.',
+  );
+});

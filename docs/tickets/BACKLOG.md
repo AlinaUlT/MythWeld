@@ -245,7 +245,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-41 | Concentration shows until it ends | XS | ✅ 2026-11-04 |
 | SHEET-42 | Conditions are set from the sheet | S | ✅ 2026-11-04 |
 | SHEET-43 | The death saves tracker follows a dying character | S | ✅ 2026-11-04 |
-| SHEET-44 | The Combat tab lists the attacks | S | 🔲 |
+| SHEET-44 | The Combat tab lists the attacks | S | ✅ 2026-11-04 |
 | SHEET-45 | The Rest frames show what comes back | M | 🔲 |
 | SHEET-46 | The Spells tab shows the slot grid | M | ✅ 2026-11-03 |
 | SHEET-47 | The cast panel casts a spell | M | 🔲 |
@@ -281,8 +281,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 - **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates:
   `Computed.candidates['ac.base']`, each `{ key, value, steps }`; a pin that does not apply is not
   among them and warns `acCalcNotApplying`.
-- **SHEET-44** — the P4 prompt's Combat tab, board `V3-Sheet`: each attack with its mastery
-  (ENG-16); tapping it rolls through SHEET-39.
 - **SHEET-45** — board `V3-Rest`. Found by ENG-21: a rest is one action and one entry, `shortRest`
   or `longRest` (`rests.ts`), pure, so the Rest frames (BRIEF P6) call it to show what comes back
   and keep its result on "Confirm"; the short rest takes every die spent, `{ die, roll }`, the face

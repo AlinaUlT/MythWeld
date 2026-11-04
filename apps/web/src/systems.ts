@@ -10,6 +10,7 @@ import {
   ABOUT_LISTS,
   type AboutListName,
   type AboutShown,
+  type AttackShown,
   applyDamage,
   applyHealing,
   attackOutcome,
@@ -35,6 +36,7 @@ import {
   type FifthEditionPack,
   fatalLevelOf,
   fifthEditionAbout,
+  fifthEditionAttacks,
   fifthEditionCasting,
   fifthEditionChecks,
   fifthEditionClassLine,
@@ -172,6 +174,7 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
 
 export type {
   AboutListName,
+  AttackShown,
   ConditionsShown,
   DamageOutcome,
   DeathSaveOutcome,
@@ -250,6 +253,8 @@ export interface SheetSystem {
   setRowQuantity: typeof setRowQuantity;
   setRowContainer: typeof setRowContainer;
   removeRow: typeof removeRow;
+  /** The attacks of the equipped weapons: bonus paths, dice, type and mastery (SHEET-44). */
+  attacks(computed: AppComputed): AttackShown[];
   /** The conditions the character has, stored or given, and the ones it cannot find (SHEET-42). */
   conditions(
     character: AppCharacter,
@@ -293,6 +298,7 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     checks: fifthEditionChecks,
     features: fifthEditionFeatures,
     conditions: fifthEditionConditions,
+    attacks: fifthEditionAttacks,
     conditionsToAdd,
     fatalLevel: fatalLevelOf,
     setConditionLevel,

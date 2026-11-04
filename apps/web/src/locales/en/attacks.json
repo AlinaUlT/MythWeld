@@ -1,1 +1,14 @@
-{}
+{
+  "title": "Attacks",
+  "none": "No attack. Equip a weapon on the Gear tab.",
+  "attack": "Attack",
+  "damage": "Damage",
+  "damageBonus": "Damage bonus",
+  "kind": {
+    "melee": "Melee",
+    "ranged": "Ranged"
+  },
+  "mastery": "Mastery: {{name}}",
+  "notMastered": "{{name}}, not mastered",
+  "separator": " · "
+}

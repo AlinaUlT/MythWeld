@@ -23,6 +23,7 @@ import { SheetHeader } from '../src/sheet/SheetHeader';
 import { formatNumber, numberAt } from '../src/sheet/SheetNumber';
 import { Abilities } from '../src/sheet/sections/Abilities';
 import { AboutList } from '../src/sheet/sections/AboutList';
+import { Attacks } from '../src/sheet/sections/Attacks';
 import { Concentration } from '../src/sheet/sections/Concentration';
 import { Conditions } from '../src/sheet/sections/Conditions';
 import { DeathSaves } from '../src/sheet/sections/DeathSaves';
@@ -242,6 +243,7 @@ describe('SHEET-30 tabs', () => {
       Concentration,
       Conditions,
       DeathSaves,
+      Attacks,
     ];
     for (const Section of [...sections, Inspiration].filter((each) => !filled.includes(each))) {
       expect(draw(sheet, <Section />)).toBe('');

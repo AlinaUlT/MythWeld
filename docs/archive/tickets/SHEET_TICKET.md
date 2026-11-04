@@ -7018,3 +7018,85 @@ Found, not fixed: the roll dialog and the toast: a revival's Undo toast is under
 Changelog: "The Combat tab follows a dying character: death save circles, a roll in the roll dialog that applies the result, Stabilize, first aid for a knocked-out character, and a revival for the dead."
 
 ---
+
+### SHEET-44 The Combat tab lists the attacks
+
+**Hat:** The Combat tab lists the attacks
+**Depends on:** SHEET-30 (the section's place), SHEET-31 (descriptions in place), SHEET-39 (a tap rolls a number), SHEET-50 (equipping a weapon), ENG-16 (`attacks.<key>.*`)
+**Size:** S
+**Screen:** Yes — board `V3-Sheet` and `docs/design/BRIEF.md` Part 2 P4 ("the greatsword attack row: +5, 2d6+3 slashing, Graze"); the board draws the Main tab only, so the card follows the other tabs' cards. SPEC §7.2.
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/Attacks.tsx` — changes: the section SHEET-30 left empty.
+- `packages/system-5e/src/sheet-attacks.ts` — new: `fifthEditionAttacks`.
+- `apps/web/src/systems.ts` — changes: `SheetSystem.attacks`.
+- `apps/web/src/locales/en/attacks.json` — changes: the words.
+
+#### 2. What is missing now
+
+Measured on `9f75a4b`: `Attacks` returns `null`; the Combat tab shows no attack, though `compute()` has each equipped weapon's `attacks.<key>.hit`, `.damage` and `.mastery` (ENG-16).
+
+#### 3. What it should look like when done
+
+1. The card "Attacks" has a row for each equipped weapon that has an attack, each weapon once, in the order `compute()` has them.
+2. A row shows the weapon's name, opening its description in place (SHEET-31), with "Melee" or "Ranged"; in 2024 its mastery property: "Mastery: Graze" while the character uses it, "Graze, not mastered" when it does not.
+3. Under it, "Damage 2d6 +3 Slashing": the weapon's own dice, the damage bonus as a number (a long press opens its breakdown), and the damage type by its entry's name.
+4. At the right, "Attack +5": the attack bonus, a number a tap rolls through the roll dialog (SHEET-39), which rolls the damage after a hit.
+5. Golden B (SPEC §6.7) shows the greatsword at +5 with 2d6 +3 slashing and Graze; golden A the warhammer at +3 with 1d8 +1 bludgeoning and no mastery (2014 has none).
+6. With no weapon equipped: "No attack. Equip a weapon on the Gear tab."
+7. The gate is green.
+
+#### 4. How to do it
+
+1. `fifthEditionAttacks` reads `computed.entities`: each weapon item with a key and an `attacks.<key>.hit` value, once by key (as ENG-16 gives paths), with its dice and type and whether `attacks.<key>.mastery` is 1.
+2. The card reads each weapon through the character's finder and its damage type and mastery names from `computed.byKey`; a key no entry names shows as its words.
+
+Technical choices (ADR 002): the name's row and the attack number are two controls, so the tap on a number never opens a description; the attack and the damage bonus are `SheetNumber`s, so no number is shown without its breakdown; a weapon with no key has no attack path, so it is not listed (ENG-16 §8).
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+One card at 360×800. Keys in `attacks`: `title`, `none`, `attack`, `damage`, `damageBonus`, `kind.*`, `mastery`, `notMastered`, `separator`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-attacks.test.ts` — 4 tests: golden B's greatsword (+5, +3, 2d6 slashing, Graze used); golden A's warhammer (+3, +1, 1d8 bludgeoning, no mastery); listed only while equipped; golden B4 at +6 and +4.
+- `apps/web/test/attacks.test.tsx` — 3 tests: golden B's row; golden A's row without a mastery; the empty card.
+- `apps/web/e2e/sheet.spec.ts` — 2 tests: the row's texts and numbers, the description opened, a tap that opens the roll dialog at `1d20 + 5`; the empty card with the weapon unequipped.
+- Control numbers from: SPEC §6.7 and ENG-16's goldens (`golden-values.test.ts`): golden B greatsword +5 and 3, golden A warhammer +3 and 1, golden B4 +6 and 4.
+
+#### 8. Checked against the source
+
+SRD 5.2.1, "Weapon Mastery Properties" and "Mastery": a character uses a weapon's mastery only for the kinds of weapons it has chosen (ENG-16 §8: `attacks.<key>.mastery` is 1 then). SRD 5.1 has no mastery property.
+
+#### 9. Not in this ticket
+
+- Unarmed strikes and attacks no equipped weapon gives (a spell attack, a feature's attack): the Turn tab (SHEET-49) and the cast panel (SHEET-47) own them.
+- Rolling the damage by itself: the roll dialog offers it after the attack roll (SHEET-39).
+- A weapon equipped with no key: it has no attack paths, and its kind's attack bonus warns of it; the Gear tab shows the warning.
+- The names of Graze and the damage types come from the packs; the built-in 2024 pack has no weapon mastery entry yet, so Graze reads as its key's words (phase 3).
+
+#### 10. Rake check
+
+- **Everything is data:** weapons, types and masteries come from entries and `Computed`; nothing is typed in the screen.
+- **A shown number has a breakdown:** the attack and the damage bonus are `SheetNumber`s.
+- **Missing is not broken:** a mastery or damage type no pack names shows as its words.
+- **No visible literal, no look literal:** `attacks` keys; parts and tokens.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` 410 files, no fixes; `pnpm typecheck` clean; `pnpm test` 124 files, 1468 passed, 0 failed, 28.6 s (7 new, from 1461), then speed 2 passed; coverage statements 99.06 % (3823/3859), lines 99.82 % (3350/3356); `pnpm e2e` 69 passed, 0 failed, 1.0 min (2 new). Screenshot at 360×800 shown in the chat.
+
+Differences from §3: none.
+
+Found, not fixed: the built-in 2024 pack holds no `weaponMastery` entry and the 2024 damage types are named, but Graze's own text is not in the pack (phase 3 content); the row's description is the weapon's.
+
+Changelog: "The Combat tab lists your equipped weapons' attacks: tap the attack bonus to roll it, with the damage dice, damage bonus, type and weapon mastery."
+
+---
