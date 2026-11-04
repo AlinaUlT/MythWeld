@@ -32,6 +32,7 @@ import {
   typedDie,
 } from './dice';
 import { useEscapeClose } from './escape';
+import { allFaces, TypedFaces, typedNumbers } from './TypedFaces';
 
 const label = 'text-12 font-semibold tracking-wide text-muted uppercase';
 const chip = 'flex h-9 min-w-11 items-center justify-center gap-1 px-3 text-14 font-semibold';
@@ -43,12 +44,6 @@ type WarningKey = keyof typeof en.dice.warnings;
 /** The words for a warning, by its code; a code with none of its own reads as `other`. */
 export function warningKeyOf(code: string): WarningKey {
   return code !== 'other' && Object.hasOwn(en.dice.warnings, code) ? (code as WarningKey) : 'other';
-}
-
-/** Whether `text` is a face of a die of `faces` faces. */
-function isFace(text: string, faces: number): boolean {
-  const face = Number(text);
-  return text.trim() !== '' && Number.isInteger(face) && face >= 1 && face <= faces;
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -350,8 +345,7 @@ export function DicePanel({ roller, read = readNothing, editing }: DicePanelProp
   const text = typed ?? builtFormula(count, faces, modifier);
   const parsed = useMemo(() => parseRoll(text), [text]);
   const fields = parsed.ok && rollMyself ? diceFields(parsed.formula) : [];
-  const ready =
-    parsed.ok && fields.every(({ faces: of }, index) => isFace(typedFaces[index] ?? '', of));
+  const ready = parsed.ok && allFaces(fields, typedFaces);
   const signed = new Intl.NumberFormat(i18n.language, { signDisplay: 'exceptZero' });
 
   /** A picker's change writes the built formula again. */
@@ -370,9 +364,7 @@ export function DicePanel({ roller, read = readNothing, editing }: DicePanelProp
 
   const roll = () => {
     if (!parsed.ok || !ready) return;
-    const die = rollMyself
-      ? typedDie(fields.map((_, index) => Number(typedFaces[index])))
-      : panelDie();
+    const die = rollMyself ? typedDie(typedNumbers(fields, typedFaces)) : panelDie();
     const made = rollWith({
       formula: parsed.formula,
       read,
@@ -499,34 +491,7 @@ export function DicePanel({ roller, read = readNothing, editing }: DicePanelProp
         )}
       </div>
 
-      {fields.length > 0 && (
-        <fieldset className="flex flex-col gap-2">
-          <legend className={`${label} mb-2`}>{t('typed')}</legend>
-          <div className="flex flex-wrap gap-2">
-            {fields.map(({ key, term, faces: of, n }, index) => (
-              <input
-                key={key}
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={of}
-                aria-label={t('typedDie', { term, n })}
-                placeholder={t('die', { faces: of })}
-                value={typedFaces[index] ?? ''}
-                aria-invalid={
-                  (typedFaces[index] ?? '') !== '' && !isFace(typedFaces[index] ?? '', of)
-                }
-                onChange={(event) => {
-                  const next = [...typedFaces];
-                  next[index] = event.target.value;
-                  setTypedFaces(next);
-                }}
-                className={`${field} w-20 text-center`}
-              />
-            ))}
-          </div>
-        </fieldset>
-      )}
+      <TypedFaces fields={fields} typed={typedFaces} onChange={setTypedFaces} />
 
       <Part
         as="button"

@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-69 · With "I roll myself" on, the roll dialog asks for the faces your dice show (the d20, and a weapon's damage dice) and counts them, as the dice panel does.
 - 2026-11-04 · SHEET-35 · In edit mode the AC breakdown lists each way the base armor class can be worked out (armor, or a feature of your own) with its number, and lets you pick one, or go back to the highest; the pick has Undo.
 - 2026-11-04 · SHEET-70 · On a narrow phone the sheet's header no longer cuts the class line when the choices badge shows; the badges go under the class line when they do not fit beside it.
 - 2026-11-04 · SHEET-75 · A long web address in a pack's attribution, under See full description, now wraps inside the card.

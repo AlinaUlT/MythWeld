@@ -5,11 +5,12 @@
 // character as its roller (SHEET-37). Initiative interrupts a knock-out's short rest (SHEET-19);
 // a spent inspiration is one change with its Undo toast. A weapon attack that rolled a critical hit
 // offers its damage with the dice doubled. "Send to DM" waits for the table link (ADR 005 item 6).
-import type { DieSource } from '@grimoire/engine';
+import { type DieSource, parseRoll } from '@grimoire/engine';
 import type { TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { logRoll } from '../db/rollLog';
+import { useSettings } from '../settings/useSettings';
 import { breakdownOf, stepLabel } from '../sheet/breakdown';
 import { perform } from '../sheet/changes';
 import { nameIn } from '../sheet/names';
@@ -30,7 +31,8 @@ import type { DeathSaveOutcome } from '../systems';
 import { Part } from '../theme/Part';
 import { BottomSheet } from './BottomSheet';
 import { Faces } from './DicePanel';
-import { panelDie, readNothing, rollWith } from './dice';
+import { diceFields, panelDie, readNothing, rollWith, typedDie } from './dice';
+import { allFaces, TypedFaces, typedNumbers } from './TypedFaces';
 
 /** What a death save did, or why it was not kept (SHEET-43). */
 interface Saved {
@@ -60,7 +62,10 @@ function savedText(saved: Saved, t: TFunction<'roll'>): string {
 export interface RollDialogProps {
   path: string;
   onClose: () => void;
-  /** The die the roll uses; the platform's secure numbers when none is given. */
+  /**
+   * The die the roll uses. When none is given it is the platform's secure numbers, or, with "I roll
+   * myself" on, the faces the person types (SHEET-69, SPEC §6.5).
+   */
   die?: DieSource;
 }
 
@@ -94,11 +99,14 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
   const { t } = useTranslation('roll');
   const { t: tb } = useTranslation('breakdown');
   const { character, content, computed, system } = useSheet();
+  const { rollMyself } = useSettings();
   const [on, setOn] = useState<RollSwitches>(NO_SWITCHES);
   const [rolled, setRolled] = useState<RolledTest>();
   const [damage, setDamage] = useState<{ total: number; record: RolledTest['record'] }>();
   const [failed, setFailed] = useState(false);
   const [saved, setSaved] = useState<Saved>();
+  const [d20Typed, setD20Typed] = useState<string[]>([]);
+  const [damageTyped, setDamageTyped] = useState<string[]>([]);
 
   const test = system.rollTest(computed, path);
   if (test === undefined) {
@@ -120,14 +128,31 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
   const set = (next: Partial<RollSwitches>) => setOn((now) => ({ ...now, ...next }));
   const roller = { actorId: character.id, name: character.name };
 
+  // "I roll myself": one field for each d20 of the mode, and for each damage die (SHEET-69).
+  const typing = rollMyself && die === undefined;
+  const d20Parsed = parseRoll(d20Text(system, mode, bonus));
+  const d20Fields = typing && d20Parsed.ok ? diceFields(d20Parsed.formula) : [];
+  const d20Ready = allFaces(d20Fields, d20Typed);
+  const damageRoll =
+    test.damage === undefined
+      ? undefined
+      : damageFormula(
+          system,
+          damageText(test.damage.dice, numberAt(computed, test.damage.bonus) ?? 0),
+          rolled?.outcome === 'criticalHit',
+        );
+  const damageFields = typing && damageRoll !== undefined ? diceFields(damageRoll) : [];
+  const damageReady = allFaces(damageFields, damageTyped);
+
   const roll = () => {
+    if (!d20Ready) return;
     const made = rollTestWith({
       system,
       computed,
       test,
       name,
       mode,
-      die: die ?? panelDie(),
+      die: die ?? (typing ? typedDie(typedNumbers(d20Fields, d20Typed)) : panelDie()),
       roller,
       id: crypto.randomUUID(),
       now: new Date(),
@@ -139,6 +164,8 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
     setFailed(false);
     setRolled(made);
     setDamage(undefined);
+    setD20Typed([]);
+    setDamageTyped([]);
     logRoll(made.record).then(
       (logged) => {
         if (!logged.ok) console.error(logged.message);
@@ -180,10 +207,8 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
   };
 
   const rollDamage = () => {
-    if (test.damage === undefined) return;
-    const critical = rolled?.outcome === 'criticalHit';
-    const added = numberAt(computed, test.damage.bonus) ?? 0;
-    const formula = damageFormula(system, damageText(test.damage.dice, added), critical);
+    if (test.damage === undefined || !damageReady) return;
+    const formula = damageRoll;
     if (formula === undefined) {
       setFailed(true);
       return;
@@ -191,7 +216,7 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
     const made = rollWith({
       formula,
       read: readNothing,
-      die: die ?? panelDie(),
+      die: die ?? (typing ? typedDie(typedNumbers(damageFields, damageTyped)) : panelDie()),
       roller,
       id: crypto.randomUUID(),
       now: new Date(),
@@ -199,6 +224,7 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
       path: test.damage.path,
     });
     setDamage({ total: made.record.total, record: made.record });
+    setDamageTyped([]);
     logRoll(made.record).then(
       (logged) => {
         if (!logged.ok) console.error(logged.message);
@@ -282,6 +308,8 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
           </section>
         )}
 
+        <TypedFaces fields={d20Fields} typed={d20Typed} onChange={setD20Typed} />
+
         {rolled !== undefined && (
           <Part
             name="card"
@@ -317,21 +345,25 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
         {rolled !== undefined &&
           test.damage !== undefined &&
           rolled.outcome !== 'automaticMiss' && (
-            <div className="flex items-center justify-between gap-3">
-              <Part
-                as="button"
-                type="button"
-                name="button-secondary"
-                onClick={rollDamage}
-                className="flex h-control items-center px-4 text-15 font-semibold"
-              >
-                {t(rolled.outcome === 'criticalHit' ? 'rollCritical' : 'rollDamage')}
-              </Part>
-              {damage !== undefined && (
-                <output data-testid="damage-total" className="text-24 font-bold">
-                  {t('damageTotal', { total: damage.total })}
-                </output>
-              )}
+            <div className="flex flex-col gap-3">
+              <TypedFaces fields={damageFields} typed={damageTyped} onChange={setDamageTyped} />
+              <div className="flex items-center justify-between gap-3">
+                <Part
+                  as="button"
+                  type="button"
+                  name="button-secondary"
+                  disabled={!damageReady}
+                  onClick={rollDamage}
+                  className="flex h-control items-center px-4 text-15 font-semibold"
+                >
+                  {t(rolled.outcome === 'criticalHit' ? 'rollCritical' : 'rollDamage')}
+                </Part>
+                {damage !== undefined && (
+                  <output data-testid="damage-total" className="text-24 font-bold">
+                    {t('damageTotal', { total: damage.total })}
+                  </output>
+                )}
+              </div>
             </div>
           )}
 
@@ -343,6 +375,7 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
             type="button"
             name="button"
             fill="button"
+            disabled={!d20Ready}
             onClick={roll}
             className="flex h-control grow items-center justify-center text-16 font-semibold text-on-strong"
           >

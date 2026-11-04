@@ -9,20 +9,20 @@ import { en } from '../src/i18n/namespaces';
 // Perception 13, 12 hit points); golden A a hill dwarf cleric 1 (spell save DC 13, attack +5).
 
 /** Waits for the app to make its database, then puts the rows into its `characters` table. */
-async function saveRows(page: Page, rows: readonly object[]) {
+async function saveRows(page: Page, rows: readonly object[], store = 'characters') {
   await page.goto('./');
   await expect
     .poll(() => page.evaluate(() => indexedDB.databases()))
     .toContainEqual({ name: DB_NAME, version: 20 });
   await page.evaluate(
-    ([name, toSave]) =>
+    ([name, toSave, into]) =>
       new Promise<void>((resolve, reject) => {
         const request = indexedDB.open(name);
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           const database = request.result;
-          const transaction = database.transaction('characters', 'readwrite');
-          for (const row of toSave) transaction.objectStore('characters').put(row);
+          const transaction = database.transaction(into, 'readwrite');
+          for (const row of toSave) transaction.objectStore(into).put(row);
           transaction.oncomplete = () => {
             database.close();
             resolve();
@@ -30,7 +30,7 @@ async function saveRows(page: Page, rows: readonly object[]) {
           transaction.onerror = () => reject(transaction.error);
         };
       }),
-    [DB_NAME, rows] as const,
+    [DB_NAME, rows, store] as const,
   );
 }
 
@@ -2108,4 +2108,46 @@ test('SHEET-35 the AC breakdown pins its base calculation, with Undo', async ({
   await expect(ac).toContainText('17');
   await page.getByRole('button', { name: en.toast.undo }).click();
   await expect(ac).toContainText('15');
+});
+
+test('SHEET-69 with "I roll myself" on, the roll dialog counts the d20 and the damage dice typed', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await saveRows(page, [{ key: 'rollMyself', value: true }], 'settings');
+  await page.goto(`characters/${goldenB.id}?tab=combat`);
+  await page.locator('[data-attack="greatsword"] [data-path="attacks.greatsword.hit"]').click();
+
+  const dialog = page.getByRole('dialog', { name: en.roll.title });
+  const roll = dialog.getByRole('button', { name: en.roll.roll, exact: true });
+  const d20 = dialog.getByRole('spinbutton', { name: '1d20, die 1' });
+  await expect(roll).toBeDisabled();
+  await d20.fill('21');
+  await expect(roll).toBeDisabled();
+  await d20.fill('20');
+  await expect(roll).toBeEnabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('roll-typed-before.png') });
+  await roll.click();
+
+  // A natural 20 is a critical hit; the typed face is the die, +5 is the sheet's.
+  await expect(page.getByTestId('roll-total')).toHaveText('25');
+  await expect(dialog.getByText(en.roll.outcome.criticalHit)).toBeVisible();
+  expect(await facesOf(page)).toEqual([{ face: 20, kept: true }]);
+
+  // The critical damage is 4d6 + 3: four typed faces, and the button waits for them.
+  const damage = dialog.getByRole('button', { name: en.roll.rollCritical });
+  await expect(damage).toBeDisabled();
+  for (const [n, face] of ['6', '5', '4', '7'].entries()) {
+    await dialog.getByRole('spinbutton', { name: `4d6, die ${n + 1}` }).fill(face);
+  }
+  await expect(damage).toBeDisabled();
+  await dialog.getByRole('spinbutton', { name: '4d6, die 4' }).fill('3');
+  await expect(damage).toBeEnabled();
+  await page.screenshot({ path: testInfo.outputPath('roll-typed-damage.png') });
+  await damage.click();
+  await expect(page.getByTestId('damage-total')).toHaveText('Damage 21');
+
+  // A new roll asks for its own face: the typed ones are spent.
+  await expect(dialog.getByRole('button', { name: en.roll.again })).toBeDisabled();
 });

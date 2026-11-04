@@ -184,7 +184,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | 6 | SHEET-26, 28, 32, 33, 36, 39, 46, 48, 50, 53, 54, 55, 56 | Wave 5 is closed |
 | 7 | SHEET-29, 34, 40, 41, 42, 43, 44, 45, 47, 49, 51, 52, 57, 58 | Wave 6 is closed |
 | 8 | SHEET-35, 59, 69, 70, 72, 75, 76, 77, 78, 79, 80, 81, 82 | Wave 7 is closed |
-| 9 | SHEET-74 | Wave 8 is closed: it reuses the field SHEET-69 makes for typed faces |
+| 9 | SHEET-74, 83 | Wave 8 is closed: it reuses the field SHEET-69 makes for typed faces |
 | 10 | SHEET-60 | Every other row is closed |
 
 | ID | Hat | Size | Status |
@@ -263,7 +263,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | ✅ 2026-11-04 |
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
-| SHEET-69 | The roll dialog counts the faces a person types | S | 🔲 |
+| SHEET-69 | The roll dialog counts the faces a person types | S | ✅ 2026-11-04 |
 | SHEET-70 | The header keeps the class line whole beside the choices badge | XS | ✅ 2026-11-04 |
 | SHEET-71 | The undo toast shows above an open panel | XS | ✅ 2026-11-04 |
 | SHEET-72 | The number pad takes a damage type and a critical hit | S | 🔲 |
@@ -277,16 +277,17 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-80 | A custom entry is edited after it is added | S | 🔲 |
 | SHEET-81 | The toast stops covering the round buttons | XS | ✅ 2026-11-04 |
 | SHEET-82 | The toast goes after its time once Undo was tapped | XS | ✅ 2026-11-04 |
+| SHEET-83 | The roll dialog names an attack by its own name | XS | 🔲 |
 
 - **SHEET-59** — SPEC §7.2's 50 states, opened from "⋯" (ADR 013 item 2: "undo any change").
   Undoing a change that later changes touched is decided in the row. Found by SHEET-23:
   `readHistory` lists the kept changes, newest first; `undoChange` reverses any one of them, and
   refuses as `changed` where a later change wrote over its place.
-- **SHEET-69** — found by SHEET-39: the dice panel counts the faces a person typed when "I roll myself" is on (SHEET-38, SPEC §6.5); the roll dialog always rolls with the fair die. The dialog's d20 (one or two) and a weapon's damage dice take typed faces through `typedDie` (`shared/dice.ts`), and the dialog's field for each die is the panel's (`diceFields`).
 - **SHEET-72** — found by SHEET-40: `applyDamage` takes `type` (the defenses of SHEET-16 apply, `outcome.defended` says what they made of it) and `critical` (two death save failures at 0 hit points), and board `V3-Keypad` has neither. The pad offers a damage type from the packs' `damageType` entries and a critical switch, and shows `defended`.
 - **SHEET-74** — found by SHEET-45: the Rest panel's short frame rolls each hit die with the fair die (`panelDie`) and logs it; the dice panel's "I roll myself" (SHEET-38, SPEC §6.5) counts the faces a person typed. A spent die takes the person's face through `typedDie` (`shared/dice.ts`) and a field for it, as SHEET-69 does for the roll dialog; `HitDieAsk.roll` is the face either way. Found by SHEET-47: the cast panel's damage and healing rolls (`CastPanel.tsx`) use the fair die too, and take typed faces the same way.
 - **SHEET-76** — found by SHEET-49: board `V3-Turn` lists feats (Alert, Defense) and a "Once per turn" group (Savage Attacker), and "Always on" lines with their numbers (Initiative +2, AC +1). `activation` is on features only (`featureDefSchema`), and its values have no once-per-turn. The row adds `activation` to feats and a once-per-turn value: a pack shape change, so `systemSchemaVersion` and a migration (SPEC §5.8), then the packs say it and the tab lists it. The numbers on an "Always on" line are the effects' own, read from `Computed` with their breakdown.
 - **SHEET-79** — found by SHEET-34: an override of a key path (ENG-43: a skill's stat, `skills.<key>.ability`) applies only when its value is one of the path's keys (`overrideNotAKey`). SHEET-34's form edits number paths only. The Main tab draws a skill's stat only as its group's heading, and `Computed.keys` holds a key and its steps, not the keys it may take. The row gives a skill a place to open its stat's breakdown, with the stats as the choice, and stores the key (`setOverride` takes a key then, or a twin action does).
+- **SHEET-83** — found by SHEET-69: the roll dialog's formula line for an attack reads "1d20 + 5 (Attacks greatsword hit)": the name comes from the path, not from the attack's name ("Greatsword"). The dialog and the roll log name the roll with the attack's own name.
 - **SHEET-80** — found by SHEET-52: a custom item (a row's `custom` name and weight, its `note`) and a custom feature (a `character:feat/<slug>` entity's `name` and `text`) cannot be changed once added; a typing error means remove and add again. The panel's forms open on the entry with its words, and a save is one change with Undo (a custom feature's id stays, SPEC §5.1).
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.

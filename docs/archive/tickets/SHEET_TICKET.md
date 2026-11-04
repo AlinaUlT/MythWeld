@@ -8055,3 +8055,79 @@ Differences from the row: the row says "XS" and names the control only. Technica
 Found, not fixed: nothing.
 
 Changelog: "In edit mode the AC breakdown lists each way the base armor class can be worked out (armor, or a feature of your own) with its number, and lets you pick one, or go back to the highest; the pick has Undo."
+
+### SHEET-69 The roll dialog counts the faces a person types
+
+**Hat:** The roll dialog counts the faces a person types
+**Depends on:** SHEET-39 (the roll dialog), SHEET-38 (`typedDie`, `diceFields`, the panel's fields)
+**Size:** S
+**Screen:** Yes — board `V3-Roll` in `docs/design/mockups/` (it draws no field for faces; the field is the dice panel's, board `V3-SheetDice`); `docs/design/BRIEF.md` Part 5 "P5 Roll dialog and breakdown"
+**SPEC:** §6.5 (a typed face is a roll the person made), §7.2
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/shared/RollDialog.tsx` — changes: the d20 and the damage dice take typed faces. `apps/web/src/shared/TypedFaces.tsx` — new: the panel's field, its range rule (`isFace`), `allFaces`, `typedNumbers`. `apps/web/src/shared/DicePanel.tsx` — changes: uses the new file instead of its own copy. `apps/web/test/roll.test.tsx`, `apps/web/e2e/sheet.spec.ts` — tests.
+
+#### 2. What is missing now
+
+With "I roll myself" on (Settings), the dice panel asks for each die and counts what was typed. The roll dialog does not: it calls `panelDie()` for the d20 and for the damage dice. Measured: `grep -n "panelDie" apps/web/src/shared/RollDialog.tsx` gave 2 calls, no field in the dialog.
+
+#### 3. What it should look like when done
+
+1. With "I roll myself" off, the dialog is as before: no field for faces.
+2. With it on, the dialog shows "What your dice show" with one field per d20 of the mode: one for a straight roll (`1d20, die 1`), two for advantage or disadvantage (`2d20kh1, die 1` and `die 2`).
+3. The Roll and Roll again buttons stay off until every field holds a whole number from 1 to the die's faces. A face outside the range (21 on a d20) keeps the button off and the field marked invalid, as in the dice panel.
+4. The roll counts the typed faces: a typed 20 with +5 is 25 and a critical hit (golden B's greatsword attack).
+5. A weapon's damage dice take typed faces the same way: after a critical hit, "Roll critical damage" shows four fields (`4d6`), and stays off until all four hold a face from 1 to 6. Typed 6, 5, 4, 3 with +3 gives "Damage 21".
+6. The typed faces are cleared after each roll; the next roll asks again.
+7. A `die` given to the dialog as a prop still wins and shows no field (the tests' scripted die).
+8. The gate is green.
+
+#### 4. How to do it
+
+1. Move `isFace` and the field into `TypedFaces.tsx`; `DicePanel` uses them (same markup, same labels).
+2. In `RollDialog`, read `rollMyself` from `useSettings()`. `typing = rollMyself && die === undefined`.
+3. The d20 fields are `diceFields` of the parsed `d20Text(system, mode, bonus)`. The damage fields are `diceFields` of `damageFormula(...)` (the critical hit's doubled dice included), computed once in the render and used by both the fields and the roll.
+4. The die of a roll is `typedDie(typedNumbers(fields, typed))` when typing, else `panelDie()`.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+The roll dialog at 360×800 (opened from any number that rolls). No new strings: the legend `dice.typed` ("What your dice show"), the field names `dice.typedDie` ("{{term}}, die {{n}}") and the placeholder `dice.die` are the panel's. Between the mode line and the result there is the d20 fieldset; over "Roll critical damage" there is the damage fieldset. Empty, invalid and full fields look as in the dice panel; a disabled button is faint by the token `opacity-disabled`.
+
+#### 7. Tests
+
+- `apps/web/test/roll.test.tsx` — 5 new tests: no field with the setting off; one d20 field and a Roll button that is off; two fields for advantage (golden B4); the range rule (`isFace`: 1 and 20 pass, 0, 21, 2.5 and empty do not); the typed d20 pair (14 and 9 keep 14, total 19) and the critical damage's four d6 fields, with a face of 7 refused.
+- `apps/web/e2e/sheet.spec.ts` — 1 new test: golden B's greatsword attack with the setting on: Roll off; 21 keeps it off; 20 turns it on; total 25, critical hit; "Roll critical damage" off until 6, 5, 4, 3 are typed (a 7 keeps it off); "Damage 21"; "Roll again" off after the roll.
+- Control numbers: SPEC §6.7 golden B (attack +5, greatsword 2d6 +3); 20 + 5 = 25; 6 + 5 + 4 + 3 + 3 = 21.
+
+#### 8. Checked against the source
+
+SPEC §6.5: a face the person types is a roll the person made. The range rule is the dice panel's (SHEET-38), reused as it is. Nothing else to check.
+
+#### 9. Not in this ticket
+
+- The hit die in a short rest and the cast panel's damage and healing rolls take typed faces: SHEET-74.
+- A damage type and a critical switch on the number pad: SHEET-72.
+
+#### 10. Rake check
+
+- Everything is data / no rule in a component: the formulas come from the module (`d20`, `criticalDamage`); the dialog names no game.
+- No look in a component: the field is the panel's, with its tokens.
+- No visible string in a component: the keys are the panel's `dice` namespace.
+- A typed face is a roll the person made (§6.5): the roll is recorded and logged as any other.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` 449 files, no fixes; `pnpm typecheck` clean; `pnpm test` 143 files, 1606 passed, 0 failed, 33.1 s (5 new, from 1601), then speed 2 passed; coverage statements 99.04 % lines 99.77 % (as in the run before); `pnpm e2e` 91 passed, 0 failed, 1.7 min (1 new, from 90). Screenshot at 360×800 shown in the chat.
+
+Differences from the row: none. Technical choices (ADR 002): the field moved to its own file so SHEET-74 reuses it; a unit test cannot click, because the web tests render static markup, so the typing and the Roll button's state are measured in e2e, and the unit tests hold the field count and the range rule. The unit test holds `rollMyself` with `vi.mock` of `useSettings`, since a static render has no `document`.
+
+Found, not fixed: the dialog's formula for an attack reads "1d20 + 5 (Attacks greatsword hit)": the name comes from the path, not from the attack's name ("Greatsword"). Logged as SHEET-83.
+
+Changelog: "With 'I roll myself' on, the roll dialog asks for the faces your dice show (the d20, and a weapon's damage dice) and counts them, as the dice panel does."

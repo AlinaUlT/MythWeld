@@ -1,14 +1,15 @@
-import { compute } from '@grimoire/engine';
+import { compute, parseRoll } from '@grimoire/engine';
 import { fifthEditionCharacterSchema } from '@grimoire/system-5e';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { goldenA } from '../../../packages/system-5e/test/golden/characters-2014.ts';
 import { goldenB, goldenB4 } from '../../../packages/system-5e/test/golden/characters-2024.ts';
 import { contentOf, installBuiltInPacks } from '../src/content/packs';
 import i18n from '../src/i18n';
-import { typedDie } from '../src/shared/dice';
+import { diceFields, typedDie } from '../src/shared/dice';
 import { RollDialog } from '../src/shared/RollDialog';
+import { allFaces, isFace, typedNumbers } from '../src/shared/TypedFaces';
 import {
   d20Text,
   damageFormula,
@@ -25,6 +26,10 @@ import { type AppCharacter, sheetSystemOf } from '../src/systems';
 // +5, a greatsword with 2d6), golden B4 (Remarkable Athlete: advantage on Athletics) and golden A
 // (2014: inspiration is spent for advantage). The dice are scripted (`typedDie`); the expected
 // totals are worked out by hand from the faces and SPEC §6.7's bonuses.
+
+// The page's choices need a `document`, which a static render has none of: `rollMyself` is held here.
+const settings = vi.hoisted(() => ({ rollMyself: false }));
+vi.mock('../src/settings/useSettings', () => ({ useSettings: () => settings }));
 
 void i18n;
 const packs = installBuiltInPacks().packs;
@@ -213,3 +218,75 @@ describe('SHEET-39 the dialog', () => {
     }
   });
 });
+
+describe('SHEET-69 the roll dialog counts the faces a person types', () => {
+  afterEach(() => {
+    settings.rollMyself = false;
+  });
+  const fieldsIn = (html: string) => html.match(/aria-label="1d20[^"]*, die \d"/g) ?? [];
+
+  it('draws no field for the faces while "I roll myself" is off', () => {
+    const html = dialog(sheetOf(goldenB), 'skills.athletics.total');
+    expect(html).not.toContain('What your dice show');
+    expect(html).not.toContain('type="number"');
+  });
+
+  it('draws one field for the d20 of a straight roll, and the Roll button waits for its face', () => {
+    settings.rollMyself = true;
+    const html = dialog(sheetOf(goldenB), 'skills.athletics.total');
+    expect(html).toContain('What your dice show');
+    expect(fieldsIn(html)).toEqual(['aria-label="1d20, die 1"']);
+    expect(html).toMatch(/disabled=""[^>]*>Roll</);
+  });
+
+  it('draws two fields for the two d20 of advantage', () => {
+    settings.rollMyself = true;
+    const html = dialog(sheetOf(goldenB4), 'skills.athletics.total');
+    expect(html.match(/aria-label="2d20kh1, die \d"/g)).toEqual([
+      'aria-label="2d20kh1, die 1"',
+      'aria-label="2d20kh1, die 2"',
+    ]);
+  });
+
+  it('takes the panel’s rules for a face: a whole number from 1 to the die’s faces', () => {
+    expect(isFace('20', 20)).toBe(true);
+    expect(isFace('1', 20)).toBe(true);
+    expect(isFace('21', 20)).toBe(false);
+    expect(isFace('0', 20)).toBe(false);
+    expect(isFace('2.5', 20)).toBe(false);
+    expect(isFace('', 20)).toBe(false);
+  });
+
+  it('counts the typed faces in the dialog’s d20 and a critical hit’s doubled damage dice', () => {
+    const b = sheetOf(goldenB);
+    const d20 = parsed(d20Text(b.system, 1, 5));
+    const fields = diceFields(d20);
+    expect(fields.map(({ faces }) => faces)).toEqual([20, 20]);
+    expect(allFaces(fields, ['14'])).toBe(false);
+    expect(allFaces(fields, ['14', '21'])).toBe(false);
+    expect(allFaces(fields, ['14', '9'])).toBe(true);
+    const made = rollTestWith({
+      system: b.system,
+      computed: b.computed,
+      test: testOf(b, 'skills.athletics.total'),
+      name: 'Test',
+      mode: 1,
+      die: typedDie(typedNumbers(fields, ['14', '9'])),
+      roller,
+      ...stamp,
+    });
+    expect([made?.face, made?.record.total]).toEqual([14, 19]);
+    const damage = damageFormula(b.system, damageText('2d6', 3), true);
+    if (damage === undefined) throw new Error('no damage formula');
+    const dice = diceFields(damage);
+    expect(dice.map(({ faces }) => faces)).toEqual([6, 6, 6, 6]);
+    expect(allFaces(dice, ['6', '5', '4', '3'])).toBe(true);
+    expect(allFaces(dice, ['6', '5', '4', '7'])).toBe(false);
+  });
+});
+
+function parsed(text: string) {
+  const made = parseRoll(text);
+  if (!made.ok) throw new Error(text);
+  return made.formula;
+}
