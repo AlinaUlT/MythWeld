@@ -1512,3 +1512,35 @@ test('SHEET-47 a new concentration ends the old one only after a confirmation', 
   await page.getByRole('button', { name: en.toast.undo }).click();
   await expect(page.locator('[data-concentration]')).toContainText('Bless');
 });
+
+test('SHEET-49 the Turn tab lists the attack and the features by timing, each opening in place', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=turn`);
+  const tab = page.getByRole('tabpanel');
+  await expect(tab.getByRole('heading', { name: en.turn.title })).toBeVisible();
+  await expect(tab).toContainText('a reminder, from your features');
+
+  // Golden B (SPEC §6.7): the greatsword is +5 to hit, 2d6 +3 slashing, mastery Graze.
+  const attack = tab.locator('[data-turn-attack="greatsword"]');
+  await expect(attack).toContainText('Attack: Greatsword');
+  await expect(attack.locator('[data-path="attacks.greatsword.hit"]')).toHaveText('+5to hit');
+  await expect(attack).toContainText('2d6');
+  await expect(attack).toContainText('Mastery: Graze');
+
+  // Second Wind is a Bonus Action with 2 uses (SRD 5.2.1, Fighter).
+  const bonus = tab.locator('[data-timing="bonus"]');
+  await expect(bonus.getByRole('heading', { name: en.turn.group.bonus })).toBeVisible();
+  const wind = bonus.locator('[data-turn-feature="srd-2024:feature/fighter-second-wind"]');
+  await expect(wind).toContainText('Fighter · 2 of 2 left');
+  await expect(wind.getByTestId('recovery')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('turn-dark.png') });
+
+  // A name opens its description in place; the attack's bonus still rolls.
+  await wind.getByRole('button', { name: /Second Wind/ }).click();
+  await expect(wind.getByRole('button', { name: en.description.seeFull })).toBeVisible();
+  await attack.locator('[data-path="attacks.greatsword.hit"]').click();
+  await expect(page.getByTestId('roll-formula')).toContainText('1d20 + 5');
+});

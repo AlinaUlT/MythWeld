@@ -58,6 +58,7 @@ import {
   fifthEditionRollTest,
   fifthEditionSituational,
   fifthEditionSpells,
+  fifthEditionTurn,
   firstAid,
   type GearShown,
   gainInspiration,
@@ -102,6 +103,8 @@ import {
   spendInspiration,
   spendSlot,
   stabilize,
+  type TurnGroup,
+  type TurnTiming,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
@@ -205,6 +208,8 @@ export type {
   Situational,
   SpellDef,
   SpellsShown,
+  TurnGroup,
+  TurnTiming,
 };
 
 /** What the sheet reads of one system: its module, and what its header and dock name. */
@@ -283,6 +288,8 @@ export interface SheetSystem {
   setRowQuantity: typeof setRowQuantity;
   setRowContainer: typeof setRowContainer;
   removeRow: typeof removeRow;
+  /** The features grouped by when they are used: the Turn tab's lists (SHEET-49). */
+  turn: typeof fifthEditionTurn;
   /** The attacks of the equipped weapons: bonus paths, dice, type and mastery (SHEET-44). */
   attacks(computed: AppComputed): AttackShown[];
   /** The conditions the character has, stored or given, and the ones it cannot find (SHEET-42). */
@@ -329,6 +336,7 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     features: fifthEditionFeatures,
     conditions: fifthEditionConditions,
     attacks: fifthEditionAttacks,
+    turn: fifthEditionTurn,
     conditionsToAdd,
     fatalLevel: fatalLevelOf,
     setConditionLevel,

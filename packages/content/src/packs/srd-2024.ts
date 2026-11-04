@@ -328,6 +328,8 @@ const fighterFeatures: Of<'feature'>[] = [
   },
   {
     ...named('fighter-second-wind', 'Second Wind'),
+    // SHEET-49: "As a Bonus Action, you can ..." (Fighter, Second Wind): the Turn tab lists it.
+    activation: 'bonus',
     grants: [
       {
         id: 'uses',

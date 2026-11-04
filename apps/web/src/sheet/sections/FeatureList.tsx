@@ -35,7 +35,7 @@ function UseDot({ left }: { left: boolean }) {
   );
 }
 
-function Recovery({ resource }: { resource: string }) {
+export function Recovery({ resource }: { resource: string }) {
   const { t } = useTranslation('features');
   const { computed } = useSheet();
   const parts = recoveryOf(computed, resource);

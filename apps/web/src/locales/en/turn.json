@@ -1,1 +1,27 @@
-{}
+{
+  "title": "On your turn",
+  "hint": "a reminder, from your features",
+  "none": "Nothing to remind you of yet. This list fills as your features say when they are used.",
+  "missing": "Missing: {{id}}",
+  "group": {
+    "action": "Action",
+    "bonus": "Bonus action",
+    "reaction": "Reaction",
+    "free": "No action",
+    "passive": "Always on",
+    "special": "Other",
+    "limited": "Limited uses"
+  },
+  "source": {
+    "feats": "Feat",
+    "race": "Race",
+    "species": "Species",
+    "background": "Background"
+  },
+  "attack": "Attack: {{name}}",
+  "toHit": "to hit",
+  "damageBonus": "Damage bonus",
+  "mastery": "Mastery: {{name}}",
+  "left": "{{left}} of {{max}} left",
+  "separator": " · "
+}

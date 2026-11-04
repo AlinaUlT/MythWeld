@@ -7339,3 +7339,90 @@ Differs from §3: nothing. Technical choices (ADR 002):
 Found, not fixed: a long attribution address in "See full description" runs past the card's edge (new row SHEET-75, XS); the spell's typed faces ("I roll myself") are added to SHEET-74's row.
 
 Changelog: "A tap on a spell opens the cast panel: its summary and full text, what forbids a cast now, the dice at the slot you pick, the slot or no slot, and Cast with Undo; a new concentration spell asks before it ends the old one."
+
+---
+
+### SHEET-49 The Turn tab lists actions by timing
+
+**Hat:** The Turn tab lists the features by when they are used
+**Depends on:** SHEET-48 (the features and their groups), SHEET-44 (the attacks), SHEET-31 (descriptions in place)
+**Size:** S
+**Screen:** Yes — the Turn tab; board `V3-Turn` in `docs/design/mockups/`, its row in `docs/design/BRIEF.md` Part 5 ("P4"). ADR 010 item 8.
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/TurnList.tsx` — changes: the section SHEET-30 left empty.
+- `packages/system-5e/src/sheet-turn.ts` — new: `fifthEditionTurn`, `TURN_TIMINGS`.
+- `apps/web/src/systems.ts` — change: `SheetSystem.turn`.
+- `apps/web/src/sheet/sections/FeatureList.tsx` — change: `Recovery` is exported, to show when uses come back.
+- `packages/content/src/packs/srd-2024.ts` — change: Second Wind's `activation`.
+- `apps/web/src/locales/en/turn.json` — the tab's text (the namespace SHEET-30 made empty).
+
+#### 2. What is missing now
+
+The Turn tab draws nothing: `TurnList` returns `null`, and `apps/web/test/sheet.test.tsx` expects the empty string from it. No pack entry sets `activation` (SPEC §5.2's `FeatureDef.activation`), so the field is read by nothing and filled by nothing.
+
+#### 3. What it should look like when done
+
+1. The Turn tab opens with "On your turn" and "a reminder, from your features".
+2. Features are grouped by their `activation`, in the board's order: Action, Bonus action, Reaction, No action (`free`), Always on (`passive`), Other (`special`); a feature with no timing and uses of its own is under Limited uses; a feature that says neither is not listed.
+3. The equipped weapons' attacks are the first lines of "Action": golden B (SPEC §6.7) shows "Attack: Greatsword", "+5 to hit · 2d6 +3 Slashing · Mastery: Graze"; the bonus is the Combat tab's number (a tap rolls it).
+4. Golden B shows Second Wind under "Bonus action" (SRD 5.2.1: "As a Bonus Action, you can ..."), with "Fighter · 2 of 2 left" and "1 back on a short rest, all on a long rest".
+5. A feature opens its description in place. A character with nothing to list sees "Nothing to remind you of yet. This list fills as your features say when they are used."
+6. The gate is green.
+
+#### 4. How to do it
+
+1. `fifthEditionTurn(character, computed)`: for each row of the Features tab's groups (`fifthEditionFeatures`), the timing is the entity's `activation`, else `limited` when it has uses, else none; groups come out in `TURN_TIMINGS` order, none empty; each row keeps the kind and entity of the group that gave it.
+2. `TurnList`: one card, one section per group; "Action" also draws the attacks of `system.attacks` and exists for them when no feature is an action. A feature line is `Description` with its source name and its uses; `Recovery` under it.
+3. Second Wind gets `activation: 'bonus'` in the 2024 pack (hand-written mechanics, no new field).
+
+#### 5. Stored data
+
+Nothing stored changes, and no field is new: `activation` is in the pack schema already. The one data change is one value in the built-in 2024 pack.
+
+#### 6. What a person will see
+
+At 360×800, the Turn tab: one card, "On your turn" with its hint, then each group's heading in small capitals and its lines. Empty: one line of text. Keys: `turn.json` (title, hint, none, missing, group.*, source.*, attack, toHit, damageBonus, mastery, left, separator). Screenshot in the chat.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-turn.test.ts` — 4 tests: Second Wind under bonus actions with its uses key; every timing in the board's order from made-up features (and the one that says nothing left out); where a feature comes from and its uses; nothing to list.
+- `apps/web/test/turn.test.tsx` — 4 tests: title and hint; the attack first under Action and Second Wind under Bonus action (golden B); a character whose features name no action still has the Action group for its attack (golden A: a warhammer); nothing to list.
+- `apps/web/e2e/sheet.spec.ts` — 1 test: the tab on golden B, the attack's numbers, Second Wind, its description in place, a tap rolling the attack.
+- Control numbers from: SPEC §6.7 golden B (greatsword +5, 2d6 +3 slashing, Graze; Second Wind 2 uses) and golden A (warhammer).
+
+#### 8. Checked against the source
+
+- SRD 5.2.1, Fighter, Second Wind: "As a Bonus Action, you can use it to regain Hit Points equal to 1d10 plus your Fighter level." So `activation: 'bonus'`.
+- SPEC §5.2: `FeatureDef.activation` is one of `action`, `bonus`, `reaction`, `free`, `passive`, `special`. ADR 010 item 8 names the groups: action, bonus action, reaction, once per turn, always on, limited uses.
+- No `[ПРОВЕРИТЬ]` is open for this ticket.
+
+#### 9. Not in this ticket
+
+- The board's "Once per turn" group and its feats (Savage Attacker) and its "Always on" feats with their numbers (Alert's initiative, Defense's AC): `activation` is on features only, and has no once-per-turn value. New row SHEET-76.
+- Spells: a spell opens from the Spells tab (SHEET-47).
+- A use button on this tab: uses are spent on the Features tab (SHEET-48).
+- More groups filled: that is content (phase 3).
+
+#### 10. Rake check
+
+- **Everything is data; nothing typed twice:** the groups come from each feature's `activation`, the attacks from the Combat tab's list.
+- **The UI reads only `Computed`:** the attack bonuses are the same numbers of `Computed` as on the Combat tab.
+- **Missing is not broken:** a feature the packs no longer have reads "Missing: <id>".
+- **No user-facing string literal in a component, no look in a component:** keys in `turn.json`; the sheet's tokens.
+- **Rules text:** none added; Second Wind's name and timing only.
+
+#### 11. What came out of it
+Quality gate, 2026-11-04: `pnpm lint` 422 files, no fixes; `pnpm typecheck` clean; `pnpm test` 130 files, 1501 passed, 0 failed, 29.7 s (8 new, from 1493), then speed 2 passed; coverage statements 99.06 % (3902/3939), lines 99.82 % (3418/3424); `pnpm e2e` 76 passed, 0 failed, 1.2 min (1 new). Screenshot at 360×800 shown in the chat.
+
+Differs from the board: it lists feats and a "Once per turn" group, and numbers on "Always on" lines. The data cannot say that yet (`activation` is on features only, with no once-per-turn value), and adding it changes the pack's shape, which is not this ticket's size. New row SHEET-76 (S). The attack lines under "Action" are from the board and not from the row's note; they come from the Combat tab's list, so nothing is typed twice.
+
+Technical choices (ADR 002): a feature with uses and no timing is listed under "Limited uses" (ADR 010 item 8's last group); a feature or feat that says neither is left out, since the tab shows only what the data says; `free` is headed "No action", `special` "Other".
+Changed data: Second Wind got `activation: 'bonus'` in the built-in 2024 pack; the pack test and the golden values did not change.
+
+Found, not fixed: SHEET-76 above; the long attribution address (SHEET-75, found by SHEET-47).
+
+Changelog: "The Turn tab lists what you can do on your turn from your features, grouped by when you use them, with your weapon attacks under Action and the uses a feature has left."
