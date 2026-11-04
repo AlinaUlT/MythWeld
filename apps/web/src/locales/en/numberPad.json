@@ -1,1 +1,37 @@
-{}
+{
+  "title": "Hit points",
+  "modes": "Kind of change",
+  "mode": {
+    "damage": "Damage",
+    "heal": "Heal",
+    "temp": "Temp HP"
+  },
+  "summary": "{{current}} / {{max}} → {{after}} / {{max}}",
+  "temp": "+{{value}}",
+  "noMax": "?",
+  "apply": {
+    "damage": "Take {{amount}} damage",
+    "heal": "Heal {{amount}}",
+    "temp": "Add {{amount}} temporary HP"
+  },
+  "key": {
+    "clear": "Clear",
+    "back": "Delete the last digit"
+  },
+  "knockOut": "Knock out instead: leaves 1 hit point",
+  "replace": "Replace my {{temp}} temporary HP",
+  "dead": "The character is dead: it has no hit points.",
+  "followTitle": "After the damage",
+  "status": {
+    "down": "Dropped to 0 hit points.",
+    "dead": "The character is dead.",
+    "knockedOut": "Knocked out at 1 hit point.",
+    "up": ""
+  },
+  "ended": "Concentration on {{name}} ended.",
+  "save": "Constitution save, DC {{dc}}, to keep concentrating on {{name}}.",
+  "roll": "Roll the save",
+  "kept": "Kept it",
+  "lost": "Lost it: end concentration",
+  "done": "Done"
+}

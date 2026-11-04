@@ -916,3 +916,151 @@ test('SHEET-42 conditions are set from the sheet: add, raise to death, end, each
   await expect(chip).toHaveText('Exhaustion 3');
   await page.screenshot({ path: testInfo.outputPath('conditions-dark.png') });
 });
+
+/** The pad's key `key`, tapped in the open pad. */
+const key = (page: Page, name: string) =>
+  page.getByRole('dialog').getByRole('button', { name, exact: true });
+const hitPoints = (page: Page) => page.locator('[data-path="hp.max"]');
+
+test('SHEET-40 the pad takes damage, heals and adds temporary hit points, each with Undo', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 12 of 12, temporary 0/);
+
+  // Damage 5: the pad shows "12 / 12 → 7 / 12" before it applies.
+  await page.getByRole('button', { name: en.sheet.damage, exact: true }).click();
+  await key(page, '5').click();
+  await expect(page.getByTestId('pad-summary')).toHaveText('12 / 12 → 7 / 12');
+  await expect(page.getByTestId('pad-amount')).toHaveText('5');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('pad-dark.png') });
+  await key(page, 'Take 5 damage').click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 7 of 12/);
+  await expect(page.getByRole('status')).toContainText('Damage taken');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 12 of 12/);
+
+  // Heal: from 12 nothing is regained, so the pad will not apply it.
+  await page.getByRole('button', { name: en.sheet.heal, exact: true }).click();
+  await key(page, '3').click();
+  await expect(key(page, 'Heal 3')).toBeDisabled();
+  await page.keyboard.press('Escape');
+
+  // Take 6, then heal 4 through the pad (7 → ... 6 then 10).
+  await page.getByRole('button', { name: en.sheet.damage, exact: true }).click();
+  await key(page, '6').click();
+  await key(page, 'Take 6 damage').click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: en.sheet.heal, exact: true }).click();
+  await key(page, '4').click();
+  await expect(page.getByTestId('pad-summary')).toHaveText('6 / 12 → 10 / 12');
+  await key(page, 'Heal 4').click();
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 10 of 12/);
+
+  // Temp HP: the digits 1 then 2 make 12; Clear and Delete take them back.
+  await page.getByRole('button', { name: en.sheet.damage, exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Temp HP', exact: true }).click();
+  await key(page, '1').click();
+  await key(page, '2').click();
+  await expect(page.getByTestId('pad-amount')).toHaveText('12');
+  await key(page, 'Delete the last digit').click();
+  await expect(page.getByTestId('pad-amount')).toHaveText('1');
+  await key(page, 'Clear').click();
+  await expect(page.getByTestId('pad-amount')).toHaveText('0');
+  await key(page, '5').click();
+  await expect(page.getByTestId('pad-summary')).toHaveText('10 / 12 → 10 / 12+5');
+  await key(page, 'Add 5 temporary HP').click();
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 10 of 12, temporary 5/);
+
+  // Temporary hit points never add up: 3 is lower, so the pad offers to replace them.
+  await page.getByRole('button', { name: en.sheet.damage, exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Temp HP', exact: true }).click();
+  await key(page, '3').click();
+  await expect(page.getByTestId('pad-summary')).toHaveText('10 / 12 → 10 / 12+5');
+  await page.getByRole('switch', { name: 'Replace my 5 temporary HP' }).click();
+  await expect(page.getByTestId('pad-summary')).toHaveText('10 / 12 → 10 / 12+3');
+  await page.keyboard.press('Escape');
+});
+
+test('SHEET-40 in 2024 the pad offers a knock-out for damage that would drop to 0', async ({
+  page,
+}) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  await page.getByRole('button', { name: en.sheet.damage, exact: true }).click();
+  await key(page, '1').click();
+  await key(page, '1').click();
+  await expect(page.getByRole('switch', { name: /Knock out instead/ })).toHaveCount(0);
+  await key(page, 'Delete the last digit').click();
+  await key(page, '2').click();
+  // 12 damage to 12 hit points: it would drop to 0.
+  await expect(page.getByRole('switch', { name: /Knock out instead/ })).toBeVisible();
+  await expect(page.getByTestId('pad-summary')).toHaveText('12 / 12 → 0 / 12');
+  await page.getByRole('switch', { name: /Knock out instead/ }).click();
+  await expect(page.getByTestId('pad-summary')).toHaveText('12 / 12 → 1 / 12');
+  await key(page, 'Take 12 damage').click();
+  await expect(page.getByTestId('pad-follow')).toContainText('Knocked out at 1 hit point.');
+  await key(page, 'Done').click();
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 1 of 12/);
+});
+
+test('SHEET-40 damage to a concentrating character asks for the save; losing it ends the concentration', async ({
+  page,
+}, testInfo) => {
+  const holding = {
+    ...goldenA,
+    systemData: {
+      ...goldenA.systemData,
+      state: { ...goldenA.systemData.state, concentration: 'srd-2014:spell/bless' },
+    },
+  };
+  await saveRows(page, [holding]);
+  await page.goto(`characters/${goldenA.id}?tab=combat`);
+  await expect(page.locator('[data-concentration]')).toBeVisible();
+
+  // 4 damage: the Constitution save is DC 10 (the higher of 10 and half the damage).
+  await page.getByRole('button', { name: en.sheet.damage, exact: true }).click();
+  await key(page, '4').click();
+  await key(page, 'Take 4 damage').click();
+  const follow = page.getByTestId('pad-follow');
+  await expect(follow).toContainText('Constitution save, DC 10, to keep concentrating on Bless.');
+  await page.screenshot({ path: testInfo.outputPath('pad-concentration-dark.png') });
+
+  // The save rolls in the roll dialog; the concentration is still held.
+  await key(page, 'Roll the save').click();
+  await expect(page.getByRole('dialog')).toHaveCount(2);
+  await page.getByRole('dialog').last().getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+  await expect(page.locator('[data-concentration]')).toBeVisible();
+
+  // Losing it ends the concentration: its card goes from the Combat tab.
+  await key(page, 'Lost it: end concentration').click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('[data-concentration]')).toHaveCount(0);
+});
+
+test('SHEET-40 damage that drops a concentrating character to 0 ends the concentration and says so', async ({
+  page,
+}) => {
+  const holding = {
+    ...goldenA,
+    systemData: {
+      ...goldenA.systemData,
+      state: { ...goldenA.systemData.state, concentration: 'srd-2014:spell/bless' },
+    },
+  };
+  await saveRows(page, [holding]);
+  await page.goto(`characters/${goldenA.id}?tab=combat`);
+  await page.getByRole('button', { name: en.sheet.damage, exact: true }).click();
+  await key(page, '1').click();
+  await key(page, '2').click();
+  await key(page, 'Take 12 damage').click();
+  const follow = page.getByTestId('pad-follow');
+  await expect(follow).toContainText('Dropped to 0 hit points.');
+  await expect(follow).toContainText('Concentration on Bless ended.');
+  await key(page, 'Done').click();
+  await expect(page.locator('[data-concentration]')).toHaveCount(0);
+});

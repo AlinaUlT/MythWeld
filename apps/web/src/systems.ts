@@ -10,12 +10,16 @@ import {
   ABOUT_LISTS,
   type AboutListName,
   type AboutShown,
+  applyDamage,
+  applyHealing,
   attackOutcome,
   type ChecksShown,
   type ConditionsShown,
   concentrationOf,
+  concentrationSavePath,
   conditionsToAdd,
   criticalDamage,
+  type DamageOutcome,
   d20Formula,
   EDITION_RULES,
   type EditionTerms,
@@ -49,6 +53,7 @@ import {
   type HeaderHitPoints,
   type HeaderNumber,
   type InspirationShown,
+  knockOutOffered,
   type ListLinePart,
   MAX_LEVEL,
   type MadeByHand,
@@ -71,6 +76,7 @@ import {
   setRowContainer,
   setRowEquipped,
   setRowQuantity,
+  setTempHp,
   spendInspiration,
   spendSlot,
 } from '@grimoire/system-5e';
@@ -159,6 +165,7 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
 export type {
   AboutListName,
   ConditionsShown,
+  DamageOutcome,
   FeatureGroup,
   GearShown,
   MadeByHand,
@@ -199,6 +206,14 @@ export interface SheetSystem {
   spells(character: AppCharacter, computed: AppComputed): SpellsShown;
   spendSlot: typeof spendSlot;
   regainSlot: typeof regainSlot;
+  /** The hit point actions the number pad runs (SHEET-40). */
+  applyDamage: typeof applyDamage;
+  applyHealing: typeof applyHealing;
+  setTempHp: typeof setTempHp;
+  /** The knock-out the pad offers for this much damage: the edition has it and it would drop to 0. */
+  knockOutOffered: typeof knockOutOffered;
+  /** The path of the saving throw that keeps concentration after damage, or none. */
+  concentrationSave: typeof concentrationSavePath;
   /** The spell the character concentrates on, or none (SHEET-41). */
   concentration: typeof concentrationOf;
   endConcentration: typeof endConcentration;
@@ -264,6 +279,11 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     spells: fifthEditionSpells,
     spendSlot,
     regainSlot,
+    applyDamage,
+    applyHealing,
+    setTempHp,
+    knockOutOffered,
+    concentrationSave: concentrationSavePath,
     concentration: concentrationOf,
     endConcentration,
     setRowEquipped,

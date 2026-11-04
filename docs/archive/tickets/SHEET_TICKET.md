@@ -6846,3 +6846,89 @@ Found, not fixed: a bottom panel covers the Undo toast (the panel sits above it)
 Changelog: "Conditions can be added to the character from the sheet and ended, each with its level and description; exhaustion at its highest level says it is death."
 
 ---
+
+### SHEET-40 The number pad changes the hit points
+
+**Hat:** The number pad changes the hit points
+**Depends on:** SHEET-30 (the dock's Damage and Heal, the pad's place), SHEET-23 (Undo), SHEET-39 (the roll dialog), SHEET-41 (the concentration), ENG-20 (`applyDamage`, `applyHealing`, `setTempHp`, `endConcentration`), ENG-65 (the knock-out)
+**Size:** M
+**Screen:** Yes — boards `V3-Keypad` and `V3-TempHP` in `docs/design/mockups/`; `docs/design/BRIEF.md` Part 2 P6 and Part 5 "P6 Damage, healing and rests"
+**SPEC:** §6.4 (hit points, concentration), §7.2; ADR 010 item 6, ADR 013 item 1
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/panels/NumberPad.tsx` — changes: the pad, empty since SHEET-30.
+- `packages/system-5e/src/sheet-hit-points.ts` — new: `knockOutOffered`, `concentrationSavePath`.
+- `apps/web/src/systems.ts` — changes: `SheetSystem.applyDamage`, `applyHealing`, `setTempHp`, `knockOutOffered`, `concentrationSave`.
+- `apps/web/src/locales/en/numberPad.json` — changes: the words.
+
+#### 2. What is missing now
+
+Measured on `0673a76`: `NumberPad` returns `null`; the dock's Damage and Heal open nothing, so a person cannot change the hit points from the sheet.
+
+#### 3. What it should look like when done
+
+1. The dock's Damage and Heal open one pad with three modes, "Damage", "Heal" and "Temp HP", the mode of the button first; the person can switch (board V3-Keypad).
+2. The pad shows the hit points before and after the amount typed, "12 / 12 → 7 / 12", the temporary ones in their own colour, "+5" (ADR 013 item 1, board V3-TempHP), and the amount in large type.
+3. Twelve keys: 1 to 9, "C" (clear), 0, delete the last digit; at most four digits.
+4. The apply button is named by the mode and amount, "Take 5 damage", "Heal 4", "Add 5 temporary HP". Tapping it is one change with its "Undo" toast, "Damage taken", "Healed", "Temporary hit points set", and the pad closes.
+5. The "after" is what the module's own action gives on a copy of the character, so no hit point rule is in the screen: healing at the maximum, and any action on a dead character, are refused, and the button is off (the dead: "The character is dead: it has no hit points.").
+6. Where the edition knocks out to 1 hit point (2024) and the damage typed would drop the character from above 0 to 0, a switch "Knock out instead: leaves 1 hit point" appears; on, the after reads "→ 1 / 12", and the follow-up says "Knocked out at 1 hit point." (ENG-65).
+7. Temporary hit points never add up: when the amount is lower than the temporary hit points held, a switch "Replace my N temporary HP" is offered (`replace`).
+8. Damage that leaves a concentrating character above 0 hit points asks for the Constitution save: "Constitution save, DC 10, to keep concentrating on Bless." (the higher of 10 and half the damage, ENG-20), with "Roll the save" (opens the roll dialog of the save, SHEET-39), "Kept it" and "Lost it: end concentration" (`endConcentration`, one change with Undo).
+9. Damage that drops the character to 0 says "Dropped to 0 hit points." (or "The character is dead."), and when it ended the concentration, "Concentration on Bless ended."
+10. The gate is green.
+
+#### 4. How to do it
+
+1. `knockOutOffered` and `concentrationSavePath` in the module; `SheetSystem` carries them and the three actions.
+2. The pad previews with `act(playerStamp(character))` and applies the same call through `perform`, keeping the damage outcome for the follow-up.
+3. The follow-up is the pad's own second view, not a second panel, so the DC stays while the roll dialog is open over it.
+
+Technical choices (ADR 002): at most four digits; the pad closes after an apply that has nothing to ask or tell, and stays for the follow-up; the roll dialog is drawn by the pad, because the sheet frame shows one panel at a time; the save's result is read by the person, the dialog does not compare it with the DC (SHEET-39's dialog has no target).
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+A bottom panel at 360×800: the mode switch, the summary and amount, the keys, the apply button; after damage with something to ask or tell, "After the damage". Keys in `numberPad`: `title`, `modes`, `mode.*`, `summary`, `temp`, `noMax`, `apply.*`, `key.*`, `knockOut`, `replace`, `dead`, `followTitle`, `status.*`, `ended`, `save`, `roll`, `kept`, `lost`, `done`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-hit-points.test.ts` — 4 tests: the knock-out offered at 12 damage on 12 hit points and not at 11, past 5 temporary hit points at 17 and not at 16, never at 0 hit points or in 2014; the Constitution save's path.
+- `apps/web/test/number-pad.test.tsx` — 5 tests: the mode of the button, the summary before a digit, "+5" in its colour, the twelve keys, the apply button named and off at 0.
+- `apps/web/e2e/sheet.spec.ts` — 4 tests: damage 5 (12 → 7, Undo), heal off at the maximum, heal 4 from 6, temporary hit points with Clear and Delete, the replace switch; the knock-out; the concentration save, its roll dialog and losing it; 12 damage to 0 hit points.
+- Control values: golden B (SPEC §6.7), 12 hit points; golden A (2014) with Bless held, 12 hit points. Amounts worked out by hand: 12 − 5 = 7; 10 + 5 temporary; 4 damage → DC max(10, 2) = 10.
+
+#### 8. Checked against the source
+
+SRD 5.1, "Concentration": a Constitution save, DC 10 or half the damage, whichever is higher. SRD 5.2.1, "Concentration": the same, the DC at most 30. SRD 5.2.1, "Knocking Out a Creature": the attacker may reduce a creature to 1 hit point instead of 0 with a melee attack (ENG-65 §8). SRD 5.1 and 5.2.1, "Temporary Hit Points": they do not add up; replace or keep (ENG-20 §8).
+
+#### 9. Not in this ticket
+
+- The damage's type and a critical hit: `applyDamage` takes both (SHEET-16, ENG-20), but the board's pad has neither; their control is a later row.
+- Death saves at 0 hit points: SHEET-43.
+- A number the dialog compares with a DC: the roll dialog shows the total only.
+
+#### 10. Rake check
+
+- **Everything is data / the module owns the rules:** the after, the refusals, the DC and the knock-out come from the module.
+- **Manual overrides win:** the maximum shown is `hp.max` from `Computed`.
+- **A person's saved data:** each apply is one logged, undoable entry.
+- **No visible literal, no look literal:** `numberPad` keys; tokens and parts (the temporary colour is `text-temp`).
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` 404 files, no fixes; `pnpm typecheck` clean; `pnpm test` 120 files, 1447 passed, 0 failed, 28.4 s (9 new, from 1438), then speed 2 passed; coverage statements 99.11 % (3796/3830), lines 99.81 % (3327/3333); `pnpm e2e` 63 passed, 0 failed, 55.5 s (4 new). Screenshots at 360×800 shown in the chat.
+
+Differences from §3: none.
+
+Found, not fixed: the toast's Undo is hidden under an open panel (SHEET-71 has it); the "Roll the save" dialog and the pad close together on Escape, because every `BottomSheet` listens to the key (the e2e closes the dialog with its Close button); no row yet offers the damage type and critical hit on the pad.
+
+Changelog: "The Damage and Heal buttons open a number pad: type an amount, see the hit points before and after, and apply it, with Undo; Temp HP too, a knock-out where your rules have it, and the concentration save after damage."
+
+---

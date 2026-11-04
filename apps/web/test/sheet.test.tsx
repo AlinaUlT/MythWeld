@@ -15,7 +15,6 @@ import { shownDistance } from '../src/settings/units';
 import { ToastHost } from '../src/shared/ToastHost';
 import { Inspiration } from '../src/sheet/header/Inspiration';
 import { ActionsMenu } from '../src/sheet/panels/ActionsMenu';
-import { NumberPad } from '../src/sheet/panels/NumberPad';
 import { RestPanel } from '../src/sheet/panels/RestPanel';
 import { SheetContext, type SheetValue } from '../src/sheet/SheetContext';
 import { SheetDice } from '../src/sheet/SheetDice';
@@ -248,7 +247,6 @@ describe('SHEET-30 tabs', () => {
     for (const Panel of [RestPanel, ActionsMenu]) {
       expect(draw(sheet, <Panel onClose={noop} />)).toBe('');
     }
-    expect(draw(sheet, <NumberPad mode="damage" onClose={noop} />)).toBe('');
   });
 });
 

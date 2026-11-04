@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-40 · The Damage and Heal buttons open a number pad: type an amount, see the hit points before and after, and apply it, with Undo; Temp HP too, a knock-out where your rules have it, and the concentration save after damage.
 - 2026-11-04 · SHEET-42 · Conditions can be added to the character from the sheet and ended, each with its level and description; exhaustion at its highest level says it is death.
 - 2026-11-04 · SHEET-41 · The Combat tab shows the spell you concentrate on until it ends, with a button to end it (and Undo).
 - 2026-11-03 · SHEET-46 · The Spells tab shows spellcasting at a glance, the slot grid (tap a circle to spend or give back a slot), each class's prepared and known spells and the spells your features grant, with their edition.
