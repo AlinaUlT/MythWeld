@@ -1,1 +1,44 @@
-{}
+{
+  "title": "Rest",
+  "short": {
+    "title": "Short rest",
+    "dice": "Spend hit dice to heal",
+    "none": "Nothing comes back without a hit die."
+  },
+  "long": {
+    "title": "Long rest",
+    "none": "Nothing comes back."
+  },
+  "food": "A long rest lowers exhaustion by one level only if the character also ate and drank. If it did not, set the level back on the Conditions card.",
+  "diceHeading": "Hit dice",
+  "left": "{{die}}: {{left}} of {{max}} left",
+  "spend": "Spend a {{die}} hit die",
+  "spent": "{{die}} rolled {{roll}}: {{hp}} hit points",
+  "takeBack": "Take back the {{die}} that rolled {{roll}}",
+  "noDice": "The character has no hit dice.",
+  "willBack": "What comes back",
+  "line": {
+    "hitPoints": "Hit points {{from}} → {{to}} of {{max}}",
+    "hitPointsFull": "Hit points back to {{to}}",
+    "tempHitPoints": "{{lost}} temporary hit points end",
+    "hitDie": "{{die}} rolled {{roll}}: {{hp}} hit points",
+    "hitDiceBack": "Hit dice back: {{back}} × {{die}}",
+    "slots": "Level {{level}} spell slots back: {{back}}",
+    "pactSlots": "Pact slots back: {{back}}",
+    "uses_one": "{{name}}: {{count}} use back, {{left}} of {{max}} left",
+    "uses_other": "{{name}}: {{count}} uses back, {{left}} of {{max}} left",
+    "condition": "{{name}} goes down to level {{to}}",
+    "conditionEnds": "{{name}} ends",
+    "concentrationEnds": "Concentration on {{name}} ends",
+    "inspiration": "Inspiration given",
+    "knockOutEnds": "The knock-out ends"
+  },
+  "refused": {
+    "dead": "The character is dead: a rest gives it nothing.",
+    "tooFewHitPoints": "A rest starts at {{min}} hit points or more; the character has {{hp}}.",
+    "unchanged": "This rest gives back nothing now."
+  },
+  "confirm": "Confirm",
+  "cancel": "Cancel",
+  "takeBackShort": "Take back"
+}

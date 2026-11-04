@@ -32,6 +32,7 @@ describe('ENG-19 the edition files', () => {
       concentrationDcMax: null,
       shortRestMinHp: 0,
       longRestEndsConcentration: false,
+      longRestNeedsFood: true,
       knockOutToOneHp: false,
       untrained: { armor: ['disadvantage', 'noSpells'], shield: ['disadvantage', 'noSpells'] },
     });
@@ -51,6 +52,7 @@ describe('ENG-19 the edition files', () => {
       concentrationDcMax: 30,
       shortRestMinHp: 1,
       longRestEndsConcentration: true,
+      longRestNeedsFood: false,
       knockOutToOneHp: true,
       untrained: { armor: ['disadvantage', 'noSpells'], shield: ['noArmorClass'] },
     });

@@ -47,6 +47,7 @@ export * from './sheet-gear';
 export * from './sheet-header';
 export * from './sheet-hit-points';
 export * from './sheet-paths';
+export * from './sheet-rest';
 export * from './sheet-roll';
 export * from './sheet-spells';
 export * from './size';

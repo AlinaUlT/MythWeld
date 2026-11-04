@@ -50,6 +50,8 @@ import {
   fifthEditionModule,
   fifthEditionPathParts,
   fifthEditionPendingKey,
+  fifthEditionRestDice,
+  fifthEditionRestLines,
   fifthEditionRollTest,
   fifthEditionSituational,
   fifthEditionSpells,
@@ -62,6 +64,7 @@ import {
   type InspirationShown,
   knockOutOffered,
   type ListLinePart,
+  longRest,
   MAX_LEVEL,
   type MadeByHand,
   type ManualCharacterAsk,
@@ -70,10 +73,13 @@ import {
   openFifthEditionPack,
   type PathPart,
   type PendingKeyAnswer,
+  type RestHitDie,
+  type RestLine,
   type RollTest,
   regainSlot,
   removeConditionOf,
   removeRow,
+  restNeedsFood,
   revive,
   rollDeathSave,
   rollInitiative,
@@ -86,6 +92,7 @@ import {
   setRowEquipped,
   setRowQuantity,
   setTempHp,
+  shortRest,
   spendInspiration,
   spendSlot,
   stabilize,
@@ -185,6 +192,8 @@ export type {
   ManualCharacterAsk,
   PathPart,
   PendingKeyAnswer,
+  RestHitDie,
+  RestLine,
   RollTest,
   Situational,
   SpellsShown,
@@ -242,6 +251,14 @@ export interface SheetSystem {
   /** The spell the character concentrates on, or none (SHEET-41). */
   concentration: typeof concentrationOf;
   endConcentration: typeof endConcentration;
+  /** The hit dice a short rest can spend, the largest first (SHEET-45). */
+  restDice: typeof fifthEditionRestDice;
+  /** What a rest that worked changed, line by line (SHEET-45). */
+  restLines: typeof fifthEditionRestLines;
+  /** Whether the edition's long rest lowers exhaustion only with food and drink (SHEET-45). */
+  restNeedsFood: typeof restNeedsFood;
+  shortRest: typeof shortRest;
+  longRest: typeof longRest;
   /** The rows of the Gear tab, their weight and the rules they break (SHEET-50). */
   gear(
     character: AppCharacter,
@@ -303,6 +320,11 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     fatalLevel: fatalLevelOf,
     setConditionLevel,
     removeCondition: removeConditionOf,
+    restDice: fifthEditionRestDice,
+    restLines: fifthEditionRestLines,
+    restNeedsFood,
+    shortRest,
+    longRest,
     gear: fifthEditionGear,
     spells: fifthEditionSpells,
     spendSlot,

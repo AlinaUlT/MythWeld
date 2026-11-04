@@ -35,6 +35,9 @@ export const RULES_2014: EditionRules = {
   // A long rest is time the character "sleeps or performs light activity", with no condition
   // (Long Rest, ENG-21 §8).
   longRestEndsConcentration: false,
+  // "Finishing a long rest reduces a creature's exhaustion level by 1, provided that the creature
+  // has also ingested some food and drink" (Exhaustion, ENG-61 §8).
+  longRestNeedsFood: true,
   // "The creature falls unconscious and is stable": at 0 hit points (Knocking a Creature Out,
   // ENG-65 §8).
   knockOutToOneHp: false,

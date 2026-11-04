@@ -15,7 +15,6 @@ import { shownDistance } from '../src/settings/units';
 import { ToastHost } from '../src/shared/ToastHost';
 import { Inspiration } from '../src/sheet/header/Inspiration';
 import { ActionsMenu } from '../src/sheet/panels/ActionsMenu';
-import { RestPanel } from '../src/sheet/panels/RestPanel';
 import { SheetContext, type SheetValue } from '../src/sheet/SheetContext';
 import { SheetDice } from '../src/sheet/SheetDice';
 import { barShares, SheetDock } from '../src/sheet/SheetDock';
@@ -248,7 +247,7 @@ describe('SHEET-30 tabs', () => {
     for (const Section of [...sections, Inspiration].filter((each) => !filled.includes(each))) {
       expect(draw(sheet, <Section />)).toBe('');
     }
-    for (const Panel of [RestPanel, ActionsMenu]) {
+    for (const Panel of [ActionsMenu]) {
       expect(draw(sheet, <Panel onClose={noop} />)).toBe('');
     }
   });

@@ -85,6 +85,12 @@ export interface EditionRules {
    */
   readonly longRestEndsConcentration: boolean;
   /**
+   * SHEET-45: whether a long rest lowers exhaustion only "provided that the creature has also
+   * ingested some food and drink" (SRD 5.1). The app tracks no food, so `longRest` lowers it
+   * either way and the Rest panel says so where this is set (ENG-61 §11).
+   */
+  readonly longRestNeedsFood: boolean;
+  /**
    * ENG-65: whether damage that would drop a creature to 0 hit points with a melee attack may
    * leave it at 1, knocked out (`applyDamage`'s `knockOut`). Without it, knocking out is damage to
    * 0, then `stabilize` (ENG-65 §8).

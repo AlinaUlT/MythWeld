@@ -1284,3 +1284,111 @@ test('SHEET-73 Escape closes the panel on top, one panel for each press', async 
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
+
+/** Golden B hurt to `current` hit points with `secondWind` uses of Second Wind spent. */
+const winded = (current: number, secondWind: number) => ({
+  ...goldenB,
+  state: { ...goldenB.state, resources: { secondWind } },
+  systemData: {
+    ...goldenB.systemData,
+    state: { ...goldenB.systemData.state, hp: { current, temp: 0 } },
+  },
+});
+
+test('SHEET-45 the Rest panel: a short rest spends a hit die, a long rest lists what comes back, each with Undo', async ({
+  page,
+}, testInfo) => {
+  // Every die roll gives face 1 while this flag is set (a zero from the secure source).
+  await page.addInitScript(() => {
+    const real = crypto.getRandomValues.bind(crypto);
+    (window as unknown as { zeroDice: boolean }).zeroDice = true;
+    crypto.getRandomValues = ((array: ArrayBufferView) => {
+      if ((window as unknown as { zeroDice: boolean }).zeroDice) {
+        new Uint8Array(array.buffer, array.byteOffset, array.byteLength).fill(0);
+        return array;
+      }
+      return real(array as never);
+    }) as typeof crypto.getRandomValues;
+  });
+  await saveRows(page, [winded(4, 2)]);
+  await page.goto(`characters/${goldenB.id}`);
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 4 of 12/);
+
+  // The board's two cards, each listing what its rest gives back.
+  await page.getByRole('button', { name: en.sheet.rest, exact: true }).click();
+  const panel = page.getByRole('dialog');
+  await expect(panel.locator('[data-rest="short"]')).toContainText(
+    'Second Wind: 1 use back, 1 of 2 left',
+  );
+  await expect(panel.locator('[data-rest="short"]')).toContainText('Spend hit dice to heal');
+  await expect(panel.locator('[data-rest="long"]')).toContainText('Hit points back to 12');
+  await expect(panel.locator('[data-rest="long"]')).toContainText(
+    'Second Wind: 2 uses back, 2 of 2 left',
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('rest-cards-dark.png') });
+
+  // The short frame: the d10 rolls 1, plus Constitution +2 is 3 hit points: 4 → 7 of 12.
+  await panel.locator('[data-rest="short"]').getByRole('button', { name: 'Short rest' }).click();
+  await expect(panel.getByTestId('rest-dice')).toContainText('d10: 1 of 1 left');
+  await panel.getByRole('button', { name: 'Spend a d10 hit die' }).click();
+  await expect(panel.getByTestId('rest-dice')).toContainText('d10: 0 of 1 left');
+  await expect(panel.getByRole('button', { name: 'Spend a d10 hit die' })).toBeDisabled();
+  await expect(panel.getByTestId('rest-spent')).toContainText('d10 rolled 1: 3 hit points');
+  await expect(panel.getByTestId('rest-lines')).toContainText('Hit points 4 → 7 of 12');
+  await expect(panel.getByTestId('rest-lines')).toContainText(
+    'Second Wind: 1 use back, 1 of 2 left',
+  );
+  await expect(panel.getByTestId('rest-food')).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('rest-short-dark.png') });
+
+  // A die taken back leaves the list as it was; spending again and confirming is one change.
+  await panel.getByRole('button', { name: 'Take back the d10 that rolled 1' }).click();
+  await expect(panel.getByTestId('rest-dice')).toContainText('d10: 1 of 1 left');
+  await expect(panel.getByTestId('rest-lines')).not.toContainText('Hit points');
+  await panel.getByRole('button', { name: 'Spend a d10 hit die' }).click();
+  await panel.getByRole('button', { name: en.rest.confirm }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 7 of 12/);
+  await expect(page.getByRole('status')).toContainText('Short rest taken');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 4 of 12/);
+
+  // The long frame lists before it confirms; Cancel goes back to the cards.
+  await page.getByRole('button', { name: en.sheet.rest, exact: true }).click();
+  await panel.locator('[data-rest="long"]').getByRole('button', { name: 'Long rest' }).click();
+  await expect(panel.getByTestId('rest-lines')).toContainText('Hit points back to 12');
+  await expect(panel.getByTestId('rest-lines')).toContainText(
+    'Second Wind: 2 uses back, 2 of 2 left',
+  );
+  await expect(panel.getByTestId('rest-food')).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('rest-long-dark.png') });
+  await panel.getByRole('button', { name: en.rest.cancel }).click();
+  await expect(panel.locator('[data-rest="short"]')).toBeVisible();
+  await panel.locator('[data-rest="long"]').getByRole('button', { name: 'Long rest' }).click();
+  await panel.getByRole('button', { name: en.rest.confirm }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 12 of 12/);
+  await expect(page.getByRole('status')).toContainText('Long rest taken');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 4 of 12/);
+});
+
+test('SHEET-45 the 2014 long rest says food and drink for exhaustion', async ({ page }) => {
+  const hurt = {
+    ...goldenA,
+    systemData: {
+      ...goldenA.systemData,
+      state: { ...goldenA.systemData.state, hp: { current: 5, temp: 0 } },
+    },
+  };
+  await saveRows(page, [hurt]);
+  await page.goto(`characters/${goldenA.id}`);
+  await page.getByRole('button', { name: en.sheet.rest, exact: true }).click();
+  const panel = page.getByRole('dialog');
+  await panel.locator('[data-rest="long"]').getByRole('button', { name: 'Long rest' }).click();
+  await expect(panel.getByTestId('rest-food')).toHaveText(en.rest.food);
+  await expect(panel.getByTestId('rest-food')).toContainText(
+    'only if the character also ate and drank',
+  );
+});

@@ -7151,3 +7151,96 @@ Why one listener: a listener for each panel is not enough. After the top panel's
 Found, not fixed: nothing.
 
 Changelog: "The Escape key closes only the panel on top: with the roll dialog over the number pad, the first press closes the dialog and the second closes the pad."
+
+---
+
+### SHEET-45 The Rest frames show what comes back
+
+**Hat:** The Rest panel lists what each rest gives back
+**Depends on:** SHEET-30 (the panel's place and the header's Rest button), SHEET-23 (Undo), SHEET-38 (the fair die), SHEET-42 (the condition levels a rest lowers), ENG-21 (`shortRest`, `longRest`), ENG-61 (conditions' recovery)
+**Size:** M
+**Screen:** Yes — the Rest panel; board `V3-Rest` in `docs/design/mockups/`, its row in `docs/design/BRIEF.md` Part 5 ("P6 Damage, healing and rests"), frames 2 and 3 of BRIEF Part 2 P6. SPEC §6.4, §7.2.
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/panels/RestPanel.tsx` — changes: the panel SHEET-30 left empty.
+- `packages/system-5e/src/sheet-rest.ts` — new: `fifthEditionRestDice` (the hit dice a short rest can spend), `fifthEditionRestLines` (what a rest changed, line by line, from the character before and after), `restNeedsFood`.
+- `packages/system-5e/src/rulesets/edition-rules.ts`, `2014.ts`, `2024.ts` — change: the rule `longRestNeedsFood`.
+- `apps/web/src/systems.ts` — change: `SheetSystem.restDice`, `restLines`, `restNeedsFood`, `shortRest`, `longRest`.
+- `apps/web/src/locales/en/rest.json` — the panel's text (the namespace SHEET-30 made empty).
+
+#### 2. What is missing now
+
+The header's Rest button opens a panel that draws nothing: `RestPanel` returns `null`, and `apps/web/test/sheet.test.tsx` expects the empty string from it. `shortRest` and `longRest` (ENG-21) exist and are tested, and no screen runs them.
+
+#### 3. What it should look like when done
+
+1. The header's Rest button opens one panel, "Rest", with the board's two cards. "Short rest" (clock icon) lists what a short rest with no hit die gives back and "Spend hit dice to heal" while a hit die is left; "Long rest" (moon icon) lists what a long rest gives back. Each card has a button named like it.
+2. Golden B (2024: fighter 1, one d10, CON +2, 12 hit points, Second Wind 2 uses) at 4 hit points with 2 uses of Second Wind spent: the short card says "Second Wind: 1 use back, 1 of 2 left"; the long card says "Hit points back to 12" and "Second Wind: 2 uses back, 2 of 2 left".
+3. The short frame lists the hit dice ("d10: 1 of 1 left") with "Spend a d10 hit die". A spend rolls a fair d10 (logged in the roll log as any roll); with face 1 the row says "d10 rolled 1: 3 hit points" (1 + CON 2) and the list says "Hit points 4 → 7 of 12". "Take back" removes a spent die from the list. A die left at 0 cannot be spent again.
+4. "Confirm" runs the rest as one change, closes the panel and shows the toast "Short rest taken" with Undo; Undo brings back the 4 hit points. "Cancel" goes back to the cards and changes nothing.
+5. The long frame lists exactly what comes back before "Confirm", and then the same: "Long rest taken", Undo.
+6. A rest that gives nothing says "Nothing comes back." and its Confirm is off. A dead character, or one under the edition's hit point minimum, gets the reason, and Confirm is off.
+7. The 2014 long rest frame says "A long rest lowers exhaustion by one level only if the character also ate and drank. If it did not, set the level back on the Conditions card."; the 2024 frame says nothing of food.
+8. The gate is green.
+
+#### 4. How to do it
+
+1. Add `longRestNeedsFood` to `EditionRules` (2014 true, 2024 false); `restNeedsFood(character)` reads it through `rulesOf` (no `if (ruleset …)`).
+2. `fifthEditionRestLines(before, computed, result)`: the lines are the difference between the character before and the one the rest returned (hit points, temporary hit points ending, each hit die spent with its roll, hit dice back, slots, pact slots, uses with their label and what is left, conditions lowered or ended, concentration ending, inspiration given, a knock-out ending). A thing that did not change has no line. Nothing re-derives a rest rule.
+3. `RestPanel`: three views kept in the panel's own state (cards, short frame, long frame). Every list is the module's rest run on a copy with `playerStamp`, as `NumberPad` previews; Confirm runs it through `perform`.
+4. A hit die spent is `rollWith` with `1d<N>` and `panelDie()`, logged with `logRoll`; the roll's total is the `roll` of `HitDieAsk`.
+
+#### 5. Stored data
+
+Nothing stored changes. The Rest panel keeps its state in memory; a rest is the log entry ENG-21 already makes (`shortRest`, `longRest`, with their toast texts).
+
+#### 6. What a person will see
+
+At 360×800, from the moon button of the header: a bottom panel. Views: the two cards; "Short rest" with "Hit dice" rows, the spent dice, "What comes back", Confirm, Cancel; "Long rest" with "What comes back", the 2014 food note, Confirm, Cancel. Empty: "Nothing comes back." Error: the refusal's text in a warning box. Keys: `rest.json` (title, short.*, long.*, food, diceHeading, left, spend, spent, takeBack, takeBackShort, willBack, line.*, refused.*, confirm, cancel). Screenshots in the chat.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-rest.test.ts` — 9 tests: the dice listed by size with what is left (B, B4, C 2014), `restNeedsFood` (A true, B false), a short rest's lines (hit points, the die, a use of Second Wind, pact slots, a knock-out ending), a long rest's lines for 2024 and 2014, exhaustion lowered and ended, concentration ending in 2024 and kept in 2014.
+- `packages/system-5e/test/rulesets.test.ts` — the new rule in each edition.
+- `apps/web/test/rest.test.tsx` — 4 tests: the two cards, the short card's use of Second Wind and the dice hint, the long card's lines, nothing coming back.
+- `apps/web/e2e/sheet.spec.ts` — 2 tests: the cards, the short frame (spend, take back, spend, Confirm, toast, Undo), the long frame (list, Cancel, Confirm, toast, Undo); the 2014 food note.
+- Control numbers from: SPEC §6.7 golden B (12 hit points, CON +2, one d10) and golden A (12 hit points); Second Wind's uses from ENG-21's tests (`rests.test.ts`): one back on a short rest, all on a long rest.
+
+#### 8. Checked against the source
+
+- SRD 5.1, Exhaustion (`5e-SRD-Conditions.json`), as quoted in ENG-61 §8: "Finishing a long rest reduces a creature's exhaustion level by 1, provided that the creature has also ingested some food and drink." So 2014 `longRestNeedsFood` is true.
+- SRD 5.2.1, Exhaustion, as quoted in ENG-61 §8: "Finishing a Long Rest removes 1 of your Exhaustion levels." No condition on food: 2024 is false.
+- The rest rules themselves (hit dice, recoveries, the edition's shares) are ENG-21's §8, not repeated here.
+- No `[ПРОВЕРИТЬ]` is open for this ticket.
+
+#### 9. Not in this ticket
+
+- Typed faces for a hit die ("I roll myself", SPEC §6.5): the panel rolls the fair die. New row SHEET-74.
+- The recovery events `dawn`, `turn` and `manual` (a magic item's charges at dawn): no frame offers them; no action triggers them (ENG-21 §11).
+- The condition list showing a level go down is the Conditions card of SHEET-42, which reads the stored change.
+- A person who did not eat sets the exhaustion level back by hand (SHEET-42's panel) or takes the rest back with Undo.
+
+#### 10. Rake check
+
+- **`compute()` is pure; the UI reads only `Computed`:** the lists read `Computed` and the module's actions run on copies; no number is made in a component.
+- **Each system's rules live in its own module:** the food rule is `longRestNeedsFood` in `rulesets/2014.ts` and `2024.ts`; no `ruleset ===` check anywhere.
+- **No user-facing string literal in a component:** every text is an i18next key in `rest.json`; "d10" is built from the die's faces, the rest is keys.
+- **No look in a component:** classes are the sheet's existing tokens and `Part` names.
+- **Stored units and shapes:** nothing stored changes.
+- **Golden values:** none touched.
+
+#### 11. What came out of it
+Quality gate, 2026-11-04: `pnpm lint` 414 files, no fixes; `pnpm typecheck` clean; `pnpm test` 126 files, 1481 passed, 0 failed, 29.0 s (13 new, from 1468), then speed 2 passed; coverage statements 99.05 % (3876/3913), lines 99.82 % (3395/3401); `pnpm e2e` 73 passed, 0 failed, 1.1 min (2 new). Screenshots at 360×800 shown in the chat.
+
+Differs from §3: nothing. Technical choices (ADR 002):
+- The board has one button on each card; here each button opens that rest's frame (BRIEF P6 frames 2 and 3, "Confirm" and "Cancel"), where the short frame spends the dice.
+- The lists are the difference between the character before and after the module's own rest, not a second list of rules (`restLines`).
+- The 2014 food note shows in every 2014 long rest frame, not only with exhaustion: the built-in 2014 pack has no exhaustion entry yet (phase 3), and the note is short.
+- `rulesets.test.ts` lists each edition's rules; it gained the new rule `longRestNeedsFood` (SRD text in §8), no existing value changed.
+
+Found, not fixed: a typed face for a hit die ("I roll myself") is not offered; new row SHEET-74 (S).
+
+Changelog: "The Rest button opens the two rests: each lists what comes back before you confirm, a short rest spends hit dice you roll, a long rest in the 2014 rules reminds you that exhaustion goes down only if the character ate and drank; each rest is one change with Undo."
