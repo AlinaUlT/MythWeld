@@ -17,9 +17,15 @@ import { type AppCharacter, sheetSystemOf } from '../src/systems';
 void i18n;
 const packs = installBuiltInPacks().packs;
 
-function drawn(mode: NumberPadMode, temp = 0, current = 12): string {
+function drawn(
+  mode: NumberPadMode,
+  temp = 0,
+  current = 12,
+  localEntities: readonly object[] = [],
+): string {
   const character: AppCharacter = fifthEditionCharacterSchema.parse({
     ...goldenB,
+    localEntities,
     systemData: {
       ...goldenB.systemData,
       state: { ...goldenB.systemData.state, hp: { current, temp } },
@@ -87,5 +93,43 @@ describe('SHEET-40 the number pad', () => {
       expect(text(html)).toContain(`|${label}|`);
       expect(html).toMatch(new RegExp(`disabled=""[^>]*>${label}<`));
     }
+  });
+});
+
+describe('SHEET-72 the number pad’s damage type and critical hit', () => {
+  // The packs hold one damage type today, Slashing (`srd-2024:damageType/slashing`); a character's
+  // own entries (here Fire and Cold, made up) are offered with it.
+  const own = ['fire', 'cold'].map((slug) => ({
+    id: `character:damageType/${slug}`,
+    type: 'damageType',
+    key: slug,
+    ruleset: 'any',
+    name: { en: slug === 'fire' ? 'Fire' : 'Cold' },
+    source: { pack: 'character' },
+  }));
+  const chips = (html: string) =>
+    [...html.matchAll(/aria-pressed="(true|false)"[^>]*>([^<]+)</g)].filter(
+      ([, , name]) => name !== 'Damage' && name !== 'Heal' && name !== 'Temp HP',
+    );
+
+  it('offers each damage type the character finds as a chip in the Damage mode, none picked', () => {
+    const found = chips(drawn('damage', 0, 12, own));
+    expect(found.map(([, , name]) => name).sort()).toEqual(['Cold', 'Fire', 'Slashing']);
+    expect(found.every(([, pressed]) => pressed === 'false')).toBe(true);
+    expect(text(drawn('damage'))).toContain('|Damage type|');
+    expect(chips(drawn('damage')).map(([, , name]) => name)).toEqual(['Slashing']);
+  });
+
+  it('offers no type for healing or temporary hit points', () => {
+    expect(chips(drawn('heal', 0, 12, own))).toEqual([]);
+    expect(drawn('heal', 0, 12, own)).not.toContain('Damage type');
+  });
+
+  it('offers the critical hit only at 0 hit points, where it changes the death saves', () => {
+    const switchText = 'Critical hit: two death save failures';
+    expect(drawn('damage', 0, 0)).toContain(switchText);
+    expect(drawn('damage', 0, 12)).not.toContain(switchText);
+    expect(drawn('damage', 0, 5)).not.toContain(switchText);
+    expect(drawn('heal', 0, 0)).not.toContain(switchText);
   });
 });

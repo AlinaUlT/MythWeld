@@ -7,7 +7,9 @@
 // "End concentration" when it fails (ENG-20); the pad offers a knock-out where the edition has it
 // and the damage would drop the character to 0 (ENG-65). Temporary hit points never add up, so the
 // pad offers to replace them when the new amount is lower. A dead character takes none: the pad
-// says so. The damage's type and a critical hit are not on the board's pad.
+// says so. Damage takes a type, picked from the packs' damage types, and the defenses of SHEET-16
+// show what they make of it; at 0 hit points it takes a critical hit, which gives two death save
+// failures (SHEET-72). Board V3-Keypad draws neither: they follow its rows' look.
 import { finderOf } from '@grimoire/engine';
 import { Delete } from 'lucide-react';
 import { useState } from 'react';
@@ -52,17 +54,36 @@ export function NumberPad({ mode: first, onClose }: NumberPadProps) {
   const [replace, setReplace] = useState(false);
   const [follow, setFollow] = useState<Follow | undefined>(undefined);
   const [rolling, setRolling] = useState(false);
+  const [type, setType] = useState<string | undefined>(undefined);
+  const [critical, setCritical] = useState(false);
 
   const amount = digits === '' ? 0 : Number(digits);
   const { current, temp, maxPath } = system.hitPoints(character);
   const max = numberAt(computed, maxPath);
   const offered = mode === 'damage' && system.knockOutOffered(character, amount);
+  const types = Object.entries(computed.byKey.damageType ?? {});
+  // A critical hit changes only damage taken at 0 hit points: its switch is offered there.
+  const criticalOffered = mode === 'damage' && current === 0;
+  const typeName = (key: string) => {
+    const entity = computed.byKey.damageType?.[key];
+    return entity === undefined ? key : nameIn(entity.name);
+  };
   const knocking = offered && knockOut;
   const replacing = mode === 'temp' && temp > 0 && amount > 0 && amount < temp && replace;
 
   /** The action of the mode, for the amount typed. */
   const damage = (stamp: Parameters<typeof system.applyDamage>[3]) =>
-    system.applyDamage(character, content.index, { amount, knockOut: knocking }, stamp);
+    system.applyDamage(
+      character,
+      content.index,
+      {
+        amount,
+        knockOut: knocking,
+        ...(type !== undefined && { type }),
+        ...(criticalOffered && critical && { critical: true }),
+      },
+      stamp,
+    );
   const act = (stamp: Parameters<typeof system.applyDamage>[3]) => {
     const index = content.index;
     if (mode === 'damage') return damage(stamp);
@@ -71,10 +92,20 @@ export function NumberPad({ mode: first, onClose }: NumberPadProps) {
   };
 
   // What the action gives, run on a copy: the hit points after it, or why it would not run.
-  const preview = amount === 0 ? undefined : act(playerStamp(character));
+  const damaged = mode === 'damage' && amount > 0 ? damage(playerStamp(character)) : undefined;
+  const preview = amount === 0 ? undefined : (damaged ?? act(playerStamp(character)));
   const after = preview?.ok ? system.hitPoints(preview.character) : { current, temp };
   const refusal = preview !== undefined && !preview.ok ? preview : undefined;
   const maxText = max === undefined ? t('noMax') : String(max);
+  // What the defenses made of the typed damage: the preview's, or the refusal's when none is left.
+  const defended =
+    damaged === undefined
+      ? undefined
+      : damaged.ok
+        ? damaged.outcome.defended
+        : damaged.code === 'noDamage'
+          ? damaged.defended
+          : undefined;
 
   const press = (key: (typeof KEYS)[number]) => {
     if (key === 'clear') setDigits('');
@@ -198,6 +229,8 @@ export function NumberPad({ mode: first, onClose }: NumberPadProps) {
                 setMode(each);
                 setKnockOut(false);
                 setReplace(false);
+                setType(undefined);
+                setCritical(false);
               }}
               className={`flex min-h-control grow items-center justify-center text-15 font-semibold ${each === mode ? `bg-surface ${each === 'temp' ? 'text-temp' : ''}` : 'text-muted'}`}
             >
@@ -221,7 +254,48 @@ export function NumberPad({ mode: first, onClose }: NumberPadProps) {
           </span>
         </div>
 
+        {mode === 'damage' && types.length > 0 && (
+          <section className="flex flex-col gap-1.5" aria-label={t('damageType')}>
+            <h3 className="m-0 text-12 font-semibold tracking-wide text-muted uppercase">
+              {t('damageType')}
+            </h3>
+            <div className="flex flex-wrap gap-1.5">
+              {types.map(([key, entity]) => (
+                <Part
+                  as="button"
+                  type="button"
+                  name="chip"
+                  key={key}
+                  aria-pressed={key === type}
+                  onClick={() => setType(key === type ? undefined : key)}
+                  className={`flex min-h-control items-center px-3 text-14 font-semibold ${key === type ? 'bg-strong text-on-strong' : 'bg-soft text-text'}`}
+                >
+                  {nameIn(entity.name)}
+                </Part>
+              ))}
+            </div>
+          </section>
+        )}
+        {defended !== undefined && defended.steps.length > 0 && (
+          <ul
+            className="m-0 flex list-none flex-col gap-0.5 p-0 text-13"
+            data-testid="pad-defended"
+          >
+            {defended.steps.map((step, at) => (
+              <li key={step.list}>
+                {t(`defense.${step.list}`, {
+                  type: typeName(defended.type),
+                  from: at === 0 ? defended.dealt : (defended.steps[at - 1]?.amount ?? 0),
+                  to: step.amount,
+                })}
+              </li>
+            ))}
+          </ul>
+        )}
         {offered && <SwitchRow label={t('knockOut')} on={knockOut} onChange={setKnockOut} />}
+        {criticalOffered && (
+          <SwitchRow label={t('critical')} on={critical} onChange={setCritical} />
+        )}
         {mode === 'temp' && temp > 0 && amount > 0 && amount < temp && (
           <SwitchRow label={t('replace', { temp })} on={replace} onChange={setReplace} />
         )}

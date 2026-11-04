@@ -18,6 +18,13 @@
     "clear": "Clear",
     "back": "Delete the last digit"
   },
+  "damageType": "Damage type",
+  "defense": {
+    "immune": "Immune to {{type}}: {{from}} becomes {{to}}.",
+    "resist": "Resistant to {{type}}: {{from}} becomes {{to}}.",
+    "vuln": "Vulnerable to {{type}}: {{from}} becomes {{to}}."
+  },
+  "critical": "Critical hit: two death save failures",
   "knockOut": "Knock out instead: leaves 1 hit point",
   "replace": "Replace my {{temp}} temporary HP",
   "dead": "The character is dead: it has no hit points.",

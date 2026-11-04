@@ -2215,3 +2215,103 @@ test('SHEET-74 with "I roll myself" on, the cast panel’s healing roll counts t
   await expect(roll).toBeDisabled();
   await expect(panel.getByRole('spinbutton', { name: '2d8, die 1' })).toHaveValue('');
 });
+
+/**
+ * Golden B with its own damage types (the packs hold Slashing only) and a feat of its own: it
+ * resists fire, is vulnerable to cold and immune to poison.
+ */
+const guarded = (state: { hp: { current: number; temp: number } }) => ({
+  ...downed(state),
+  localEntities: [
+    ...['fire', 'cold', 'poison'].map((slug) => ({
+      id: `character:damageType/${slug}`,
+      type: 'damageType',
+      key: slug,
+      ruleset: 'any',
+      name: { en: `${slug.charAt(0).toUpperCase()}${slug.slice(1)}` },
+      source: { pack: 'character' },
+    })),
+    {
+      id: 'character:feat/guard',
+      type: 'feat',
+      ruleset: 'any',
+      name: { en: 'Guard' },
+      source: { pack: 'character' },
+      effects: [
+        { id: 'fire', target: 'defenses.resist', op: 'append', value: 'fire' },
+        { id: 'cold', target: 'defenses.vuln', op: 'append', value: 'cold' },
+        { id: 'poison', target: 'defenses.immune', op: 'append', value: 'poison' },
+      ],
+    },
+  ],
+  systemData: {
+    ...downed(state).systemData,
+    feats: [...goldenB.systemData.feats, { id: 'character:feat/guard' }],
+  },
+});
+
+test('SHEET-72 the pad takes a damage type and shows what the defenses make of it', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [guarded({ hp: { current: 12, temp: 0 } })]);
+  await page.goto(`characters/${goldenB.id}`);
+  await page.getByRole('button', { name: en.sheet.damage, exact: true }).click();
+  await key(page, '1').click();
+  await key(page, '0').click();
+  const fire = key(page, 'Fire');
+  await expect(fire).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('pad-defended')).toHaveCount(0);
+  await expect(page.getByTestId('pad-summary')).toHaveText('12 / 12 → 2 / 12');
+
+  // Resistance halves 10: 5 is taken, 12 → 7.
+  await fire.click();
+  await expect(fire).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('pad-defended')).toHaveText('Resistant to Fire: 10 becomes 5.');
+  await expect(page.getByTestId('pad-summary')).toHaveText('12 / 12 → 7 / 12');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('pad-type-dark.png') });
+
+  // Vulnerability doubles it: 20 takes 12 to 0.
+  await key(page, 'Cold').click();
+  await expect(fire).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('pad-defended')).toHaveText('Vulnerable to Cold: 10 becomes 20.');
+  await expect(page.getByTestId('pad-summary')).toHaveText('12 / 12 → 0 / 12');
+
+  // Immunity leaves none: the pad says so and will not apply it.
+  await key(page, 'Poison').click();
+  await expect(page.getByTestId('pad-defended')).toHaveText('Immune to Poison: 10 becomes 0.');
+  await expect(page.getByRole('alert')).toContainText('takes none');
+  await expect(key(page, 'Take 10 damage')).toBeDisabled();
+
+  // A tap on the picked type takes it back; then Fire is applied, with Undo.
+  await key(page, 'Poison').click();
+  await expect(page.getByTestId('pad-summary')).toHaveText('12 / 12 → 2 / 12');
+  await fire.click();
+  await key(page, 'Take 10 damage').click();
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 7 of 12/);
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 12 of 12/);
+});
+
+test('SHEET-72 a critical hit at 0 hit points gives two death save failures', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [downed({ hp: { current: 0, temp: 0 } })]);
+  await page.goto(`characters/${goldenB.id}?tab=combat`);
+  const card = page.locator('[data-death-state]');
+  await expect(card.getByTestId('death-failure')).toHaveAttribute('aria-label', 'Failures: 0 of 3');
+  await page.getByRole('button', { name: en.sheet.damage, exact: true }).click();
+  await key(page, '3').click();
+  const critical = page.getByRole('switch', { name: en.numberPad.critical });
+  await expect(critical).toHaveAttribute('aria-checked', 'false');
+  await critical.click();
+  await expect(critical).toHaveAttribute('aria-checked', 'true');
+  await page.screenshot({ path: testInfo.outputPath('pad-critical-dark.png') });
+  await key(page, 'Take 3 damage').click();
+  await page.getByRole('button', { name: en.numberPad.done }).click();
+  await expect(card.getByTestId('death-failure')).toHaveAttribute('aria-label', 'Failures: 2 of 3');
+  // Heal and Temp HP offer neither a type nor the switch.
+  await page.getByRole('button', { name: en.sheet.heal, exact: true }).click();
+  await expect(page.getByRole('switch', { name: en.numberPad.critical })).toHaveCount(0);
+  await expect(key(page, 'Fire')).toHaveCount(0);
+});

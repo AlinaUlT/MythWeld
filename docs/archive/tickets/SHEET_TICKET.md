@@ -8206,3 +8206,81 @@ Differences from the row: the cast panel's roll buttons are held off until their
 Found, not fixed: nothing new. SHEET-83 (from SHEET-69) is still open.
 
 Changelog: "With 'I roll myself' on, a short rest's hit die and a spell's damage and healing rolls ask for the faces your dice show and count them."
+
+### SHEET-72 The number pad takes a damage type and a critical hit
+
+**Hat:** The number pad takes a damage type and a critical hit
+**Depends on:** SHEET-40 (the pad), SHEET-16 (`applyDamage`'s `type` and the defenses), ENG-65 (the knock-out), ENG-58 (death saves)
+**Size:** S
+**Screen:** Yes — board `V3-Keypad` in `docs/design/mockups/`; `docs/design/BRIEF.md` Part 5 row "P6 Damage, healing and rests". The board draws neither a type nor a critical switch.
+**SPEC:** §7.2, §6.4
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/panels/NumberPad.tsx` — changes: a damage type row, a critical switch, the defenses' line. `apps/web/src/locales/en/numberPad.json` — new keys. Tests: `apps/web/test/number-pad.test.tsx`, `apps/web/e2e/sheet.spec.ts`.
+
+#### 2. What is missing now
+
+`applyDamage` takes `type` and `critical` (hit-points.ts, `DamageAsk`) and returns `outcome.defended`; the pad calls it with `{ amount, knockOut }` only. Measured: `grep -n "type\|critical" apps/web/src/sheet/panels/NumberPad.tsx` found neither in the ask.
+
+#### 3. What it should look like when done
+
+1. In the Damage mode the pad shows "Damage type" and a chip for each damage type the character finds (the packs' `damageType` entries and the character's own), none picked. A tap picks one; a tap on the picked one takes it back. Heal and Temp HP show no type.
+2. With a type picked, the action runs with `type`. The line under the chips says what the defenses made of the damage: "Resistant to Fire: 10 becomes 5.", "Vulnerable to Cold: 10 becomes 20.", "Immune to Poison: 10 becomes 0."; one line for each defense that applied. With none, no line. The "→" summary follows the damage taken: 12 / 12 → 7 / 12 for 10 fire damage against resistance.
+3. Damage that the defenses leave at 0 shows the module's message ("takes none") and the apply button is off.
+4. At 0 hit points the Damage mode offers a switch "Critical hit: two death save failures"; with it on, the damage gives two failures, not one. Above 0 hit points the switch is not offered (it changes nothing there).
+5. Changing the mode clears the type and the switch.
+6. The change is one entry with its Undo toast, as before.
+7. The gate is green.
+
+#### 4. How to do it
+
+1. `types = Object.entries(computed.byKey.damageType ?? {})`, the chips; `type` and `critical` in state.
+2. The damage ask is `{ amount, knockOut, type?, critical? }`; `critical` is sent only at 0 hit points with the switch on.
+3. The damage preview is made once, for the summary, the line and the button; `defended` is its `outcome.defended`, or the refusal's `defended` for `noDamage`.
+4. One line for each step: `defense.<immune|resist|vuln>` with the type's name and the amounts before and after.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+The pad at 360×800, Damage mode: the "Damage type" chips between the amount and the keys, then the defenses' line, then the knock-out and critical switches. Keys in `numberPad.json`: `damageType` "Damage type"; `defense.immune` "Immune to {{type}}: {{from}} becomes {{to}}."; `defense.resist` "Resistant to {{type}}: ..."; `defense.vuln` "Vulnerable to {{type}}: ..."; `critical` "Critical hit: two death save failures". States: no type picked (no line), a type with no defense (no line), a defense (line), immune (line, alert and the button off).
+
+#### 7. Tests
+
+- `apps/web/test/number-pad.test.tsx` — 3 new tests: the chips of a character with its own Fire and Cold and the pack's Slashing, none pressed, and Slashing alone for golden B; no chips for healing; the critical switch only at 0 hit points, in the Damage mode.
+- `apps/web/e2e/sheet.spec.ts` — 2 new tests. Golden B with a feat that resists fire, is vulnerable to cold and immune to poison: 10 typed; Fire gives "Resistant to Fire: 10 becomes 5." and 12 / 12 → 7 / 12; Cold gives 20 and 0 / 12; Poison gives 0, the alert and the button off; a tap on Poison takes it back; applying Fire gives 7 of 12 and its Undo gives 12. And golden B at 0 hit points: 3 with the critical switch gives "Failures: 2 of 3"; Heal offers neither.
+- Control numbers: SRD 5.1 / 5.2.1, "Resistance and Vulnerability": resistance halves (rounded down), vulnerability doubles, immunity leaves none; 10 → 5, 10 → 20, 10 → 0; 12 − 5 = 7; SRD "Death Saving Throws": a critical hit at 0 hit points is two failures.
+
+#### 8. Checked against the source
+
+The defenses and the critical failure rule are the module's (SHEET-16, ENG-65); the screen adds none. The SRD facts above are the ones the tests use. Nothing else to check.
+
+#### 9. Not in this ticket
+
+- Damage types the packs do not hold: SHEET-84.
+- A damage type on an attack's damage roll from the roll dialog: not planned.
+
+#### 10. Rake check
+
+- Everything is data: the chips come from `computed.byKey.damageType`; no type is named in the screen.
+- No rule in a component: the defenses and the failures come from `applyDamage`; the screen shows `defended`.
+- No look written in a component: chips are `Part name="chip"` and the switch is `SwitchRow`, as in the roll dialog.
+- No visible string in a component: every text is an i18next key.
+- Missing is not broken: a type the character's defenses name without an entry still applies (the module says `missing`); the pad offers only entries.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` 449 files, no fixes; `pnpm typecheck` clean; `pnpm test` 143 files, 1612 passed, 0 failed, 34.7 s (3 new, from 1609), then speed 2 passed; coverage statements 99.04 % (4056/4095), lines 99.77 % (3556/3564); `pnpm e2e` 95 passed, 0 failed, 1.8 min (2 new, from 93). Screenshots at 360×800 shown in the chat.
+
+Differences from the row: the packs hold one damage type, Slashing (`srd-2014:damageType/slashing` and the 2024 one), so a character with no types of its own sees one chip. That is the packs' content, not the pad; the tests use made-up types of the character's own. Logged as SHEET-84.
+
+Design choices (ADR 002; board `V3-Keypad` has neither control, so they follow its rows' look): the type is a row of chips as the roll dialog's switches are (`Part name="chip"`, a tap picks, a second tap clears); the critical switch is the pad's own `SwitchRow` as the knock-out's; the critical switch appears only at 0 hit points, since `applyDamage` uses `critical` only there and a switch that does nothing would mislead; the defenses' line sits under the chips, above the keys, so the person reads it as the amount is typed; one line for each defense step so a resistance and a vulnerability together show both.
+
+Found, not fixed: SHEET-84, the missing damage types.
+
+Changelog: "The Hit points pad can name the damage's type: the character's resistance, vulnerability or immunity to it is shown and applied, and at 0 hit points a critical hit gives two death save failures."
