@@ -38,7 +38,7 @@ function FullText({ description, t }: { description: EntryDescription; t: Descri
       )}
       <p className="text-12 text-muted">{sourceLine(source, t)}</p>
       {source.kind === 'pack' && source.attribution !== undefined && (
-        <p className="text-12 text-muted">{source.attribution}</p>
+        <p className="wrap-anywhere text-12 text-muted">{source.attribution}</p>
       )}
     </div>
   );

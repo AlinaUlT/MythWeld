@@ -1976,3 +1976,27 @@ test('SHEET-77 a disabled button is fainter than an enabled one, from a theme to
   await tab.locator('[data-coin="cp"]').scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('disabled-dark.png') });
 });
+
+test('SHEET-75 the attribution line in a full description wraps inside the card', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=features`);
+  const row = page.locator('[data-feature="srd-2024:feature/fighter-second-wind"]');
+  await row
+    .getByRole('button', { name: /Second Wind/ })
+    .first()
+    .click();
+  await row.getByRole('button', { name: en.description.seeFull }).click();
+  const lines = row.getByRole('paragraph');
+  const attribution = lines.filter({ hasText: 'creativecommons.org/licenses/by/4.0/legalcode' });
+  await expect(attribution).toBeVisible();
+  // No line of the full text is wider than its box, and the page is 360 px wide.
+  const overflow = await lines.evaluateAll((nodes) =>
+    nodes.map((node) => node.scrollWidth - node.clientWidth),
+  );
+  expect(overflow.every((extra) => extra <= 0)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await attribution.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('attribution-dark.png') });
+});

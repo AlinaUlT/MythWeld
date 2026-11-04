@@ -7977,3 +7977,27 @@ Differences from the row: none on what is drawn. The "no press" part of the row:
 Found, not fixed: nothing. Two button parts (`FeatureList`'s "Use", `DicePanel`'s "Done") also wrote `disabled:text-muted`, which would have faded them twice under the new rule; the class is removed from both, so the token alone shows it (second commit of this ticket).
 
 Changelog: "A button that cannot be pressed now (Items' One less at 1, a coin's − at 0, a form's Save with nothing to save) is drawn faint, with a not-allowed cursor."
+
+---
+
+### SHEET-75 A long attribution line wraps in a description · XS
+
+**Hat:** The attribution line breaks inside a long word
+**Where:** `apps/web/src/shared/Description.tsx` — `FullText`
+**Depends on:** SHEET-47 (the description's full text)
+**Screen:** Yes — "See full description" of any entry; no board draws the attribution, so the line keeps its size and colour and only breaks.
+
+**What it should look like when done:**
+1. The attribution of the SRD 5.2.1 pack, whose last address (`https://creativecommons.org/licenses/by/4.0/legalcode`) is wider than the card at 360 px, wraps inside the card: no line of the full text is wider than its box.
+2. The page stays 360 px wide.
+3. The gate is green.
+
+**Tests:** `apps/web/e2e/sheet.spec.ts` — 1 test on golden B: the Features tab, Second Wind, "See full description"; every paragraph of the row has `scrollWidth` not above `clientWidth`, and the page's `scrollWidth` is 360. It failed on the old code (a line was wider than its box) and passed after. Control value: the attribution text is the pack's own (`srd-2024.ts`).
+**What came out of it:**
+Quality gate, 2026-11-04: `pnpm lint` 444 files, no fixes; `pnpm typecheck` clean; `pnpm test` 141 files, 1588 passed, 0 failed, 36.2 s (0 new), then speed 2 passed; coverage statements 99.04 % (4051/4090), lines 99.77 % (3551/3559); `pnpm e2e` 87 passed, 0 failed, 1.8 min (1 new). Screenshot at 360×800 shown in the chat.
+
+Differences from the row: none. Technical choice (ADR 002): the class is Tailwind's `wrap-anywhere` (`overflow-wrap: anywhere`) on the attribution paragraph only; it breaks a long address at the edge and changes no other line.
+
+Found, not fixed: the entry's text and the "Source:" line have the same plain break rule; no text of the packs has a word that long today, so no row.
+
+Changelog: "A long web address in a pack's attribution, under See full description, now wraps inside the card."
