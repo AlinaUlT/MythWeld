@@ -5,6 +5,7 @@ import {
   type LogStamp,
   loadContentIndex,
   reverseEntry,
+  setKeyOverride,
   setOverride,
 } from '@grimoire/engine';
 import { logEntrySchema } from '@grimoire/schema';
@@ -145,5 +146,67 @@ describe('SHEET-34 clearOverride', () => {
 
   it('refuses a path that has no edit', () => {
     expect(clearOverride(ash, WITS, stamp)).toMatchObject({ ok: false, code: 'noOverride' });
+  });
+});
+
+describe('SHEET-79 setKeyOverride', () => {
+  const before = computed(ash);
+  const KEY = 'skills.climb.ability';
+  const KEYS = ['grit', 'wits', 'nerve'];
+
+  it('sets a skill’s stat by hand: climbing on wits is wits modifier 2 + 2 + 2 - 1 = 5', () => {
+    // Ash climbs on grit: grit modifier 3 + 2 + 2 (`nimble`, the wits modifier) - 1 = 6.
+    expect(before.keys[KEY]?.key).toBe('grit');
+    expect(before.values['skills.climb.total']).toBe(6);
+    const made = ok(
+      setKeyOverride(ash, before, { path: KEY, key: 'wits', keys: KEYS, note: ' Ring ' }, stamp),
+    );
+    expect(made.character.overrides).toEqual([{ path: KEY, value: 'wits', note: 'Ring' }]);
+    expect(made.entry).toMatchObject({ action: 'setOverride', subject: KEY });
+    expect(logEntrySchema.safeParse(made.entry).success).toBe(true);
+    const after = computed(made.character);
+    expect(after.keys[KEY]?.key).toBe('wits');
+    expect(after.keys[KEY]?.steps.at(-1)).toMatchObject({ kind: 'override', key: 'wits' });
+    expect(after.values['skills.climb.total']).toBe(5);
+    expect(after.warnings).toEqual([]);
+  });
+
+  it('replaces the edit of the same path and clearOverride takes it away', () => {
+    const first = ok(setKeyOverride(ash, before, { path: KEY, key: 'wits' }, stamp)).character;
+    const again = ok(
+      setKeyOverride(first, computed(first), { path: KEY, key: 'nerve' }, stamp),
+    ).character;
+    expect(again.overrides).toEqual([{ path: KEY, value: 'nerve' }]);
+    const cleared = ok(clearOverride(again, KEY, stamp)).character;
+    expect(cleared.overrides).toEqual([]);
+    expect(computed(cleared).values['skills.climb.total']).toBe(6);
+  });
+
+  it('refuses a path that holds no key, an empty key, a key outside the list, and the same edit', () => {
+    expect(setKeyOverride(ash, before, { path: WITS, key: 'grit' }, stamp)).toMatchObject({
+      ok: false,
+      code: 'notAKeyPath',
+    });
+    expect(setKeyOverride(ash, before, { path: 'constructor', key: 'grit' }, stamp)).toMatchObject({
+      ok: false,
+      code: 'notAKeyPath',
+    });
+    expect(setKeyOverride(ash, before, { path: KEY, key: '' }, stamp)).toMatchObject({
+      ok: false,
+      code: 'badKey',
+    });
+    expect(
+      setKeyOverride(ash, before, { path: KEY, key: 'luck', keys: KEYS }, stamp),
+    ).toMatchObject({ ok: false, code: 'notAKey' });
+    const made = ok(setKeyOverride(ash, before, { path: KEY, key: 'wits' }, stamp));
+    expect(
+      setKeyOverride(made.character, computed(made.character), { path: KEY, key: 'wits' }, stamp),
+    ).toMatchObject({ ok: false, code: 'unchanged' });
+  });
+
+  it('its entry applies again and reverses to the character it came from', () => {
+    const made = ok(setKeyOverride(ash, before, { path: KEY, key: 'wits' }, stamp));
+    expect(ok(applyEntry(ash, made.entry)).character).toEqual(made.character);
+    expect(ok(reverseEntry(made.character, made.entry)).character).toEqual(ash);
   });
 });

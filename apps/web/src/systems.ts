@@ -58,6 +58,7 @@ import {
   fifthEditionGear,
   fifthEditionHitPoints,
   fifthEditionInspiration,
+  fifthEditionKeyOf,
   fifthEditionListLine,
   fifthEditionModule,
   fifthEditionPathParts,
@@ -350,6 +351,8 @@ export interface SheetSystem {
   pathParts(path: string): readonly PathPart[];
   /** The stats, saves, skills and passive values the Main tab shows (SHEET-32). */
   checks(computed: AppComputed): ChecksShown;
+  /** SHEET-79: the key path behind a number, a skill's stat, when it has one. */
+  keyOf: typeof fifthEditionKeyOf;
   /** The inspiration held, its stars and the edition's own maximum (ADR 009 item 5, SHEET-55). */
   inspiration(character: AppCharacter): InspirationShown;
   /** The origin details and proficiencies the About tab shows (ADR 009 item 3, SHEET-53). */
@@ -372,6 +375,7 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     casting: fifthEditionCasting,
     hitPoints: fifthEditionHitPoints,
     checks: fifthEditionChecks,
+    keyOf: fifthEditionKeyOf,
     features: fifthEditionFeatures,
     conditions: fifthEditionConditions,
     attacks: fifthEditionAttacks,

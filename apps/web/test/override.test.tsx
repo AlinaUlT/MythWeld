@@ -7,6 +7,7 @@ import { goldenB } from '../../../packages/system-5e/test/golden/characters-2024
 import { contentOf, installBuiltInPacks } from '../src/content/packs';
 import '../src/i18n';
 import { BreakdownSheet } from '../src/shared/BreakdownSheet';
+import { KeyBreakdownSheet } from '../src/shared/KeyBreakdownSheet';
 import { typedNumber } from '../src/shared/OverrideEditor';
 import { SheetContext, type SheetValue } from '../src/sheet/SheetContext';
 import { type AppCharacter, sheetSystemOf } from '../src/systems';
@@ -17,7 +18,12 @@ import { type AppCharacter, sheetSystemOf } from '../src/systems';
 
 const packs = installBuiltInPacks().packs;
 
-function drawn(path: string, extra: object = {}, editing = true): string {
+function drawn(
+  path: string,
+  extra: object = {},
+  editing = true,
+  view?: (path: string) => React.ReactNode,
+): string {
   const character: AppCharacter = fifthEditionCharacterSchema.parse({ ...goldenB, ...extra });
   const system = sheetSystemOf(character);
   if (system === undefined) throw new Error('no sheet');
@@ -35,7 +41,7 @@ function drawn(path: string, extra: object = {}, editing = true): string {
   return renderToStaticMarkup(
     <MemoryRouter>
       <SheetContext value={sheet}>
-        <BreakdownSheet path={path} onClose={() => {}} />
+        {view === undefined ? <BreakdownSheet path={path} onClose={() => {}} /> : view(path)}
       </SheetContext>
     </MemoryRouter>,
   );
@@ -93,5 +99,82 @@ describe('SHEET-34 the number a person types', () => {
     for (const text of ['', ' ', 'abc', '1e3', '1,5', '.5', '5.', '--1', '1 2', '0x10']) {
       expect(typedNumber(text)).toBeUndefined();
     }
+  });
+});
+
+describe('SHEET-79 a skill’s stat set by hand', () => {
+  const KEY = 'skills.athletics.ability';
+  const keySheet = (extra: object = {}, editing = true) =>
+    drawn(KEY, extra, editing, (path) => (
+      <KeyBreakdownSheet path={path} name="Athletics" onClose={() => {}} />
+    ));
+
+  it('links a skill’s breakdown to where its stat comes from, and a plain number does not', () => {
+    // Golden B rolls Athletics with Strength.
+    const html = drawn('skills.athletics.total');
+    expect(html).toContain('data-testid="stat-link"');
+    expect(text(html)).toContain('|Rolled with Strength|See where the stat comes from|');
+    expect(drawn(STR)).not.toContain('stat-link');
+    expect(drawn('ac.total')).not.toContain('stat-link');
+  });
+
+  it('shows the stat and the step that chose it: the skill’s own, Strength', () => {
+    const html = keySheet();
+    expect(text(html)).toContain('|Where this stat comes from|');
+    expect(text(html)).toContain('|Athletics uses Strength|');
+    expect(text(html)).toContain('|Athletics|Strength|');
+  });
+
+  it('offers the six stats and the note in edit mode, with Save on, as for a number: it can pin the stat the rules give', () => {
+    const html = keySheet();
+    expect(text(html)).toContain('|Set the stat by hand|Stat|');
+    for (const stat of [
+      'Strength',
+      'Dexterity',
+      'Constitution',
+      'Intelligence',
+      'Wisdom',
+      'Charisma',
+    ]) {
+      expect(html).toMatch(new RegExp(`<option[^>]*>${stat}</option>`));
+    }
+    expect(html).toMatch(/<option[^>]*value="str"[^>]*selected/);
+    expect(html).not.toMatch(/disabled=""[^>]*>Save</);
+    expect(html).not.toContain('Remove manual edit');
+  });
+
+  it('shows a stored edit as a manual edit with its note, and offers to remove it', () => {
+    const html = keySheet({ overrides: [{ path: KEY, value: 'dex', note: 'Agile' }] });
+    expect(text(html)).toContain('|Athletics uses Dexterity|');
+    expect(text(html)).toContain('|Manual edit|Dexterity|');
+    expect(text(html)).toContain('|Replaces the stat the rules give|Agile|');
+    expect(html).toMatch(/<option[^>]*value="dex"[^>]*selected/);
+    expect(text(html)).toContain('|Remove manual edit|');
+  });
+
+  it('is locked in play mode: it says so and draws no form', () => {
+    const html = keySheet({}, false);
+    expect(text(html)).toContain('Turn on Edit to set the stat by hand.');
+    expect(html).not.toContain('<form');
+  });
+
+  it('says a path with no key has no stat', () => {
+    const html = drawn('skills.nothing.ability', {}, true, (path) => (
+      <KeyBreakdownSheet path={path} name="Nothing" onClose={() => {}} />
+    ));
+    expect(text(html)).toContain('|This skill has no stat.|');
+    expect(html).not.toContain('<form');
+  });
+});
+
+describe('SHEET-79 Save once the edit is stored', () => {
+  it('is off while nothing differs from the stored edit', () => {
+    const html = drawn(
+      'skills.athletics.ability',
+      { overrides: [{ path: 'skills.athletics.ability', value: 'dex', note: 'Agile' }] },
+      true,
+      (path) => <KeyBreakdownSheet path={path} name="Athletics" onClose={() => {}} />,
+    );
+    expect(html).toMatch(/disabled=""[^>]*>Save</);
   });
 });

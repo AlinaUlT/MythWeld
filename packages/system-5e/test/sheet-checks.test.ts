@@ -1,8 +1,15 @@
-import { compute, loadContentIndex } from '@grimoire/engine';
+import {
+  clearOverride,
+  compute,
+  type LogStamp,
+  loadContentIndex,
+  setKeyOverride,
+} from '@grimoire/engine';
 import { describe, expect, it } from 'vitest';
 import {
   FIFTH_EDITION_SYSTEM,
   fifthEditionChecks,
+  fifthEditionKeyOf,
   fifthEditionModule,
   openFifthEditionCharacter,
   openFifthEditionPack,
@@ -80,5 +87,58 @@ describe('SHEET-32 the Main tab names', () => {
   it('names no stat or skill when the packs hold none', () => {
     const empty = fifthEditionChecks({ ...computed, byKey: {}, values: {}, keys: {} });
     expect(empty).toEqual({ stats: [], groups: [], passives: [] });
+  });
+});
+
+describe('SHEET-79 a skill’s stat set by hand', () => {
+  const stamp: LogStamp = {
+    id: '6ba7b810-9dad-41d1-80b4-00c04fd430c8',
+    at: '2026-11-04T12:00:00.000Z',
+    by: { role: 'player', name: 'Wren' },
+  };
+  const character = opened(openFifthEditionCharacter(goldenB));
+  const before = compute(character, index, fifthEditionModule);
+
+  it('names the key path behind a skill’s total and passive value, and no other number', () => {
+    expect(fifthEditionKeyOf(before, 'skills.athletics.total')).toBe('skills.athletics.ability');
+    expect(fifthEditionKeyOf(before, 'skills.perception.passive')).toBe(
+      'skills.perception.ability',
+    );
+    for (const path of [
+      'skills.athletics.prof',
+      'ac.total',
+      'abilities.str.mod',
+      'skills.none.total',
+      'skills.athletics',
+      'constructor.total',
+      'skills.athletics.total.x',
+    ]) {
+      expect(fifthEditionKeyOf(before, path), path).toBeUndefined();
+    }
+  });
+
+  it('moves Athletics to Dexterity: golden B has Dexterity +1 and proficiency +2, so +3 (it is +5 on Strength)', () => {
+    const keys = fifthEditionChecks(before).stats.map(({ key }) => key);
+    expect(before.values['skills.athletics.total']).toBe(5);
+    const made = setKeyOverride(
+      character,
+      before,
+      { path: 'skills.athletics.ability', key: 'dex', keys, note: 'Agile' },
+      stamp,
+    );
+    if (!made.ok) throw new Error(made.message);
+    const after = compute(made.character, index, fifthEditionModule);
+    expect(after.keys['skills.athletics.ability']?.key).toBe('dex');
+    expect(after.values['skills.athletics.total']).toBe(3);
+    expect(
+      fifthEditionChecks(after)
+        .groups.find(({ stat }) => stat === 'dex')
+        ?.skills.map(({ key }) => key),
+    ).toContain('athletics');
+    const cleared = clearOverride(made.character, 'skills.athletics.ability', stamp);
+    if (!cleared.ok) throw new Error(cleared.message);
+    expect(
+      compute(cleared.character, index, fifthEditionModule).values['skills.athletics.total'],
+    ).toBe(5);
   });
 });

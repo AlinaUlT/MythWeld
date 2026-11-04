@@ -8462,3 +8462,79 @@ Design choices (ADR 002): the Edit button shows in edit mode only, as adding doe
 Found, not fixed: nothing.
 
 Changelog: "In edit mode a custom item and a custom feature have an Edit button: change the name, the weight and the words, with Undo."
+
+
+---
+
+### SHEET-79 A skill's stat is overridden from the sheet
+
+**Hat:** A skill's stat is set by hand from its breakdown
+**Depends on:** SHEET-34 (found there)
+**Size:** S
+**Screen:** Yes — board `V3-Roll` (the breakdown sheet) and BRIEF Part 5 sheet 2; no board draws a stat's breakdown, so it follows the number's breakdown and its "Override by hand" form (ADR 002).
+**SPEC:** §6.1 step 7 (manual overrides), §5.4 (`skills.<key>.ability`), ENG-43
+
+---
+
+#### 1. Where the code lives
+
+**Main files:** `packages/engine/src/overrides.ts` (new `setKeyOverride`); `packages/system-5e/src/sheet-checks.ts` (new `fifthEditionKeyOf`); `apps/web/src/shared/KeyBreakdownSheet.tsx` (new); `apps/web/src/shared/BreakdownSheet.tsx` (a link); `apps/web/src/systems.ts` (`keyOf`); `apps/web/src/locales/en/breakdown.json` (text).
+
+#### 2. What is missing now
+
+`setOverride` takes a number and refuses a key path (`notANumber`), so a skill's stat cannot be overridden from the sheet. A stored key override applies (ENG-43) but no screen makes one, and no screen shows the steps that chose a stat.
+
+#### 3. What it should look like when done
+
+1. A skill's breakdown (its total, or its passive value) has a row "Rolled with Strength — See where the stat comes from"; a number with no key path has none.
+2. The row opens "Where this stat comes from": "Athletics uses Strength" and one line for each step that chose it (the skill's own, an effect's, a manual edit with its note).
+3. In edit mode the sheet has "Set the stat by hand": a choice of the character's stats, a note and Save; Remove manual edit when one is stored. Play mode says "Turn on Edit to set the stat by hand."
+4. A save is one change with the "Manual edit saved" toast and Undo; the skill moves to the stat's group on the Main tab.
+5. Golden B: Athletics is +5 on Strength; on Dexterity it is Dexterity +1 and proficiency +2 = +3.
+
+#### 4. How to do it
+
+`setKeyOverride(character, computed, { path, key, keys?, note }, stamp)`, the twin of `setOverride`, in the core: it stores the key as the edit's value, and refuses a path with no key (`notAKeyPath`), an empty key (`badKey`) and, when the caller names the keys the path may take, a key outside them (`notAKey`). The app passes the stats the module's `checks` lists. `clearOverride` already takes any path. The module says which number has a key path (`fifthEditionKeyOf`), so the screen names no path.
+
+#### 5. Stored data
+
+Nothing stored changes: `overrides[].value` already allows a string (ENG-43), and the same list holds it. No `schemaVersion` bump.
+
+#### 6. What a person will see
+
+The skill's breakdown (long press, or right-click, on the skill's number) gains the "Rolled with …" row at 360×800; the second sheet opens over it, and Escape closes the top one only. Keys: `breakdown:key.*` (`title`, `summary`, `none`, `link`, `linkHint`, `manualHint`, `locked`, `form`, `stat`, `notePlaceholder`). Screenshot in the chat.
+
+#### 7. Tests
+
+- `packages/engine/test/overrides.test.ts` — 4 new, on Tales' Ash: climbing on grit is 3 + 2 + 2 − 1 = 6, on wits 2 + 2 + 2 − 1 = 5; replace, clear, refusals, entry applies and reverses.
+- `packages/system-5e/test/sheet-checks.test.ts` — 2 new: `fifthEditionKeyOf`, and golden B's Athletics on Dexterity = +3, back to +5 when cleared.
+- `apps/web/test/override.test.tsx` — 7 new: the link, the sheet's steps, the choice, a stored edit, play mode, no key, Save off when nothing differs.
+- `apps/web/e2e/sheet.spec.ts` — 1 new: the whole flow, Undo, Remove, and a reload.
+- Control numbers from: SPEC §6.7 golden B (Strength +3, Dexterity +1, proficiency +2), ENG-27's Ash.
+
+#### 8. Checked against the source
+
+Nothing to check: the rules are unchanged. A stat chosen by hand is the person's decision, as a number's edit is.
+
+#### 9. Not in this ticket
+
+- A skill's stat from a feature or an effect, with its own switch: phase 5.
+- A stat button on every skill row of the Main tab: the rows are two columns about 158 px wide and have no room (checked on the Pixel 7 profile).
+
+#### 10. Rake check
+
+- Everything is data: the choice lists the character's stats from `Computed`; no stat or skill is named in the screen.
+- Manual overrides always win: the key edit is in the `final` phase, and the steps label it "Manual edit".
+- The core names no game: `setKeyOverride` knows keys, not skills; the path rule is the module's.
+- No visible string in a component; no look written in a component.
+- Missing is not broken: a path with no key says "This skill has no stat." and draws no form.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` no fixes; `pnpm typecheck` clean; `pnpm test` 143 files, 1640 passed, 0 failed, 36.6 s (13 new, from 1627), then speed 2 passed; coverage statements 99.06 % (4110/4149), lines 99.77 % (3601/3609); `pnpm e2e` 97 passed, 0 failed, 2.1 min (1 new). Screenshot at 360×800 shown in the chat.
+
+Differences from the row: the place to open the stat's breakdown is the skill's own breakdown sheet (a "Rolled with …" row), not a button on the Main tab's row, for the reason in §9. `Computed.keys` still holds no list of the keys a path may take (adding one changes six structural tests); the caller names the keys instead, and the engine checks them when given.
+
+Found, not fixed: nothing.
+
+Changelog: "In edit mode a skill's breakdown links to where its stat comes from, and you can set the stat by hand (Athletics on Dexterity, say) with a note; it has Undo and Remove."

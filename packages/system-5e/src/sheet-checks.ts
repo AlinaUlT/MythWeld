@@ -106,3 +106,19 @@ export function fifthEditionChecks(computed: Computed<FifthEditionEntity>): Chec
     passives: sorted.flatMap(({ skills }) => skills.filter(({ passive }) => passive !== undefined)),
   };
 }
+
+/**
+ * SHEET-79: the key path behind the number at `path`, when it has one the sheet may show: a skill's
+ * total or passive value is rolled with the skill's stat, `skills.<key>.ability` (ENG-43). A path
+ * with no such key path gives none.
+ */
+export function fifthEditionKeyOf(
+  computed: Pick<Computed<FifthEditionEntity>, 'keys'>,
+  path: string,
+): string | undefined {
+  const [root, key, last, extra] = path.split('.');
+  if (root !== 'skills' || key === undefined || key === '' || extra !== undefined) return undefined;
+  if (last !== 'total' && last !== 'passive') return undefined;
+  const keyPath = `skills.${key}.ability`;
+  return Object.hasOwn(computed.keys, keyPath) ? keyPath : undefined;
+}

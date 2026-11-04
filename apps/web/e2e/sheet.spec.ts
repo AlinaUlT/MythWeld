@@ -557,6 +557,71 @@ test('SHEET-34 a manual edit overrides a number in edit mode; Undo and Remove gi
   await expect(number(page, 'abilities.str.score')).toHaveText('Strength score20');
 });
 
+test('SHEET-79 a skill’s stat is set by hand from its breakdown; Undo and Remove give the rules’ stat back', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  const skillSheet = page.getByRole('dialog', { name: en.breakdown.title });
+  const statSheet = page.getByRole('dialog', { name: 'Where this stat comes from' });
+  const athletics = number(page, 'skills.athletics.total');
+  const openStat = async () => {
+    // A tap rolls (and resets the long-press flag, SHEET-78); Escape closes the roll dialog.
+    await athletics.click();
+    await page.keyboard.press('Escape');
+    await athletics.click({ button: 'right' });
+    await skillSheet.getByTestId('stat-link').click();
+  };
+
+  // Golden B: Athletics is Strength +3 and proficiency +2 = +5. Play mode locks the edit.
+  await expect(athletics).toHaveText('Athletics+5');
+  await openStat();
+  await expect(statSheet.getByTestId('key-summary')).toHaveText('Athletics uses Strength');
+  await expect(statSheet.getByTestId('override-locked')).toHaveText(
+    'Turn on Edit to set the stat by hand.',
+  );
+  await expect(statSheet.getByLabel('Stat', { exact: true })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(statSheet).toHaveCount(0);
+  await expect(skillSheet).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // Edit mode: Dexterity (+1) for Athletics, with a note. Athletics is then 1 + 2 = +3.
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await openStat();
+  const pick = statSheet.getByLabel('Stat', { exact: true });
+  await expect(pick).toHaveValue('str');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await pick.selectOption('dex');
+  await statSheet.getByLabel('Note', { exact: true }).fill('Agile');
+  await page.screenshot({ path: testInfo.outputPath('stat-dark.png') });
+  await statSheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(statSheet.getByTestId('key-summary')).toHaveText('Athletics uses Dexterity');
+  await expect(statSheet.locator('[data-manual]')).toBeVisible();
+  await expect(statSheet).toContainText('Agile');
+  await expect(page.getByRole('status').filter({ hasText: 'Manual edit saved' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(skillSheet.getByTestId('breakdown-summary')).toHaveText(
+    'Athletics +3 = Dexterity modifier +1, Proficiency bonus +2',
+  );
+  await page.keyboard.press('Escape');
+  await expect(athletics).toHaveText('Athletics+3');
+
+  // Undo gives Strength back; a new save and Remove do too; a saved edit is there after a reload.
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(athletics).toHaveText('Athletics+5');
+  await openStat();
+  await statSheet.getByLabel('Stat', { exact: true }).selectOption('cha');
+  await statSheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(statSheet.getByTestId('key-summary')).toHaveText('Athletics uses Charisma');
+  await statSheet.getByRole('button', { name: 'Remove manual edit' }).click();
+  await expect(statSheet.getByTestId('key-summary')).toHaveText('Athletics uses Strength');
+  await statSheet.getByLabel('Stat', { exact: true }).selectOption('dex');
+  await statSheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.reload();
+  await expect(number(page, 'skills.athletics.total')).toHaveText('Athletics+3');
+});
+
 test('SHEET-58 the sheet’s ⋯ menu lists the character’s actions; Export, Copy and Delete run from it', async ({
   page,
 }, testInfo) => {

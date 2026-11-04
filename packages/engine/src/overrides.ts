@@ -9,8 +9,9 @@ import { type ActionResult, changeTo, entryOf, type LogStamp } from './trackers'
 // always wins (ENG-17). Every system has it, so it lives in the core. Like the inventory, the list
 // is written as a whole: a log path steps only through objects (ENG-63). An edit applies only to a
 // number path (ENG-17: `overrideNotANumber` otherwise), so a path that holds no number is refused
-// here, where the screen could not have offered it. A key path's edit stores a key, not a number,
-// and is not made here. The level cannot be edited: gathering has read it before any edit applies.
+// here, where the screen could not have offered it. A key path's edit stores a key, not a number
+// (SHEET-79: `setKeyOverride`, a skill's stat). The level cannot be edited: gathering has read it
+// before any edit applies.
 
 /** The place the edits are stored. */
 const OVERRIDES_PATH = ['overrides'] as const;
@@ -21,13 +22,16 @@ export type OverrideRefusal = { message: string } & (
   | { code: 'badValue'; value: number }
   | { code: 'fixedPath'; path: string }
   | { code: 'noOverride'; path: string }
+  | { code: 'notAKeyPath'; path: string }
+  | { code: 'badKey'; key: string }
+  | { code: 'notAKey'; path: string; key: string }
   | { code: 'unchanged' }
 );
 
 type Edit = CharacterCore<GatherableEntity>['overrides'][number];
 
 /** The edit with a note only when the note shows a character, trimmed of the spaces around it. */
-function edited(path: string, value: number, note: string | undefined): Edit {
+function edited(path: string, value: number | string, note: string | undefined): Edit {
   const text = note?.trim();
   return { path, value, ...(text !== undefined && text !== '' && { note: text }) };
 }
@@ -79,6 +83,40 @@ export function setOverride<C extends CharacterCore<E>, E extends GatherableEnti
     return { ok: false, code: 'notANumber', path, message };
   }
   const edit = edited(path, value, ask.note);
+  const at = character.overrides.findIndex((each) => each.path === path);
+  const after =
+    at < 0
+      ? [...character.overrides, edit]
+      : character.overrides.map((each, index) => (index === at ? edit : each));
+  return written(character, stamp, 'setOverride', path, after);
+}
+
+/**
+ * SHEET-79: sets the manual edit of the key path `ask.path` (a skill's stat, ENG-43) to the key
+ * `ask.key`, with the person's `ask.note`. Refused when the path holds no key now, when the key is
+ * empty, or, when `ask.keys` is given, when it is none of them (the keys the path may take; the
+ * system names them). As `unchanged` when the same edit is there already. `clearOverride` takes it
+ * away as it does a number's.
+ */
+export function setKeyOverride<C extends CharacterCore<E>, E extends GatherableEntity>(
+  character: C,
+  computed: Pick<Computed<E>, 'keys'>,
+  ask: { path: string; key: string; keys?: readonly string[]; note?: string | undefined },
+  stamp: LogStamp,
+): ActionResult<C, OverrideRefusal> {
+  const { path, key } = ask;
+  if (!Object.hasOwn(computed.keys, path)) {
+    const message = `"${path}" holds no key; only a key path can be set to a key.`;
+    return { ok: false, code: 'notAKeyPath', path, message };
+  }
+  if (typeof key !== 'string' || key === '') {
+    return { ok: false, code: 'badKey', key, message: `"${key}" is not a key.` };
+  }
+  if (ask.keys !== undefined && !ask.keys.includes(key)) {
+    const message = `"${key}" is none of the keys of ${path} (${ask.keys.join(', ')}).`;
+    return { ok: false, code: 'notAKey', path, key, message };
+  }
+  const edit = edited(path, key, ask.note);
   const at = character.overrides.findIndex((each) => each.path === path);
   const after =
     at < 0

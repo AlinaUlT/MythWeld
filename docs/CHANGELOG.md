@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-79 · In edit mode a skill's breakdown links to where its stat comes from, and you can set the stat by hand (Athletics on Dexterity, say) with a note; it has Undo and Remove.
 - 2026-11-04 · SHEET-80 · In edit mode a custom item and a custom feature have an Edit button: change the name, the weight and the words, with Undo.
 - 2026-11-04 · SHEET-84 · The Hit points pad offers all 13 damage types of the SRD, not one.
 - 2026-11-04 · SHEET-83 · The roll dialog calls a weapon attack by the weapon's name, "Greatsword", not by its path.
