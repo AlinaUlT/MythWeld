@@ -7,6 +7,7 @@
 
 export * from './ability-bonus';
 export * from './about';
+export * from './ac-calc';
 export * from './actions';
 export * from './attacks';
 export * from './attunement';

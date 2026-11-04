@@ -2044,3 +2044,68 @@ test('SHEET-70 with no choices badge the header’s first row stays 64 px', asyn
     .evaluate((node) => node.parentElement?.parentElement?.getBoundingClientRect().height);
   expect(row).toBe(64);
 });
+
+test('SHEET-35 the AC breakdown pins its base calculation, with Undo', async ({
+  page,
+}, testInfo) => {
+  // Golden B: chain mail 16, Defense +1, so 17. A feat of its own appends 13 + DEX 1 = 14 (+1 = 15).
+  await saveRows(page, [
+    {
+      ...goldenB,
+      localEntities: [
+        {
+          id: 'character:feat/plated',
+          type: 'feat',
+          ruleset: 'any',
+          name: { en: 'Plated' },
+          source: { pack: 'character' },
+          effects: [
+            { id: 'plated', target: 'ac.formulas', op: 'append', value: '13 + @abilities.dex.mod' },
+          ],
+        },
+      ],
+      systemData: { ...goldenB.systemData, feats: [{ id: 'character:feat/plated' }] },
+    },
+  ]);
+  await page.goto(`characters/${goldenB.id}`);
+  const sheet = page.getByRole('dialog', { name: en.breakdown.title });
+  const choice = sheet.getByTestId('base-choice');
+  const radio = (name: string | RegExp) => choice.getByRole('radio', { name });
+  const ac = number(page, 'ac.total');
+  await expect(ac).toContainText('17');
+
+  // Play mode shows the calculations and says how to unlock them.
+  await ac.click({ button: 'right' });
+  await expect(radio(/^Highest/)).toHaveAttribute('aria-checked', 'true');
+  await expect(radio(/^Chain Mail/)).toBeDisabled();
+  await expect(choice.getByTestId('base-locked')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // Edit mode: pick the lower one. The number, the breakdown and the toast follow.
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await ac.click({ button: 'right' });
+  await expect(radio(/^Chain Mail/)).toContainText('16');
+  await expect(radio(/^Plated/)).toContainText('14');
+  await page.screenshot({ path: testInfo.outputPath('base-choice-dark.png') });
+  await radio(/^Plated/).click();
+  await expect(radio(/^Plated/)).toHaveAttribute('aria-checked', 'true');
+  await expect(sheet.getByTestId('breakdown-summary')).toHaveText(
+    'AC 15 = AC base 14, AC bonus +1',
+  );
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Base AC calculation changed' }),
+  ).toBeVisible();
+
+  // It is stored: a reload keeps it. Undo takes it back to the highest, 17.
+  await page.reload();
+  await expect(ac).toContainText('15');
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await ac.click({ button: 'right' });
+  await expect(radio(/^Plated/)).toHaveAttribute('aria-checked', 'true');
+  await radio(/^Highest/).click();
+  await expect(radio(/^Highest/)).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
+  await expect(ac).toContainText('17');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(ac).toContainText('15');
+});

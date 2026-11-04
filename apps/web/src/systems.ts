@@ -85,6 +85,8 @@ import {
   openFifthEditionPack,
   type PathPart,
   type PendingKeyAnswer,
+  pinAcCalc,
+  pinnedAcCalc,
   type RestHitDie,
   type RestLine,
   type RollTest,
@@ -310,6 +312,16 @@ export interface SheetSystem {
   /** The money of the Gear tab: each coin with its count, and the steps offered (SHEET-51). */
   coins: typeof fifthEditionCoins;
   changeCoin: typeof changeCoin;
+  /**
+   * The pick of the base calculation of a number (SHEET-35): `paths` maps each breakdown path that
+   * offers it to the path whose candidates (`Computed.candidates`) are the choices; `pinned` is the
+   * pick the character holds; `pin` stores one, or none to give the highest back.
+   */
+  baseChoice: {
+    paths: Readonly<Record<string, string>>;
+    pinned: typeof pinnedAcCalc;
+    pin: typeof pinAcCalc;
+  };
   /** The features grouped by when they are used: the Turn tab's lists (SHEET-49). */
   turn: typeof fifthEditionTurn;
   /** The attacks of the equipped weapons: bonus paths, dice, type and mastery (SHEET-44). */
@@ -399,6 +411,11 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     removeCustomFeature,
     coins: fifthEditionCoins,
     changeCoin,
+    baseChoice: {
+      paths: { 'ac.total': 'ac.base', 'ac.base': 'ac.base' },
+      pinned: pinnedAcCalc,
+      pin: pinAcCalc,
+    },
     pathParts: fifthEditionPathParts,
     pendingKey: fifthEditionPendingKey,
     rollTest: fifthEditionRollTest,

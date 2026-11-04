@@ -148,6 +148,7 @@ describe('SHEET-23 the undo toast', () => {
       'removeEntry',
       'setOverride',
       'clearOverride',
+      'pinAcCalc',
     ];
     expect(Object.keys(en.toast.done)).toEqual([...actions, ...sheetActions, 'other']);
     for (const action of [...actions, ...sheetActions]) expect(doneKeyOf(action)).toBe(action);

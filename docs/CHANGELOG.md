@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-35 · In edit mode the AC breakdown lists each way the base armor class can be worked out (armor, or a feature of your own) with its number, and lets you pick one, or go back to the highest; the pick has Undo.
 - 2026-11-04 · SHEET-70 · On a narrow phone the sheet's header no longer cuts the class line when the choices badge shows; the badges go under the class line when they do not fit beside it.
 - 2026-11-04 · SHEET-75 · A long web address in a pack's attribution, under See full description, now wraps inside the card.
 - 2026-11-04 · SHEET-77 · A button that cannot be pressed now (Items' One less at 1, a coin's − at 0, a form's Save with nothing to save) is drawn faint, with a not-allowed cursor.

@@ -17,6 +17,12 @@
     "save": "Save",
     "remove": "Remove manual edit"
   },
+  "base": {
+    "title": "Base calculation",
+    "highest": "Highest",
+    "locked": "Turn on Edit to pick the calculation.",
+    "notApplying": "The calculation you picked does not apply now; the highest one counts."
+  },
   "step": {
     "base": "Base",
     "default": {

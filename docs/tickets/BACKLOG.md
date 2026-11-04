@@ -237,7 +237,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-32 | The Main tab shows every check bonus | S | ✅ 2026-11-03 |
 | SHEET-33 | A long press opens a number's breakdown | S | ✅ 2026-11-03 |
 | SHEET-34 | A manual edit overrides a number | S | ✅ 2026-11-04 |
-| SHEET-35 | The AC breakdown pins its base calculation | XS | 🔲 |
+| SHEET-35 | The AC breakdown pins its base calculation | XS | ✅ 2026-11-04 |
 | SHEET-36 | The choices badge opens every pending choice | M | ✅ 2026-11-03 |
 | SHEET-37 | Rolls are kept in the roll log | S | ✅ 2026-10-29 |
 | SHEET-38 | The dice panel rolls any formula fairly | M | ✅ 2026-10-29 |
@@ -278,9 +278,6 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-81 | The toast stops covering the round buttons | XS | ✅ 2026-11-04 |
 | SHEET-82 | The toast goes after its time once Undo was tapped | XS | ✅ 2026-11-04 |
 
-- **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates:
-  `Computed.candidates['ac.base']`, each `{ key, value, steps }`; a pin that does not apply is not
-  among them and warns `acCalcNotApplying`.
 - **SHEET-59** — SPEC §7.2's 50 states, opened from "⋯" (ADR 013 item 2: "undo any change").
   Undoing a change that later changes touched is decided in the row. Found by SHEET-23:
   `readHistory` lists the kept changes, newest first; `undoChange` reverses any one of them, and

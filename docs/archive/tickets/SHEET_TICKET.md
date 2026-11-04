@@ -8027,3 +8027,31 @@ Differences from the row: none. Technical choice (ADR 002): the row offers "the 
 Found, not fixed: nothing.
 
 Changelog: "On a narrow phone the sheet's header no longer cuts the class line when the choices badge shows; the badges go under the class line when they do not fit beside it."
+
+---
+
+### SHEET-35 The AC breakdown pins its base calculation · XS
+
+**Hat:** The AC breakdown lists its base calculations and pins one
+**Where:** `apps/web/src/shared/BaseChoice.tsx` — new, mounted in `BreakdownSheet.tsx`; `packages/system-5e/src/ac-calc.ts` — new: `pinAcCalc`, `pinnedAcCalc`; `apps/web/src/systems.ts` — `SheetSystem.baseChoice`
+**Depends on:** ENG-47 (the pin), SHEET-21 (`Computed.candidates`), SHEET-33 (the breakdown), SHEET-23 (Undo)
+**Screen:** Yes — the breakdown sheet of the AC number (board `V3-Roll`'s sheet shell); no board draws the list, so it follows the "Override by hand" section under it. `docs/design/BRIEF.md` Part 5 has no row for it.
+
+**What it should look like when done:**
+1. The breakdown of AC (and of the base AC) shows a "Base calculation" section when more than one calculation applies: a row "Highest", then each calculation that applies with its number ("Chain Mail 16", "Plated 14"), the one that counts marked with a check.
+2. A tap on a row pins that calculation, or, on "Highest", takes the pin away. It is one change with its Undo toast, "Base AC calculation changed". AC and the breakdown follow at once.
+3. A pin that applies nowhere now keeps its row off, "Highest" is marked, and a line says the pick does not apply and the highest counts (ENG-47's `acCalcNotApplying`).
+4. In play mode the rows are shown but off, with "Turn on Edit to pick the calculation."
+5. The section is absent when one calculation applies and nothing is pinned, and from every other number's breakdown.
+6. The module's action refuses a name that is neither `equipment` nor an effect's part; a pick that is the pin already changes nothing.
+7. The gate is green.
+
+**Tests:** `packages/system-5e/test/ac-calc.test.ts` — 7 tests on golden B with two made-up feats (ENG-47's numbers, by hand: chain mail 16 + Defense 1 = 17; Plated 13 + 1 = 14, + 1 = 15): no pin at the start; pin as one entry that changes the pin only, applied again and reversed; the own calculation and a change of pin; taking the pin away and Undo; the unchanged cases; the refusal; a pin that does not apply (16, 17, one warning). `apps/web/test/base-choice.test.tsx` — 6 tests: absent with one calculation; the three rows with numbers and the mark; the pinned one marked and AC 15 = base 14 + bonus 1; on `ac.base` and not on Strength; locked in play mode; the not-applying line. `apps/web/test/toast.test.tsx` — the action `pinAcCalc` in the list and in `toast.json`. `apps/web/e2e/sheet.spec.ts` — 1 test: play mode locked; edit mode shows "Chain Mail 16" and "Plated 14"; picking Plated gives AC 15 and the breakdown "AC 15 = AC base 14, AC bonus +1" with its toast; a reload keeps it (edit mode is off again, as for every sheet); "Highest" gives 17; Undo gives 15. Control values: SPEC §6.7 golden B (AC 17) and ENG-47's tests for 14 and 15.
+**What came out of it:**
+Quality gate, 2026-11-04: `pnpm lint` 448 files, no fixes; `pnpm typecheck` clean; `pnpm test` 143 files, 1601 passed, 0 failed, 45.6 s (13 new, from 1588), then speed 2 passed; coverage statements 99.04 % (4056/4095), lines 99.77 % (3556/3564); `pnpm e2e` 90 passed, 0 failed, 2.2 min (1 new, from 89); after that run a type-only edit to the new test's helper, and the test alone ran again: 1 passed. Screenshot at 360×800 shown in the chat.
+
+Differences from the row: the row says "XS" and names the control only. Technical choices (ADR 002): a module action, `pinAcCalc`, stores the pin (the screen builds no entry of its own), and the SheetSystem says which breakdown paths offer it (`baseChoice.paths`), so the screen names no game; no stored shape changes (the `acCalc` field is ENG-47's, and `storedParts` already drops a pin with its entity, SHEET-22); the pick is made in edit mode only, as a manual edit is (SPEC §7.2: play mode locks the structure); a pin that does not apply is stored as picked and warns, as ENG-47 decided, so the action does not check it against the candidates (it has no `Computed`).
+
+Found, not fixed: nothing.
+
+Changelog: "In edit mode the AC breakdown lists each way the base armor class can be worked out (armor, or a feature of your own) with its number, and lets you pick one, or go back to the highest; the pick has Undo."

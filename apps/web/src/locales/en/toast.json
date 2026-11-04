@@ -46,6 +46,7 @@
     "removeEntry": "{{name}} removed",
     "setOverride": "Manual edit saved",
     "clearOverride": "Manual edit removed",
+    "pinAcCalc": "Base AC calculation changed",
     "other": "Change made"
   }
 }
