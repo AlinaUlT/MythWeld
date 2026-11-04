@@ -72,7 +72,42 @@ describe('SHEET-08 the built-in mini-pack', () => {
     );
     expect(refused).toEqual([]);
     expect(warnings).toEqual([]);
-    expect(index.entities).toHaveLength(74 + 66);
+    expect(index.entities).toHaveLength(86 + 78);
+  });
+
+  it('SHEET-84 holds the 13 damage types of the SRD in each pack, name and key only', () => {
+    // SRD 5.1 "Damage Types" and the SRD 5.2.1 Damage Types table list the same 13, A to Z.
+    const keys = [
+      'acid',
+      'bludgeoning',
+      'cold',
+      'fire',
+      'force',
+      'lightning',
+      'necrotic',
+      'piercing',
+      'poison',
+      'psychic',
+      'radiant',
+      'slashing',
+      'thunder',
+    ];
+    for (const pack of BUILT_IN_PACKS.map(opened)) {
+      const types = pack.entities.filter((entity) => entity.type === 'damageType');
+      expect(types.map((entity) => entity.key)).toEqual(keys);
+      for (const type of types) {
+        expect(type.id).toBe(`${pack.id}:damageType/${type.key}`);
+        expect(type.name.en?.toLowerCase()).toBe(type.key);
+        expect(Object.keys(type).sort()).toEqual([
+          'id',
+          'key',
+          'name',
+          'ruleset',
+          'source',
+          'type',
+        ]);
+      }
+    }
   });
 
   it('names each size, school, creature type and feat category its entities name', () => {

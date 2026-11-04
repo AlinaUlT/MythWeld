@@ -201,13 +201,13 @@ describe('SHEET-16 damage by its type', () => {
     const before = defended(goldenB, 'slashing', ['immune']);
     const result = done(before, hit(before, 5, 'bludgeoning'));
     expect(result.entry.changes).toEqual([{ path: HP, before: 12, after: 7 }]);
-    // The 2024 pack has no `bludgeoning`.
+    // SHEET-84: the 2024 pack holds `bludgeoning`, so the type is found.
     expect(result.outcome.defended).toEqual({
       dealt: 5,
       type: 'bludgeoning',
       steps: [],
       amount: 5,
-      missing: true,
+      missing: false,
     });
   });
 

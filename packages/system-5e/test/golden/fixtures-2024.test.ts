@@ -77,7 +77,7 @@ describe('ENG-10 2024 fixtures', () => {
     });
     expect(refused).toEqual([]);
     expect(warnings).toEqual([]);
-    expect(index.entities).toHaveLength(66);
+    expect(index.entities).toHaveLength(78);
   });
 
   it('holds the counts the SRD has', () => {
@@ -94,7 +94,7 @@ describe('ENG-10 2024 fixtures', () => {
       subclass: 1,
       condition: 1,
       item: 5,
-      damageType: 1,
+      damageType: 13,
       weaponProperty: 3,
       weaponMastery: 2,
       size: 6,

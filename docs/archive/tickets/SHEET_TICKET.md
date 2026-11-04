@@ -8310,3 +8310,78 @@ Design choice (ADR 002): the name comes from the module's `RollTest` and not fro
 Found, not fixed: nothing.
 
 Changelog: "The roll dialog calls a weapon attack by the weapon's name, 'Greatsword', not by its path."
+
+
+---
+
+### SHEET-84 The packs hold every damage type of the SRD
+
+**Hat:** Each pack lists all thirteen damage types
+**Depends on:** SHEET-72 (found there)
+**Size:** S
+**Screen:** No — the pad's chips and the cast panel's damage lines read the pack as they did (board `V3-Keypad`).
+**SPEC:** §3, §5.1 (ids), ADR 003 (packs)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/packs/srd-2014.ts` and `srd-2024.ts` — change. Tests: `packages/content/test/built-in.test.ts`, `packages/system-5e/test/golden/fixtures-2014.test.ts` and `fixtures-2024.test.ts`, `packages/system-5e/test/damage-defenses.test.ts`, `apps/web/test/packs.test.ts`, `apps/web/test/number-pad.test.tsx`.
+
+#### 2. What is missing now
+
+`srd-2014` holds one `damageType`, Bludgeoning; `srd-2024` holds one, Slashing (the row said Slashing for both: measured, the 2014 pack held Bludgeoning). Counts: 74 and 66 entities.
+
+#### 3. What it should look like when done
+
+1. Each pack holds 13 `damageType` entries, A to Z: acid, bludgeoning, cold, fire, force, lightning, necrotic, piercing, poison, psychic, radiant, slashing, thunder.
+2. Each entry has only `id`, `type`, `key`, `ruleset`, `name.en` and `source`. No description, no rules text.
+3. The ids are `srd-2014:damageType/<key>` and `srd-2024:damageType/<key>`; the two earlier ids do not change.
+4. The counts are 86 and 78 (74 − 1 + 13, 66 − 1 + 13).
+5. The pad offers all 13 as chips.
+
+#### 4. How to do it
+
+One list of the 13 names in each pack file, mapped to entries by the key (the lower-case name), in place of the single entry.
+
+#### 5. Stored data
+
+Nothing stored changes. A pack gains entries; no shape changes, and `systemSchemaVersion` stays.
+
+#### 6. What a person will see
+
+The Hit points pad lists 13 damage types as chips. Not a new screen. No new text.
+
+#### 7. Tests
+
+- `built-in.test.ts` — each pack's `damageType` keys are the 13, in order, each id built from the pack and key, each entry has the six fields only.
+- Counts in `built-in.test.ts`, `packs.test.ts` and both `fixtures` tests: 86, 78, and `damageType: 13`.
+- `number-pad.test.tsx` — the chips are the 13 names; the character's own made-up types (Mist, Rust, since Fire and Cold are now the pack's) come with them.
+- `damage-defenses.test.ts` — Bludgeoning is found in the 2024 pack: `missing: false`.
+- Control numbers from: the SRD text (below), not from a run.
+
+#### 8. Checked against the source
+
+SRD 5.1 (`SRD_CC_v5.1.pdf`, Wizards of the Coast, CC-BY-4.0), chapter Combat, "Damage Types": Acid, Bludgeoning, Cold, Fire, Force, Lightning, Necrotic, Piercing, Poison, Psychic, Radiant, Slashing, Thunder. SRD 5.2.1 (`SRD_CC_v5.2.1.pdf`, CC-BY-4.0), Rules Glossary, "Damage Types" table, page 180: the same thirteen in the same order. Both texts were read from the PDFs; only the names are used.
+
+#### 9. Not in this ticket
+
+- A Russian name for each type: the Russian phase (ADR 000).
+- A description of each type: not planned; a type has no rules of its own in either SRD.
+
+#### 10. Rake check
+
+- Only openly licensed content: names and keys of an SRD list; each pack keeps its license metadata.
+- No rules text, not even in a test: the tests hold the names only.
+- Ids are stable: the two ids that existed are the same.
+- Everything is data: no type is named in a component.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` no fixes; `pnpm typecheck` clean; `pnpm test` 143 files, 1614 passed, 0 failed, 39.0 s (1 new, from 1613), then speed 2 passed; coverage statements 99.04 % (4056/4095), lines 99.77 % (3556/3564); `pnpm e2e` 95 passed, 0 failed, 2.1 min.
+
+Differences from the row: the 2014 pack held Bludgeoning and not Slashing, so it gains twelve others (Slashing among them) and the 2024 pack gains twelve (Bludgeoning among them); both end at 13. Four tests that counted 74 and 66, or relied on a type being absent, now hold the numbers the SRD list gives: the two `fixtures` files, `damage-defenses` (a hit of Bludgeoning in the 2024 pack is now found), and the pad test (its made-up Fire and Cold clashed with the pack's keys, so they became Mist and Rust).
+
+Found, not fixed: nothing.
+
+Changelog: "The Hit points pad offers all 13 damage types of the SRD, not one."

@@ -38,7 +38,7 @@ describe('ENG-09 2014 fixtures', () => {
     });
     expect(refused).toEqual([]);
     expect(warnings).toEqual([]);
-    expect(index.entities).toHaveLength(74);
+    expect(index.entities).toHaveLength(86);
   });
 
   it('holds the counts the SRD has', () => {
@@ -56,7 +56,7 @@ describe('ENG-09 2014 fixtures', () => {
       subclass: 1,
       spell: 2,
       item: 3,
-      damageType: 1,
+      damageType: 13,
       weaponProperty: 1,
       size: 6,
       spellSchool: 2,

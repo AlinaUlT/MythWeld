@@ -97,14 +97,29 @@ describe('SHEET-40 the number pad', () => {
 });
 
 describe('SHEET-72 the number pad’s damage type and critical hit', () => {
-  // The packs hold one damage type today, Slashing (`srd-2024:damageType/slashing`); a character's
-  // own entries (here Fire and Cold, made up) are offered with it.
-  const own = ['fire', 'cold'].map((slug) => ({
+  // The pack holds the 13 damage types of the SRD (SHEET-84); a character's own entries (here
+  // Mist and Rust, made up, with keys the SRD lacks) are offered with them.
+  const SRD_TYPES = [
+    'Acid',
+    'Bludgeoning',
+    'Cold',
+    'Fire',
+    'Force',
+    'Lightning',
+    'Necrotic',
+    'Piercing',
+    'Poison',
+    'Psychic',
+    'Radiant',
+    'Slashing',
+    'Thunder',
+  ];
+  const own = ['mist', 'rust'].map((slug) => ({
     id: `character:damageType/${slug}`,
     type: 'damageType',
     key: slug,
     ruleset: 'any',
-    name: { en: slug === 'fire' ? 'Fire' : 'Cold' },
+    name: { en: slug === 'mist' ? 'Mist' : 'Rust' },
     source: { pack: 'character' },
   }));
   const chips = (html: string) =>
@@ -114,10 +129,10 @@ describe('SHEET-72 the number pad’s damage type and critical hit', () => {
 
   it('offers each damage type the character finds as a chip in the Damage mode, none picked', () => {
     const found = chips(drawn('damage', 0, 12, own));
-    expect(found.map(([, , name]) => name).sort()).toEqual(['Cold', 'Fire', 'Slashing']);
+    expect(found.map(([, , name]) => name).sort()).toEqual([...SRD_TYPES, 'Mist', 'Rust'].sort());
     expect(found.every(([, pressed]) => pressed === 'false')).toBe(true);
     expect(text(drawn('damage'))).toContain('|Damage type|');
-    expect(chips(drawn('damage')).map(([, , name]) => name)).toEqual(['Slashing']);
+    expect(chips(drawn('damage')).map(([, , name]) => name)).toEqual(SRD_TYPES);
   });
 
   it('offers no type for healing or temporary hit points', () => {

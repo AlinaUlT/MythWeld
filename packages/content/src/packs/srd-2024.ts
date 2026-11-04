@@ -656,14 +656,34 @@ const items: Of<'item'>[] = [
   martialMelee('halberd', 'Halberd', 6, 20, '1d10', ['heavy', 'reach', 'twoHanded'], 'cleave'),
 ];
 
-const slashing: Of<'damageType'> = {
-  id: 'srd-2024:damageType/slashing',
-  type: 'damageType',
-  key: 'slashing',
-  ruleset,
-  name: { en: 'Slashing' },
-  source,
-};
+/**
+ * SHEET-84: every damage type of the SRD, name and key only (SRD 5.2.1, "Damage Types", CC-BY-4.0).
+ * A type has no rules of its own: the rules that name one (a resistance, a weapon's damage) read its key.
+ */
+const damageTypes = [
+  'Acid',
+  'Bludgeoning',
+  'Cold',
+  'Fire',
+  'Force',
+  'Lightning',
+  'Necrotic',
+  'Piercing',
+  'Poison',
+  'Psychic',
+  'Radiant',
+  'Slashing',
+  'Thunder',
+].map(
+  (name): Of<'damageType'> => ({
+    id: `srd-2024:damageType/${name.toLowerCase()}`,
+    type: 'damageType',
+    key: name.toLowerCase(),
+    ruleset,
+    name: { en: name },
+    source,
+  }),
+);
 
 // --- Sizes (SHEET-08: `5e-SRD-Monsters.json`, every `size`, §8) ---------------------------------
 
@@ -800,7 +820,7 @@ export const srd2024 = {
     paladin,
     exhaustion,
     ...items,
-    slashing,
+    ...damageTypes,
     ...weaponProperties,
     ...masteries,
     ...sizes,

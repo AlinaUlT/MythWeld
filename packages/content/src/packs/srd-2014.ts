@@ -594,14 +594,34 @@ const schools = (
   }),
 );
 
-const bludgeoning: Of<'damageType'> = {
-  id: 'srd-2014:damageType/bludgeoning',
-  type: 'damageType',
-  key: 'bludgeoning',
-  ruleset,
-  name: { en: 'Bludgeoning' },
-  source,
-};
+/**
+ * SHEET-84: every damage type of the SRD, name and key only (SRD 5.1, "Damage Types", CC-BY-4.0).
+ * A type has no rules of its own: the rules that name one (a resistance, a weapon's damage) read its key.
+ */
+const damageTypes = [
+  'Acid',
+  'Bludgeoning',
+  'Cold',
+  'Fire',
+  'Force',
+  'Lightning',
+  'Necrotic',
+  'Piercing',
+  'Poison',
+  'Psychic',
+  'Radiant',
+  'Slashing',
+  'Thunder',
+].map(
+  (name): Of<'damageType'> => ({
+    id: `srd-2014:damageType/${name.toLowerCase()}`,
+    type: 'damageType',
+    key: name.toLowerCase(),
+    ruleset,
+    name: { en: name },
+    source,
+  }),
+);
 
 const versatile: Of<'weaponProperty'> = {
   id: 'srd-2014:weaponProperty/versatile',
@@ -648,7 +668,7 @@ export const srd2014 = {
     paladin,
     ...spells,
     ...items,
-    bludgeoning,
+    ...damageTypes,
     versatile,
     ...sizes,
     ...schools,

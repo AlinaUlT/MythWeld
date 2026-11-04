@@ -7,7 +7,7 @@ import { contentOf, installBuiltInPacks, installedPacks, startPacks } from '../s
 import { PACK_OPENERS, packOpenerOf } from '../src/systems';
 
 // Golden A names SRD 5.1's pack; golden E names SRD 5.2.1's and `hb-local`, SPEC Appendix Д's pack,
-// which no device has until a person imports it. Counts are SHEET-08 §7's: 74 and 66 entries.
+// which no device has until a person imports it. Counts are SHEET-08 §7's: 86 and 78 entries.
 
 describe('SHEET-09 the built-in packs open at start', () => {
   it('opens both SRD packs as built-in, in their order, with nothing left unopened', () => {
@@ -44,7 +44,7 @@ describe("SHEET-09 a character's content index", () => {
     const content = contentOf(goldenA, packs);
     expect(content.loaded).toEqual(['srd-2014']);
     expect([content.refused, content.warnings, content.notInstalled]).toEqual([[], [], []]);
-    expect(content.index.entities).toHaveLength(74);
+    expect(content.index.entities).toHaveLength(86);
     expect(content.index.get(goldenA.systemData.species.id).ok).toBe(true);
   });
 
@@ -52,7 +52,7 @@ describe("SHEET-09 a character's content index", () => {
     const content = contentOf(goldenE, packs);
     expect(content.loaded).toEqual(['srd-2024']);
     expect(content.notInstalled).toEqual(['hb-local']);
-    expect(content.index.entities).toHaveLength(66);
+    expect(content.index.entities).toHaveLength(78);
     expect(content.index.get('hb-local:feat/arcane-scholar')).toMatchObject({
       ok: false,
       code: 'missing',
@@ -63,7 +63,7 @@ describe("SHEET-09 a character's content index", () => {
     startPacks();
     const content = contentOf({ system: FIFTH_EDITION_SYSTEM, packs: ['srd-2024', 'srd-2014'] });
     expect(content.loaded).toEqual(['srd-2024', 'srd-2014']);
-    expect(content.index.entities).toHaveLength(66 + 74);
+    expect(content.index.entities).toHaveLength(78 + 86);
   });
 });
 

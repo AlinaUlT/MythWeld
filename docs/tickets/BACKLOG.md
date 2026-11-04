@@ -278,7 +278,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-81 | The toast stops covering the round buttons | XS | ✅ 2026-11-04 |
 | SHEET-82 | The toast goes after its time once Undo was tapped | XS | ✅ 2026-11-04 |
 | SHEET-83 | The roll dialog names an attack by its own name | XS | ✅ 2026-11-04 |
-| SHEET-84 | The packs hold every damage type of the SRD | S | 🔲 |
+| SHEET-84 | The packs hold every damage type of the SRD | S | ✅ 2026-11-04 |
 
 - **SHEET-59** — SPEC §7.2's 50 states, opened from "⋯" (ADR 013 item 2: "undo any change").
   Undoing a change that later changes touched is decided in the row. Found by SHEET-23:
@@ -286,7 +286,6 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
   refuses as `changed` where a later change wrote over its place.
 - **SHEET-76** — found by SHEET-49: board `V3-Turn` lists feats (Alert, Defense) and a "Once per turn" group (Savage Attacker), and "Always on" lines with their numbers (Initiative +2, AC +1). `activation` is on features only (`featureDefSchema`), and its values have no once-per-turn. The row adds `activation` to feats and a once-per-turn value: a pack shape change, so `systemSchemaVersion` and a migration (SPEC §5.8), then the packs say it and the tab lists it. The numbers on an "Always on" line are the effects' own, read from `Computed` with their breakdown.
 - **SHEET-79** — found by SHEET-34: an override of a key path (ENG-43: a skill's stat, `skills.<key>.ability`) applies only when its value is one of the path's keys (`overrideNotAKey`). SHEET-34's form edits number paths only. The Main tab draws a skill's stat only as its group's heading, and `Computed.keys` holds a key and its steps, not the keys it may take. The row gives a skill a place to open its stat's breakdown, with the stats as the choice, and stores the key (`setOverride` takes a key then, or a twin action does).
-- **SHEET-84** — found by SHEET-72: each pack holds one `damageType` entry, Slashing, so the number pad's type chips and the cast panel's damage lines name one type. The row adds the other twelve of both SRDs (Acid, Bludgeoning, Cold, Fire, Force, Lightning, Necrotic, Piercing, Poison, Psychic, Radiant, Thunder), name and key only, from the SRD's "Damage Types" glossary entry (CC-BY-4.0), in `srd-2014.ts` and `srd-2024.ts`.
 - **SHEET-80** — found by SHEET-52: a custom item (a row's `custom` name and weight, its `note`) and a custom feature (a `character:feat/<slug>` entity's `name` and `text`) cannot be changed once added; a typing error means remove and add again. The panel's forms open on the entry with its words, and a save is one change with Undo (a custom feature's id stays, SPEC §5.1).
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
