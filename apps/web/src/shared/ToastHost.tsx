@@ -4,6 +4,9 @@
 // unless the person's focus is in it; a refused undo says so in its place.
 // SHEET-30: on the sheet it sits 16 px above the dock, which writes its height in `--dock-height`.
 // SHEET-25: a deleted character's toast names it, with "Undo" too.
+// SHEET-71: it sits above a panel's dim (`z-20`; the panels are `z-10`), so "Undo" of a change made
+// inside a panel is reachable at once. While a panel is open it moves to the top of the screen, so
+// it covers none of the panel's own buttons.
 import type { LogEntry } from '@grimoire/schema';
 import type { TFunction } from 'i18next';
 import { useEffect, useState, useSyncExternalStore } from 'react';
@@ -72,7 +75,7 @@ export function ToastHost() {
   return (
     <div
       role="status"
-      className="pointer-events-none fixed inset-x-4 bottom-[calc(var(--dock-height,0px)+16px)]"
+      className="pointer-events-none fixed inset-x-4 z-20 bottom-[calc(var(--dock-height,0px)+16px)] in-[body:has([aria-modal=true])]:top-4 in-[body:has([aria-modal=true])]:bottom-auto"
       onFocus={() => setHeld(true)}
       onBlur={() => setHeld(false)}
     >

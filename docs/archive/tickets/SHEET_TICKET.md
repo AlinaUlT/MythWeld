@@ -7100,3 +7100,28 @@ Found, not fixed: the built-in 2024 pack holds no `weaponMastery` entry and the 
 Changelog: "The Combat tab lists your equipped weapons' attacks: tap the attack bonus to roll it, with the damage dice, damage bonus, type and weapon mastery."
 
 ---
+
+---
+
+### SHEET-71 The undo toast shows above an open panel · XS
+
+**Hat:** The undo toast shows above an open panel
+**Where:** `apps/web/src/shared/ToastHost.tsx` — the toast host's place in the stack and on the screen
+**Depends on:** SHEET-23 (the toast), SHEET-30 (the dock height it sits above), SHEET-42 (found it)
+**Screen:** The toast of `docs/design/mockups/` board `V3-Features`; the panels' own boards (`V3-Keypad`, `V3-Rest`, `V3-Cast`) are not changed.
+
+**What it should look like when done:**
+1. A change made inside an open panel (a condition's level, a choice) shows its toast above the panel's dim, and "Undo" is tapped with the panel still open.
+2. While a panel is open the toast sits at the top of the screen, so it covers none of the panel's own buttons. With no panel open it sits 16 px above the dock, as before.
+3. Undo reverses that change and the panel stays open.
+4. The gate is green.
+
+**Tests:** `apps/web/e2e/sheet.spec.ts` — 1 new test: set Exhaustion to level 2 in its panel, the toast is above the panel's top edge, nothing covers "Undo", Undo is tapped with the panel open and the level goes back to 1; the SHEET-42 test no longer closes the panel before Undo. `apps/web/test/toast.test.tsx` — the host's class list. Control values: none; the numbers are the exhaustion levels the SHEET-42 test already uses.
+**What came out of it:**
+Quality gate, 2026-11-04: `pnpm lint` 410 files, no fixes; `pnpm typecheck` clean; `pnpm test` 124 files, 1468 passed, 0 failed, 27.4 s, then speed 2 passed; coverage statements 99.06 % (3823/3859), lines 99.82 % (3350/3356); `pnpm e2e` 70 passed, 0 failed, 1.0 min (1 new). Screenshot at 360×800 shown in the chat.
+
+Differs from the row: the row said the toast "shows above the panel's dim". First build, the toast above the dim at its usual place (16 px above the dock) covered the level buttons 1 to 5 of the condition panel for its 5 seconds. So while a panel is open (any `aria-modal` dialog in the page) the toast moves to the top of the screen. Technical choice (ADR 002); the e2e test checks the toast ends above the panel's top edge.
+
+Found, not fixed: a condition's level change shows the text "Exhaustion applied" (`toast.done.setCondition`), the same as adding it. Wording only, no new row.
+
+Changelog: "A change made inside an open panel shows its Undo toast at the top of the screen, above the panel, so you can undo it without closing the panel."

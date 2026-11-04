@@ -901,11 +901,10 @@ test('SHEET-42 conditions are set from the sheet: add, raise to death, end, each
   await panel.getByRole('button', { name: 'Set Exhaustion to level 6' }).click();
   await expect(chip).toHaveText('Exhaustion · death');
   await expect(panel).toContainText('Exhaustion at this level is death. It gives no number.');
-  // The panel covers the toast, so it closes before Undo is tapped (as SHEET-36's does).
-  await page.keyboard.press('Escape');
+  // The toast shows above the panel (SHEET-71): Undo is tapped with the panel still open.
   await page.getByRole('button', { name: en.toast.undo }).click();
   await expect(chip).toHaveText('Exhaustion 3');
-  await chip.getByRole('button').click();
+  await expect(panel).toBeVisible();
 
   // Remove ends it, with its toast; Undo brings it back.
   await panel.getByRole('button', { name: en.conditions.remove }).click();
@@ -1221,4 +1220,38 @@ test('SHEET-44 the Combat tab says where to equip a weapon when none is equipped
   await expect(page.getByRole('tabpanel')).toContainText(
     'No attack. Equip a weapon on the Gear tab.',
   );
+});
+
+test('SHEET-71 the undo toast shows above an open panel and is tapped there', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  const tab = page.getByRole('tabpanel');
+  await tab.getByRole('button', { name: en.conditions.add, exact: true }).click();
+  await page.locator('[data-condition="srd-2024:condition/exhaustion"] button').click();
+  const chip = tab.locator('[data-condition="srd-2024:condition/exhaustion"]');
+  await chip.getByRole('button').click();
+  const panel = page.getByRole('dialog');
+  await panel.getByRole('button', { name: 'Set Exhaustion to level 2' }).click();
+  await expect(chip).toHaveText('Exhaustion 2');
+
+  // The toast is at the top while the panel is open, so the panel's own level buttons stay free.
+  const toastBox = await page.getByRole('status').locator('> *').boundingBox();
+  const panelBox = await panel.boundingBox();
+  expect((toastBox?.y ?? 0) + (toastBox?.height ?? 0)).toBeLessThanOrEqual(panelBox?.y ?? 0);
+  // The Undo button is the top element at its own centre: nothing of the panel covers it.
+  const undo = page.getByRole('button', { name: en.toast.undo });
+  await expect(undo).toBeVisible();
+  const covered = await undo.evaluate((button) => {
+    const box = button.getBoundingClientRect();
+    return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) !== button;
+  });
+  expect(covered).toBe(false);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('toast-over-panel-dark.png') });
+
+  await undo.click();
+  await expect(chip).toHaveText('Exhaustion 1');
+  await expect(panel).toBeVisible();
 });
