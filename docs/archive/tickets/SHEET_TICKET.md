@@ -7611,3 +7611,88 @@ Differences from the row: Change history shows as coming later too: the row name
 Found, not fixed: nothing.
 
 Changelog: "The sheet's ⋯ menu lists the character's actions: Export, Copy and Delete work from it (Delete goes back to My characters, with Undo); Level up, Link for the DM, Transfer, Rules options and Change history show as coming later."
+
+---
+
+### SHEET-29 The manual form shows the ability bonus window
+
+**Hat:** The manual form's Origin step shows the ability bonus window
+**Depends on:** SHEET-27 (the form and its empty `AbilityBonusWindow`), ENG-35 and ENG-68 (`abilities.bonusSource`, `abilityBonusConflict`), ADR 017
+**Size:** S
+**Screen:** Yes — step 5 of the manual form, `docs/design/BRIEF.md` Part 5 ("P3", step 6); board `V3-Conflict` in `docs/design/mockups/`. ADR 017.
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/pages/create/AbilityBonusWindow.tsx` — changes: the file SHEET-27 left empty.
+- `packages/system-5e/src/manual-ability-bonus.ts` — new: `manualAbilityBonus`, `AbilityBonusShown`, `BonusGiverShown`.
+- `packages/system-5e/src/manual.ts` — change: `ManualCharacterAsk.bonusSource` (the rules base's source when absent).
+- `packages/system-5e/src/ability-bonus.ts`, `module.ts` — change: `bonusGivers` and `ruledGrants` are exported.
+- `apps/web/src/pages/create/draft.ts` — change: `Draft.bonusSource`, `StepProps.bonus`, `askOf` passes the pick.
+- `apps/web/src/pages/NewCharacterPage.tsx`, `apps/web/src/systems.ts` — change: the form asks its system for the window's content (`ManualFormSystem.abilityBonus`).
+- `apps/web/src/locales/en/create.json` — `window.*`.
+
+#### 2. What is missing now
+
+`AbilityBonusWindow` returns `null`, and `OriginStep` already draws it. A Dwarf (2014) with a Soldier (2024) gives `abilityBonusConflict` in `computed.warnings` (golden F, `golden-values.test.ts`), but the form never shows it and always stores the rules base's source: `manualCharacter` has no way to take another.
+
+#### 3. What it should look like when done
+
+1. With a species or race and a background that both raise ability scores, the Origin step shows an amber group "Two sources raise your abilities", a line saying so, a line "Using: …" and a "Choose" button. With one side only, or none, nothing shows.
+2. "Choose" opens a popup of the same title: "The species and the background both give ability bonuses. Use:", two tick boxes, "Species · Dwarf · 2014" with "CON +2" under it, and "Background · Soldier · 2024" with "+2 +1 or +1 +1 +1 over STR, DEX, CON" under it; then "In a campaign, the DM decides: one, or both." and "Apply".
+3. The ticks are the stored source: one, both or neither (ADR 017 item 2). The 2024 rules base starts with the background ticked, the 2014 one with the species (ADR 017 item 5).
+4. Each tick changes the live bar at once. Constitution typed as 14 on a fighter: hit points 10 + 2 = 12 with the background or neither; 10 + 3 = 13 with the species or both (the Dwarf's +2 makes 16).
+5. Both ticked says "Both are on. Each ruleset expects only one of them. You can keep both."; neither says "Neither is on. You can keep it that way."
+6. The warning stays whatever is ticked (ADR 017 item 4), and "Create" stays on (item 3). The saved character keeps the pick: its Constitution reads 16 for the species.
+7. The gate is green.
+
+#### 4. How to do it
+
+1. `manualAbilityBonus(character, index)` (module): the givers of each side by `bonusGivers` (ENG-35), each with the fixed increases and the patterns its grants hold at the character's level, and the stored source. `undefined` when a side gives none.
+2. `ManualCharacterAsk.bonusSource` is stored as `abilities.bonusSource`; absent, the rules base's (ENG-19).
+3. The form keeps the pick in `Draft.bonusSource` (absent until the person picks), passes it in `askOf`, and `NewCharacterPage` gives the window `form.abilityBonus(made.character, index)` as `bonus`.
+4. The window draws the group and, on "Choose", a `BottomSheet` with two `Tick`s. A tick stores the source of the sides ticked (`sourceOf`); the preview follows. Stat names come from the form's own stats.
+
+#### 5. Stored data
+
+Nothing stored changes shape: `systemData.abilities.bonusSource` has the four values since ENG-68. The form's draft is not stored.
+
+#### 6. What a person will see
+
+At 360×800, under the Background picker, an amber group: the title in bold, the warning, "Using: the background bonuses", and "Choose". The popup is a bottom sheet: the title, the intro, two tick rows (the label, the bonuses under it), the note that fits the ticks, the campaign line, and a full-width "Apply". Keys: `create.json` `window.title`, `warn`, `using.*`, `choose`, `intro`, `side`, `fixed`, `spread`, `plus`, `or`, `both`, `neither`, `campaign`, `apply`. Screenshots in the chat.
+
+#### 7. Tests
+
+- `packages/system-5e/test/manual-ability-bonus.test.ts` — 5 tests on golden F's mix: each side's givers and what they give; nothing for one side; the rules base's source by default; each of the four stored sources and the Constitution it gives (16, 14, 16, 14); the warning stays and nothing blocks.
+- `apps/web/test/create.test.ts` — 3 tests: the ask carries a source only when picked; the stored source; the window's content for a mix and none for one side.
+- `apps/web/test/ability-bonus-window.test.tsx` — 3 tests: the warning's text and "Choose"; the four "Using" lines and the rules base's word; nothing for one side or none.
+- `apps/web/e2e/create.spec.ts` — 1 test: the warning appears only with both sides; the popup's labels and bonuses; both, species only, neither and background in turn with the hit points 12 / 13 / 13 / 12 / 12; the warning stays; Create keeps the species' pick (Constitution 16 on the sheet).
+- Control numbers from: `srd-2014.ts` (Dwarf `con +2`), `srd-2024.ts` (Soldier `distribute` over str, dex, con with `[2, 1]` and `[1, 1, 1]`), golden B's base Constitution 14 (SPEC §6.7), hit points = the d10's maximum 10 + the Constitution modifier (floor((16 − 10) / 2) = 3, floor((14 − 10) / 2) = 2).
+
+#### 8. Checked against the source
+
+ADR 017 (items 1 to 5) and ENG-35's own rules (`ability-bonus.ts`): which side applies for each source, and the warning for every mix. The increases of the two entities are read from the packs' grants. The hit points follow the engine's own computation, hand-checked above. Nothing else to check.
+
+#### 9. Not in this ticket
+
+- The creation wizard's own window (phase 4): it shows the same thing.
+- In a campaign the DM decides (ADR 013 item 10): the popup says so; the table link makes it so.
+- A lineage the person has not chosen (a Hill Dwarf's +1 Wisdom): the form makes no choices, so the window shows what is known now. The choice is the sheet's badge (SHEET-36).
+
+#### 10. Rake check
+
+- Every rule lives in the module: which side gives, what each grants, and the stored source are `system-5e`'s; the window only draws them.
+- The core names no game: `StepProps.bonus` is the module's shape; the stats' names come from the packs' entries, not from a list in the component.
+- Prerequisites and warnings never block: "Create" stays on with every source; the warning stays (ADR 017 items 3, 4).
+- No look in a component, no literal string: parts, tokens and `create.json` keys only.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` 432 files, no fixes; `pnpm typecheck` clean; `pnpm test` 136 files, 1539 passed, 0 failed, 34.1 s (11 new, from 1528), then speed 2 passed; coverage statements 99.07 % (3961/3998), lines 99.82 % (3471/3477); `pnpm e2e` 80 passed, 0 failed, 1.3 min (1 new). Screenshots at 360×800 shown in the chat.
+
+Differences from the row: none. Technical choices (ADR 002): the ticks write the stored source at once, so "Apply" only closes the popup (the board draws it, and a person can still leave with Escape or the close button); the group shows "Using: …" so the choice is visible without opening the popup (ADR 017 item 1's "sign"); the word for the species is the rules base's (`terms`), as the Origin step's picker uses it.
+
+Found, not fixed: nothing.
+
+Changelog: "When your species or race and your background both raise ability scores, the new-character form warns and a popup lets you take one, both or neither; the live numbers follow each tick, and Create stays on."

@@ -8,12 +8,14 @@ import type { Computed, ContentIndex, SystemModule } from '@grimoire/engine';
 import type { Opened } from '@grimoire/schema';
 import {
   ABOUT_LISTS,
+  type AbilityBonusShown,
   type AboutListName,
   type AboutShown,
   type AttackShown,
   applyDamage,
   applyHealing,
   attackOutcome,
+  type BonusGiverShown,
   type CastWarning,
   type ChecksShown,
   type CoinsShown,
@@ -76,6 +78,7 @@ import {
   type MadeByHand,
   type ManualCharacterAsk,
   madeByHand,
+  manualAbilityBonus,
   openFifthEditionCharacter,
   openFifthEditionPack,
   type PathPart,
@@ -178,6 +181,8 @@ export interface ManualFormSystem {
   terms: (ruleset: AppRuleset) => EditionTerms;
   /** The character the form describes, at full hit points, and its numbers. */
   make: (ask: ManualCharacterAsk, index: ContentIndex<AppPack['entities'][number]>) => MadeByHand;
+  /** The ability score increases of two editions the person may choose between, or none (SHEET-29). */
+  abilityBonus: typeof manualAbilityBonus;
 }
 
 /** The systems the manual form offers; one for now (BRIEF P3 step 1). */
@@ -188,12 +193,15 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
     maxLevel: MAX_LEVEL,
     terms: (ruleset) => EDITION_RULES[ruleset].terms,
     make: madeByHand,
+    abilityBonus: manualAbilityBonus,
   },
 ];
 
 export type {
+  AbilityBonusShown,
   AboutListName,
   AttackShown,
+  BonusGiverShown,
   CastWarning,
   CoinsShown,
   ConditionsShown,

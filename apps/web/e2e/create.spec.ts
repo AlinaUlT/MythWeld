@@ -112,3 +112,73 @@ test('SHEET-28 the equipment step adds items, counts them and warns for the othe
   await page.getByRole('button', { name: c.create }).click();
   await expect(page).toHaveURL(/characters\/[0-9a-f-]{36}$/);
 });
+
+test('SHEET-29 two editions that both raise abilities: a warning, and a popup to tick one, both or neither', async ({
+  page,
+}, testInfo) => {
+  await page.goto('characters/new');
+  await page.getByRole('switch', { name: c.rules.mix }).check({ force: true });
+  await page.getByRole('checkbox', { name: 'SRD 5.1' }).check();
+  await page.getByLabel(c.name.label).fill('Mixed');
+  await page.getByLabel(c.origin.species).selectOption({ label: 'Dwarf · 2014' });
+  // One side only: no choice to make, no warning.
+  await expect(page.getByTestId('bonus-conflict')).toHaveCount(0);
+  await page.getByLabel(c.origin.background).selectOption({ label: 'Soldier · 2024' });
+  await page.getByLabel(c.classes.first).selectOption({ label: 'Fighter · 2024' });
+  await page.getByLabel('Constitution', { exact: true }).fill('14');
+
+  // Both sides give increases: the warning, the 2024 rules base's source in use.
+  const warning = page.getByTestId('bonus-conflict');
+  await expect(warning).toContainText('Two sources raise your abilities');
+  await expect(page.getByTestId('bonus-using')).toHaveText('Using: the background bonuses');
+  // Hit points are the die's maximum 10 + the Constitution modifier: 14 gives +2.
+  expect((await barOf(page))[1]).toBe('12');
+  await warning.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('bonus-warning.png') });
+
+  await warning.getByRole('button', { name: 'Choose' }).click();
+  const popup = page.getByRole('dialog', { name: 'Two sources raise your abilities' });
+  await expect(popup).toContainText(
+    'The species and the background both give ability bonuses. Use:',
+  );
+  const species = popup.getByRole('checkbox', { name: /Species · Dwarf · 2014/ });
+  const background = popup.getByRole('checkbox', { name: /Background · Soldier · 2024/ });
+  await expect(species).not.toBeChecked();
+  await expect(background).toBeChecked();
+  await expect(popup).toContainText('CON +2');
+  await expect(popup).toContainText('+2 +1 or +1 +1 +1 over STR, DEX, CON');
+  await expect(popup).toContainText('In a campaign, the DM decides: one, or both.');
+
+  // Both: the Dwarf's +2 Constitution counts, 16 gives +3; the note says each rules base expects one.
+  await species.check();
+  await expect(page.getByTestId('bonus-using')).toHaveText('Using: both');
+  await expect(popup).toContainText(
+    'Both are on. Each ruleset expects only one of them. You can keep both.',
+  );
+  expect((await barOf(page))[1]).toBe('13');
+  await page.screenshot({ path: testInfo.outputPath('bonus-popup-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('bonus-popup-light.png') });
+
+  // The species only: still 16.
+  await background.uncheck();
+  await expect(page.getByTestId('bonus-using')).toHaveText('Using: the species bonuses');
+  expect((await barOf(page))[1]).toBe('13');
+  // Neither: 14 again, and the note says so; the warning stays.
+  await species.uncheck();
+  await expect(page.getByTestId('bonus-using')).toHaveText('Using: neither');
+  await expect(popup).toContainText('Neither is on. You can keep it that way.');
+  expect((await barOf(page))[1]).toBe('12');
+  await expect(warning).toBeVisible();
+
+  // The species' bonuses, applied: Create stays on and the sheet keeps the pick.
+  await species.check();
+  await popup.getByRole('button', { name: 'Apply' }).click();
+  await expect(popup).toHaveCount(0);
+  await expect(warning).toBeVisible();
+  await page.getByRole('button', { name: c.create }).click();
+  await expect(page).toHaveURL(/characters\/[0-9a-f-]{36}$/);
+  await expect(page.locator('[data-path="abilities.con.score"]')).toHaveText(
+    'Constitution score16',
+  );
+});

@@ -74,5 +74,26 @@
     "prerequisiteNamed": "Needs {{label}}.",
     "prerequisiteScore": "Needs {{stat}} {{min}}.",
     "noStartingLanguages": "From another edition: this character gets no starting languages from its origin."
+  },
+  "window": {
+    "title": "Two sources raise your abilities",
+    "warn": "The {{species}} and the background both give ability bonuses. You can use one, both or neither.",
+    "using": {
+      "species": "Using: the {{species}} bonuses",
+      "background": "Using: the background bonuses",
+      "both": "Using: both",
+      "neither": "Using: neither"
+    },
+    "choose": "Choose",
+    "intro": "The {{species}} and the background both give ability bonuses. Use:",
+    "side": "{{side}} · {{names}} · {{ruleset}}",
+    "fixed": "{{stat}} {{amount, number(signDisplay: exceptZero)}}",
+    "spread": "{{patterns}} over {{from}}",
+    "plus": "+{{amount}}",
+    "or": " or ",
+    "both": "Both are on. Each ruleset expects only one of them. You can keep both.",
+    "neither": "Neither is on. You can keep it that way.",
+    "campaign": "In a campaign, the DM decides: one, or both.",
+    "apply": "Apply"
   }
 }

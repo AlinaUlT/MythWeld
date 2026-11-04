@@ -48,6 +48,12 @@ export interface ManualCharacterAsk {
   readonly scores: Readonly<Record<string, number>>;
   /** SHEET-28: the starting inventory, in the order listed. */
   readonly inventory?: readonly ManualItem[];
+  /**
+   * SHEET-29: whose ability score increases the character takes when its species and its
+   * background both give some (ADR 017): the species', the background's, both or neither. The
+   * rules base's source when the person did not pick.
+   */
+  readonly bonusSource?: FifthEditionCharacter['systemData']['abilities']['bonusSource'];
 }
 
 /** The method key the manual form's scores are stored with: typed, not made by a method. */
@@ -92,7 +98,10 @@ export function manualCharacter(ask: ManualCharacterAsk): FifthEditionCharacter 
         ...DEFAULT_HOUSE_RULES,
         hitPointMethods: [...DEFAULT_HOUSE_RULES.hitPointMethods],
       },
-      abilities: { method: MANUAL_SCORES_METHOD, bonusSource: rules.abilityBonusSource },
+      abilities: {
+        method: MANUAL_SCORES_METHOD,
+        bonusSource: ask.bonusSource ?? rules.abilityBonusSource,
+      },
       languageSource: rules.languageSource,
       advancement: { mode: 'milestone', xp: 0 },
       ...(ask.species !== undefined && { species: { id: ask.species } }),

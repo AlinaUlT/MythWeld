@@ -67,7 +67,7 @@ export function NewCharacterPage() {
   const { ruleset, mix } = draft;
   const stats = useMemo(() => statsOf(index, { ruleset, mix }), [index, ruleset, mix]);
   const unnamed = t('unnamed');
-  const { computed } = useMemo(
+  const made = useMemo(
     () =>
       form.make(
         askOf(
@@ -79,6 +79,11 @@ export function NewCharacterPage() {
       ),
     [form, draft, stats, index, unnamed],
   );
+  const { computed } = made;
+  const bonus = useMemo(
+    () => form.abilityBonus(made.character, index),
+    [form, made.character, index],
+  );
 
   const props: StepProps = {
     draft,
@@ -88,6 +93,7 @@ export function NewCharacterPage() {
     entities: index.entities,
     computed,
     stats,
+    bonus,
   };
 
   async function create() {

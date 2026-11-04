@@ -32,6 +32,7 @@ export * from './languages';
 export * from './level-up';
 export * from './list-line';
 export * from './manual';
+export * from './manual-ability-bonus';
 export * from './module';
 export * from './origin';
 export * from './pack';

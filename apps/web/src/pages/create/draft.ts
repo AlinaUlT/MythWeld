@@ -13,7 +13,12 @@ import {
 } from '@grimoire/engine';
 import type { EntityId, L10n } from '@grimoire/schema';
 import type { AppEntity, InstalledPack } from '../../content/packs';
-import type { AppRuleset, ManualCharacterAsk, ManualFormSystem } from '../../systems';
+import type {
+  AbilityBonusShown,
+  AppRuleset,
+  ManualCharacterAsk,
+  ManualFormSystem,
+} from '../../systems';
 
 /** What each step of the form is given. */
 export interface StepProps {
@@ -26,6 +31,8 @@ export interface StepProps {
   entities: readonly AppEntity[];
   computed: Computed<AppEntity>;
   stats: readonly FormStat[];
+  /** SHEET-29: the ability score increases of two editions to choose between; none when no choice. */
+  bonus: AbilityBonusShown | undefined;
 }
 
 /** A class the form names: its id, its level and, when picked, its subclass. */
@@ -62,6 +69,11 @@ export interface Draft {
   scores: Readonly<Record<string, string>>;
   /** SHEET-28: the starting inventory. */
   items: readonly DraftItem[];
+  /**
+   * SHEET-29: whose ability score increases the person picked (ADR 017); the rules base's source
+   * until they pick.
+   */
+  bonusSource?: AbilityBonusShown['source'];
 }
 
 /** What a score field counts as while it holds no whole number: the field's starting text. */
@@ -249,5 +261,6 @@ export function askOf(
     })),
     scores: Object.fromEntries(stats.map((key) => [key, scoreOf(draft, key)])),
     inventory: draft.items.map(({ uid, id, qty }) => ({ uid, itemId: id, qty })),
+    ...(draft.bonusSource !== undefined && { bonusSource: draft.bonusSource }),
   };
 }

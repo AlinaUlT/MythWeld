@@ -79,7 +79,7 @@ function isStarting(grant: GrantOf<FifthEditionEntity>): boolean {
  * gives its multiclass grants in place of its starting ones; a grant a feat is taken in place of
  * gives nothing.
  */
-function ruledGrants(
+export function ruledGrants(
   { systemData }: FifthEditionCharacter,
   entity: FifthEditionEntity,
 ): readonly GrantOf<FifthEditionEntity>[] {

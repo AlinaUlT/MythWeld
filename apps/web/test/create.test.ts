@@ -248,3 +248,43 @@ describe('SHEET-28 the equipment step', () => {
     expect(itemWarnings(only, both, old)).toEqual([{ key: 'missing', values: { id: old } }]);
   });
 });
+
+describe('SHEET-29 the ability bonus source', () => {
+  const mixed: Draft = {
+    ...newDraft(form, packs),
+    mix: true,
+    packs: ['srd-2014', 'srd-2024'],
+    species: 'srd-2014:species/dwarf',
+    background: 'srd-2024:background/soldier',
+    classes: [{ id: 'srd-2024:class/fighter', level: 1 }],
+  };
+  const stats = (draft: Draft) => statsOf(indexOf(draft), draft).map(({ key }) => key);
+  const makeWith = (draft: Draft) =>
+    form.make(askOf(draft, stats(draft), { ...made, unnamed: 'Unnamed' }), indexOf(draft));
+
+  it('asks for a source only when the person picked one', () => {
+    expect(askOf(mixed, stats(mixed), { ...made, unnamed: 'Unnamed' })).not.toHaveProperty(
+      'bonusSource',
+    );
+    const picked = askOf({ ...mixed, bonusSource: 'neither' }, stats(mixed), {
+      ...made,
+      unnamed: 'Unnamed',
+    });
+    expect(picked.bonusSource).toBe('neither');
+  });
+
+  it('stores the rules base’s source until a pick: the background’s for 2024', () => {
+    expect(makeWith(mixed).character.systemData.abilities.bonusSource).toBe('background');
+    expect(
+      makeWith({ ...mixed, bonusSource: 'both' }).character.systemData.abilities.bonusSource,
+    ).toBe('both');
+  });
+
+  it('gives the window its content for a mix, and none for one side', () => {
+    const shown = form.abilityBonus(makeWith(mixed).character, indexOf(mixed));
+    expect(shown?.sides.species.map(({ id }) => id)).toEqual(['srd-2014:species/dwarf']);
+    expect(shown?.sides.background.map(({ id }) => id)).toEqual(['srd-2024:background/soldier']);
+    const alone = { ...mixed, species: undefined };
+    expect(form.abilityBonus(makeWith(alone).character, indexOf(alone))).toBeUndefined();
+  });
+});

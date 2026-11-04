@@ -22,7 +22,7 @@ export type BonusSide = EditionRules['abilityBonusSource'];
  * The entities on each side that give the character increases: those of `originEntities` with an
  * `abilityScore` grant that applies at the character's level.
  */
-function bonusGivers(
+export function bonusGivers(
   character: FifthEditionCharacter,
   find: EntityFinder<FifthEditionEntity>,
   grantsBy: GrantsBy,

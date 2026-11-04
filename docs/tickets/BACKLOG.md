@@ -230,7 +230,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-26 | A character file imports through its checks | S | ✅ 2026-11-03 |
 | SHEET-27 | The manual form makes a character | M | ✅ 2026-10-29 |
 | SHEET-28 | The manual form's equipment step adds items | S | ✅ 2026-11-03 |
-| SHEET-29 | The manual form shows the ability bonus window | S | 🔲 |
+| SHEET-29 | The manual form shows the ability bonus window | S | ✅ 2026-11-04 |
 | **The sheet** | **the frame, the tabs, trackers, rolls** | | |
 | SHEET-30 | The sheet's frame pins the header above the dock | M | ✅ 2026-10-29 |
 | SHEET-31 | An entry's description opens in place | S | ✅ 2026-10-29 |
@@ -275,11 +275,6 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-78 | A second context menu on the same number opens its breakdown | XS | 🔲 |
 | SHEET-79 | A skill's stat is overridden from the sheet | S | 🔲 |
 
-- **SHEET-29** — found by ENG-37 (ADR 017): when the race or species and the background come from
-  different editions and both raise ability scores, the manual form (BRIEF P3 step 6) shows a
-  warning and a popup, or a sign that opens it: a checkbox for each, either, both or neither,
-  and "Create" stays on. ENG-68's warning `abilityBonusConflict` says when, its `source` what is
-  ticked. Board `V3-Conflict`. Phase 4's creation wizard shows the same.
 - **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates:
   `Computed.candidates['ac.base']`, each `{ key, value, steps }`; a pin that does not apply is not
   among them and warns `acCalcNotApplying`.
