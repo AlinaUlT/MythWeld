@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-70 · On a narrow phone the sheet's header no longer cuts the class line when the choices badge shows; the badges go under the class line when they do not fit beside it.
 - 2026-11-04 · SHEET-75 · A long web address in a pack's attribution, under See full description, now wraps inside the card.
 - 2026-11-04 · SHEET-77 · A button that cannot be pressed now (Items' One less at 1, a coin's − at 0, a form's Save with nothing to save) is drawn faint, with a not-allowed cursor.
 - 2026-11-04 · SHEET-78 · A right-click on a number on the sheet opens its breakdown every time, not only the first.

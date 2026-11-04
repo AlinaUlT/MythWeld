@@ -3,6 +3,8 @@
 // then Rest, the Edit switch and "⋯"; under them the stats row, and for a caster each casting
 // class's ability, spell save DC and spell attack (ADR 009 item 4). Every number is a
 // `SheetNumber`.
+// SHEET-70: the class line is never cut. With the choices badge shown, the badges go under it when
+// they do not fit beside it, and the header grows by that line (`min-h-16`).
 // SHEET-55: the inspiration stars have a row of their own between the name and the stats: beside
 // the badges at 360 px they pushed the class line out.
 import { STAT_TYPE } from '@grimoire/engine';
@@ -126,15 +128,15 @@ export function SheetHeader({ onChoices, onRest, onEdit, onActions }: HeaderActi
   const classLine = useClassLine(t);
   return (
     <Slot as="header" name="header" className="shrink-0 border-b border-line">
-      <div className="flex h-16 items-center gap-0.5 px-0.5">
+      <div className="flex min-h-16 items-center gap-0.5 px-0.5">
         <BackButton to={paths.characters} />
         <Token />
-        <div className="flex min-w-0 grow flex-col gap-0.5">
+        <div className="flex min-w-0 grow flex-col gap-0.5 py-1">
           <h1 className="truncate font-heading text-22 leading-tight font-bold">
             {character.name}
           </h1>
-          <span className="flex h-5 min-w-0 items-center gap-1.5">
-            <span className="truncate text-12 whitespace-nowrap text-muted">{classLine}</span>
+          <span className="flex min-h-5 min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <span className="text-12 text-muted">{classLine}</span>
             <Part
               as="span"
               name="chip"

@@ -2000,3 +2000,35 @@ test('SHEET-75 the attribution line in a full description wraps inside the card'
   await attribution.scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('attribution-dark.png') });
 });
+
+test('SHEET-70 the header keeps the class line whole beside the choices badge', async ({
+  page,
+}, testInfo) => {
+  const undecided = {
+    ...goldenB,
+    choices: {},
+    systemData: { ...goldenB.systemData, species: { id: 'srd-2024:species/human' } },
+  };
+  await saveRows(page, [undecided]);
+  await page.goto(`characters/${goldenB.id}`);
+  const header = page.getByRole('banner');
+  const badge = header.getByRole('button', { name: /choices to make/ });
+  await expect(badge).toHaveText('!8');
+  const classLine = header.getByText('Fighter 1', { exact: true });
+  await expect(classLine).toBeVisible();
+  // The class line is not cut, and nothing in the header's text column is cut or overlaps a button.
+  const cut = await classLine.evaluate((node) => node.scrollWidth - node.clientWidth);
+  expect(cut).toBeLessThanOrEqual(0);
+  const rest = await header.getByRole('button', { name: en.sheet.rest }).boundingBox();
+  const shown = await badge.boundingBox();
+  if (!rest || !shown) throw new Error('a box is missing');
+  expect(shown.x + shown.width).toBeLessThanOrEqual(rest.x);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({
+    path: testInfo.outputPath('header-badge-dark.png'),
+    clip: { x: 0, y: 0, width: 360, height: 220 },
+  });
+  // The badge answers as before.
+  await badge.click();
+  await expect(page.getByRole('dialog', { name: en.choices.title })).toBeVisible();
+});

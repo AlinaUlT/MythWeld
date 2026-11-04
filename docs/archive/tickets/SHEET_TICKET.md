@@ -8001,3 +8001,29 @@ Differences from the row: none. Technical choice (ADR 002): the class is Tailwin
 Found, not fixed: the entry's text and the "Source:" line have the same plain break rule; no text of the packs has a word that long today, so no row.
 
 Changelog: "A long web address in a pack's attribution, under See full description, now wraps inside the card."
+
+---
+
+### SHEET-70 The header keeps the class line whole beside the choices badge · XS
+
+**Hat:** The class line is never cut
+**Where:** `apps/web/src/sheet/SheetHeader.tsx` — the class line's row
+**Depends on:** SHEET-36 (the choices badge), SHEET-30 (the header)
+**Screen:** Yes — the header of board `V3-Sheet` (the board draws "Fighter 1" with no badge; the badges' place is the row's).
+
+**What it should look like when done:**
+1. At 360×800, with the choices badge shown (golden B with its choices taken out: "!8"), the class line reads "Fighter 1" in full, with no "…".
+2. The edition chip and the choices badge sit beside the class line when they fit, and on a line under it when they do not; neither runs under the Rest button.
+3. With no choices badge the header is the height it was (64 px) and nothing moves.
+4. The page stays 360 px wide.
+5. The gate is green.
+
+**Tests:** `apps/web/e2e/sheet.spec.ts` — 1 test: the character of SHEET-36's test; the badge reads "!8"; the class line's `scrollWidth` is not above its `clientWidth` (it was 18 px above before the change, the "Fig…" of the row); the badge ends before the Rest button begins; the page is 360 px; the badge still opens the choices panel. Control values: the text "Fighter 1" and "!8" are the sheet's own and SHEET-36's.
+**What came out of it:**
+Quality gate, 2026-11-04: `pnpm lint` 444 files, no fixes; `pnpm typecheck` clean; `pnpm test` 141 files, 1588 passed, 0 failed, 38.0 s (0 new), then speed 2 passed; coverage statements 99.04 % (4051/4090), lines 99.77 % (3551/3559); `pnpm e2e` 88 passed, 0 failed, 1.8 min (1 new). Screenshot at 360×800 shown in the chat.
+
+Differences from the row: none. Technical choice (ADR 002): the row offers "the line and the badges wrap or the badge moves"; the row of the class line and the badges wraps (the class line is not cut and may itself wrap, which a character with several classes needs), and the header's height is a minimum (`min-h-16`), so it grows by one line only while the badges do not fit. The header's 64 px with no badge is unchanged (the unit and browser tests that measure it pass untouched).
+
+Found, not fixed: nothing.
+
+Changelog: "On a narrow phone the sheet's header no longer cuts the class line when the choices badge shows; the badges go under the class line when they do not fit beside it."
