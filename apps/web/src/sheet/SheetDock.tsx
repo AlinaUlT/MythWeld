@@ -15,6 +15,14 @@ import { SHEET_TABS, type SheetTabId } from './tabs';
 /** The CSS variable that holds the dock's height while the sheet is open. */
 export const DOCK_HEIGHT_VAR = '--dock-height';
 
+/**
+ * SHEET-81: the CSS variable that holds how far the toast rises above its usual place while the
+ * sheet is open, so it sits over the round buttons (the dice button and the "+", `size-14`, 56 px,
+ * 16 px above the dock) and not on them: their height and an 8 px gap.
+ */
+export const TOAST_LIFT_VAR = '--toast-lift';
+const TOAST_LIFT_PX = 64;
+
 /** The share of the bar, in percent, that the hit points and the temporary ones each fill. */
 export function barShares(current: number, max: number, temp: number) {
   const whole = Math.max(max, current) + temp;
@@ -73,11 +81,13 @@ export function SheetDock({ tab, sections = [], onTab, onNumberPad }: DockProps)
     const root = document.documentElement;
     const write = () => root.style.setProperty(DOCK_HEIGHT_VAR, `${element.offsetHeight}px`);
     write();
+    root.style.setProperty(TOAST_LIFT_VAR, `${TOAST_LIFT_PX}px`);
     const observer = new ResizeObserver(write);
     observer.observe(element);
     return () => {
       observer.disconnect();
       root.style.removeProperty(DOCK_HEIGHT_VAR);
+      root.style.removeProperty(TOAST_LIFT_VAR);
     };
   }, []);
 

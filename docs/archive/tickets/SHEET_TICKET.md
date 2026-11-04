@@ -7898,3 +7898,29 @@ Differences from the row: none. The focus events stay for the case where the foc
 Found, not fixed: nothing.
 
 Changelog: "The toast after a change goes after 5 seconds also when the toast before it was undone."
+
+---
+
+### SHEET-81 The toast stops covering the round buttons · XS
+
+**Hat:** The toast sits above the round buttons
+**Where:** `apps/web/src/shared/ToastHost.tsx` — the toast's `bottom`; `apps/web/src/sheet/SheetDock.tsx` — writes `--toast-lift` while the sheet is open
+**Depends on:** SHEET-30 (the dock and the dice button), SHEET-52 (the "+"), SHEET-82 (the timer)
+**Screen:** Yes — the sheet's toast (board `V3-Features` draws the toast and the dice button at the same height, 132 px from the bottom, so the board does not settle it; the choice is in §11).
+
+**What it should look like when done:**
+1. On the sheet the toast sits 64 px higher than before: its bottom edge is above the top edges of the dice button and the "+" (16 px above the dock, 56 px high, plus an 8 px gap).
+2. While the toast shows, a tap on the dice button and a tap on the "+" work at once.
+3. Off the sheet (no dock) the toast stays where it was.
+4. With a panel open the toast still moves to the top (SHEET-71).
+5. The gate is green.
+
+**Tests:** `apps/web/e2e/sheet.spec.ts` — 1 new test on golden B in edit mode: after a coin change the toast's bottom edge is at or above both buttons' top edges, its width is 328, and a click on each button (1 s limit) opens its panel; it failed on the old code (toast bottom 670, buttons' top 614). The SHEET-30 e2e test now expects the toast at 16 + 64 px above the dock. `apps/web/test/sheet.test.tsx`, `toast.test.tsx` — the toast's class string. Control values: 56 px is `size-14` of the two buttons; 16 px their gap above the dock, both from their own files.
+**What came out of it:**
+Quality gate, 2026-11-04: `pnpm lint` 443 files, no fixes; `pnpm typecheck` clean; `pnpm test` 140 files, 1583 passed, 0 failed, 38.4 s (0 new), then speed 2 passed; coverage statements 99.04 % (4051/4090), lines 99.77 % (3551/3559); `pnpm e2e` 84 passed, 0 failed, 1.8 min (1 new). Screenshot at 360×800 shown in the chat.
+
+Differences from the row: none. Technical choice (ADR 002): the row offers "one moves, or the toast leaves their columns"; the toast moves up, because it keeps its full width and the "+" is in the left column and the dice button in the right one, so no column is free. The dock writes the lift (`--toast-lift`, removed when the sheet closes), so a page with no round buttons keeps the old place. Nothing is hard-coded in a skin-able look: it is a position, not a colour or a font.
+
+Found, not fixed: nothing.
+
+Changelog: "On the sheet the toast with Undo now sits above the dice button and the + button, so both can be tapped while it shows."

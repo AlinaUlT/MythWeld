@@ -101,13 +101,13 @@ test('SHEET-30 the sheet pins the header above the dock, every number from Compu
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
 
-  // The toast sits 16 px above the dock.
+  // The toast sits 16 px above the dock, and 64 px higher (SHEET-81) so the round buttons are free.
   const lift = await page.evaluate(() => {
     const status = document.querySelector('[role="status"]');
     return status === null ? undefined : getComputedStyle(status).bottom;
   });
   const dockTop = await page.locator('[data-skin-slot="dock"]').boundingBox();
-  expect(lift).toBe(`${800 - (dockTop?.y ?? 0) + 16}px`);
+  expect(lift).toBe(`${800 - (dockTop?.y ?? 0) + 16 + 64}px`);
 
   await page.screenshot({ path: testInfo.outputPath('sheet-dark.png') });
   await page.evaluate(() => document.documentElement.classList.remove('dark'));
@@ -1896,4 +1896,34 @@ test('SHEET-82 a toast goes after its time once the toast before it was undone',
   await gold.getByRole('button', { name: 'Add 1 gold' }).click();
   await expect(undo).toBeVisible();
   await expect(undo).toBeHidden({ timeout: 7000 });
+});
+
+test('SHEET-81 the toast sits above the dice button and the "+", which stay tappable', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=gear`);
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  const add = page.getByRole('button', { name: 'Add to the sheet' });
+  const dice = page.getByRole('button', { name: en.sheet.dice });
+  const gold = page.getByRole('tabpanel').locator('[data-coin="gp"]');
+  await gold.getByRole('button', { name: 'Add 1 gold' }).click();
+  await expect(page.getByRole('button', { name: en.toast.undo })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('toast-over-buttons-dark.png') });
+
+  // The toast's bottom edge is above both buttons' top edges; neither button is covered.
+  const toast = await page.getByRole('status').boundingBox();
+  const addBox = await add.boundingBox();
+  const diceBox = await dice.boundingBox();
+  if (!toast || !addBox || !diceBox) throw new Error('a box is missing');
+  expect(toast.y + toast.height).toBeLessThanOrEqual(Math.min(addBox.y, diceBox.y));
+  expect(toast.width).toBe(360 - 32);
+
+  // A tap on each works at once, while the toast shows.
+  await dice.click({ timeout: 1000 });
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await add.click({ timeout: 1000 });
+  await expect(page.getByRole('dialog', { name: 'Add to the sheet' })).toBeVisible();
 });

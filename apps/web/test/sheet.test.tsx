@@ -177,7 +177,7 @@ describe('SHEET-30 the dock', () => {
 
   it('lifts the toast above the dock by its height', () => {
     expect(renderToStaticMarkup(<ToastHost />)).toContain(
-      'bottom-[calc(var(--dock-height,0px)+16px)]',
+      'bottom-[calc(var(--dock-height,0px)+16px+var(--toast-lift,0px))]',
     );
   });
 });

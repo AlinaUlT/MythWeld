@@ -275,7 +275,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-78 | A second context menu on the same number opens its breakdown | XS | 🔲 |
 | SHEET-79 | A skill's stat is overridden from the sheet | S | 🔲 |
 | SHEET-80 | A custom entry is edited after it is added | S | 🔲 |
-| SHEET-81 | The toast stops covering the round buttons | XS | 🔲 |
+| SHEET-81 | The toast stops covering the round buttons | XS | ✅ 2026-11-04 |
 | SHEET-82 | The toast goes after its time once Undo was tapped | XS | ✅ 2026-11-04 |
 
 - **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates:
@@ -295,7 +295,6 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 - **SHEET-78** — found by SHEET-34: `usePress` (`SheetNumber.tsx`) sets its long-press flag when the context menu opens a breakdown and clears it only on a left press or a click, so a second right-click on the same number, after the breakdown closed, does nothing. Touch is not affected (a pointer down clears it). The flag is cleared when the breakdown opens or closes.
 - **SHEET-79** — found by SHEET-34: an override of a key path (ENG-43: a skill's stat, `skills.<key>.ability`) applies only when its value is one of the path's keys (`overrideNotAKey`). SHEET-34's form edits number paths only. The Main tab draws a skill's stat only as its group's heading, and `Computed.keys` holds a key and its steps, not the keys it may take. The row gives a skill a place to open its stat's breakdown, with the stats as the choice, and stores the key (`setOverride` takes a key then, or a twin action does).
 - **SHEET-80** — found by SHEET-52: a custom item (a row's `custom` name and weight, its `note`) and a custom feature (a `character:feat/<slug>` entity's `name` and `text`) cannot be changed once added; a typing error means remove and add again. The panel's forms open on the entry with its words, and a save is one change with Undo (a custom feature's id stays, SPEC §5.1).
-- **SHEET-81** — found by SHEET-57: the toast (`ToastHost.tsx`) sits 16 px above the dock over its whole width, and the dice button and the "+" (`SheetDice.tsx`, `SheetAdd.tsx`) sit at the same height at its ends, so for the toast's 5 seconds neither can be tapped (a test's click on the "+" waited for the toast to go). The toast and the round buttons do not share a place: one moves, or the toast leaves their columns.
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
 

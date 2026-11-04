@@ -7,6 +7,8 @@
 // SHEET-71: it sits above a panel's dim (`z-20`; the panels are `z-10`), so "Undo" of a change made
 // inside a panel is reachable at once. While a panel is open it moves to the top of the screen, so
 // it covers none of the panel's own buttons.
+// SHEET-81: on the sheet it also rises by `--toast-lift` (the dock writes it), so the round buttons at
+// the ends of that row, the dice button and the "+", stay free to tap while it shows.
 // SHEET-82: a tapped "Undo" is removed with its toast and a removed element sends no blur, so the
 // hold is read from where the focus is each time the toast changes, not only from focus events.
 import type { LogEntry } from '@grimoire/schema';
@@ -82,7 +84,7 @@ export function ToastHost() {
     <div
       ref={host}
       role="status"
-      className="pointer-events-none fixed inset-x-4 z-20 bottom-[calc(var(--dock-height,0px)+16px)] in-[body:has([aria-modal=true])]:top-4 in-[body:has([aria-modal=true])]:bottom-auto"
+      className="pointer-events-none fixed inset-x-4 z-20 bottom-[calc(var(--dock-height,0px)+16px+var(--toast-lift,0px))] in-[body:has([aria-modal=true])]:top-4 in-[body:has([aria-modal=true])]:bottom-auto"
       onFocus={() => setHeld(true)}
       onBlur={() => setHeld(false)}
     >
