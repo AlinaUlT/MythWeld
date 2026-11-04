@@ -244,7 +244,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-40 | The number pad changes the hit points | M | ✅ 2026-11-04 |
 | SHEET-41 | Concentration shows until it ends | XS | ✅ 2026-11-04 |
 | SHEET-42 | Conditions are set from the sheet | S | ✅ 2026-11-04 |
-| SHEET-43 | The death saves tracker follows a dying character | S | 🔲 |
+| SHEET-43 | The death saves tracker follows a dying character | S | ✅ 2026-11-04 |
 | SHEET-44 | The Combat tab lists the attacks | S | 🔲 |
 | SHEET-45 | The Rest frames show what comes back | M | 🔲 |
 | SHEET-46 | The Spells tab shows the slot grid | M | ✅ 2026-11-03 |
@@ -281,14 +281,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 - **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates:
   `Computed.candidates['ac.base']`, each `{ key, value, steps }`; a pin that does not apply is not
   among them and warns `acCalcNotApplying`.
-- **SHEET-43** — found by ENG-58: the death save tracker calls `rollDeathSave` (`death-saves.ts`)
-  with the kept d20 face and the total the dice panel gives (`d20Formula(deathSave.mode)`, with
-  the person's bonuses); its outcome's `status` (`dying`, `stable`, `dead`, `up`) says what to
-  show, and `isStable`, `isDead` give the state at any time. First aid's Medicine check, Spare the
-  Dying and 2014's knocking out call `stabilize`; a revival spell calls `revive` with `1` or
-  `max`. A stable character's 1 hit point after 1d4 hours is the person's `applyHealing` of 1:
-  nothing keeps the time. Found by ENG-65: while `isKnockedOut`, the sheet offers first aid
-  (`firstAid`): someone else's DC 10 Wisdom (Medicine) check, recorded as a success.
 - **SHEET-44** — the P4 prompt's Combat tab, board `V3-Sheet`: each attack with its mastery
   (ENG-16); tapping it rolls through SHEET-39.
 - **SHEET-45** — board `V3-Rest`. Found by ENG-21: a rest is one action and one entry, `shortRest`

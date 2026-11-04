@@ -1,1 +1,21 @@
-{}
+{
+  "title": "Death saves",
+  "successes": "Successes",
+  "failures": "Failures",
+  "roll": "Roll death save",
+  "stabilize": "Stabilize",
+  "stabilizeHint": "A success on first aid (DC 10 Wisdom (Medicine)) or a spell like Spare the Dying stabilizes the character.",
+  "stable": "Stable",
+  "stableHint": "It makes no death saves. After 1d4 hours it regains 1 hit point.",
+  "regain": "Regain 1 hit point",
+  "knockedOut": "Knocked out at 1 hit point",
+  "knockedOutHint": "Someone else can give first aid: a DC 10 Wisdom (Medicine) check ends the knock-out.",
+  "firstAid": "First aid given",
+  "dead": "Dead",
+  "deadHint": "A revival brings it back with the hit points the spell gives.",
+  "reviveOne": "Revive with 1 hit point",
+  "reviveMax": "Revive with full hit points",
+  "stillDead": "Exhaustion is still at its highest level: the character is still dead.",
+  "refused": "That changes nothing now.",
+  "count": "{{label}}: {{count}} of {{max}}"
+}

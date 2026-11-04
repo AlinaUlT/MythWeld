@@ -40,6 +40,7 @@ export * from './rulesets';
 export * from './sheet-checks';
 export * from './sheet-choices';
 export * from './sheet-conditions';
+export * from './sheet-death-saves';
 export * from './sheet-features';
 export * from './sheet-gear';
 export * from './sheet-header';

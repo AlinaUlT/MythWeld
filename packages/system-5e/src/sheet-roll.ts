@@ -11,7 +11,14 @@ import { ROLL_MODE_PATHS, ROLL_MODE_SIGNS, ROLL_TARGETS } from './rolls';
 // `d20Formula(mode)` and reads the kept face with `attackOutcome` (attacks.ts).
 
 /** The d20 tests a number of the sheet rolls. */
-export type RollKind = 'check' | 'save' | 'skill' | 'init' | 'weaponAttack' | 'spellAttack';
+export type RollKind =
+  | 'check'
+  | 'save'
+  | 'skill'
+  | 'init'
+  | 'weaponAttack'
+  | 'spellAttack'
+  | 'deathSave';
 
 /** What a weapon attack rolls for damage: the weapon's dice and the path of the bonus it adds. */
 export interface RollDamage {
@@ -24,8 +31,11 @@ export interface RollDamage {
 /** A d20 test: the number it adds and how its mode is made. */
 export interface RollTest {
   kind: RollKind;
-  /** The path of the number the roll adds to the d20: the number the sheet shows. */
-  bonus: string;
+  /**
+   * The path of the number the roll adds to the d20: the number the sheet shows. A death save adds
+   * none (SHEET-43), and its roll is named by its mode's path.
+   */
+  bonus?: string;
   /** The path of the test's roll mode: 1 advantage, −1 disadvantage, 0 neither (ENG-34). */
   mode: string;
   /** The `roll.*` targets a situational effect names to apply to this test. */
@@ -45,6 +55,9 @@ export function fifthEditionRollTest(
   path: string,
 ): RollTest | undefined {
   if (!has(computed, path)) return undefined;
+  if (path === ROLL_MODE_PATHS.deathSave) {
+    return { kind: 'deathSave', mode: path, targets: ROLL_TARGETS.deathSave() };
+  }
   if (path === 'init.total') {
     return { kind: 'init', bonus: path, mode: ROLL_MODE_PATHS.init, targets: ROLL_TARGETS.init() };
   }

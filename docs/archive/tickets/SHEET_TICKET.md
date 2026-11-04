@@ -6932,3 +6932,89 @@ Found, not fixed: the toast's Undo is hidden under an open panel (SHEET-71 has i
 Changelog: "The Damage and Heal buttons open a number pad: type an amount, see the hit points before and after, and apply it, with Undo; Temp HP too, a knock-out where your rules have it, and the concentration save after damage."
 
 ---
+
+### SHEET-43 The death saves tracker follows a dying character
+
+**Hat:** The death saves tracker follows a dying character
+**Depends on:** SHEET-30 (the section's place), SHEET-39 (the roll dialog), SHEET-23 (Undo), SHEET-40 (the damage that brings a character down), ENG-58 (`rollDeathSave`, `stabilize`, `revive`), ENG-65 (the knock-out, `firstAid`), ENG-67 (exhaustion is death)
+**Size:** S
+**Screen:** Yes — the Combat tab of `docs/design/BRIEF.md` Part 2 P4 ("death saves"); board `V3-Sheet` draws only the Main tab, so the card follows the other tabs' cards. SPEC §6.4, §7.2.
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/DeathSaves.tsx` — changes: the section SHEET-30 left empty.
+- `packages/system-5e/src/sheet-death-saves.ts` — new: `fifthEditionDeathSaves` (where the character stands), `DEATH_SAVE_PATH`.
+- `packages/system-5e/src/sheet-roll.ts` — changes: the death save is a d20 test on its mode's path, with no number added (`RollKind` `deathSave`, `RollTest.bonus` optional).
+- `apps/web/src/shared/RollDialog.tsx`, `apps/web/src/sheet/roll.ts` — change: a death save's roll is applied with `rollDeathSave` and says what it did.
+- `apps/web/src/systems.ts` — changes: `SheetSystem.deathSaves`, `deathSavePath`, `rollDeathSave`, `stabilize`, `firstAid`, `revive`.
+- `apps/web/src/locales/en/deathSaves.json`, `roll.json` — the words.
+
+#### 2. What is missing now
+
+Measured on `f29a0a7`: `DeathSaves` returns `null`; a character at 0 hit points has no tracker, no way to roll a death save, stabilize, revive or give first aid from the sheet.
+
+#### 3. What it should look like when done
+
+1. The card "Death saves" shows on the Combat tab for a character that is dying, stable, dead or knocked out, and for no one else.
+2. Dying (0 hit points, not stable): "Successes" and "Failures", three circles each, filled by the stored counts; "Roll death save" and "Stabilize".
+3. "Roll death save" opens the roll dialog on the death save's mode, `1d20 (Death save)`, with the mode's sources and the effects that name a death save (`roll.deathSave`, `roll.save.all`). Its Roll applies `rollDeathSave` with the kept d20 face and the total: a natural 1 is two failures ("Natural 1: two failures."), a 20 is 1 hit point back, 10 or more a success, below 10 a failure; the third success says "stable", the third failure "dead". The dialog names the result under the dice, and the card follows at once.
+4. "Stabilize" is `stabilize` (first aid, Spare the Dying, 2014's knock-out): one change with its Undo toast, and the card reads "Stable": "It makes no death saves. After 1d4 hours it regains 1 hit point."
+5. Stable: "Regain 1 hit point" is the person's `applyHealing` of 1 (nothing keeps the time); the card goes.
+6. Dead (three failures, or exhaustion at its highest level, ENG-67): "Dead", and "Revive with 1 hit point" and "Revive with full hit points" (`revive`). A 2024 revival lowers exhaustion by one level (SRD 5.2.1), so a character dead of it is back; a revival `revive` refuses says so ("Exhaustion is still at its highest level: the character is still dead.").
+7. Knocked out at 1 hit point (2024): "Knocked out at 1 hit point" and "First aid given" (`firstAid`), recorded as a success of someone else's DC 10 Wisdom (Medicine) check.
+8. Each change is one entry with its Undo toast: "Death save rolled", "Stabilized", "Healed", "Revived", "First aid given".
+9. The gate is green.
+
+#### 4. How to do it
+
+1. `fifthEditionDeathSaves` reads the stored hit points, counts and knock-out mark through the finder of what `compute()` left in (`applyingFinder`, so exhaustion the character is immune to kills no one, SHEET-64): dead, dying, stable, knocked out, or up.
+2. `fifthEditionRollTest` answers the path `deathSave.mode` with a test of kind `deathSave` and no `bonus`; `rollTestWith` adds 0 and logs the roll under the mode's path.
+3. `RollDialog`, after a death save's roll, runs `system.rollDeathSave` with the kept face and the total through `perform`, and shows the sentence for the outcome.
+
+Technical choices (ADR 002): the roll uses the roll dialog, so the mode, its sources and the situational effects are SHEET-39's, not a second copy; a death save adds no number, as both SRDs say; the dialog allows another roll, each one a save, and a refusal (stable, dead) is said in its place; the card is hidden above 0 hit points, so a healthy character's Combat tab has no empty card.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+The card on the Combat tab at 360×800; the dialog's "Natural N" and the sentence. Keys in `deathSaves`: `title`, `successes`, `failures`, `count`, `roll`, `stabilize`, `stabilizeHint`, `stable`, `stableHint`, `regain`, `knockedOut`, `knockedOutHint`, `firstAid`, `dead`, `deadHint`, `reviveOne`, `reviveMax`, `stillDead`, `refused`; in `roll`: `deathSave`, `deathResult.*`, `deathRefused.*`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-death-saves.test.ts` — 7 tests: up above 0 hit points; dying with the stored counts; stable; dead at three failures; knocked out with the mark; dead of exhaustion 6 and not at 5; the death save's roll test on `deathSave.mode` with the save targets.
+- `apps/web/test/death-saves.test.tsx` — 7 tests: no card above 0; the dying card's circles (2 of 3, 1 of 3) and buttons; stable; dead; dead of exhaustion; knocked out; the dialog's `1d20 (Death save)`.
+- `apps/web/e2e/sheet.spec.ts` — 4 tests: a natural 1 (a zero from the secure source gives face 1) is two failures, a second roll is death, a revival and Undo; stabilize and regain 1 hit point; first aid; exhaustion 6 and a 2024 revival to 5.
+- Control values: SRD 5.1 and 5.2.1 "Death Saving Throws" (ENG-58 §8): 10 or higher a success, a 1 is two failures, three of either ends it; golden B (SPEC §6.7), 12 hit points.
+
+#### 8. Checked against the source
+
+SRD 5.1, "Death Saving Throws" and "Stabilizing a Creature": a DC 10 Wisdom (Medicine) check stabilizes; a stable creature regains 1 hit point after 1d4 hours. SRD 5.2.1, the same, and "Knocking Out a Creature": first aid ends it. SRD 5.2.1, Exhaustion: a revived creature has 1 fewer level (ENG-66 §8).
+
+#### 9. Not in this ticket
+
+- A flat bonus the person adds to a death save (Bless): the sheet has no number for it; only effects that name a death save apply.
+- The time of 1d4 hours: nothing keeps it.
+- The roll's target: the dialog shows the total; the module applies the 10.
+
+#### 10. Rake check
+
+- **The module owns the rules:** the states, the faces and the counts are the module's actions; the screen only calls them.
+- **Missing is not broken:** no entry is needed; exhaustion is read by its key.
+- **A person's saved data:** each change is a logged, undoable entry.
+- **No visible literal, no look literal:** `deathSaves` and `roll` keys; parts and tokens.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` 407 files, no fixes; `pnpm typecheck` clean; `pnpm test` 122 files, 1461 passed, 0 failed, 29.6 s (14 new, from 1447), then speed 2 passed; coverage statements 99.08 % (3810/3845), lines 99.82 % (3338/3344); `pnpm e2e` 67 passed, 0 failed, 1.0 min (4 new). Screenshot at 360×800 shown in the chat.
+
+Differences from §3: none. The e2e for exhaustion shows a revival does not stay refused in 2024 (it lowers the level to 5), so the `stillDead` message is tested only in the module (ENG-67), not on the screen.
+
+Found, not fixed: the roll dialog and the toast: a revival's Undo toast is under the Roll dialog while it is open (SHEET-71's fault again).
+
+Changelog: "The Combat tab follows a dying character: death save circles, a roll in the roll dialog that applies the result, Stabilize, first aid for a knocked-out character, and a revival for the dead."
+
+---

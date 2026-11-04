@@ -20,6 +20,9 @@ import {
   conditionsToAdd,
   criticalDamage,
   type DamageOutcome,
+  DEATH_SAVE_PATH,
+  type DeathSaveOutcome,
+  type DeathSavesShown,
   d20Formula,
   EDITION_RULES,
   type EditionTerms,
@@ -36,6 +39,7 @@ import {
   fifthEditionChecks,
   fifthEditionClassLine,
   fifthEditionConditions,
+  fifthEditionDeathSaves,
   fifthEditionFeatures,
   fifthEditionGear,
   fifthEditionHitPoints,
@@ -47,6 +51,7 @@ import {
   fifthEditionRollTest,
   fifthEditionSituational,
   fifthEditionSpells,
+  firstAid,
   type GearShown,
   gainInspiration,
   type HeaderCasting,
@@ -67,6 +72,8 @@ import {
   regainSlot,
   removeConditionOf,
   removeRow,
+  revive,
+  rollDeathSave,
   rollInitiative,
   rollModeOf,
   type Situational,
@@ -79,6 +86,7 @@ import {
   setTempHp,
   spendInspiration,
   spendSlot,
+  stabilize,
 } from '@grimoire/system-5e';
 
 /** A character of any system the app carries. */
@@ -166,6 +174,8 @@ export type {
   AboutListName,
   ConditionsShown,
   DamageOutcome,
+  DeathSaveOutcome,
+  DeathSavesShown,
   FeatureGroup,
   GearShown,
   MadeByHand,
@@ -210,6 +220,18 @@ export interface SheetSystem {
   applyDamage: typeof applyDamage;
   applyHealing: typeof applyHealing;
   setTempHp: typeof setTempHp;
+  /** Where the character stands for the death saves, and the counts (SHEET-43). */
+  deathSaves(
+    character: AppCharacter,
+    computed: AppComputed,
+    find: (id: string) => FifthEditionEntity | undefined,
+  ): DeathSavesShown;
+  /** The path a death save rolls by: the roll dialog is opened with it. */
+  deathSavePath: string;
+  rollDeathSave: typeof rollDeathSave;
+  stabilize: typeof stabilize;
+  firstAid: typeof firstAid;
+  revive: typeof revive;
   /** The knock-out the pad offers for this much damage: the edition has it and it would drop to 0. */
   knockOutOffered: typeof knockOutOffered;
   /** The path of the saving throw that keeps concentration after damage, or none. */
@@ -279,6 +301,12 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     spells: fifthEditionSpells,
     spendSlot,
     regainSlot,
+    deathSaves: fifthEditionDeathSaves,
+    deathSavePath: DEATH_SAVE_PATH,
+    rollDeathSave,
+    stabilize,
+    firstAid,
+    revive,
     applyDamage,
     applyHealing,
     setTempHp,

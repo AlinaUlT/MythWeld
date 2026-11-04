@@ -31,5 +31,19 @@
   "rollDamage": "Roll damage",
   "rollCritical": "Roll critical damage",
   "damageTotal": "Damage {{total}}",
-  "failed": "The roll could not be made."
+  "failed": "The roll could not be made.",
+  "deathSave": "Death save",
+  "deathResult": {
+    "revived": "Natural 20: back up with 1 hit point.",
+    "twoFailures": "Natural 1: two failures.",
+    "failure": "A failure.",
+    "success": "A success.",
+    "stable": "Three successes: the character is stable.",
+    "dead": "Three failures: the character is dead."
+  },
+  "deathRefused": {
+    "dead": "The character is dead.",
+    "notDying": "The character has hit points: it makes no death saves.",
+    "stable": "The character is stable: it makes no death saves."
+  }
 }

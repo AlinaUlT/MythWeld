@@ -1064,3 +1064,119 @@ test('SHEET-40 damage that drops a concentrating character to 0 ends the concent
   await key(page, 'Done').click();
   await expect(page.locator('[data-concentration]')).toHaveCount(0);
 });
+
+/** Golden B with its hit points, death saves and knock-out stored as given. */
+function downed(patch: {
+  hp?: { current: number; temp: number };
+  deathSaves?: { success: number; failure: number; stable: boolean };
+  knockedOut?: 'resting' | 'interrupted';
+  conditions?: { id: string; level?: number }[];
+}) {
+  const { conditions, ...state } = patch;
+  return {
+    ...goldenB,
+    state: { ...goldenB.state, ...(conditions !== undefined && { conditions }) },
+    systemData: {
+      ...goldenB.systemData,
+      state: { ...goldenB.systemData.state, ...state },
+    },
+  };
+}
+
+test('SHEET-43 a dying character rolls death saves: a natural 1 is two failures, the third is death, a revival brings it back', async ({
+  page,
+}, testInfo) => {
+  // Every die roll gives face 1 while this flag is set (a zero from the secure source).
+  await page.addInitScript(() => {
+    const real = crypto.getRandomValues.bind(crypto);
+    (window as unknown as { zeroDice: boolean }).zeroDice = false;
+    crypto.getRandomValues = ((array: ArrayBufferView) => {
+      if ((window as unknown as { zeroDice: boolean }).zeroDice) {
+        new Uint8Array(array.buffer, array.byteOffset, array.byteLength).fill(0);
+        return array;
+      }
+      return real(array as never);
+    }) as typeof crypto.getRandomValues;
+  });
+  await saveRows(page, [
+    downed({ hp: { current: 0, temp: 0 }, deathSaves: { success: 0, failure: 0, stable: false } }),
+  ]);
+  await page.goto(`characters/${goldenB.id}?tab=combat`);
+  const card = page.locator('[data-death-state]');
+  await expect(card).toHaveAttribute('data-death-state', 'dying');
+  await expect(card.getByTestId('death-failure')).toHaveAttribute('aria-label', 'Failures: 0 of 3');
+  await page.screenshot({ path: testInfo.outputPath('death-dark.png') });
+
+  await page.evaluate(() => {
+    (window as unknown as { zeroDice: boolean }).zeroDice = true;
+  });
+  await card.getByRole('button', { name: 'Roll death save' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByTestId('roll-formula')).toHaveText('1d20 (Death save)');
+  await dialog.getByRole('button', { name: en.roll.roll, exact: true }).click();
+  await expect(dialog.getByTestId('death-outcome')).toHaveText('Natural 1: two failures.');
+  await expect(card.getByTestId('death-failure')).toHaveAttribute('aria-label', 'Failures: 2 of 3');
+
+  // The third failure is death.
+  await dialog.getByRole('button', { name: en.roll.again, exact: true }).click();
+  await expect(dialog.getByTestId('death-outcome')).toContainText(
+    'Three failures: the character is dead.',
+  );
+  await dialog.getByRole('button', { name: en.roll.done, exact: true }).click();
+  await expect(card).toHaveAttribute('data-death-state', 'dead');
+
+  // A revival with 1 hit point ends it; Undo brings the death back.
+  await card.getByRole('button', { name: 'Revive with 1 hit point' }).click();
+  await expect(page.locator('[data-death-state]')).toHaveCount(0);
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 1 of 12/);
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(card).toHaveAttribute('data-death-state', 'dead');
+});
+
+test('SHEET-43 stabilizing ends the saves; a stable character regains 1 hit point', async ({
+  page,
+}) => {
+  await saveRows(page, [
+    downed({ hp: { current: 0, temp: 0 }, deathSaves: { success: 1, failure: 2, stable: false } }),
+  ]);
+  await page.goto(`characters/${goldenB.id}?tab=combat`);
+  const card = page.locator('[data-death-state]');
+  await expect(card.getByTestId('death-success')).toHaveAttribute(
+    'aria-label',
+    'Successes: 1 of 3',
+  );
+  await card.getByRole('button', { name: 'Stabilize' }).click();
+  await expect(card).toHaveAttribute('data-death-state', 'stable');
+  await expect(card).toContainText('It makes no death saves.');
+  await expect(card.getByRole('button', { name: 'Roll death save' })).toHaveCount(0);
+  await card.getByRole('button', { name: 'Regain 1 hit point' }).click();
+  await expect(page.locator('[data-death-state]')).toHaveCount(0);
+  await expect(hitPoints(page)).toHaveAttribute('aria-label', /Hit points 1 of 12/);
+});
+
+test('SHEET-43 a knocked-out character at 1 hit point is given first aid', async ({ page }) => {
+  await saveRows(page, [downed({ hp: { current: 1, temp: 0 }, knockedOut: 'resting' })]);
+  await page.goto(`characters/${goldenB.id}?tab=combat`);
+  const card = page.locator('[data-death-state]');
+  await expect(card).toHaveAttribute('data-death-state', 'knockedOut');
+  await card.getByRole('button', { name: 'First aid given' }).click();
+  await expect(page.locator('[data-death-state]')).toHaveCount(0);
+  await expect(page.getByRole('status')).toContainText('First aid given');
+});
+
+test('SHEET-43 exhaustion at its highest level is death; a 2024 revival lowers it by one level', async ({
+  page,
+}) => {
+  await saveRows(page, [
+    downed({ conditions: [{ id: 'srd-2024:condition/exhaustion', level: 6 }] }),
+  ]);
+  await page.goto(`characters/${goldenB.id}?tab=combat`);
+  const card = page.locator('[data-death-state]');
+  const chip = page.locator('[data-condition="srd-2024:condition/exhaustion"]');
+  await expect(card).toHaveAttribute('data-death-state', 'dead');
+  await expect(chip).toHaveText('Exhaustion · death');
+  // SRD 5.2.1: a revived creature comes back with 1 fewer Exhaustion level (ENG-66 §8).
+  await card.getByRole('button', { name: 'Revive with 1 hit point' }).click();
+  await expect(page.locator('[data-death-state]')).toHaveCount(0);
+  await expect(chip).toHaveText('Exhaustion 5');
+});

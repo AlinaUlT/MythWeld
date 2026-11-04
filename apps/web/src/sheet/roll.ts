@@ -89,7 +89,8 @@ export interface RollTestRequest {
 /** Rolls the test's d20 and its number; the record is for the roll log. */
 export function rollTestWith(request: RollTestRequest): RolledTest | undefined {
   const { system, computed, test, name, mode, die, roller, id, now } = request;
-  const bonus = numberAt(computed, test.bonus);
+  // A death save adds no number (SHEET-43): its roll is named by its mode's path.
+  const bonus = test.bonus === undefined ? 0 : numberAt(computed, test.bonus);
   if (bonus === undefined) return undefined;
   const formula = parseRoll(d20Text(system, mode, bonus));
   if (!formula.ok) return undefined;
@@ -101,7 +102,7 @@ export function rollTestWith(request: RollTestRequest): RolledTest | undefined {
     id,
     now,
     label: name,
-    path: test.bonus,
+    path: test.bonus ?? test.mode,
   });
   const face = keptFace(made.record);
   const attack = test.kind === 'weaponAttack' || test.kind === 'spellAttack';

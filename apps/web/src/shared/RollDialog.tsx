@@ -6,6 +6,7 @@
 // a spent inspiration is one change with its Undo toast. A weapon attack that rolled a critical hit
 // offers its damage with the dice doubled. "Send to DM" waits for the table link (ADR 005 item 6).
 import type { DieSource } from '@grimoire/engine';
+import type { TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { logRoll } from '../db/rollLog';
@@ -25,10 +26,36 @@ import {
 } from '../sheet/roll';
 import { useSheet } from '../sheet/SheetContext';
 import { numberAt } from '../sheet/SheetNumber';
+import type { DeathSaveOutcome } from '../systems';
 import { Part } from '../theme/Part';
 import { BottomSheet } from './BottomSheet';
 import { Faces } from './DicePanel';
 import { panelDie, readNothing, rollWith } from './dice';
+
+/** What a death save did, or why it was not kept (SHEET-43). */
+interface Saved {
+  natural: number;
+  outcome?: DeathSaveOutcome;
+  refused?: string;
+}
+
+/** The sentence for a death save: the face's rule, then where it left the character. */
+function savedText(saved: Saved, t: TFunction<'roll'>): string {
+  const { natural, outcome, refused } = saved;
+  if (outcome === undefined) {
+    return refused === 'dead' || refused === 'notDying' || refused === 'stable'
+      ? t(`deathRefused.${refused}`)
+      : t('failed');
+  }
+  let kind: 'revived' | 'twoFailures' | 'failure' | 'success' = 'success';
+  if (outcome.hp > 0) kind = 'revived';
+  else if (natural === 1) kind = 'twoFailures';
+  else if (outcome.failures > 0) kind = 'failure';
+  const first = t(`deathResult.${kind}`);
+  if (outcome.status === 'stable') return `${first} ${t('deathResult.stable')}`;
+  if (outcome.status === 'dead') return `${first} ${t('deathResult.dead')}`;
+  return first;
+}
 
 export interface RollDialogProps {
   path: string;
@@ -71,6 +98,7 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
   const [rolled, setRolled] = useState<RolledTest>();
   const [damage, setDamage] = useState<{ total: number; record: RolledTest['record'] }>();
   const [failed, setFailed] = useState(false);
+  const [saved, setSaved] = useState<Saved>();
 
   const test = system.rollTest(computed, path);
   if (test === undefined) {
@@ -81,8 +109,9 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
     );
   }
 
-  const name = breakdownOf(computed, system, path, tb).name;
-  const bonus = numberAt(computed, test.bonus) ?? 0;
+  const name =
+    test.kind === 'deathSave' ? t('deathSave') : breakdownOf(computed, system, path, tb).name;
+  const bonus = test.bonus === undefined ? 0 : (numberAt(computed, test.bonus) ?? 0);
   const offered = system.situational(computed, test.targets);
   const mode = system.rollMode(signsOf(computed, test, offered, on));
   const { held, rules } = system.inspiration(character);
@@ -116,6 +145,26 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
       },
       (error: unknown) => console.error(error),
     );
+    setSaved(undefined);
+    // A death save is applied as the module says: the kept face and the total (SHEET-43).
+    if (test.kind === 'deathSave' && made.face !== undefined) {
+      const natural = made.face;
+      const total = made.record.total;
+      const held: { outcome?: DeathSaveOutcome } = {};
+      perform(character, (stamp) => {
+        const result = system.rollDeathSave(character, content.index, { natural, total }, stamp);
+        if (result.ok) held.outcome = result.outcome;
+        return result;
+      }).then(
+        (done) =>
+          setSaved(
+            done.ok && held.outcome !== undefined
+              ? { natural, outcome: held.outcome }
+              : { natural, refused: 'code' in done ? done.code : 'failed' },
+          ),
+        (error: unknown) => console.error(error),
+      );
+    }
     // A refusal is the usual answer (no knock-out is resting, or the character is dead): not shown.
     if (test.kind === 'init') {
       perform(character, (stamp) => system.rollInitiative(character, content.index, stamp)).catch(
@@ -257,6 +306,12 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
               </output>
             </span>
           </Part>
+        )}
+
+        {saved !== undefined && (
+          <p className="text-15 font-semibold" role="status" data-testid="death-outcome">
+            {savedText(saved, t)}
+          </p>
         )}
 
         {rolled !== undefined &&
