@@ -535,7 +535,7 @@ export function DicePanel({ roller, read = readNothing, editing }: DicePanelProp
         fill="button"
         disabled={!ready}
         onClick={roll}
-        className="flex h-control-lg items-center justify-center gap-2 px-5 text-16 font-semibold text-on-strong disabled:opacity-50"
+        className="flex h-control-lg items-center justify-center gap-2 px-5 text-16 font-semibold text-on-strong disabled:opacity-disabled"
       >
         <Dices aria-hidden className="size-5 shrink-0" />
         <span className="truncate">{button}</span>

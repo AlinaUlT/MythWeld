@@ -22,7 +22,7 @@ import type { PanelProps } from './panel';
 type Frame = 'short' | 'long';
 
 const button =
-  'flex min-h-control items-center justify-center px-4 font-semibold text-on-strong disabled:opacity-50';
+  'flex min-h-control items-center justify-center px-4 font-semibold text-on-strong disabled:opacity-disabled';
 const secondary = 'flex min-h-control items-center justify-center px-4 font-semibold';
 
 export function RestPanel({ onClose }: PanelProps) {
@@ -234,7 +234,7 @@ export function RestPanel({ onClose }: PanelProps) {
                   name="button-secondary"
                   disabled={left(die) <= 0}
                   onClick={() => spend(die)}
-                  className={`${secondary} disabled:opacity-50`}
+                  className={`${secondary} disabled:opacity-disabled`}
                 >
                   {t('spend', { die: `d${die}` })}
                 </Part>

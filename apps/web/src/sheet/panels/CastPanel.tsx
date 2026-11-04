@@ -28,7 +28,7 @@ export interface CastPanelProps extends PanelProps {
 }
 
 const button =
-  'flex min-h-control items-center justify-center px-4 font-semibold text-on-strong disabled:opacity-50';
+  'flex min-h-control items-center justify-center px-4 font-semibold text-on-strong disabled:opacity-disabled';
 const secondary = 'flex min-h-control items-center justify-center px-4 font-semibold';
 const small = 'text-12 font-semibold tracking-wide text-muted uppercase';
 
@@ -279,7 +279,7 @@ function SpellCast({
                       setSlotKey(keyOf(column));
                       setConfirming(false);
                     }}
-                    className={`flex min-h-control items-center px-3 text-15 font-semibold disabled:opacity-50 ${picked !== undefined && keyOf(column) === keyOf(picked) ? 'bg-strong text-on-strong' : 'bg-soft'}`}
+                    className={`flex min-h-control items-center px-3 text-15 font-semibold disabled:opacity-disabled ${picked !== undefined && keyOf(column) === keyOf(picked) ? 'bg-strong text-on-strong' : 'bg-soft'}`}
                   >
                     {nameOfColumn(column)}
                   </Part>

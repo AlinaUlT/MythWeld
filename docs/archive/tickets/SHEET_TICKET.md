@@ -7951,3 +7951,29 @@ Differences from the row: the row says the flag is cleared when the breakdown op
 Found, not fixed: nothing.
 
 Changelog: "A right-click on a number on the sheet opens its breakdown every time, not only the first."
+
+---
+
+### SHEET-77 A disabled button looks different from an enabled one · XS
+
+**Hat:** A disabled button part is drawn fainter, from a token
+**Where:** `apps/web/src/theme/shape.ts` — the token `opacity-disabled`; `apps/web/src/index.css` — the rule on the button parts
+**Depends on:** SHEET-04 (the button parts)
+**Screen:** Yes — every button part; no board draws a disabled button, so the look is the one the panels already used (half opacity). `docs/design/BRIEF.md` Part 5 has no row for it.
+
+**What it should look like when done:**
+1. A `button`, `button-secondary` or `icon-button` part with `disabled` is drawn at the token's opacity (0.5) and shows the not-allowed cursor; an enabled one is at 1.
+2. The Items card's "One less" at quantity 1, the Coins card's "−10" and "−1" under their amounts, and the override form's Save with nothing to save are drawn so.
+3. The opacity is the theme token `opacity-disabled` (Tailwind `opacity-disabled`, CSS `--theme-opacity-disabled`): a skin that sets it changes every disabled button.
+4. The panels that wrote `disabled:opacity-50` use the token (`disabled:opacity-disabled`), so one value governs them.
+5. The gate is green.
+
+**Tests:** `apps/web/test/theme.test.ts` — 1 new test: the token is 0.5; the rule is written for the three parts, reads the token and sets the cursor; `index.css` maps it (the existing "maps every key once" test also passes). `apps/web/e2e/sheet.spec.ts` — 1 test on golden B with 12 gold: "Take 1 copper" (disabled) has computed opacity 0.5 and cursor not-allowed; "Take 10 gold" (enabled) 1 and default; setting `--theme-opacity-disabled` to 0.2 on the root makes the disabled one 0.2. Control value: 0.5, the value the panels' own `disabled:opacity-50` already used, so no screen that looked right changes.
+**What came out of it:**
+Quality gate, 2026-11-04: `pnpm lint` 444 files, no fixes; `pnpm typecheck` clean; `pnpm test` 141 files, 1588 passed, 0 failed, 36.3 s (1 new, from 1587), then speed 2 passed; coverage statements 99.04 % (4051/4090), lines 99.77 % (3551/3559); `pnpm e2e` 86 passed, 0 failed, 1.8 min (1 new). Screenshot at 360×800 shown in the chat.
+
+Differences from the row: none on what is drawn. The "no press" part of the row: the app has no pressed look for a button, so the not-allowed cursor is the only other sign; a disabled button already takes no click. Technical choices (ADR 002): the token is a plain theme key (not a part's style pick), because a pick is a shape (border, corner, shadow) and this is a value; the rule sits in `index.css`'s base layer and selects the part by `data-skin-part`, so each button part gets it with no change in its component. Four panels' `disabled:opacity-50` became `disabled:opacity-disabled` (the same 0.5).
+
+Found, not fixed: `disabled:text-muted` buttons (`FeatureList` "Use", `DicePanel`'s Done) are plain buttons, not button parts, and show a disabled state by their text colour only; they are not covered by this rule and look fine, so no row.
+
+Changelog: "A button that cannot be pressed now (Items' One less at 1, a coin's − at 0, a form's Save with nothing to save) is drawn faint, with a not-allowed cursor."

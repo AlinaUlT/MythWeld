@@ -258,7 +258,7 @@ export function NumberPad({ mode: first, onClose }: NumberPadProps) {
           fill="button"
           disabled={amount === 0 || (preview !== undefined && !preview.ok)}
           onClick={() => run().catch((error: unknown) => console.error(error))}
-          className="flex min-h-control items-center justify-center px-4 font-semibold text-on-strong disabled:opacity-50"
+          className="flex min-h-control items-center justify-center px-4 font-semibold text-on-strong disabled:opacity-disabled"
         >
           {label}
         </Part>

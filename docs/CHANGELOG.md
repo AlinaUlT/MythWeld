@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-77 · A button that cannot be pressed now (Items' One less at 1, a coin's − at 0, a form's Save with nothing to save) is drawn faint, with a not-allowed cursor.
 - 2026-11-04 · SHEET-78 · A right-click on a number on the sheet opens its breakdown every time, not only the first.
 - 2026-11-04 · SHEET-81 · On the sheet the toast with Undo now sits above the dice button and the + button, so both can be tapped while it shows.
 - 2026-11-04 · SHEET-82 · The toast after a change goes after 5 seconds also when the toast before it was undone.

@@ -125,6 +125,15 @@ describe('SHEET-01 base theme tokens', () => {
     expect(mapped.map((match) => match[1]).sort()).toEqual(keys.sort());
   });
 
+  it('SHEET-77 draws a disabled button part fainter, from a token a skin can change', () => {
+    expect(baseTheme.shared['opacity-disabled']).toBe('0.5');
+    for (const name of ['button', 'button-secondary', 'icon-button']) {
+      expect(indexCss).toContain(`[data-skin-part="${name}"]:disabled`);
+    }
+    expect(indexCss).toMatch(/opacity: var\(--theme-opacity-disabled\);\n\s+cursor: not-allowed;/);
+    expect(indexCss).toContain('--opacity-disabled: var(--theme-opacity-disabled);');
+  });
+
   it('clears the colours Tailwind brings, so a utility paints only with a token', () => {
     expect(indexCss).toContain('--color-*: initial;');
     expect(indexCss).toContain('--ease-*: initial;');

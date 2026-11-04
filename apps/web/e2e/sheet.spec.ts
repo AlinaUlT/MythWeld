@@ -1944,3 +1944,35 @@ test('SHEET-78 a second context menu on the same number opens its breakdown agai
     await expect(sheet).toBeHidden();
   }
 });
+
+test('SHEET-77 a disabled button is fainter than an enabled one, from a theme token', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [
+    {
+      ...goldenB,
+      systemData: { ...goldenB.systemData, currency: { cp: 0, sp: 0, ep: 0, gp: 12, pp: 0 } },
+    },
+  ]);
+  await page.goto(`characters/${goldenB.id}?tab=gear`);
+  const tab = page.getByRole('tabpanel');
+  const style = (name: string) =>
+    tab.getByRole('button', { name, exact: true }).evaluate((node) => ({
+      opacity: getComputedStyle(node).opacity,
+      cursor: getComputedStyle(node).cursor,
+    }));
+  // 12 gold can lose 10 or 1; 0 copper can lose nothing; the token is 0.5.
+  await expect(tab.getByRole('button', { name: 'Take 1 copper' })).toBeDisabled();
+  expect(await style('Take 1 copper')).toEqual({ opacity: '0.5', cursor: 'not-allowed' });
+  expect(await style('Take 10 gold')).toEqual({ opacity: '1', cursor: 'default' });
+  // The token is the one place: a skin that sets it to 0.2 changes every disabled button.
+  await page.evaluate(() =>
+    document.documentElement.style.setProperty('--theme-opacity-disabled', '0.2'),
+  );
+  expect((await style('Take 1 copper')).opacity).toBe('0.2');
+  await page.evaluate(() =>
+    document.documentElement.style.removeProperty('--theme-opacity-disabled'),
+  );
+  await tab.locator('[data-coin="cp"]').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('disabled-dark.png') });
+});

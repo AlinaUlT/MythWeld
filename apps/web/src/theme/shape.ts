@@ -2,7 +2,7 @@ import type { ThemePart } from './part';
 
 // The mockups' corners, shadows and control heights. Each corner is named by what wears it; a
 // shape whose corner is half its height (bars, chips, pills) is `pill`. A shadow is darker in the
-// dark mode, where the mockups' light shadows would not show.
+// dark mode, where the mockups' light shadows would not show. SHEET-77: a disabled button's opacity.
 export const shape = {
   shared: {
     'radius-xs': '4px',
@@ -15,6 +15,8 @@ export const shape = {
     'radius-pill': '9999px',
     'spacing-control': '44px',
     'spacing-control-lg': '48px',
+    // SHEET-77: how faint a button is while it is `disabled` (index.css).
+    'opacity-disabled': '0.5',
   },
   light: {
     'shadow-raised': '0 1px 3px rgba(0, 0, 0, 0.12)',
