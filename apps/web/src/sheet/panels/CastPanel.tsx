@@ -2,16 +2,19 @@
 // it. It shows the spell's summary and "See full description", what forbids a cast now (SHEET-17's
 // `castWarnings`; the cast still happens), the dice at the slot picked (ENG-50), the slot to use,
 // "Don't use a spell slot", then "Cast" and the damage or healing roll. A new concentration ends
-// the one held only after the person confirms (SPEC §6.4). The cast is the module's `castSpell`:
+// the one held only after the person confirms (SPEC §6.4). With "I roll myself" on, the damage and
+// healing rolls count the faces the person types (SHEET-74, SPEC §6.5). The cast is the module's `castSpell`:
 // run on a copy it says if it would be refused, and run for real it is one change with its "Undo".
 import { finderOf, parseRoll } from '@grimoire/engine';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { descriptionOf } from '../../content/descriptions';
 import { logRoll } from '../../db/rollLog';
+import { useSettings } from '../../settings/useSettings';
 import { BottomSheet } from '../../shared/BottomSheet';
 import { DescriptionBody } from '../../shared/Description';
-import { panelDie, rollWith } from '../../shared/dice';
+import { type DiceField, diceFields, panelDie, rollWith, typedDie } from '../../shared/dice';
+import { allFaces, TypedFaces, typedNumbers } from '../../shared/TypedFaces';
 import type { CastWarning, SpellDef } from '../../systems';
 import { Part } from '../../theme/Part';
 import { stepLabel } from '../breakdown';
@@ -58,6 +61,9 @@ function SpellCast({
   const { t, i18n } = useTranslation('cast');
   const { t: tb } = useTranslation('breakdown');
   const { character, content, computed, system } = useSheet();
+  const { rollMyself } = useSettings();
+  const [damageTyped, setDamageTyped] = useState<string[]>([]);
+  const [healingTyped, setHealingTyped] = useState<string[]>([]);
   const find = finderOf(character, content.index);
   const [slotKey, setSlotKey] = useState<string | undefined>(undefined);
   const [noSlot, setNoSlot] = useState(part !== undefined || spell.level === 0);
@@ -156,8 +162,30 @@ function SpellCast({
     run();
   };
 
-  /** Rolls each formula with the fair die, logs each roll, and shows what came up. */
-  const roll = (label: string, formulas: readonly { formula: string; name: string }[]) => {
+  /** One field for each die of the formulas, in the order they roll; a name tells the formulas apart. */
+  const fieldsOf = (formulas: readonly { formula: string; name?: string }[]): DiceField[] =>
+    rollMyself
+      ? formulas.flatMap(({ formula, name }, at) => {
+          const parsed = parseRoll(formula);
+          if (!parsed.ok) return [];
+          return diceFields(parsed.formula).map((each) => ({
+            ...each,
+            key: `${at}:${each.key}`,
+            term: name === undefined ? each.term : `${each.term} (${name})`,
+          }));
+        })
+      : [];
+
+  /**
+   * Rolls each formula, logs each roll, and shows what came up. The die is the fair one, or the
+   * faces typed in the fields' order.
+   */
+  const roll = (
+    label: string,
+    formulas: readonly { formula: string; name: string }[],
+    typed: readonly string[],
+  ) => {
+    const die = rollMyself ? typedDie(typedNumbers(fieldsOf(formulas), typed)) : panelDie();
     const read = (path: string) =>
       Object.hasOwn(computed.values, path) ? computed.values[path] : undefined;
     const parts = formulas.flatMap(({ formula, name }) => {
@@ -166,7 +194,7 @@ function SpellCast({
       const made = rollWith({
         formula: parsed.formula,
         read,
-        die: panelDie(),
+        die,
         roller: { actorId: character.id, name: character.name },
         id: crypto.randomUUID(),
         now: new Date(),
@@ -181,6 +209,8 @@ function SpellCast({
       return [t('rolledPart', { total: made.record.total, label: name })];
     });
     setRolled(t('rolled', { parts: parts.join(t('separator')) }));
+    setDamageTyped([]);
+    setHealingTyped([]);
   };
 
   const description = descriptionOf(spell, i18n.language);
@@ -191,6 +221,10 @@ function SpellCast({
       max: column.max,
     }),
   );
+  const damageNamed = dice.damage.map(({ formula, type }) => ({ formula, name: typeName(type) }));
+  const healingNamed = dice.healing === undefined ? [] : [{ formula: dice.healing.formula }];
+  const damageFields = fieldsOf(damageNamed);
+  const healingFields = fieldsOf(healingNamed);
   const healingKey = dice.healing?.kind === 'tempHp' ? 'healingTemp' : 'healing';
 
   return (
@@ -247,11 +281,13 @@ function SpellCast({
                 {t('damage', { formula: shown(formula), type: typeName(type) })}
               </p>
             ))}
+            <TypedFaces fields={damageFields} typed={damageTyped} onChange={setDamageTyped} />
             {dice.healing !== undefined && (
               <p className="m-0 text-15" data-testid="cast-healing">
                 {t(healingKey, { formula: shown(dice.healing.formula) })}
               </p>
             )}
+            <TypedFaces fields={healingFields} typed={healingTyped} onChange={setHealingTyped} />
             {rolled !== undefined && (
               <output className="text-15 font-bold" data-testid="cast-rolled">
                 {rolled}
@@ -364,11 +400,9 @@ function SpellCast({
                 as="button"
                 type="button"
                 name="button-secondary"
+                disabled={!allFaces(damageFields, damageTyped)}
                 onClick={() =>
-                  roll(
-                    t('rolledDamage', { name: nameIn(spell.name) }),
-                    dice.damage.map(({ formula, type }) => ({ formula, name: typeName(type) })),
-                  )
+                  roll(t('rolledDamage', { name: nameIn(spell.name) }), damageNamed, damageTyped)
                 }
                 className={secondary}
               >
@@ -380,10 +414,13 @@ function SpellCast({
                 as="button"
                 type="button"
                 name="button-secondary"
+                disabled={!allFaces(healingFields, healingTyped)}
                 onClick={() =>
-                  roll(t('rolledHealing', { name: nameIn(spell.name) }), [
-                    { formula: dice.healing?.formula ?? '', name: t('rollHealing') },
-                  ])
+                  roll(
+                    t('rolledHealing', { name: nameIn(spell.name) }),
+                    [{ formula: dice.healing?.formula ?? '', name: t('rollHealing') }],
+                    healingTyped,
+                  )
                 }
                 className={secondary}
               >

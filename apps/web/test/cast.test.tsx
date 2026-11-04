@@ -2,7 +2,7 @@ import { compute } from '@grimoire/engine';
 import { fifthEditionCharacterSchema } from '@grimoire/system-5e';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { goldenA, goldenC2014 } from '../../../packages/system-5e/test/golden/characters-2014.ts';
 import { contentOf, installBuiltInPacks } from '../src/content/packs';
 import i18n from '../src/i18n';
@@ -15,6 +15,10 @@ import { type AppCharacter, sheetSystemOf } from '../src/systems';
 // its paladin: 1d8 + the Charisma modifier +2 at a level 1 slot (SRD 5.1: "1d8 + your spellcasting
 // ability modifier"). Golden A (2014: cleric 1, Wisdom) has Bless always prepared. The cantrip, the
 // conditions and the rule are made up. The taps and the casts are the e2e test's.
+
+// The page's choices need a `document`, which a static render has none of: `rollMyself` is held here.
+const settings = vi.hoisted(() => ({ rollMyself: false }));
+vi.mock('../src/settings/useSettings', () => ({ useSettings: () => settings }));
 
 void i18n;
 const packs = installBuiltInPacks().packs;
@@ -144,5 +148,33 @@ describe('SHEET-47 the cast panel', () => {
 
   it('says Missing for a spell no pack holds', () => {
     expect(text(drawn('srd-2014:spell/nothing'))).toContain('Missing: srd-2014:spell/nothing');
+  });
+});
+
+describe('SHEET-74 the cast panel counts the faces a person types', () => {
+  afterEach(() => {
+    settings.rollMyself = false;
+  });
+
+  it('draws no field for the dice while "I roll myself" is off', () => {
+    const html = drawn(CURE);
+    expect(html).not.toContain('What your dice show');
+    expect(html).not.toContain('type="number"');
+  });
+
+  it('draws one field for Cure Wounds’ 1d8 and keeps the healing roll off until it holds a face', () => {
+    settings.rollMyself = true;
+    const html = drawn(CURE);
+    expect(html).toContain('What your dice show');
+    expect(html.match(/aria-label="[^"]*, die \d"/g)).toEqual(['aria-label="1d8, die 1"']);
+    expect(html).toMatch(/disabled=""[^>]*>Healing</);
+    // Cast is not a roll: it stays on.
+    expect(html).not.toMatch(/disabled=""[^>]*>Cast</);
+  });
+
+  it('draws no field and no disabled roll for a spell with no dice', () => {
+    settings.rollMyself = true;
+    const html = drawn('srd-2014:spell/bless', {}, goldenA);
+    expect(html).not.toContain('What your dice show');
   });
 });

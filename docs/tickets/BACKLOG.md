@@ -268,7 +268,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-71 | The undo toast shows above an open panel | XS | ✅ 2026-11-04 |
 | SHEET-72 | The number pad takes a damage type and a critical hit | S | 🔲 |
 | SHEET-73 | A key closes the panel on top, not every panel | XS | ✅ 2026-11-04 |
-| SHEET-74 | A hit die takes the faces a person typed | S | 🔲 |
+| SHEET-74 | A hit die takes the faces a person typed | S | ✅ 2026-11-04 |
 | SHEET-75 | A long attribution line wraps in a description | XS | ✅ 2026-11-04 |
 | SHEET-76 | The Turn tab lists feats and once-per-turn timings | S | 🔲 |
 | SHEET-77 | A disabled button looks different from an enabled one | XS | ✅ 2026-11-04 |
@@ -284,7 +284,6 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
   `readHistory` lists the kept changes, newest first; `undoChange` reverses any one of them, and
   refuses as `changed` where a later change wrote over its place.
 - **SHEET-72** — found by SHEET-40: `applyDamage` takes `type` (the defenses of SHEET-16 apply, `outcome.defended` says what they made of it) and `critical` (two death save failures at 0 hit points), and board `V3-Keypad` has neither. The pad offers a damage type from the packs' `damageType` entries and a critical switch, and shows `defended`.
-- **SHEET-74** — found by SHEET-45: the Rest panel's short frame rolls each hit die with the fair die (`panelDie`) and logs it; the dice panel's "I roll myself" (SHEET-38, SPEC §6.5) counts the faces a person typed. A spent die takes the person's face through `typedDie` (`shared/dice.ts`) and a field for it, as SHEET-69 does for the roll dialog; `HitDieAsk.roll` is the face either way. Found by SHEET-47: the cast panel's damage and healing rolls (`CastPanel.tsx`) use the fair die too, and take typed faces the same way.
 - **SHEET-76** — found by SHEET-49: board `V3-Turn` lists feats (Alert, Defense) and a "Once per turn" group (Savage Attacker), and "Always on" lines with their numbers (Initiative +2, AC +1). `activation` is on features only (`featureDefSchema`), and its values have no once-per-turn. The row adds `activation` to feats and a once-per-turn value: a pack shape change, so `systemSchemaVersion` and a migration (SPEC §5.8), then the packs say it and the tab lists it. The numbers on an "Always on" line are the effects' own, read from `Computed` with their breakdown.
 - **SHEET-79** — found by SHEET-34: an override of a key path (ENG-43: a skill's stat, `skills.<key>.ability`) applies only when its value is one of the path's keys (`overrideNotAKey`). SHEET-34's form edits number paths only. The Main tab draws a skill's stat only as its group's heading, and `Computed.keys` holds a key and its steps, not the keys it may take. The row gives a skill a place to open its stat's breakdown, with the stats as the choice, and stores the key (`setOverride` takes a key then, or a twin action does).
 - **SHEET-83** — found by SHEET-69: the roll dialog's formula line for an attack reads "1d20 + 5 (Attacks greatsword hit)": the name comes from the path, not from the attack's name ("Greatsword"). The dialog and the roll log name the roll with the attack's own name.

@@ -1,7 +1,8 @@
 // SHEET-45: the Rest panel (SPEC §6.4, BRIEF P6, board V3-Rest). One panel, three views: the board's
 // two cards (what a short and a long rest give back, each with its button), and a frame for each
-// rest. The short frame spends hit dice: each spend rolls a fair die, logged like any roll, and
-// the list below it follows. The long frame lists what comes back before "Confirm". Every list is
+// rest. The short frame spends hit dice: each spend rolls a fair die, or, with "I roll myself" on,
+// counts the face the person typed for it (SHEET-74, SPEC §6.5); logged like any roll, and the
+// list below it follows. The long frame lists what comes back before "Confirm". Every list is
 // the module's rest action run on a copy (`restLines`), so no rest rule is written here; Confirm
 // runs the same action for real: one change with its "Undo" toast (ENG-21).
 import { finderOf, parseRoll } from '@grimoire/engine';
@@ -10,8 +11,10 @@ import { Clock, Moon } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { logRoll } from '../../db/rollLog';
+import { useSettings } from '../../settings/useSettings';
 import { BottomSheet } from '../../shared/BottomSheet';
-import { panelDie, readNothing, rollWith } from '../../shared/dice';
+import { type DiceField, panelDie, readNothing, rollWith, typedDie } from '../../shared/dice';
+import { allFaces, TypedFaces, typedNumbers } from '../../shared/TypedFaces';
 import type { RestLine } from '../../systems';
 import { Part } from '../../theme/Part';
 import { perform, playerStamp } from '../changes';
@@ -28,6 +31,8 @@ const secondary = 'flex min-h-control items-center justify-center px-4 font-semi
 export function RestPanel({ onClose }: PanelProps) {
   const { t } = useTranslation('rest');
   const { character, content, computed, system } = useSheet();
+  const { rollMyself } = useSettings();
+  const [typed, setTyped] = useState<string[]>([]);
   const [frame, setFrame] = useState<Frame | undefined>(undefined);
   const [dice, setDice] = useState<HitDieAsk[]>([]);
   const [failed, setFailed] = useState<string | undefined>(undefined);
@@ -125,14 +130,16 @@ export function RestPanel({ onClose }: PanelProps) {
       .catch((error: unknown) => console.error(error));
   };
 
-  /** Rolls one hit die of `die` faces with the fair die, and logs the roll. */
-  const spend = (die: number) => {
+  /** Rolls one hit die of `die` faces, fair or typed, and logs the roll. */
+  const spend = (die: number, at: number) => {
     const formula = parseRoll(`1d${die}`);
     if (!formula.ok) return;
+    const one = fields.slice(at, at + 1);
+    if (rollMyself && !allFaces(one, [typed[at] ?? ''])) return;
     const made = rollWith({
       formula: formula.formula,
       read: readNothing,
-      die: panelDie(),
+      die: rollMyself ? typedDie(typedNumbers(one, [typed[at] ?? ''])) : panelDie(),
       roller: { actorId: character.id, name: character.name },
       id: crypto.randomUUID(),
       now: new Date(),
@@ -145,9 +152,14 @@ export function RestPanel({ onClose }: PanelProps) {
       (error: unknown) => console.error(error),
     );
     setDice((spent) => [...spent, { die, roll: made.record.total }]);
+    setTyped((now) => now.map((face, place) => (place === at ? '' : face)));
   };
 
   const hitDice = system.restDice(character, computed);
+  // "I roll myself": one field for each kind of hit die the character has (SHEET-74).
+  const fields: DiceField[] = rollMyself
+    ? hitDice.map(({ die }) => ({ key: `hit:${die}`, term: `1d${die}`, faces: die, n: 1 }))
+    : [];
 
   if (frame === undefined) {
     const short = preview('short', []);
@@ -223,7 +235,8 @@ export function RestPanel({ onClose }: PanelProps) {
               {t('diceHeading')}
             </h3>
             {hitDice.length === 0 && <p className="m-0 text-15 text-muted">{t('noDice')}</p>}
-            {hitDice.map(({ die, max }) => (
+            <TypedFaces fields={fields} typed={typed} onChange={setTyped} />
+            {hitDice.map(({ die, max }, at) => (
               <div key={die} className="flex items-center gap-3" data-testid="rest-dice">
                 <span className="grow text-15">
                   {t('left', { die: `d${die}`, left: left(die), max })}
@@ -232,8 +245,11 @@ export function RestPanel({ onClose }: PanelProps) {
                   as="button"
                   type="button"
                   name="button-secondary"
-                  disabled={left(die) <= 0}
-                  onClick={() => spend(die)}
+                  disabled={
+                    left(die) <= 0 ||
+                    (rollMyself && !allFaces(fields.slice(at, at + 1), [typed[at] ?? '']))
+                  }
+                  onClick={() => spend(die, at)}
                   className={`${secondary} disabled:opacity-disabled`}
                 >
                   {t('spend', { die: `d${die}` })}

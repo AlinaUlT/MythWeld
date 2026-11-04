@@ -2151,3 +2151,67 @@ test('SHEET-69 with "I roll myself" on, the roll dialog counts the d20 and the d
   // A new roll asks for its own face: the typed ones are spent.
   await expect(dialog.getByRole('button', { name: en.roll.again })).toBeDisabled();
 });
+
+test('SHEET-74 with "I roll myself" on, a short rest’s hit die counts the face typed', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [winded(4, 2)]);
+  await saveRows(page, [{ key: 'rollMyself', value: true }], 'settings');
+  await page.goto(`characters/${goldenB.id}`);
+  await page.getByRole('button', { name: en.sheet.rest, exact: true }).click();
+  const panel = page.getByRole('dialog');
+  await panel.locator('[data-rest="short"]').getByRole('button', { name: 'Short rest' }).click();
+
+  // The d10 has a field; the spend waits for a face from 1 to 10.
+  const spend = panel.getByRole('button', { name: 'Spend a d10 hit die' });
+  const die = panel.getByRole('spinbutton', { name: '1d10, die 1' });
+  await expect(spend).toBeDisabled();
+  await die.fill('11');
+  await expect(spend).toBeDisabled();
+  await die.fill('0');
+  await expect(spend).toBeDisabled();
+  await die.fill('5');
+  await expect(spend).toBeEnabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('rest-typed-dark.png') });
+
+  // 5 + Constitution +2 is 7 hit points: 4 → 11 of 12 (SPEC §6.7 golden B).
+  await spend.click();
+  await expect(panel.getByTestId('rest-spent')).toContainText('d10 rolled 5: 7 hit points');
+  await expect(panel.getByTestId('rest-lines')).toContainText('Hit points 4 → 11 of 12');
+  await expect(panel.getByTestId('rest-dice')).toContainText('d10: 0 of 1 left');
+  // The typed face is spent; taking the die back asks for a face again.
+  await panel.getByRole('button', { name: 'Take back the d10 that rolled 5' }).click();
+  await expect(spend).toBeDisabled();
+  await expect(die).toHaveValue('');
+});
+
+test('SHEET-74 with "I roll myself" on, the cast panel’s healing roll counts the faces typed', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [caster()]);
+  await saveRows(page, [{ key: 'rollMyself', value: true }], 'settings');
+  await page.goto(`characters/${goldenC2014.id}?tab=spells`);
+  await spellRow(page, 'srd-2014:spell/cure-wounds').click();
+  const panel = page.getByRole('dialog');
+
+  // A level 2 slot: 2d8 + 2 (SRD 5.1), so two fields; the roll waits for both.
+  await panel.getByRole('button', { name: 'Level 2', exact: true }).click();
+  await expect(panel.getByTestId('cast-healing')).toHaveText('Healing: 2d8 + 2');
+  const roll = panel.getByRole('button', { name: en.cast.rollHealing, exact: true });
+  await expect(roll).toBeDisabled();
+  await panel.getByRole('spinbutton', { name: '2d8, die 1' }).fill('5');
+  await expect(roll).toBeDisabled();
+  await panel.getByRole('spinbutton', { name: '2d8, die 2' }).fill('9');
+  await expect(roll).toBeDisabled();
+  await panel.getByRole('spinbutton', { name: '2d8, die 2' }).fill('3');
+  await expect(roll).toBeEnabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('cast-typed-dark.png') });
+
+  // 5 + 3 + 2 = 10; the faces are spent after the roll.
+  await roll.click();
+  await expect(panel.getByTestId('cast-rolled')).toContainText('Rolled: 10');
+  await expect(roll).toBeDisabled();
+  await expect(panel.getByRole('spinbutton', { name: '2d8, die 1' })).toHaveValue('');
+});

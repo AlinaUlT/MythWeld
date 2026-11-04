@@ -8131,3 +8131,78 @@ Differences from the row: none. Technical choices (ADR 002): the field moved to 
 Found, not fixed: the dialog's formula for an attack reads "1d20 + 5 (Attacks greatsword hit)": the name comes from the path, not from the attack's name ("Greatsword"). Logged as SHEET-83.
 
 Changelog: "With 'I roll myself' on, the roll dialog asks for the faces your dice show (the d20, and a weapon's damage dice) and counts them, as the dice panel does."
+
+### SHEET-74 A hit die takes the faces a person typed
+
+**Hat:** A hit die and a spell's damage take the faces a person typed
+**Depends on:** SHEET-69 (`TypedFaces`), SHEET-38 (`typedDie`, `diceFields`), SHEET-45 (the Rest panel), SHEET-47 (the cast panel)
+**Size:** S
+**Screen:** Yes — the Rest panel's short frame (board `V3-Rest`) and the cast panel (board `V3-Cast`); neither board draws a field for faces, so the field is the dice panel's (board `V3-SheetDice`). `docs/design/BRIEF.md` Part 5 rows "P6 Rest" and "P5 Cast"
+**SPEC:** §6.5 (a typed face is a roll the person made), §6.4
+
+---
+
+#### 1. Where the code lives
+
+**Main files:** `apps/web/src/sheet/panels/RestPanel.tsx` — changes: a spent hit die takes a typed face. `apps/web/src/sheet/panels/CastPanel.tsx` — changes: the damage and healing rolls take typed faces. `apps/web/src/shared/TypedFaces.tsx` is SHEET-69's field, reused as it is. Tests: `apps/web/test/cast.test.tsx`, `apps/web/e2e/sheet.spec.ts`.
+
+#### 2. What is missing now
+
+With "I roll myself" on, both panels still roll with `panelDie()`. Measured: `grep -n "panelDie" apps/web/src/sheet/panels/RestPanel.tsx apps/web/src/sheet/panels/CastPanel.tsx` gave one call in each, and no field for faces in either panel.
+
+#### 3. What it should look like when done
+
+1. With the setting off, both panels are as before.
+2. With it on, the short frame shows "What your dice show" with one field for each kind of hit die the character has (`1d10, die 1` for golden B). "Spend a d10 hit die" stays off until the field holds a whole number from 1 to 10; 0 and 11 keep it off.
+3. A spend counts the typed face: face 5 with Constitution +2 is "d10 rolled 5: 7 hit points", and the list reads "Hit points 4 → 11 of 12". The field is cleared by the spend, and taking the die back leaves it empty.
+4. The cast panel shows "What your dice show" under the damage lines and under the healing line, one field for each die of the formulas at the slot picked (Cure Wounds at a level 2 slot: `2d8`, two fields). Its roll button (Damage, Healing) stays off until every field of its roll holds a face inside its die.
+5. The roll counts the typed faces: 5 and 3 with +2 is "Rolled: 10". The faces are cleared after the roll.
+6. A spell with no dice draws no field; "Cast" is never held by the fields.
+7. Each roll is recorded and logged as any other roll the person makes.
+8. The gate is green.
+
+#### 4. How to do it
+
+1. Rest: read `rollMyself`; one `DiceField` per hit die kind (`1d<faces>`, built from the module's `restDice`); `spend(die, at)` refuses a face that is not in range and rolls with `typedDie`.
+2. Cast: `fieldsOf(formulas)` parses each formula and takes `diceFields`, the key prefixed by the formula's place and the term by its damage type so two formulas with the same dice have different field names; one `typedDie` over all the fields of a roll, handed out in order.
+3. Both panels show `TypedFaces` and keep the field values in their own state, cleared when the roll is made.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+The short frame at 360×800: the fields between "Hit dice" and the d10 row. The cast panel: the fields under the dice lines it rolls. No new strings (SHEET-69's `dice.typed`, `dice.typedDie`, `dice.die`). Empty, invalid and full fields look as in the dice panel.
+
+#### 7. Tests
+
+- `apps/web/test/cast.test.tsx` — 3 new tests: no field with the setting off; one field for Cure Wounds' 1d8 and the Healing button off, Cast not off; no field for a spell with no dice.
+- `apps/web/e2e/sheet.spec.ts` — 2 new tests: the rest (11 and 0 refused; 5 gives 7 hit points and 4 → 11 of 12; take back clears the field) and the cast (2d8 at a level 2 slot: 5, then 9 refused, then 3; "Rolled: 10"; the fields cleared).
+- Control numbers: SPEC §6.7 golden B (Constitution +2, 12 hit points); SRD 5.1 Cure Wounds (1d8 + the spellcasting modifier, +1d8 per slot level above the first; golden C's Charisma +2, SHEET-47); 5 + 2 = 7, 4 + 7 = 11; 5 + 3 + 2 = 10.
+- The Rest panel's fields live in its frame, which a static render does not reach; they are the e2e test's.
+
+#### 8. Checked against the source
+
+SPEC §6.5: a typed face is a roll the person made. The range rule is the dice panel's. Cure Wounds' dice are SHEET-47's, checked there. Nothing else to check.
+
+#### 9. Not in this ticket
+
+- A damage type and a critical hit on the number pad: SHEET-72.
+- The roll dialog's own faces: SHEET-69.
+
+#### 10. Rake check
+
+- No rule in a component: the hit dice come from `restDice`, the formulas from `spellDice`; the panels add no rule.
+- No look in a component / no visible string in a component: the field and its keys are SHEET-69's.
+- A typed face is a roll the person made (§6.5): recorded and logged like any other.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` 449 files, no fixes; `pnpm typecheck` clean; `pnpm test` 143 files, 1609 passed, 0 failed, 34.7 s (3 new, from 1606), then speed 2 passed; coverage statements 99.04 % (4056/4095), lines 99.77 % (3556/3564); `pnpm e2e` 93 passed, 0 failed, 1.7 min (2 new, from 91). Screenshots at 360×800 shown in the chat.
+
+Differences from the row: the cast panel's roll buttons are held off until their fields are full, as the dice panel's is. The row said "a field for it" for the hit die; there is one field for each hit die kind, not one for each spend, since a spend takes one die and the field is cleared by it. Technical choices (ADR 002): a damage formula's field names carry its damage type (`8d6 (Fire), die 1`) so two formulas never share a name; damage and healing keep separate fields, because they are separate buttons.
+
+Found, not fixed: nothing new. SHEET-83 (from SHEET-69) is still open.
+
+Changelog: "With 'I roll myself' on, a short rest's hit die and a spell's damage and healing rolls ask for the faces your dice show and count them."
