@@ -236,7 +236,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-31 | An entry's description opens in place | S | ✅ 2026-10-29 |
 | SHEET-32 | The Main tab shows every check bonus | S | ✅ 2026-11-03 |
 | SHEET-33 | A long press opens a number's breakdown | S | ✅ 2026-11-03 |
-| SHEET-34 | A manual edit overrides a number | S | 🔲 |
+| SHEET-34 | A manual edit overrides a number | S | ✅ 2026-11-04 |
 | SHEET-35 | The AC breakdown pins its base calculation | XS | 🔲 |
 | SHEET-36 | The choices badge opens every pending choice | M | ✅ 2026-11-03 |
 | SHEET-37 | Rolls are kept in the roll log | S | ✅ 2026-10-29 |
@@ -272,17 +272,14 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-75 | A long attribution line wraps in a description | XS | 🔲 |
 | SHEET-76 | The Turn tab lists feats and once-per-turn timings | S | 🔲 |
 | SHEET-77 | A disabled button looks different from an enabled one | XS | 🔲 |
+| SHEET-78 | A second context menu on the same number opens its breakdown | XS | 🔲 |
+| SHEET-79 | A skill's stat is overridden from the sheet | S | 🔲 |
 
 - **SHEET-29** — found by ENG-37 (ADR 017): when the race or species and the background come from
   different editions and both raise ability scores, the manual form (BRIEF P3 step 6) shows a
   warning and a popup, or a sign that opens it: a checkbox for each, either, both or neither,
   and "Create" stays on. ENG-68's warning `abilityBonusConflict` says when, its `source` what is
   ticked. Board `V3-Conflict`. Phase 4's creation wizard shows the same.
-- **SHEET-34** — found by ENG-17: an override applies only when its value is a number on a number
-  path (`overrideNotANumber` otherwise), so the override editor stores a number there. Found by
-  ENG-43: an override of a skill's stat applies only when its value is one of its keys (a stat's
-  key, `overrideNotAKey` otherwise), so the editor stores a stat's key there. An override of a
-  roll mode is a manual edit of it (ENG-34).
 - **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates:
   `Computed.candidates['ac.base']`, each `{ key, value, steps }`; a pin that does not apply is not
   among them and warns `acCalcNotApplying`.
@@ -311,6 +308,9 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 - **SHEET-74** — found by SHEET-45: the Rest panel's short frame rolls each hit die with the fair die (`panelDie`) and logs it; the dice panel's "I roll myself" (SHEET-38, SPEC §6.5) counts the faces a person typed. A spent die takes the person's face through `typedDie` (`shared/dice.ts`) and a field for it, as SHEET-69 does for the roll dialog; `HitDieAsk.roll` is the face either way. Found by SHEET-47: the cast panel's damage and healing rolls (`CastPanel.tsx`) use the fair die too, and take typed faces the same way.
 - **SHEET-75** — found by SHEET-47: in a description's "See full description" (`shared/Description.tsx`, `FullText`), the attribution's long address has no break and runs past the card's right edge (clipped, no page scroll: 360 px stays 360). The text wraps inside the card.
 - **SHEET-76** — found by SHEET-49: board `V3-Turn` lists feats (Alert, Defense) and a "Once per turn" group (Savage Attacker), and "Always on" lines with their numbers (Initiative +2, AC +1). `activation` is on features only (`featureDefSchema`), and its values have no once-per-turn. The row adds `activation` to feats and a once-per-turn value: a pack shape change, so `systemSchemaVersion` and a migration (SPEC §5.8), then the packs say it and the tab lists it. The numbers on an "Always on" line are the effects' own, read from `Computed` with their breakdown.
+- **SHEET-77** — found by SHEET-51: a button with `disabled` (the Items card's "One less" at quantity 1, the Coins card's "−10" under 10, the override form's Save with nothing to save) is drawn like an enabled one, so a person taps it and nothing happens. The button parts show it off (lower contrast, no press) from a token, so a skin can change it (ADR 015).
+- **SHEET-78** — found by SHEET-34: `usePress` (`SheetNumber.tsx`) sets its long-press flag when the context menu opens a breakdown and clears it only on a left press or a click, so a second right-click on the same number, after the breakdown closed, does nothing. Touch is not affected (a pointer down clears it). The flag is cleared when the breakdown opens or closes.
+- **SHEET-79** — found by SHEET-34: an override of a key path (ENG-43: a skill's stat, `skills.<key>.ability`) applies only when its value is one of the path's keys (`overrideNotAKey`). SHEET-34's form edits number paths only. The Main tab draws a skill's stat only as its group's heading, and `Computed.keys` holds a key and its steps, not the keys it may take. The row gives a skill a place to open its stat's breakdown, with the stats as the choice, and stores the key (`setOverride` takes a key then, or a twin action does).
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
 

@@ -486,6 +486,77 @@ test('SHEET-33 a long press, or the context menu, opens where a number comes fro
   await expect(page.getByTestId('breakdown-summary')).toContainText('Speed walking 30 ft');
 });
 
+test('SHEET-34 a manual edit overrides a number in edit mode; Undo and Remove give the computed one back', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  const sheet = page.getByRole('dialog', { name: en.breakdown.title });
+  const summary = page.getByTestId('breakdown-summary');
+  const strength = number(page, 'abilities.str.score');
+  const field = sheet.getByLabel('Number', { exact: true });
+  // A tap first: a second context menu on the same number opens nothing until a left press resets
+  // the long-press flag (found by this test: BACKLOG row SHEET-78).
+  const openStrength = async () => {
+    await strength.click();
+    await strength.click({ button: 'right' });
+  };
+
+  // Play mode locks the structure: the breakdown says how to unlock it and draws no field.
+  await openStrength();
+  await expect(sheet.getByTestId('override-locked')).toHaveText(
+    'Turn on Edit to override this number by hand.',
+  );
+  await expect(field).toHaveCount(0);
+  await page.keyboard.press('Escape');
+
+  // Edit mode: Strength 17 set to 20 by hand with a note.
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await openStrength();
+  await expect(field).toHaveValue('17');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await field.fill('abc');
+  await expect(sheet.getByRole('alert')).toHaveText('Type a number, like 12 or -1.');
+  await expect(sheet.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
+  await field.fill('20');
+  await sheet.getByLabel('Note', { exact: true }).fill('Belt of power');
+  await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(summary).toHaveText('Strength score 20 = Base 15, Soldier +2, Manual edit +3');
+  await expect(sheet.locator('[data-manual]')).toBeVisible();
+  await expect(sheet).toContainText('Belt of power');
+  await expect(page.getByRole('status').filter({ hasText: 'Manual edit saved' })).toBeVisible();
+  await sheet.getByRole('heading', { name: 'Override by hand' }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('override-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('override-light.png') });
+
+  // Everything that reads Strength follows: modifier floor((20 - 10) / 2) = 5, so the check is +5,
+  // the save 5 + 2 = +7 and Athletics 5 + 2 = +7 (golden B has proficiency +2 in both).
+  await page.keyboard.press('Escape');
+  await expect(number(page, 'checks.str.total')).toHaveText('STR+5');
+  await expect(number(page, 'abilities.str.save')).toHaveText('STR+7');
+  await expect(number(page, 'skills.athletics.total')).toHaveText('Athletics+7');
+
+  // Undo gives 17 back, and one Remove does too after a new save.
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(number(page, 'abilities.str.score')).toHaveText('Strength score17');
+  await expect(number(page, 'skills.athletics.total')).toHaveText('Athletics+5');
+  await openStrength();
+  await field.fill('8');
+  await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(summary).toHaveText('Strength score 8 = Base 15, Soldier +2, Manual edit −9');
+  await sheet.getByRole('button', { name: 'Remove manual edit' }).click();
+  await expect(summary).toHaveText('Strength score 17 = Base 15, Soldier +2');
+  await expect(sheet.getByRole('button', { name: 'Remove manual edit' })).toHaveCount(0);
+
+  // A saved edit is stored: it is there after a reload.
+  await field.fill('20');
+  await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(summary).toContainText('Manual edit +3');
+  await page.reload();
+  await expect(number(page, 'abilities.str.score')).toHaveText('Strength score20');
+});
+
 /** The d20 faces a roll shows, and which of them it kept. */
 async function facesOf(page: Page) {
   return page

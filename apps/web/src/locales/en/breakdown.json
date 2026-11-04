@@ -6,6 +6,17 @@
   "none": "No steps are kept for this number.",
   "manual": "Manual edit",
   "manualHint": "Replaces the computed number",
+  "override": {
+    "title": "Override by hand",
+    "locked": "Turn on Edit to override this number by hand.",
+    "value": "Number",
+    "feet": "Type feet: the number is kept in feet.",
+    "notANumber": "Type a number, like 12 or -1.",
+    "note": "Note",
+    "notePlaceholder": "Why, for example: Belt of power",
+    "save": "Save",
+    "remove": "Remove manual edit"
+  },
   "step": {
     "base": "Base",
     "default": {

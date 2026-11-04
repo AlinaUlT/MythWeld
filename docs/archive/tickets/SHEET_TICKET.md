@@ -7453,3 +7453,84 @@ Differences from the row: none. Technical choices (ADR 002): the steps are 1 and
 Found, not fixed: a disabled button looks the same as an enabled one (the Items card's "One less" at quantity 1, and the coins' "−10" at a count under 10): new row SHEET-77, XS.
 
 Changelog: "The Gear tab shows your coins, cp sp ep gp pp, each with − and + buttons for steps of 1 and 10, and Undo."
+
+---
+
+### SHEET-34 A manual edit overrides a number
+
+**Hat:** A number is set by hand from its breakdown
+**Depends on:** SHEET-33 (the breakdown sheet), SHEET-23 (Undo), ENG-17 (overrides in `compute()`)
+**Size:** S
+**Screen:** Yes — sheet 2 of `docs/design/BRIEF.md` Part 2 P5 ("an 'Override by hand' field with a note; when overridden, the number shows a 'Manual edit' label"); board `V3-Roll` draws the breakdown. SPEC §6.1 step 7, §7.2.
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/shared/OverrideEditor.tsx` — new: the form under a breakdown.
+- `packages/engine/src/overrides.ts` — new: `setOverride`, `clearOverride`, `OverrideRefusal`; exported from `index.ts`. The core has it, not the module: every system has overrides (SPEC §5.8, ADR 004).
+- `apps/web/src/shared/BreakdownSheet.tsx` — change: draws the form under the lines.
+- `apps/web/src/locales/en/breakdown.json` (`override.*`) and `toast.json` (`setOverride`, `clearOverride`) — the text.
+
+#### 2. What is missing now
+
+`compute()` applies a stored override (ENG-17: `phases.ts`, `finish`, step kind `override`) and the breakdown already labels one "Manual edit" (SHEET-33), but nothing writes one: `grep -rni override apps/web/src` finds only `draft.ts` (an empty list) and `breakdown.ts` (reading the step). The breakdown sheet has no field.
+
+#### 3. What it should look like when done
+
+1. In edit mode the breakdown of a number the character has shows "Override by hand": a "Number" field holding the number now, a "Note" field, "Save", and — when an edit is stored — "Remove manual edit".
+2. Save is one change with its "Undo" toast, "Manual edit saved". On golden B (SPEC §6.7), Strength 17 set to 20 reads "Strength score 20 = Base 15, Soldier +2, Manual edit +3"; the Strength check is +5, the save +7, Athletics +7.
+3. Undo gives 17 back and Athletics +5. "Remove manual edit" is one change with its toast, "Manual edit removed".
+4. A text that is not a number ("abc", "1e3", "1,5") shows "Type a number, like 12 or -1." and Save is off. A minus sign "−" is read as "-".
+5. Play mode shows "Turn on Edit to override this number by hand." and no field. The level, and a path `compute()` has no number for, show neither.
+6. The edit is stored (it is there after a reload), one for each path; a new save on a path replaces its edit where it stands.
+7. The gate is green.
+
+#### 4. How to do it
+
+1. `setOverride(character, computed, { path, value, note }, stamp)`: refuses the level (`fixedPath`), a value that is not a finite number (`badValue`) and a path whose computed value is not a number (`notANumber`: ENG-17 does not apply an edit there); replaces the edit of the path in place or adds it; the note is trimmed and left out when it shows no character (the schema's `visibleTextSchema`); one entry whose one change is the whole list at `['overrides']` (a log path steps only through objects). `unchanged` when the list does not change. `clearOverride(character, path, stamp)`: `noOverride` when there is none.
+2. `OverrideEditor` reads `character.overrides` and `computed` from the sheet; its form is keyed by the stored edit, so a save or an Undo draws it again. `perform` (SHEET-55) stores the entry with its toast.
+3. A distance (`format="distance"`) says "Type feet: the number is kept in feet" (SPEC §7.5: stored units are feet).
+
+#### 5. Stored data
+
+Nothing stored changes: `overrides` is in the character's core already (`overrideSchema`, SPEC §5.8). No `schemaVersion` bump.
+
+#### 6. What a person will see
+
+At 360×800, the breakdown sheet, under its lines: a rule, "Override by hand", "Number" with its field, "Note" with its field, then "Save" and "Remove manual edit" side by side. Play mode: one line of muted text. Keys: `breakdown.json` `override.title`, `locked`, `value`, `feet`, `notANumber`, `note`, `notePlaceholder`, `save`, `remove`. Screenshots in the chat.
+
+#### 7. Tests
+
+- `packages/engine/test/overrides.test.ts` — 8 tests on Tales' Ash (ENG-27): the edit stored and every number following (wits score 5 → 12, modifier 2 → 6, climbing 6 → 10); replaced in place with the others kept and the note trimmed; no note when it shows no character; the refusals (a path with no number, `constructor`, the level, NaN and infinity); the same edit again as unchanged; apply again and reverse; `clearOverride` and its refusal.
+- `apps/web/test/override.test.tsx` — 6 tests on golden B: the form in edit mode, the locked line in play mode, a stored edit (field, note, label, total), no form for the level or a path with no number, `typedNumber` on what it reads and what it does not.
+- `apps/web/e2e/sheet.spec.ts` — 1 test: locked in play mode; edit mode; "abc" and its alert; Save 20 with a note; the summary, the label and the toast; Strength +5, save +7, Athletics +7; Undo; a new save of 8 (−9) and Remove; a save of 20 and a reload.
+- Control numbers from: SPEC §6.7 golden B (Strength 17 = 15 + 2, check +3, save +5, Athletics +5, proficiency +2), hand-computed from them: modifier floor((20 − 10) / 2) = 5, save 5 + 2 = 7, Athletics 5 + 2 = 7, an edit of 8 moves 17 by −9; ENG-27's Ash for the engine.
+
+#### 8. Checked against the source
+
+The engine's own rules: ENG-17 (`phases.ts`): an edit applies only to a number on a number path, else `overrideNotANumber`; the level is read before any edit, so an edit of it is `fixedPath`. SPEC §6.1 step 7: edits apply last and win. The formula for a modifier, floor((score − 10) / 2), is read from the 5e module's own output on golden B (modifier +3 at 17), not written here. Nothing else to check.
+
+#### 9. Not in this ticket
+
+- An edit of a key path (a skill's stat: ENG-43, `overrideNotAKey`): the screen opens no key path's breakdown, and `Computed.keys` does not hold the keys a path may take. New row SHEET-79.
+- A boolean or text edit: the schema allows them, no number path uses one.
+- An edit made by a DM's approval (ADR 009, the table link): it does not replace this rule.
+
+#### 10. Rake check
+
+- Manual overrides always win: the edit is stored in `overrides` and applied by `compute()` in the final phase; the screen reads only `Computed` and its breakdown, which labels it a manual edit.
+- The core names no game: `setOverride` is in `packages/engine`, with no fifth-edition word; the form reads paths from `Computed`.
+- Missing is not broken: a path with no number draws no form.
+- No look in a component, no user-facing literal: tokens, parts and `breakdown.json` keys only.
+- Stored units are feet: the distance hint says so; nothing is converted.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` 428 files, no fixes; `pnpm typecheck` clean; `pnpm test` 133 files, 1526 passed, 0 failed, 32.1 s (14 new, from 1512), then speed 2 passed; coverage statements 99.07 % (3946/3983), lines 99.82 % (3459/3465); `pnpm e2e` 78 passed, 0 failed, 1.3 min (1 new). Screenshots at 360×800 shown in the chat.
+
+Differences from the row: none. Technical choices (ADR 002): the edit is made in edit mode only, as it changes the sheet's structure (SPEC §7.2); Save is off when the field and note equal the stored edit; the number field is text with a decimal keypad, read by `typedNumber`, so "−" and "+" work and "1e3" does not.
+
+Found, not fixed: a second context menu on the same number opens nothing, since `usePress` clears its long-press flag only on a left press or click (`SheetNumber.tsx`): new row SHEET-78, XS. No screen edits a key path: new row SHEET-79, S.
+
+Changelog: "Open a number's breakdown in edit mode and set it by hand with a note, or take the edit away, each with Undo; the breakdown shows it as a manual edit and every number that reads it follows."

@@ -2,7 +2,8 @@
 // comes from". The summary line reads "Athletics +5 = Strength +3, Proficiency bonus +2"; below it,
 // one line for each part with its source, a manual edit labelled "Manual edit". The sheet mounts it
 // on a number's long press with that number's computed path and its format, so the number reads as
-// it did on the sheet. Missing is not broken: a path that has no steps says so.
+// it did on the sheet. Missing is not broken: a path that has no steps says so. SHEET-34: under the
+// lines, the number's "Override by hand" form (`OverrideEditor`).
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../settings/useSettings';
 import { breakdownOf } from '../sheet/breakdown';
@@ -10,6 +11,7 @@ import { useSheet } from '../sheet/SheetContext';
 import { formatNumber, type NumberFormat } from '../sheet/SheetNumber';
 import { Part } from '../theme/Part';
 import { BottomSheet } from './BottomSheet';
+import { OverrideEditor } from './OverrideEditor';
 
 export interface BreakdownSheetProps {
   path: string;
@@ -67,6 +69,7 @@ export function BreakdownSheet({ path, format = 'plain', onClose }: BreakdownShe
             ))}
           </ul>
         )}
+        <OverrideEditor path={path} distance={format === 'distance'} />
       </div>
     </BottomSheet>
   );
