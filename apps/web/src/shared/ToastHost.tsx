@@ -7,9 +7,11 @@
 // SHEET-71: it sits above a panel's dim (`z-20`; the panels are `z-10`), so "Undo" of a change made
 // inside a panel is reachable at once. While a panel is open it moves to the top of the screen, so
 // it covers none of the panel's own buttons.
+// SHEET-82: a tapped "Undo" is removed with its toast and a removed element sends no blur, so the
+// hold is read from where the focus is each time the toast changes, not only from focus events.
 import type { LogEntry } from '@grimoire/schema';
 import type { TFunction } from 'i18next';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { en } from '../i18n/namespaces';
 import { Part } from '../theme/Part';
@@ -67,6 +69,10 @@ export function ToastView({ toast, onUndo }: { toast: Toast; onUndo?: () => void
 export function ToastHost() {
   const toast = useSyncExternalStore(subscribeToast, currentToast, currentToast);
   const [held, setHeld] = useState(false);
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setHeld(toast !== undefined && host.current?.contains(document.activeElement) === true);
+  }, [toast]);
   useEffect(() => {
     if (toast === undefined || held) return;
     const timer = setTimeout(() => hideToast(toast), TOAST_MS);
@@ -74,6 +80,7 @@ export function ToastHost() {
   }, [toast, held]);
   return (
     <div
+      ref={host}
       role="status"
       className="pointer-events-none fixed inset-x-4 z-20 bottom-[calc(var(--dock-height,0px)+16px)] in-[body:has([aria-modal=true])]:top-4 in-[body:has([aria-modal=true])]:bottom-auto"
       onFocus={() => setHeld(true)}

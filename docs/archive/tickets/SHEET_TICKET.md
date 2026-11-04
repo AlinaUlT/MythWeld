@@ -7872,3 +7872,29 @@ Differences from the row: none. Technical choices (ADR 002): a section is a tab 
 Found, not fixed: (1) the toast sits over both round buttons, the dice and the "+" (the screenshot of the entry shows it), for its 5 seconds: new row SHEET-81, XS. (2) After a tap on the toast's "Undo", the next toast stayed on screen for over 10 seconds in this test, past `TOAST_MS`; `ToastHost` pauses the timer while the toast has focus and a button that is removed sends no blur, which is the likely cause (not checked): new row SHEET-82, XS.
 
 Changelog: "In edit mode you can add a section of your own, such as Mounts or Pets, as a tab after the built-in ones, with entries of a name and free text (a companion's stat block among them); each add and remove has Undo."
+
+---
+
+### SHEET-82 The toast goes after its time once Undo was tapped · XS
+
+**Hat:** The toast's hold follows where the focus is
+**Where:** `apps/web/src/shared/ToastHost.tsx` — `ToastHost`
+**Depends on:** SHEET-23 (the toast and its timer)
+**Screen:** No — the toast keeps its look (board `V3-Features`).
+
+**What it should look like when done:**
+1. After a tap on the toast's "Undo", the toast of the next change goes after `TOAST_MS` (5 s), like any other.
+2. A toast whose own button has the focus still stays while the focus is there (SHEET-23).
+3. The gate is green.
+
+**Tests:** `apps/web/e2e/sheet.spec.ts` — 1 test on golden B: add 1 gold, tap "Undo", add 1 gold again; the second toast is gone within 7 s. The unit tests draw to a string and have no focus, so the focus is checked in the browser only. Control value: `TOAST_MS` = 5000.
+**What came out of it:**
+Cause checked: the test was written first and failed on the old code (the second toast's "Undo" was still visible after 7 s). `onBlur` never ran for the tapped button, because the browser sends no blur for an element that is removed. The new code reads the focus itself each time the toast changes (`host.contains(document.activeElement)`), so the hold ends with the button; the same test then passed.
+
+Quality gate, 2026-11-04: `pnpm lint` 443 files, no fixes; `pnpm typecheck` clean; `pnpm test` 140 files, 1583 passed, 0 failed, 40.7 s (0 new), then speed 2 passed; coverage statements 99.04 % (4051/4090), lines 99.77 % (3551/3559); `pnpm e2e` 83 passed, 0 failed, 1.7 min (1 new).
+
+Differences from the row: none. The focus events stay for the case where the focus moves in or out while one toast shows.
+
+Found, not fixed: nothing.
+
+Changelog: "The toast after a change goes after 5 seconds also when the toast before it was undone."

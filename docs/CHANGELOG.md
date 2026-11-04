@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-82 · The toast after a change goes after 5 seconds also when the toast before it was undone.
 - 2026-11-04 · SHEET-57 · In edit mode you can add a section of your own, such as Mounts or Pets, as a tab after the built-in ones, with entries of a name and free text (a companion's stat block among them); each add and remove has Undo.
 - 2026-11-04 · SHEET-52 · In edit mode a + button adds a custom item (name, weight, how many, description) to the Gear tab or a custom feature (name, description) to the Features tab, as text only; each has Undo, and a custom feature can be removed.
 - 2026-11-04 · SHEET-29 · When your species or race and your background both raise ability scores, the new-character form warns and a popup lets you take one, both or neither; the live numbers follow each tick, and Create stays on.

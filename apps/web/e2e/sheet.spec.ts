@@ -1880,3 +1880,20 @@ test('SHEET-49 the Turn tab lists the attack and the features by timing, each op
   await attack.locator('[data-path="attacks.greatsword.hit"]').click();
   await expect(page.getByTestId('roll-formula')).toContainText('1d20 + 5');
 });
+
+test('SHEET-82 a toast goes after its time once the toast before it was undone', async ({
+  page,
+}) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}?tab=gear`);
+  const gold = page.getByRole('tabpanel').locator('[data-coin="gp"]');
+  const undo = page.getByRole('button', { name: en.toast.undo });
+  await gold.getByRole('button', { name: 'Add 1 gold' }).click();
+  await expect(undo).toBeVisible();
+  // The tap on "Undo" removes the button that has the focus; the next toast still goes in 5 s.
+  await undo.click();
+  await expect(undo).toBeHidden();
+  await gold.getByRole('button', { name: 'Add 1 gold' }).click();
+  await expect(undo).toBeVisible();
+  await expect(undo).toBeHidden({ timeout: 7000 });
+});
