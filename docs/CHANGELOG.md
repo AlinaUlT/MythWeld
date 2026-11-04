@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-73 · The Escape key closes only the panel on top: with the roll dialog over the number pad, the first press closes the dialog and the second closes the pad.
 - 2026-11-04 · SHEET-71 · A change made inside an open panel shows its "Undo" toast at the top of the screen, above the panel, so you can undo it without closing the panel.
 - 2026-11-04 · SHEET-44 · The Combat tab lists your equipped weapons' attacks: tap the attack bonus to roll it, with the damage dice, damage bonus, type and weapon mastery.
 - 2026-11-04 · SHEET-43 · The Combat tab follows a dying character: death save circles, a roll in the roll dialog that applies the result, Stabilize, first aid for a knocked-out character, and a revival for the dead.

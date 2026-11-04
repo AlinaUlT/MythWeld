@@ -5,10 +5,11 @@
 // sheet's "⋯" (SHEET-58) shows the same rows under its own.
 import type { TFunction } from 'i18next';
 import { ArrowRightLeft, Copy, FileDown, Link2, type LucideIcon, Trash2, X } from 'lucide-react';
-import { useEffect, useId } from 'react';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { copyCharacter, exportCharacter } from '../db/characterActions';
 import { Part } from '../theme/Part';
+import { useEscapeClose } from './escape';
 import { saveFile } from './saveFile';
 import { deleteWithUndo } from './undo';
 
@@ -111,13 +112,7 @@ export interface CharacterActionsProps {
 export function CharacterActions({ target, line, onClose }: CharacterActionsProps) {
   const { t } = useTranslation('actions');
   const titleId = useId();
-  useEffect(() => {
-    const close = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
-  }, [onClose]);
+  useEscapeClose(onClose);
   return (
     <div className="fixed inset-0 z-10 flex flex-col justify-end">
       <button

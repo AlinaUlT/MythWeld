@@ -1031,8 +1031,10 @@ test('SHEET-40 damage to a concentrating character asks for the save; losing it 
   // The save rolls in the roll dialog; the concentration is still held.
   await key(page, 'Roll the save').click();
   await expect(page.getByRole('dialog')).toHaveCount(2);
-  await page.getByRole('dialog').last().getByRole('button', { name: 'Close' }).click();
+  // One Escape closes the roll dialog only (SHEET-73); the pad stays.
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(1);
+  await expect(key(page, 'Lost it: end concentration')).toBeVisible();
   await expect(page.locator('[data-concentration]')).toBeVisible();
 
   // Losing it ends the concentration: its card goes from the Combat tab.
@@ -1254,4 +1256,31 @@ test('SHEET-71 the undo toast shows above an open panel and is tapped there', as
   await undo.click();
   await expect(chip).toHaveText('Exhaustion 1');
   await expect(panel).toBeVisible();
+});
+
+test('SHEET-73 Escape closes the panel on top, one panel for each press', async ({ page }) => {
+  const holding = {
+    ...goldenA,
+    systemData: {
+      ...goldenA.systemData,
+      state: { ...goldenA.systemData.state, concentration: 'srd-2014:spell/bless' },
+    },
+  };
+  await saveRows(page, [holding]);
+  await page.goto(`characters/${goldenA.id}?tab=combat`);
+  // The pad, and over it the roll dialog of the concentration save.
+  await page.getByRole('button', { name: en.sheet.damage, exact: true }).click();
+  await key(page, '4').click();
+  await key(page, 'Take 4 damage').click();
+  await key(page, 'Roll the save').click();
+  await expect(page.getByRole('dialog')).toHaveCount(2);
+
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+  await expect(page.getByTestId('pad-follow')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // The panel left alone is closed by a key as before, and the key does nothing with none open.
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });

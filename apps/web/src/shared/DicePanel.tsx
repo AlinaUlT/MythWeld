@@ -31,6 +31,7 @@ import {
   STANDARD_DICE,
   typedDie,
 } from './dice';
+import { useEscapeClose } from './escape';
 
 const label = 'text-12 font-semibold tracking-wide text-muted uppercase';
 const chip = 'flex h-9 min-w-11 items-center justify-center gap-1 px-3 text-14 font-semibold';
@@ -557,14 +558,7 @@ export function DiceSheet({ open, onClose, roller, read }: DiceSheetProps) {
   const { t } = useTranslation('dice');
   const [editing, setEditing] = useState(false);
   const titleId = useId();
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
-  }, [open, onClose]);
+  useEscapeClose(onClose, open);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-10 flex flex-col justify-end">

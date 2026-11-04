@@ -266,7 +266,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-70 | The header keeps the class line whole beside the choices badge | XS | 🔲 |
 | SHEET-71 | The undo toast shows above an open panel | XS | ✅ 2026-11-04 |
 | SHEET-72 | The number pad takes a damage type and a critical hit | S | 🔲 |
-| SHEET-73 | A key closes the panel on top, not every panel | XS | 🔲 |
+| SHEET-73 | A key closes the panel on top, not every panel | XS | ✅ 2026-11-04 |
 
 - **SHEET-29** — found by ENG-37 (ADR 017): when the race or species and the background come from
   different editions and both raise ability scores, the manual form (BRIEF P3 step 6) shows a
@@ -321,7 +321,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 - **SHEET-69** — found by SHEET-39: the dice panel counts the faces a person typed when "I roll myself" is on (SHEET-38, SPEC §6.5); the roll dialog always rolls with the fair die. The dialog's d20 (one or two) and a weapon's damage dice take typed faces through `typedDie` (`shared/dice.ts`), and the dialog's field for each die is the panel's (`diceFields`).
 - **SHEET-70** — found by SHEET-36: with the choices badge shown, the header's class line is cut to "Fig…" at 360×800 (`SheetHeader.tsx`, board `V3-Sheet`). The line and the badges wrap or the badge moves, so the class and its level stay readable.
 - **SHEET-72** — found by SHEET-40: `applyDamage` takes `type` (the defenses of SHEET-16 apply, `outcome.defended` says what they made of it) and `critical` (two death save failures at 0 hit points), and board `V3-Keypad` has neither. The pad offers a damage type from the packs' `damageType` entries and a critical switch, and shows `defended`.
-- **SHEET-73** — found by SHEET-40: `BottomSheet` closes on Escape through a window listener each panel adds, so with a panel over a panel (the pad's roll dialog) one key closes both. Only the top one closes.
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
 

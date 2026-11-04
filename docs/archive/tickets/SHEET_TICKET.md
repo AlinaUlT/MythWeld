@@ -7125,3 +7125,29 @@ Differs from the row: the row said the toast "shows above the panel's dim". Firs
 Found, not fixed: a condition's level change shows the text "Exhaustion applied" (`toast.done.setCondition`), the same as adding it. Wording only, no new row.
 
 Changelog: "A change made inside an open panel shows its Undo toast at the top of the screen, above the panel, so you can undo it without closing the panel."
+
+---
+
+### SHEET-73 A key closes the panel on top, not every panel · XS
+
+**Hat:** Escape closes the panel on top
+**Where:** `apps/web/src/shared/escape.ts` — new: `useEscapeClose`; used by `shared/BottomSheet.tsx`, `shared/DicePanel.tsx` (`DiceSheet`) and `shared/CharacterActions.tsx`, the three panels that listened on `window` by themselves
+**Depends on:** SHEET-40 (found it: the pad's roll dialog)
+**Screen:** No — the panels look as before.
+
+**What it should look like when done:**
+1. With a panel over a panel (the number pad, and over it the roll dialog of the concentration save), one Escape closes the roll dialog only; the pad stays open with its state.
+2. A second Escape closes the pad. With no panel open the key does nothing.
+3. A panel alone closes on Escape as before, and a tap on the dim or the close button still closes it.
+4. The gate is green.
+
+**Tests:** `apps/web/e2e/sheet.spec.ts` — 1 new test (pad, roll dialog, two presses, a third with nothing open), which fails on the old code at the first press (0 dialogs left, 1 expected); the SHEET-40 test closes the roll dialog with Escape instead of its Close button. Control values: none; the counts are open dialogs.
+**What came out of it:**
+Quality gate, 2026-11-04: `pnpm lint` 411 files, no fixes; `pnpm typecheck` clean; `pnpm test` 124 files, 1468 passed, 0 failed, 30.3 s, then speed 2 passed; coverage statements 99.06 % (3823/3859), lines 99.82 % (3350/3356); `pnpm e2e` 71 passed, 0 failed, 1.0 min (1 new).
+
+Differs from the row: the row names `BottomSheet` only. `DiceSheet` and the Actions list had the same window listener, so all three use the one hook; a panel of one kind over a panel of another now also closes one at a time. Technical choice (ADR 002).
+Why one listener: a listener for each panel is not enough. After the top panel's listener runs, the browser can render the close before the next listener runs, and that one then finds itself on top and closes too. The stack has one `window` listener and calls only the top entry.
+
+Found, not fixed: nothing.
+
+Changelog: "The Escape key closes only the panel on top: with the roll dialog over the number pad, the first press closes the dialog and the second closes the pad."

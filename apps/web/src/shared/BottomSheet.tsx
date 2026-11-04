@@ -1,10 +1,11 @@
 // SHEET-56: a sheet from the bottom over a dimmed screen, with a title, a close button and a
 // scrolling body: the shell the Actions list (SHEET-25) draws, for the panels of the sheet to
-// share. Escape and a tap on the dim close it.
+// share. Escape (the top panel only, SHEET-73) and a tap on the dim close it.
 import { X } from 'lucide-react';
-import { type ReactNode, useEffect, useId } from 'react';
+import { type ReactNode, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Part } from '../theme/Part';
+import { useEscapeClose } from './escape';
 
 export interface BottomSheetProps {
   title: string;
@@ -15,13 +16,7 @@ export interface BottomSheetProps {
 export function BottomSheet({ title, onClose, children }: BottomSheetProps) {
   const { t } = useTranslation();
   const titleId = useId();
-  useEffect(() => {
-    const close = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
-  }, [onClose]);
+  useEscapeClose(onClose);
   return (
     <div className="fixed inset-0 z-10 flex flex-col justify-end">
       <button
