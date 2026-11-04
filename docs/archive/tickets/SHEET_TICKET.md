@@ -8018,9 +8018,9 @@ Changelog: "A long web address in a pack's attribution, under See full descripti
 4. The page stays 360 px wide.
 5. The gate is green.
 
-**Tests:** `apps/web/e2e/sheet.spec.ts` — 1 test: the character of SHEET-36's test; the badge reads "!8"; the class line's `scrollWidth` is not above its `clientWidth` (it was 18 px above before the change, the "Fig…" of the row); the badge ends before the Rest button begins; the page is 360 px; the badge still opens the choices panel. Control values: the text "Fighter 1" and "!8" are the sheet's own and SHEET-36's.
+**Tests:** `apps/web/e2e/sheet.spec.ts` — 2 tests: the first, on the character of SHEET-36's test: the badge reads "!8"; the class line's `scrollWidth` is not above its `clientWidth` (it was 18 px above before the change, the "Fig…" of the row); the badge ends before the Rest button begins; the page is 360 px; the badge still opens the choices panel; the second, on golden B with no badge: the header's first row is 64 px. Control values: the text "Fighter 1" and "!8" are the sheet's own and SHEET-36's.
 **What came out of it:**
-Quality gate, 2026-11-04: `pnpm lint` 444 files, no fixes; `pnpm typecheck` clean; `pnpm test` 141 files, 1588 passed, 0 failed, 38.0 s (0 new), then speed 2 passed; coverage statements 99.04 % (4051/4090), lines 99.77 % (3551/3559); `pnpm e2e` 88 passed, 0 failed, 1.8 min (1 new). Screenshot at 360×800 shown in the chat.
+Quality gate, 2026-11-04: `pnpm lint` 444 files, no fixes; `pnpm typecheck` clean; `pnpm test` 141 files, 1588 passed, 0 failed, 38.0 s (0 new), then speed 2 passed; coverage statements 99.04 % (4051/4090), lines 99.77 % (3551/3559); `pnpm e2e` 88 passed, 0 failed, 1.8 min (1 new); a second test added after, measuring the header's first row at 64 px with no badge, run alone: 2 passed. Screenshot at 360×800 shown in the chat.
 
 Differences from the row: none. Technical choice (ADR 002): the row offers "the line and the badges wrap or the badge moves"; the row of the class line and the badges wraps (the class line is not cut and may itself wrap, which a character with several classes needs), and the header's height is a minimum (`min-h-16`), so it grows by one line only while the badges do not fit. The header's 64 px with no badge is unchanged (the unit and browser tests that measure it pass untouched).
 

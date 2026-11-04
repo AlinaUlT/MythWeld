@@ -2032,3 +2032,15 @@ test('SHEET-70 the header keeps the class line whole beside the choices badge', 
   await badge.click();
   await expect(page.getByRole('dialog', { name: en.choices.title })).toBeVisible();
 });
+
+test('SHEET-70 with no choices badge the header’s first row stays 64 px', async ({ page }) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  const header = page.getByRole('banner');
+  await expect(header.getByText('Fighter 1', { exact: true })).toBeVisible();
+  await expect(header.getByRole('button', { name: /choices to make/ })).toHaveCount(0);
+  const row = await header
+    .getByRole('heading', { level: 1 })
+    .evaluate((node) => node.parentElement?.parentElement?.getBoundingClientRect().height);
+  expect(row).toBe(64);
+});
