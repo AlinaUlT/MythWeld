@@ -12,7 +12,9 @@ import {
   type AboutShown,
   attackOutcome,
   type ChecksShown,
+  type ConditionsShown,
   concentrationOf,
+  conditionsToAdd,
   criticalDamage,
   d20Formula,
   EDITION_RULES,
@@ -24,10 +26,12 @@ import {
   type FifthEditionCharacter,
   type FifthEditionEntity,
   type FifthEditionPack,
+  fatalLevelOf,
   fifthEditionAbout,
   fifthEditionCasting,
   fifthEditionChecks,
   fifthEditionClassLine,
+  fifthEditionConditions,
   fifthEditionFeatures,
   fifthEditionGear,
   fifthEditionHitPoints,
@@ -56,11 +60,13 @@ import {
   type PendingKeyAnswer,
   type RollTest,
   regainSlot,
+  removeConditionOf,
   removeRow,
   rollInitiative,
   rollModeOf,
   type Situational,
   type SpellsShown,
+  setConditionLevel,
   setRowAttuned,
   setRowContainer,
   setRowEquipped,
@@ -152,6 +158,7 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
 
 export type {
   AboutListName,
+  ConditionsShown,
   FeatureGroup,
   GearShown,
   MadeByHand,
@@ -206,6 +213,19 @@ export interface SheetSystem {
   setRowQuantity: typeof setRowQuantity;
   setRowContainer: typeof setRowContainer;
   removeRow: typeof removeRow;
+  /** The conditions the character has, stored or given, and the ones it cannot find (SHEET-42). */
+  conditions(
+    character: AppCharacter,
+    computed: AppComputed,
+    find: (id: string) => FifthEditionEntity | undefined,
+  ): ConditionsShown;
+  /** The conditions the person can add (SHEET-42). */
+  conditionsToAdd: typeof conditionsToAdd;
+  /** The level of a condition that is death, or none (exhaustion's highest, ENG-67). */
+  fatalLevel: typeof fatalLevelOf;
+  /** Gives a condition or sets its level; ends every attunement when the level kills (ENG-69). */
+  setConditionLevel: typeof setConditionLevel;
+  removeCondition: typeof removeConditionOf;
   /** The groups of the Features tab: what gave each feature (ADR 009 item 2, SHEET-48). */
   features(character: AppCharacter, computed: AppComputed): FeatureGroup[];
   /** The parts a computed path is named by in a breakdown (SHEET-33). */
@@ -235,6 +255,11 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     hitPoints: fifthEditionHitPoints,
     checks: fifthEditionChecks,
     features: fifthEditionFeatures,
+    conditions: fifthEditionConditions,
+    conditionsToAdd,
+    fatalLevel: fatalLevelOf,
+    setConditionLevel,
+    removeCondition: removeConditionOf,
     gear: fifthEditionGear,
     spells: fifthEditionSpells,
     spendSlot,

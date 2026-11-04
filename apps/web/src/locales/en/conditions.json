@@ -1,1 +1,22 @@
-{}
+{
+  "title": "Conditions",
+  "none": "No conditions",
+  "add": "Add",
+  "addTitle": "Add a condition",
+  "noneToAdd": "No condition left to add.",
+  "missing": "Missing: {{id}}",
+  "chipLevel": "{{name}} {{level}}",
+  "chipDeath": "{{name}} · death",
+  "chipNoEffect": "{{name}} · no effect",
+  "levelHeading": "Level",
+  "levelDeath": "{{level}} · death",
+  "setLevel": "Set {{name}} to level {{level}}",
+  "remove": "Remove",
+  "immune": "The character is immune to it, so it has no effect.",
+  "death": "{{name}} at this level is death. It gives no number.",
+  "givenBy": "Given by {{names}}. End that to end this.",
+  "givenByRule": "Given by a rule of the game. It ends when its cause does.",
+  "and": " and ",
+  "otherRuleset": "From the {{ruleset}} rules, not this character's rules base. It may not fit.",
+  "otherRulesetNotMixing": "From the {{ruleset}} rules, and mixing editions is off. It may not fit."
+}

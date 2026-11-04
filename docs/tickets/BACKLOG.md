@@ -243,7 +243,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-39 | Tapping a number rolls it in the roll dialog | M | ✅ 2026-11-03 |
 | SHEET-40 | The number pad changes the hit points | M | 🔲 |
 | SHEET-41 | Concentration shows until it ends | XS | ✅ 2026-11-04 |
-| SHEET-42 | Conditions are set from the sheet | S | 🔲 |
+| SHEET-42 | Conditions are set from the sheet | S | ✅ 2026-11-04 |
 | SHEET-43 | The death saves tracker follows a dying character | S | 🔲 |
 | SHEET-44 | The Combat tab lists the attacks | S | 🔲 |
 | SHEET-45 | The Rest frames show what comes back | M | 🔲 |
@@ -264,6 +264,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 | SHEET-69 | The roll dialog counts the faces a person types | S | 🔲 |
 | SHEET-70 | The header keeps the class line whole beside the choices badge | XS | 🔲 |
+| SHEET-71 | The undo toast shows above an open panel | XS | 🔲 |
 
 - **SHEET-29** — found by ENG-37 (ADR 017): when the race or species and the background come from
   different editions and both raise ability scores, the manual form (BRIEF P3 step 6) shows a
@@ -284,11 +285,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   (`applyDamage`'s `knockOut`) where the edition has it (`rulesOf(character).knockOutToOneHp`,
   2024) and the damage would drop the character to 0; the outcome's `status` `knockedOut` says it
   happened.
-- **SHEET-42** — found by ENG-69: the sheet sets a fifth-edition character's condition through
-  the module's `setConditionLevel` (`conditions.ts`), not the core's `setCondition`: only the
-  module's ends every attunement when the level kills (exhaustion at its highest, ENG-67). Below
-  that it gives the core's result. Found by ENG-19: exhaustion 6 is death in both editions and
-  gives no number; the sheet says so.
 - **SHEET-43** — found by ENG-58: the death save tracker calls `rollDeathSave` (`death-saves.ts`)
   with the kept d20 face and the total the dice panel gives (`d20Formula(deathSave.mode)`, with
   the person's bonuses); its outcome's `status` (`dying`, `stable`, `dead`, `up`) says what to
@@ -338,6 +334,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
   refuses as `changed` where a later change wrote over its place.
 - **SHEET-69** — found by SHEET-39: the dice panel counts the faces a person typed when "I roll myself" is on (SHEET-38, SPEC §6.5); the roll dialog always rolls with the fair die. The dialog's d20 (one or two) and a weapon's damage dice take typed faces through `typedDie` (`shared/dice.ts`), and the dialog's field for each die is the panel's (`diceFields`).
 - **SHEET-70** — found by SHEET-36: with the choices badge shown, the header's class line is cut to "Fig…" at 360×800 (`SheetHeader.tsx`, board `V3-Sheet`). The line and the badges wrap or the badge moves, so the class and its level stay readable.
+- **SHEET-71** — found by SHEET-42: a bottom panel (`BottomSheet`) sits above the toast, so the "Undo" of a change made inside a panel (a condition's level, a choice) is reachable only after the panel closes. The toast shows above the panel's dim.
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
 

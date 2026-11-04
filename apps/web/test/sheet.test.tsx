@@ -25,6 +25,7 @@ import { formatNumber, numberAt } from '../src/sheet/SheetNumber';
 import { Abilities } from '../src/sheet/sections/Abilities';
 import { AboutList } from '../src/sheet/sections/AboutList';
 import { Concentration } from '../src/sheet/sections/Concentration';
+import { Conditions } from '../src/sheet/sections/Conditions';
 import { FeatureList } from '../src/sheet/sections/FeatureList';
 import { Items } from '../src/sheet/sections/Items';
 import { NotesText } from '../src/sheet/sections/NotesText';
@@ -239,6 +240,7 @@ describe('SHEET-30 tabs', () => {
       Items,
       SpellList,
       Concentration,
+      Conditions,
     ];
     for (const Section of [...sections, Inspiration].filter((each) => !filled.includes(each))) {
       expect(draw(sheet, <Section />)).toBe('');

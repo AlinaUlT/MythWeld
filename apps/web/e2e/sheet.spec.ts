@@ -869,3 +869,50 @@ test('SHEET-41 the Combat tab shows the concentration until it ends; Undo brings
   await page.getByRole('button', { name: en.toast.undo }).click();
   await expect(card).toBeVisible();
 });
+
+test('SHEET-42 conditions are set from the sheet: add, raise to death, end, each with Undo', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  const tab = page.getByRole('tabpanel');
+  await expect(tab).toContainText('No conditions');
+
+  // Add Exhaustion (2024: six levels) from the list.
+  await tab.getByRole('button', { name: en.conditions.add, exact: true }).click();
+  await page.locator('[data-condition="srd-2024:condition/exhaustion"] button').click();
+  await expect(page.getByRole('status')).toContainText('Exhaustion applied');
+  const chip = tab.locator('[data-condition="srd-2024:condition/exhaustion"]');
+  await expect(chip).toHaveText('Exhaustion 1');
+
+  // Raise it to 3: the chip follows, and the panel marks the level.
+  await chip.getByRole('button').click();
+  const panel = page.getByRole('dialog');
+  await panel.getByRole('button', { name: 'Set Exhaustion to level 3' }).click();
+  await expect(panel.getByRole('button', { name: 'Set Exhaustion to level 3' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(chip).toHaveText('Exhaustion 3');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('conditions-panel-dark.png') });
+
+  // Level 6 is death: no number, and the panel says so; Undo goes back to 3.
+  await panel.getByRole('button', { name: 'Set Exhaustion to level 6' }).click();
+  await expect(chip).toHaveText('Exhaustion · death');
+  await expect(panel).toContainText('Exhaustion at this level is death. It gives no number.');
+  // The panel covers the toast, so it closes before Undo is tapped (as SHEET-36's does).
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(chip).toHaveText('Exhaustion 3');
+  await chip.getByRole('button').click();
+
+  // Remove ends it, with its toast; Undo brings it back.
+  await panel.getByRole('button', { name: en.conditions.remove }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(tab).toContainText('No conditions');
+  await expect(page.getByRole('status')).toContainText('Exhaustion ended');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(chip).toHaveText('Exhaustion 3');
+  await page.screenshot({ path: testInfo.outputPath('conditions-dark.png') });
+});

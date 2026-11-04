@@ -6759,3 +6759,90 @@ Found, not fixed: nothing.
 Changelog: "The Combat tab shows the spell you concentrate on until it ends, with a button to end it (and Undo)."
 
 ---
+
+### SHEET-42 Conditions are set from the sheet
+
+**Hat:** The sheet sets and ends a condition
+**Depends on:** SHEET-30 (the section's place), SHEET-31 (descriptions in place), SHEET-23 (Undo), SHEET-61 (a condition the character is immune to), ENG-69 (`setConditionLevel`), ENG-67 (exhaustion at its highest level is death)
+**Size:** S
+**Screen:** Yes — board `V3-Sheet` in `docs/design/mockups/` ("No conditions", "Add"); `docs/design/BRIEF.md` Part 2 P4 (Combat: conditions) and Part 5 "P4 Character sheet"
+**SPEC:** §7.2 (the conditions on the sheet), §8.2 (missing is not broken)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/Conditions.tsx` — changes: the section on Main and Combat.
+- `apps/web/src/sheet/panels/ConditionPanels.tsx` — new: one condition's panel, and the list to add from.
+- `packages/system-5e/src/sheet-conditions.ts` — new: `fifthEditionConditions`, `conditionsToAdd`, `fatalLevelOf`.
+- `packages/system-5e/src/conditions.ts` — changes: `removeConditionOf`, the core's `removeCondition` with this module.
+- `apps/web/src/systems.ts` — changes: `SheetSystem.conditions`, `conditionsToAdd`, `fatalLevel`, `setConditionLevel`, `removeCondition`.
+- `apps/web/src/locales/en/conditions.json` — changes: the words.
+
+#### 2. What is missing now
+
+Measured on `be02a01`: `Conditions` returns `null`; the sheet shows none, and a person cannot set or end one.
+
+#### 3. What it should look like when done
+
+1. The card "Conditions" with an "Add" button; with none it says "No conditions" (board V3-Sheet).
+2. A chip for each condition the character has, in the order stored, then the ones given: "Exhaustion 2" for a condition with levels, the name alone for one without.
+3. "Add" opens "Add a condition": every condition entry of the packs and of the character's own not stored yet, own first. A tap stores it at level 1 (`setConditionLevel`), with the toast "Exhaustion applied" and Undo. A condition of the other edition shows its edition and warns in amber (mixing on or off).
+4. A chip opens its panel: the description in place, the levels 1 to its highest (the current one marked), and "Remove" (`removeCondition`: "Exhaustion ended", Undo). A level tap is one change (`setConditionLevel`), so a level that kills ends every attunement in the same entry (ENG-69).
+5. Exhaustion at its highest level (6 in both editions) is death and gives no number: the chip reads "Exhaustion · death", its level button "6 · death", and the panel says "Exhaustion at this level is death. It gives no number."
+6. A condition another entry gives (not stored) has a chip too; its panel names what gives it and has no level buttons and no "Remove". A condition `compute()` withholds (SHEET-61) reads "<name> · no effect", with the reason in its panel.
+7. A stored condition no pack holds reads "Missing: <id>" and can still be removed.
+8. The gate is green.
+
+#### 4. How to do it
+
+1. `fifthEditionConditions` reads the stored list and `computed.entities`: the stored ones in order (found, or missing), then the given ones with the entries that give them, from each entity's `from`.
+2. `removeConditionOf` is the core's `removeCondition` with `fifthEditionModule`.
+3. The section holds which panel is open; both panels run the module's actions through `perform`.
+
+Technical choices (ADR 002): a panel stays open after a level tap, so the person steps through levels; it closes after "Add" and "Remove"; a given condition is not changed here, as nothing stored holds it; which condition is death is the module's (`fatalLevelOf`: key `exhaustion` with more than one level, ENG-67), not the app's.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Cards at 360×800: Conditions with its chips, a bottom panel for a condition, a bottom panel to add. Keys in `conditions`: `title`, `none`, `add`, `addTitle`, `noneToAdd`, `missing`, `chipLevel`, `chipDeath`, `chipNoEffect`, `levelHeading`, `levelDeath`, `setLevel`, `remove`, `immune`, `death`, `givenBy`, `givenByRule`, `and`, `otherRuleset`, `otherRulesetNotMixing`.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-conditions.test.ts` — 9 tests: none; a stored condition without levels; exhaustion 2 and 5 against 6 (death); `fatalLevelOf`; a given condition with what gives it; an immune one; a missing one; the list to add; removing a stored one whether or not a pack holds it.
+- `apps/web/test/conditions.test.tsx` — 8 tests: "No conditions" and "Add"; "Exhaustion 2" and the death chip; a missing chip; the panel's six levels; the death note; a missing condition's panel; the list to add and its empty state; the other-edition warning.
+- `apps/web/e2e/sheet.spec.ts` — 1 test: add Exhaustion, raise it to 3, to 6 (death), Undo, Remove, Undo.
+- Control values: the 2024 pack's Exhaustion has `maxLevel: 6` (ENG-10's fixture, SRD 5.2.1 "You die if your Exhaustion level is 6"); every other condition is made up.
+
+#### 8. Checked against the source
+
+SRD 5.2.1, Exhaustion: level 6 is death; SRD 5.1, Conditions, "Exhaustion": the table's level 6 is "Death" (ENG-67 §8 has both). Nothing else rests on a rule.
+
+#### 9. Not in this ticket
+
+- Conditions' text and effects for the other conditions: phase 3's content. The built-in packs hold only the 2024 Exhaustion today, so that is the one the list offers.
+- A timer on a condition (end of turn, one minute): not in the stored shape; later.
+- Changing a given condition: end what gives it.
+
+#### 10. Rake check
+
+- **Everything is data:** conditions, levels and names come from entries; the one rule the app needs, which level is death, is the module's.
+- **Missing is not broken:** a stored condition no pack holds is shown and can be removed.
+- **A shown number has a breakdown:** the section shows levels, not computed numbers.
+- **A person's saved data:** every change is a logged, undoable entry.
+- **No visible literal, no look literal:** `conditions` keys; parts and tokens.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` 401 files, no fixes; `pnpm typecheck` clean; `pnpm test` 118 files, 1438 passed, 0 failed, 25.9 s (17 new, from 1421), then speed 2 passed; coverage statements 99.11 % (3790/3824), lines 99.81 % (3322/3328); `pnpm e2e` 59 passed, 0 failed, 52.1 s (1 new). Screenshot at 360×800 shown in the chat.
+
+Differences from §3: none.
+
+Found, not fixed: a bottom panel covers the Undo toast (the panel sits above it), so a change made inside a panel is undone only after the panel is closed; SHEET-36's panel has the same fault. New row SHEET-71. The built-in 2014 pack holds no condition (only the 2024 Exhaustion): phase 3 (CONT) fills it.
+
+Changelog: "Conditions can be added to the character from the sheet and ended, each with its level and description; exhaustion at its highest level says it is death."
+
+---

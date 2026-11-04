@@ -4,6 +4,7 @@ import {
   changeTo,
   compute,
   type LogStamp,
+  removeCondition,
   setCondition,
 } from '@grimoire/engine';
 import { CONCENTRATION_PATH, deathChanges, settled } from './actions';
@@ -64,4 +65,17 @@ export function setConditionLevel(
     },
     `${action} changes nothing.`,
   );
+}
+
+/**
+ * SHEET-42: takes the condition `ask.id` from the character, whether or not a pack still has its
+ * entry: the core's `removeCondition` with this module, so what was stored for it is dropped.
+ */
+export function removeConditionOf(
+  character: FifthEditionCharacter,
+  index: ContentIndex<FifthEditionEntity>,
+  ask: { readonly id: string },
+  stamp: LogStamp,
+): ActionResult<FifthEditionCharacter> {
+  return removeCondition(character, index, fifthEditionModule, ask, stamp);
 }
