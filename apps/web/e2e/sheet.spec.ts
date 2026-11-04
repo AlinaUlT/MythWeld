@@ -557,6 +557,65 @@ test('SHEET-34 a manual edit overrides a number in edit mode; Undo and Remove gi
   await expect(number(page, 'abilities.str.score')).toHaveText('Strength score20');
 });
 
+test('SHEET-58 the sheet’s ⋯ menu lists the character’s actions; Export, Copy and Delete run from it', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  await page.getByRole('button', { name: en.sheet.actions }).click();
+  const menu = page.getByRole('dialog', { name: 'Golden B' });
+  await expect(menu).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+
+  // ADR 013 item 2, top to bottom; the ones that wait for a later phase are shown, not tappable.
+  const rows = menu.getByTestId('sheet-actions').getByRole('button');
+  await expect(rows).toHaveText([
+    'Level upComing later',
+    'Link for the DMComing later',
+    'ExportA file of this character',
+    'Copy',
+    'TransferComing later',
+    'Rules optionsComing later',
+    'Change historyComing later',
+    'DeleteUndo stays available for a moment',
+  ]);
+  for (const name of [
+    /^Level up/,
+    /^Link for the DM/,
+    /^Transfer/,
+    /^Rules options/,
+    /^Change history/,
+  ]) {
+    await expect(menu.getByRole('button', { name })).toBeDisabled();
+  }
+  await page.screenshot({ path: testInfo.outputPath('sheet-menu-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('sheet-menu-light.png') });
+
+  // Export saves the character file and closes the menu.
+  const download = page.waitForEvent('download');
+  await menu.getByRole('button', { name: /^Export/ }).click();
+  expect((await download).suggestedFilename()).toBe('Golden B.json');
+  await expect(menu).toHaveCount(0);
+
+  // Copy stores a copy and stays on the sheet.
+  await page.getByRole('button', { name: en.sheet.actions }).click();
+  await menu.getByRole('button', { name: /^Copy/ }).click();
+  await expect(menu).toHaveCount(0);
+  await expect(page).toHaveURL(`characters/${goldenB.id}`);
+
+  // Delete leaves for My characters, where the toast offers Undo.
+  await page.getByRole('button', { name: en.sheet.actions }).click();
+  await menu.getByRole('button', { name: /^Delete/ }).click();
+  await expect(page).toHaveURL(/characters$/);
+  const cards = page.getByRole('main').getByRole('link', { name: /Golden/ });
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first()).toContainText('Golden B (copy)');
+  await expect(page.getByRole('status')).toContainText('Golden B deleted');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(cards).toHaveCount(2);
+});
+
 /** The d20 faces a roll shows, and which of them it kept. */
 async function facesOf(page: Page) {
   return page

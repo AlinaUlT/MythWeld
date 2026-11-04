@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-58 · The sheet's ⋯ menu lists the character's actions: Export, Copy and Delete work from it (Delete goes back to My characters, with Undo); Level up, Link for the DM, Transfer, Rules options and Change history show as coming later.
 - 2026-11-04 · SHEET-34 · In edit mode a number's breakdown has an "Override by hand" form: type the number you want and a note, or remove the edit; each is one change with Undo, the breakdown shows it as a manual edit, and every number that reads it follows.
 - 2026-11-04 · SHEET-51 · The Gear tab shows your coins, cp sp ep gp pp, each with − and + buttons for steps of 1 and 10, and Undo.
 - 2026-11-04 · SHEET-49 · The Turn tab lists what you can do on your turn from your features, grouped by when you use them, with your weapon attacks under Action and the uses a feature has left.

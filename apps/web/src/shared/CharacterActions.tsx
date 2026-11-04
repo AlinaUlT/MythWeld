@@ -2,10 +2,12 @@
 // Export, Copy, Transfer, Delete. Export saves the character file, Copy stores a copy, Delete
 // drops it with "Undo" in the toast. Link for the DM and Transfer wait for the table link's phase
 // (ADR 005) and show as coming later. My characters opens it from a card's swipe or its "⋯"; the
-// sheet's "⋯" (SHEET-58) shows the same rows under its own.
+// sheet's "⋯" (SHEET-58) shows the same rows with its own around them: `first` goes above the list,
+// `beforeDelete` above Delete, and `afterDelete` runs when Delete is chosen (the sheet leaves for
+// My characters, since the page it shows would be a character that is gone).
 import type { TFunction } from 'i18next';
 import { ArrowRightLeft, Copy, FileDown, Link2, type LucideIcon, Trash2, X } from 'lucide-react';
-import { useId } from 'react';
+import { type ReactNode, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { copyCharacter, exportCharacter } from '../db/characterActions';
 import { Part } from '../theme/Part';
@@ -50,7 +52,7 @@ interface RowProps {
 }
 
 /** One row of the list; with no `onClick` it is shown, not tappable. */
-function Row({ icon: Icon, label, note, danger = false, onClick }: RowProps) {
+export function ActionRow({ icon: Icon, label, note, danger = false, onClick }: RowProps) {
   return (
     <button
       type="button"
@@ -67,8 +69,19 @@ function Row({ icon: Icon, label, note, danger = false, onClick }: RowProps) {
   );
 }
 
+export interface ActionRowsProps {
+  target: ActionsTarget;
+  onClose: () => void;
+  /** Rows above the list (the sheet's Level up). */
+  first?: ReactNode;
+  /** Rows between Transfer and Delete (the sheet's Rules options and Change history). */
+  beforeDelete?: ReactNode;
+  /** Runs when Delete is chosen, after the list closes and before the character goes. */
+  afterDelete?: () => void;
+}
+
 /** The rows every Actions list has; each closes the list when it runs. */
-export function ActionRows({ target, onClose }: { target: ActionsTarget; onClose: () => void }) {
+export function ActionRows({ target, onClose, first, beforeDelete, afterDelete }: ActionRowsProps) {
   const { t } = useTranslation('actions');
   const { t: tc } = useTranslation();
   const run = (action: () => Promise<void>) => () => {
@@ -77,25 +90,31 @@ export function ActionRows({ target, onClose }: { target: ActionsTarget; onClose
   };
   return (
     <>
-      <Row icon={Link2} label={t('dmLink')} note={tc('comingLater')} />
-      <Row
+      {first}
+      <ActionRow icon={Link2} label={t('dmLink')} note={tc('comingLater')} />
+      <ActionRow
         icon={FileDown}
         label={t('export')}
         note={t('exportNote')}
         onClick={run(() => exportTarget(target))}
       />
-      <Row
+      <ActionRow
         icon={Copy}
         label={t('copy')}
         {...(target.opens ? { onClick: run(() => copyTarget(target, t)) } : { note: t('noCopy') })}
       />
-      <Row icon={ArrowRightLeft} label={t('transfer')} note={tc('comingLater')} />
-      <Row
+      <ActionRow icon={ArrowRightLeft} label={t('transfer')} note={tc('comingLater')} />
+      {beforeDelete}
+      <ActionRow
         icon={Trash2}
         label={t('delete')}
         note={t('deleteNote')}
         danger
-        onClick={run(() => deleteTarget(target))}
+        onClick={() => {
+          onClose();
+          afterDelete?.();
+          void deleteTarget(target);
+        }}
       />
     </>
   );

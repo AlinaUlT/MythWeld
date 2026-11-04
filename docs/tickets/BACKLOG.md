@@ -260,7 +260,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-55 | Inspiration is tracked as stars | S | ✅ 2026-11-03 |
 | SHEET-56 | The portrait makes a round token | S | ✅ 2026-11-03 |
 | SHEET-57 | Custom sections hold the person's own lists | S | 🔲 |
-| SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | 🔲 |
+| SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | ✅ 2026-11-04 |
 | SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 | SHEET-69 | The roll dialog counts the faces a person types | S | 🔲 |
@@ -291,13 +291,6 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
   named list, each entry free text; a companion is such an entry with its small stat block as text.
   A companion with a sheet of its own waits for the table link (ADR 014 item 9). A stored-shape
   change: `schemaVersion` and a migration (SPEC §5.8).
-- **SHEET-58** — ADR 013 item 2 and the P4 prompt's list, board `V3-Actions`: Level up first, then
-  Link for the DM, Export, Copy, Transfer, Rules options, Change history, Delete. Level up (phase
-  4), Link for the DM and Transfer (the table link) and Rules options (phase 4's house rules) show
-  as coming later. Rest and Edit stay header buttons. Found by SHEET-25: `ActionRows`
-  (`apps/web/src/shared/CharacterActions.tsx`) already draws and runs Link for the DM, Export,
-  Copy, Transfer and Delete; the menu adds its own rows around them. Deleting from the sheet
-  leaves a page whose character is gone: the menu goes back to My characters.
 - **SHEET-59** — SPEC §7.2's 50 states, opened from "⋯" (ADR 013 item 2: "undo any change").
   Undoing a change that later changes touched is decided in the row. Found by SHEET-23:
   `readHistory` lists the kept changes, newest first; `undoChange` reverses any one of them, and

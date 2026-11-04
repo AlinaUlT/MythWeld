@@ -7534,3 +7534,80 @@ Differences from the row: none. Technical choices (ADR 002): the edit is made in
 Found, not fixed: a second context menu on the same number opens nothing, since `usePress` clears its long-press flag only on a left press or click (`SheetNumber.tsx`): new row SHEET-78, XS. No screen edits a key path: new row SHEET-79, S.
 
 Changelog: "Open a number's breakdown in edit mode and set it by hand with a note, or take the edit away, each with Undo; the breakdown shows it as a manual edit and every number that reads it follows."
+
+---
+
+### SHEET-58 The sheet's "⋯" menu opens the character's actions
+
+**Hat:** The sheet's "⋯" opens the list of the character's actions
+**Depends on:** SHEET-30 (the empty panel and its open state), SHEET-25 (`ActionRows`), SHEET-56 (`BottomSheet`)
+**Size:** S
+**Screen:** Yes — the sheet's "⋯" menu; board `V3-Actions` in `docs/design/mockups/` and its row in `docs/design/BRIEF.md` Part 5 ("P4"). ADR 013 item 2.
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/panels/ActionsMenu.tsx` — changes: the panel SHEET-30 left empty.
+- `apps/web/src/shared/CharacterActions.tsx` — change: `ActionRow` is exported; `ActionRows` takes `first`, `beforeDelete` and `afterDelete`.
+- `apps/web/src/locales/en/actions.json` — change: `levelUp`, `rules`, `history`.
+
+#### 2. What is missing now
+
+The "⋯" button in the header (`onActions`) sets `open` to `actions` and the frame mounts `ActionsMenu`, which returns `null`: nothing opens. `apps/web/test/sheet.test.tsx` expects the empty string from it.
+
+#### 3. What it should look like when done
+
+1. "⋯" on the sheet opens a sheet from the bottom titled with the character's name ("Golden B"), with a close button, over a dimmed screen. Escape and a tap on the dim close it.
+2. The rows, top to bottom (ADR 013 item 2, BRIEF P4): Level up, Link for the DM, Export, Copy, Transfer, Rules options, Change history, Delete.
+3. Level up, Link for the DM, Transfer, Rules options and Change history show "Coming later" and cannot be tapped. Export, Copy and Delete run SHEET-25's actions.
+4. Export saves `Golden B.json` and closes the menu. Copy stores "Golden B (copy)" and the sheet stays open on the same character.
+5. Delete closes the menu, goes back to My characters, and the toast "Golden B deleted" offers "Undo"; Undo brings the character back.
+6. Rest and Edit stay header buttons.
+7. The gate is green.
+
+#### 4. How to do it
+
+1. `ActionRows` gets `first` (above the list), `beforeDelete` (between Transfer and Delete) and `afterDelete`. Delete runs `onClose()`, `afterDelete?.()`, then deletes: the sheet leaves first, so it never draws a character that is gone. My characters passes none of them.
+2. `ActionsMenu` is a `BottomSheet` with the character's name; its body is `ActionRows` with Level up as `first`, Rules options and Change history as `beforeDelete`, and `afterDelete` navigating to `paths.characters`.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+At 360×800, a sheet with the name as its title, then eight rows of an icon, the name of the action and a line under it: "Coming later" in muted text on five, "A file of this character" under Export, "Undo stays available for a moment" under Delete (in the danger colour). Keys: `actions.json` `levelUp`, `rules`, `history` with SHEET-25's; `comingLater` from `common.json`. Screenshots in the chat.
+
+#### 7. Tests
+
+- `apps/web/test/sheet-actions.test.tsx` — 2 tests on golden B: the dialog is named by the character; the eight rows in order with the five that wait disabled.
+- `apps/web/test/sheet.test.tsx` — the panel list of empty files loses `ActionsMenu` (it is filled).
+- `apps/web/e2e/sheet.spec.ts` — 1 test: the rows and their order, the five disabled, Export's file name, Copy staying on the sheet, Delete going to My characters with the toast, Undo bringing it back.
+- Control values: the ADR 013 order; golden B's name and the file name `Golden B.json` (SHEET-25's own).
+
+#### 8. Checked against the source
+
+ADR 013 item 2 and `docs/design/BRIEF.md` P4: the order and the five rows that wait. Nothing else to check.
+
+#### 9. Not in this ticket
+
+- Level up (phase 4), Link for the DM and Transfer (the table link, ADR 005), Rules options (phase 4's house rules): shown as coming later. The board's "Fighter 1 → 2" line under Level up waits with Level up.
+- Change history's list and its undo: SHEET-59. The row shows as coming later until then.
+- Export as PDF (BRIEF P4: "Export (file, PDF)"): phase 6.
+
+#### 10. Rake check
+
+- No look in a component, no literal string: parts, tokens and `actions.json` keys only; the rows are SHEET-25's.
+- Nothing hard-codes a system: the menu reads the character from the sheet and asks the module for nothing.
+- A person's saved data: Delete is the one destructive row and has "Undo" through the toast, as SHEET-25 made it.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` 429 files, no fixes; `pnpm typecheck` clean; `pnpm test` 134 files, 1528 passed, 0 failed, 33.3 s (2 new, from 1526), then speed 2 passed; coverage statements 99.07 % (3946/3983), lines 99.82 % (3459/3465); `pnpm e2e` 79 passed, 0 failed, 1.3 min (1 new). Screenshots at 360×800 shown in the chat.
+
+Differences from the row: Change history shows as coming later too: the row names four rows that wait and SHEET-59, which builds the list, is not closed. Technical choices (ADR 002): Delete navigates before it deletes, so the sheet never shows a missing character; the menu's title is the character's name, as My characters' Actions are.
+
+Found, not fixed: nothing.
+
+Changelog: "The sheet's ⋯ menu lists the character's actions: Export, Copy and Delete work from it (Delete goes back to My characters, with Undo); Level up, Link for the DM, Transfer, Rules options and Change history show as coming later."

@@ -1,6 +1,7 @@
 {
   "title": "Actions",
   "close": "Close",
+  "levelUp": "Level up",
   "dmLink": "Link for the DM",
   "export": "Export",
   "exportNote": "A file of this character",
@@ -8,6 +9,8 @@
   "copyName": "{{name}} (copy)",
   "noCopy": "Only a character that opens can be copied",
   "transfer": "Transfer",
+  "rules": "Rules options",
+  "history": "Change history",
   "delete": "Delete",
   "deleteNote": "Undo stays available for a moment",
   "swipe": {
