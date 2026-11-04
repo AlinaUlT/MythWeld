@@ -7924,3 +7924,30 @@ Differences from the row: none. Technical choice (ADR 002): the row offers "one 
 Found, not fixed: nothing.
 
 Changelog: "On the sheet the toast with Undo now sits above the dice button and the + button, so both can be tapped while it shows."
+
+---
+
+### SHEET-78 A second context menu on the same number opens its breakdown · XS
+
+**Hat:** A mouse's context menu leaves no long-press flag behind
+**Where:** `apps/web/src/sheet/SheetNumber.tsx` — `usePress`
+**Depends on:** SHEET-33 (the breakdown), SHEET-30 (`usePress`)
+**Screen:** No — the breakdown sheet does not change.
+
+**What it should look like when done:**
+1. A right-click on a number opens its breakdown every time, also the second and third, with the sheet closed between them.
+2. A touch long press still opens the breakdown once; the browser's context menu that follows it does not open it twice; the click that ends the press is not a tap.
+3. After a right-click a left click is a tap again.
+4. The gate is green.
+
+**Tests:** `apps/web/test/press.test.tsx` — 4 tests: the handlers are taken from one render and called as the browser would (fake timers): three right-clicks open three times and never tap; a left click after a right-click taps; a touch long press opens once, the following context menu does not, the click is no tap, the next tap taps; a context menu before the timer on touch opens once and swallows the click. `apps/web/e2e/sheet.spec.ts` — 1 test on golden B: three right-clicks on Strength, each followed by Escape. Control value: "Strength score 17 = Base 15, Soldier +2", as the SHEET-33 test has it.
+**What came out of it:**
+Cause checked: the row is right. A right-click gives a pointer down with button 2, which returned before the flag was reset; the context menu then set the flag, and a right-click has no click after it, so nothing cleared it. The new unit test failed on the old code at the second right-click ("called 2 times, but got 1 times").
+
+Quality gate, 2026-11-04: `pnpm lint` 444 files, no fixes; `pnpm typecheck` clean; `pnpm test` 141 files, 1587 passed, 0 failed, 35.9 s (4 new, from 1583), then speed 2 passed; coverage statements 99.04 % (4051/4090), lines 99.77 % (3551/3559); `pnpm e2e` 85 passed, 0 failed, 1.8 min (1 new).
+
+Differences from the row: the row says the flag is cleared when the breakdown opens or closes. Technical choice (ADR 002): it is cleared where it ends. Every pointer down now clears it, and a context menu that comes from a mouse's other button clears it at once, because no click follows it. So the hook does not need to know when the breakdown closes.
+
+Found, not fixed: nothing.
+
+Changelog: "A right-click on a number on the sheet opens its breakdown every time, not only the first."

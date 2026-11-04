@@ -48,6 +48,8 @@ export function formatNumber(
 export function usePress(onTap: (() => void) | undefined, onLongPress: () => void) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const long = useRef(false);
+  // SHEET-78: the last press was a mouse's other button, whose context menu sends no click after it.
+  const secondary = useRef(false);
   const stop = () => {
     clearTimeout(timer.current);
     timer.current = undefined;
@@ -59,8 +61,9 @@ export function usePress(onTap: (() => void) | undefined, onLongPress: () => voi
   };
   return {
     onPointerDown: (event: PointerEvent) => {
-      if (event.button !== 0) return;
       long.current = false;
+      secondary.current = event.button !== 0;
+      if (secondary.current) return;
       stop();
       timer.current = setTimeout(press, LONG_PRESS_MS);
     },
@@ -69,7 +72,10 @@ export function usePress(onTap: (() => void) | undefined, onLongPress: () => voi
     onPointerCancel: stop,
     onContextMenu: (event: { preventDefault(): void }) => {
       event.preventDefault();
-      if (!long.current) press();
+      if (long.current) return;
+      press();
+      // No click follows a mouse's context menu to clear the flag, so it is cleared here.
+      if (secondary.current) long.current = false;
     },
     onClick: () => {
       if (long.current) {

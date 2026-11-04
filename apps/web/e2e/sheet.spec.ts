@@ -1927,3 +1927,20 @@ test('SHEET-81 the toast sits above the dice button and the "+", which stay tapp
   await add.click({ timeout: 1000 });
   await expect(page.getByRole('dialog', { name: 'Add to the sheet' })).toBeVisible();
 });
+
+test('SHEET-78 a second context menu on the same number opens its breakdown again', async ({
+  page,
+}) => {
+  await saveRows(page, [goldenB]);
+  await page.goto(`characters/${goldenB.id}`);
+  const sheet = page.getByRole('dialog', { name: en.breakdown.title });
+  const strength = number(page, 'abilities.str.score');
+  for (const _ of [1, 2, 3]) {
+    await strength.click({ button: 'right' });
+    await expect(page.getByTestId('breakdown-summary')).toHaveText(
+      'Strength score 17 = Base 15, Soldier +2',
+    );
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+  }
+});

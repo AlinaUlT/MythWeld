@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-78 · A right-click on a number on the sheet opens its breakdown every time, not only the first.
 - 2026-11-04 · SHEET-81 · On the sheet the toast with Undo now sits above the dice button and the + button, so both can be tapped while it shows.
 - 2026-11-04 · SHEET-82 · The toast after a change goes after 5 seconds also when the toast before it was undone.
 - 2026-11-04 · SHEET-57 · In edit mode you can add a section of your own, such as Mounts or Pets, as a tab after the built-in ones, with entries of a name and free text (a companion's stat block among them); each add and remove has Undo.
