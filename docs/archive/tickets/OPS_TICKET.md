@@ -1205,3 +1205,21 @@ in one chat, is in no file.
 
 **Tests:** none; `pnpm lint && pnpm typecheck && pnpm test` stay green.
 **What came out of it:** Quality gate, 2026-11-04: `pnpm lint` 422 files, no fixes; `pnpm typecheck` clean; `pnpm test` 130 files, 1501 passed, 0 failed, 30.1 s, then speed 2 passed (no code touched; e2e not run). Nothing found. No changelog line (nothing a person can see).
+
+---
+
+### OPS-34 The rows found in wave 7's last batch join wave 8 · XS
+
+**Hat:** Wave 8 holds the rows the last batch found
+**Where:** `docs/tickets/BACKLOG.md` — the wave table of phase 2
+**Depends on:** SHEET-51, 34, 58, 29, 52 and 57 closed
+**Screen:** No
+
+Found by those six tickets (their §11): rows SHEET-77 to SHEET-82 were added with no wave.
+
+**What it should look like when done:**
+1. Wave 8 holds SHEET-35, 59, 69, 70, 72, 75, 76, 77, 78, 79, 80, 81 and 82. None of the six new rows changes a stored shape, so the rule of one such row for a wave still holds (SHEET-76 is the wave's).
+2. Nothing else changes: no row's hat, size or note, and no other wave.
+
+**Tests:** none; `pnpm lint && pnpm typecheck && pnpm test` stay green.
+**What came out of it:** Quality gate, 2026-11-04: `pnpm lint` 443 files, no fixes; `pnpm typecheck` clean; `pnpm test` 140 files, 1583 passed, 0 failed, 36.0 s, then speed 2 passed (no code touched; e2e not run). Nothing found. No changelog line (nothing a person can see).

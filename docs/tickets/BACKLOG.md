@@ -183,7 +183,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | 5 | SHEET-25, 27, 30, 31, 38, 68 | Wave 4 is closed |
 | 6 | SHEET-26, 28, 32, 33, 36, 39, 46, 48, 50, 53, 54, 55, 56 | Wave 5 is closed |
 | 7 | SHEET-29, 34, 40, 41, 42, 43, 44, 45, 47, 49, 51, 52, 57, 58 | Wave 6 is closed |
-| 8 | SHEET-35, 59, 69, 70, 72, 75, 76 | Wave 7 is closed |
+| 8 | SHEET-35, 59, 69, 70, 72, 75, 76, 77, 78, 79, 80, 81, 82 | Wave 7 is closed |
 | 9 | SHEET-74 | Wave 8 is closed: it reuses the field SHEET-69 makes for typed faces |
 | 10 | SHEET-60 | Every other row is closed |
 
@@ -556,3 +556,4 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-31 | The chat with the owner is in English | XS | ✅ 2026-10-28 |
 | OPS-32 | The changelog's format example names no real ticket | XS | ✅ 2026-10-29 |
 | OPS-33 | The rows found in wave 7 join the waves, and a prompt runs several rows in one chat | XS | ✅ 2026-11-04 |
+| OPS-34 | The rows found in wave 7's last batch join wave 8 | XS | ✅ 2026-11-04 |
