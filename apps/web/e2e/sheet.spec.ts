@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { goldenA } from '../../../packages/system-5e/test/golden/characters-2014.ts';
+import { goldenA, goldenC2014 } from '../../../packages/system-5e/test/golden/characters-2014.ts';
 import { goldenB, goldenB4 } from '../../../packages/system-5e/test/golden/characters-2024.ts';
 import { DB_NAME } from '../src/db/db';
 import { en } from '../src/i18n/namespaces';
@@ -835,12 +835,15 @@ test('SHEET-46 the Spells tab shows the slot grid; a tap spends or gives back a 
   await column.getByRole('button', { name: 'Give back a Level 1 slot' }).click();
   await expect(column.getByTestId('slots-left')).toHaveText('2 of 2 left');
 
-  // A spell opens its description in place.
+  // A spell opens the cast panel (SHEET-47), which holds its description.
   await tab
     .locator('[data-spell="srd-2014:spell/bless"]')
     .getByRole('button', { name: /Bless/ })
     .click();
-  await expect(tab.getByRole('button', { name: en.description.seeFull }).first()).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Bless' })).toBeVisible();
+  await expect(
+    page.getByRole('dialog').getByRole('button', { name: en.description.seeFull }),
+  ).toBeVisible();
 });
 
 test('SHEET-41 the Combat tab shows the concentration until it ends; Undo brings it back', async ({
@@ -1391,4 +1394,121 @@ test('SHEET-45 the 2014 long rest says food and drink for exhaustion', async ({ 
   await expect(panel.getByTestId('rest-food')).toContainText(
     'only if the character also ate and drank',
   );
+});
+
+/** A made-up spell that needs concentration, to replace Bless. */
+const haze = {
+  id: 'character:spell/haze',
+  type: 'spell',
+  ruleset: 'any',
+  name: { en: 'Haze' },
+  source: { pack: 'character' },
+  level: 1,
+  school: 'illusion',
+  castingTime: { value: 1, unit: 'action' },
+  range: { kind: 'self' },
+  components: { v: true, s: true },
+  duration: { kind: 'timed', value: 1, unit: 'minute' },
+  concentration: true,
+  ritual: false,
+  classes: ['wizard'],
+};
+
+/** Golden C (SPEC §6.7: wizard 3, paladin 3, slots 4 and 3) with spells prepared, holding `held`. */
+const caster = (held?: string) => ({
+  ...goldenC2014,
+  localEntities: [haze],
+  systemData: {
+    ...goldenC2014.systemData,
+    spells: {
+      'srd-2014:class/wizard': { prepared: [haze.id] },
+      'srd-2014:class/paladin': {
+        prepared: ['srd-2014:spell/cure-wounds', 'srd-2014:spell/bless'],
+      },
+    },
+    state: {
+      ...goldenC2014.systemData.state,
+      ...(held !== undefined && { concentration: held }),
+    },
+  },
+});
+
+const spellRow = (page: Page, id: string) =>
+  page.getByRole('tabpanel').locator(`[data-spell="${id}"]`).getByRole('button').first();
+
+test('SHEET-47 the cast panel shows the dice at the slot picked and casts with it, with Undo', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [caster()]);
+  await page.goto(`characters/${goldenC2014.id}?tab=spells`);
+  const tab = page.getByRole('tabpanel');
+  await spellRow(page, 'srd-2014:spell/cure-wounds').click();
+  const panel = page.getByRole('dialog');
+  await expect(panel.getByRole('heading', { name: 'Cure Wounds' })).toBeVisible();
+  await expect(panel.getByTestId('cast-line')).toHaveText(
+    'Level 1 · Evocation · Slots left: Level 1 4 of 4 · Level 2 3 of 3',
+  );
+
+  // 1d8 + Charisma +2 at a level 1 slot; a level 2 slot adds 1d8 (SRD 5.1).
+  await expect(panel.getByTestId('cast-healing')).toHaveText('Healing: 1d8 + 2');
+  await panel.getByRole('button', { name: 'Level 2', exact: true }).click();
+  await expect(panel.getByTestId('cast-healing')).toHaveText('Healing: 2d8 + 2');
+  await panel.getByRole('button', { name: en.cast.rollHealing, exact: true }).click();
+  await expect(panel.getByTestId('cast-rolled')).toContainText('Rolled:');
+  await panel.getByRole('button', { name: en.description.seeFull }).click();
+  // Cast stays in view over the long text.
+  await expect(panel.getByRole('button', { name: en.cast.cast, exact: true })).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('cast-dark.png') });
+
+  // Cast spends the level 2 slot: one change with its toast.
+  await panel.getByRole('button', { name: en.cast.cast, exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(tab.locator('[data-slot="2"]').getByTestId('slots-left')).toHaveText('2 of 3 left');
+  await expect(tab.locator('[data-slot="1"]').getByTestId('slots-left')).toHaveText('4 of 4 left');
+  await expect(page.getByRole('status')).toContainText('Cure Wounds cast');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(tab.locator('[data-slot="2"]').getByTestId('slots-left')).toHaveText('3 of 3 left');
+
+  // "Don't use a spell slot" casts for free: nothing is spent, so there is nothing to store.
+  await spellRow(page, 'srd-2014:spell/cure-wounds').click();
+  await panel.getByRole('switch', { name: en.cast.noSlot }).click();
+  await expect(panel.getByRole('button', { name: 'Level 1', exact: true })).toHaveCount(0);
+  await panel.getByRole('button', { name: en.cast.cast, exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(tab.locator('[data-slot="1"]').getByTestId('slots-left')).toHaveText('4 of 4 left');
+});
+
+test('SHEET-47 a new concentration ends the old one only after a confirmation', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [caster('srd-2014:spell/bless')]);
+  await page.goto(`characters/${goldenC2014.id}?tab=combat`);
+  await expect(page.locator('[data-concentration]')).toContainText('Bless');
+  await page.getByRole('tab', { name: 'Spells' }).click();
+  await spellRow(page, haze.id).click();
+  const panel = page.getByRole('dialog');
+  await panel.getByRole('button', { name: en.cast.cast, exact: true }).click();
+
+  // Nothing is cast yet: the panel asks, and Back leaves the concentration as it was.
+  await expect(panel.getByTestId('cast-confirm')).toContainText(
+    'Casting Haze ends your concentration on Bless.',
+  );
+  await page.screenshot({ path: testInfo.outputPath('cast-confirm-dark.png') });
+  await panel.getByRole('button', { name: en.cast.concentration.back }).click();
+  await expect(panel.getByTestId('cast-confirm')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await page.getByRole('tab', { name: 'Combat' }).click();
+  await expect(page.locator('[data-concentration]')).toContainText('Bless');
+
+  // Confirmed: Haze is held, and Undo brings Bless back.
+  await page.getByRole('tab', { name: 'Spells' }).click();
+  await spellRow(page, haze.id).click();
+  await panel.getByRole('button', { name: en.cast.cast, exact: true }).click();
+  await panel.getByRole('button', { name: en.cast.concentration.ok }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Combat' }).click();
+  await expect(page.locator('[data-concentration]')).toContainText('Haze');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(page.locator('[data-concentration]')).toContainText('Bless');
 });

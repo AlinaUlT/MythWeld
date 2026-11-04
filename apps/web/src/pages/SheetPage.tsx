@@ -14,6 +14,7 @@ import { type OpenedCharacter, openCharacter } from '../db/characters';
 import { BreakdownSheet } from '../shared/BreakdownSheet';
 import { RollDialog } from '../shared/RollDialog';
 import { ActionsMenu } from '../sheet/panels/ActionsMenu';
+import { CastPanel } from '../sheet/panels/CastPanel';
 import { ChoicesPanel } from '../sheet/panels/ChoicesPanel';
 import { NumberPad, type NumberPadMode } from '../sheet/panels/NumberPad';
 import { RestPanel } from '../sheet/panels/RestPanel';
@@ -37,6 +38,7 @@ type Open =
   | { kind: 'roll'; path: string }
   | { kind: 'breakdown'; path: string; format: NumberFormat | undefined }
   | { kind: 'numberPad'; mode: NumberPadMode }
+  | { kind: 'cast'; spell: string; part: string | undefined }
   | { kind: 'rest' | 'actions' | 'choices' };
 
 type Loaded = { status: 'loading' } | { status: 'failed' } | OpenedCharacter;
@@ -84,6 +86,7 @@ function Frame({ character, system }: { character: AppCharacter; system: SheetSy
     editing,
     roll: (path) => setOpen({ kind: 'roll', path }),
     breakdown: (path, format) => setOpen({ kind: 'breakdown', path, format }),
+    cast: (spell, part) => setOpen({ kind: 'cast', spell, part }),
   };
 
   const showTab = (next: SheetTabId) => {
@@ -148,6 +151,7 @@ function Frame({ character, system }: { character: AppCharacter; system: SheetSy
           <BreakdownSheet path={open.path} format={open.format} onClose={close} />
         )}
         {open?.kind === 'numberPad' && <NumberPad mode={open.mode} onClose={close} />}
+        {open?.kind === 'cast' && <CastPanel spell={open.spell} part={open.part} onClose={close} />}
         {open?.kind === 'rest' && <RestPanel onClose={close} />}
         {open?.kind === 'actions' && <ActionsMenu onClose={close} />}
         {open?.kind === 'choices' && <ChoicesPanel onClose={close} />}

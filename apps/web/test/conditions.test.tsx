@@ -42,6 +42,7 @@ function sheetOf(
     editing: false,
     roll: () => {},
     breakdown: () => {},
+    cast: () => {},
   };
 }
 

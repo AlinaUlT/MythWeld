@@ -32,6 +32,7 @@ function drawn(golden: object): string {
     editing: false,
     roll: () => {},
     breakdown: () => {},
+    cast: () => {},
   };
   return renderToStaticMarkup(
     <MemoryRouter>

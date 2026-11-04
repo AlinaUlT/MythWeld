@@ -32,6 +32,7 @@ function sheetOf(extra: object = {}): SheetValue {
     editing: false,
     roll: () => {},
     breakdown: () => {},
+    cast: () => {},
   };
 }
 

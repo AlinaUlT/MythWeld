@@ -248,7 +248,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-44 | The Combat tab lists the attacks | S | ✅ 2026-11-04 |
 | SHEET-45 | The Rest frames show what comes back | M | ✅ 2026-11-04 |
 | SHEET-46 | The Spells tab shows the slot grid | M | ✅ 2026-11-03 |
-| SHEET-47 | The cast panel casts a spell | M | 🔲 |
+| SHEET-47 | The cast panel casts a spell | M | ✅ 2026-11-04 |
 | SHEET-48 | The Features tab groups features by source | M | ✅ 2026-11-03 |
 | SHEET-49 | The Turn tab lists actions by timing | S | 🔲 |
 | SHEET-50 | The Gear tab equips items | M | ✅ 2026-11-03 |
@@ -268,6 +268,7 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 | SHEET-72 | The number pad takes a damage type and a critical hit | S | 🔲 |
 | SHEET-73 | A key closes the panel on top, not every panel | XS | ✅ 2026-11-04 |
 | SHEET-74 | A hit die takes the faces a person typed | S | 🔲 |
+| SHEET-75 | A long attribution line wraps in a description | XS | 🔲 |
 
 - **SHEET-29** — found by ENG-37 (ADR 017): when the race or species and the background come from
   different editions and both raise ability scores, the manual form (BRIEF P3 step 6) shows a
@@ -282,11 +283,6 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 - **SHEET-35** — ENG-47's control, on the AC breakdown, from SHEET-21's candidates:
   `Computed.candidates['ac.base']`, each `{ key, value, steps }`; a pin that does not apply is not
   among them and warns `acCalcNotApplying`.
-- **SHEET-47** — ADR 010 item 10, ADR 011 item 2, board `V3-Cast`: the summary, "See full
-  description", "Cast", "Don't use a spell slot"; the dice at a higher slot (ENG-50); a new
-  concentration ends the old one with a confirmation (SPEC §6.4). Found by SHEET-17: the dialog
-  shows `castWarnings` before Cast, a `cannotCast` warning's steps as a breakdown; the cast still
-  happens, its `outcome.warnings` the same list.
 - **SHEET-49** — ADR 010 item 8, board `V3-Turn`: built from each feature's `activation`; nothing
   is typed twice. It fills out as phase 3 adds content.
 - **SHEET-51** — SPEC §7.2: cp, sp, ep, gp, pp with + and −.
@@ -312,7 +308,8 @@ change a stored shape (SHEET-53, SHEET-57), so two chats never claim one version
 - **SHEET-69** — found by SHEET-39: the dice panel counts the faces a person typed when "I roll myself" is on (SHEET-38, SPEC §6.5); the roll dialog always rolls with the fair die. The dialog's d20 (one or two) and a weapon's damage dice take typed faces through `typedDie` (`shared/dice.ts`), and the dialog's field for each die is the panel's (`diceFields`).
 - **SHEET-70** — found by SHEET-36: with the choices badge shown, the header's class line is cut to "Fig…" at 360×800 (`SheetHeader.tsx`, board `V3-Sheet`). The line and the badges wrap or the badge moves, so the class and its level stay readable.
 - **SHEET-72** — found by SHEET-40: `applyDamage` takes `type` (the defenses of SHEET-16 apply, `outcome.defended` says what they made of it) and `critical` (two death save failures at 0 hit points), and board `V3-Keypad` has neither. The pad offers a damage type from the packs' `damageType` entries and a critical switch, and shows `defended`.
-- **SHEET-74** — found by SHEET-45: the Rest panel's short frame rolls each hit die with the fair die (`panelDie`) and logs it; the dice panel's "I roll myself" (SHEET-38, SPEC §6.5) counts the faces a person typed. A spent die takes the person's face through `typedDie` (`shared/dice.ts`) and a field for it, as SHEET-69 does for the roll dialog; `HitDieAsk.roll` is the face either way.
+- **SHEET-74** — found by SHEET-45: the Rest panel's short frame rolls each hit die with the fair die (`panelDie`) and logs it; the dice panel's "I roll myself" (SHEET-38, SPEC §6.5) counts the faces a person typed. A spent die takes the person's face through `typedDie` (`shared/dice.ts`) and a field for it, as SHEET-69 does for the roll dialog; `HitDieAsk.roll` is the face either way. Found by SHEET-47: the cast panel's damage and healing rolls (`CastPanel.tsx`) use the fair die too, and take typed faces the same way.
+- **SHEET-75** — found by SHEET-47: in a description's "See full description" (`shared/Description.tsx`, `FullText`), the attribution's long address has no break and runs past the card's right edge (clipped, no page scroll: 360 px stays 360). The text wraps inside the card.
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
 

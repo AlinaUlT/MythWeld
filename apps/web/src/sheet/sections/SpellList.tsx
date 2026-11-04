@@ -5,10 +5,11 @@
 // and a tap on a hollow one gives it back, each one change with its "Undo" toast. A granted spell
 // shows its source and, when it has uses of its own, "1/LR" and "no spell slot"; the uses are the
 // resource of its grant's key (ENG-57), so two grants of one entity are told apart. Every spell
-// shows its edition or warns that it is of the other one (ENG-49). Casting is SHEET-47's.
+// shows its edition or warns that it is of the other one (ENG-49). SHEET-47: a tap on a spell opens
+// the cast panel, which holds its description (ADR 011 item 2: no separate spell card).
 import { finderOf, recoveryOf, resourceUses, shareRuleset } from '@grimoire/engine';
+import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Description } from '../../shared/Description';
 import { Part } from '../../theme/Part';
 import { perform } from '../changes';
 import { nameIn } from '../names';
@@ -135,15 +136,18 @@ function SpellRow({
   id,
   extra = [],
   usesKey,
+  part,
 }: {
   id: string;
   /** What the row adds to its line: "always prepared", "no spell slot". */
   extra?: readonly string[];
   /** The key of the grant's own uses, for a granted spell that has them. */
   usesKey?: string | undefined;
+  /** The grant's part id, for a granted spell that has its own uses: the cast spends one. */
+  part?: string | undefined;
 }) {
   const { t } = useTranslation('spells');
-  const { character, content, computed } = useSheet();
+  const { character, content, computed, cast } = useSheet();
   const found = finderOf(character, content.index)(id);
   if (found === undefined || found.type !== 'spell') {
     return <li className="px-4 py-2 text-14 text-muted">{t('missing', { id })}</li>;
@@ -166,7 +170,17 @@ function SpellRow({
   ].join(t('separator'));
   return (
     <li className="flex flex-col" data-spell={id}>
-      <Description entity={found}>{line}</Description>
+      <button
+        type="button"
+        onClick={() => cast(id, usesKey === undefined ? undefined : part)}
+        className="flex min-h-control items-center gap-3 px-4 py-2.5 text-left"
+      >
+        <span className="flex min-w-0 grow flex-col gap-0.5">
+          <span className="text-15 font-bold">{nameIn(found.name)}</span>
+          <span className="text-12 text-muted">{line}</span>
+        </span>
+        <ChevronRight aria-hidden className="size-5 shrink-0 text-muted" />
+      </button>
       {uses !== undefined && (
         <p className="px-4 pb-2 text-13 text-muted" data-testid="spell-uses">
           {t('usesLeft', { left: uses.left, max: Math.floor(uses.max) })}
@@ -274,6 +288,7 @@ function Granted() {
             key={`${part}:${spell}`}
             id={spell}
             usesKey={key}
+            part={part}
             extra={[
               t('from', { name: source(from) }),
               ...(alwaysPrepared ? [t('alwaysPrepared')] : []),

@@ -36,6 +36,7 @@ function drawn(mode: NumberPadMode, temp = 0, current = 12): string {
     editing: false,
     roll: () => {},
     breakdown: () => {},
+    cast: () => {},
   };
   return renderToStaticMarkup(
     <MemoryRouter>

@@ -7244,3 +7244,98 @@ Differs from §3: nothing. Technical choices (ADR 002):
 Found, not fixed: a typed face for a hit die ("I roll myself") is not offered; new row SHEET-74 (S).
 
 Changelog: "The Rest button opens the two rests: each lists what comes back before you confirm, a short rest spends hit dice you roll, a long rest in the 2014 rules reminds you that exhaustion goes down only if the character ate and drank; each rest is one change with Undo."
+
+---
+
+### SHEET-47 The cast panel casts a spell
+
+**Hat:** The cast panel casts a spell
+**Depends on:** SHEET-46 (the Spells tab and its rows), SHEET-31 (descriptions: `DescriptionBody`), SHEET-23 (Undo), SHEET-17 (`castWarnings`), ENG-20 and ENG-57 (`castSpell`), ENG-50 and ENG-53 (the spell's dice), SHEET-41 (the concentration it replaces)
+**Size:** M
+**Screen:** Yes — the cast panel; board `V3-Cast` in `docs/design/mockups/` and its row in `docs/design/BRIEF.md` Part 5 ("P6"). ADR 010 item 10, ADR 011 item 2. SPEC §6.4.
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/panels/CastPanel.tsx` — new.
+- `packages/system-5e/src/sheet-cast.ts` — new: `spellCastingStat`, the stat a spell is cast with.
+- `apps/web/src/systems.ts` — change: `SheetSystem.castSpell`, `castWarnings`, `spellDice`, `spellCastingStat`.
+- `apps/web/src/pages/SheetPage.tsx`, `sheet/SheetContext.ts` — change: the frame opens the panel through `SheetValue.cast(spell, part?)`.
+- `apps/web/src/sheet/sections/SpellList.tsx` — change: a spell row opens the panel instead of the in-place description.
+- `apps/web/src/locales/en/cast.json` and `i18n/namespaces.ts` — the panel's text.
+
+#### 2. What is missing now
+
+A spell row of the Spells tab opens its description in place and nothing casts: `castSpell` (ENG-20) has no screen. `SpellList.tsx`'s header says "Casting is SHEET-47's".
+
+#### 3. What it should look like when done
+
+1. A tap on a spell of the Spells tab (prepared, known or granted) opens the cast panel, titled with the spell's name, with its edition chip and the line "Level 1 · Evocation · Slots left: Level 1 4 of 4 · Level 2 3 of 3" (a cantrip: "Cantrip · Evocation").
+2. Under the line: the spell's summary and "See full description" (ADR 011 item 2); "See full description" opens the source's text, or says it has none.
+3. Before "Cast", a warning for each rule that forbids a cast now (`castWarnings`): the Incapacitated condition, or a rule on `spell.cannotCast` with the steps of its number. Each says the cast still works.
+4. The dice at the slot picked: golden C (2014: wizard 3, paladin 3, Charisma 14) with Cure Wounds from its paladin's list reads "Healing: 1d8 + 2" at a level 1 slot and "Healing: 2d8 + 2" at level 2 (SRD 5.1: 1d8 + the spellcasting modifier, plus 1d8 for each slot level above 1st). A spell with damage shows "Damage: <dice> <type>". "Damage" or "Healing" rolls them with the fair die, logs each roll, and shows what came up.
+5. "Slot level": a chip for each slot the character has of the spell's level or higher, pact slots included; one with none left is off; the lowest one with a slot left is picked at first. A cantrip has no slots to pick.
+6. "Don't use a spell slot" ("for a free cast from a feature or an item"): on, the cast spends nothing; opened from a granted spell that has uses of its own, it is on and the cast spends one use of that grant (ENG-57); a cantrip has no switch.
+7. "Cast" is one change with its "Undo" toast ("Cure Wounds cast"): at level 2 the level 2 slots go from 3 of 3 to 2 of 3, and Undo gives it back. A cast that changes nothing (no slot, no use, no new concentration) closes the panel and stores nothing.
+8. A concentration spell cast while another is held does not cast at once: the panel says "Casting Haze ends your concentration on Bless." with "End it and cast" and "Back". Back leaves the concentration as it was; "End it and cast" casts, and Undo brings the old concentration back. Casting the spell already held asks nothing.
+9. A cast the module refuses says why, and "Cast" is off; the buttons stay in view over a long description.
+10. The gate is green.
+
+#### 4. How to do it
+
+1. `spellCastingStat(character, computed, spell)`: the stat of the class (or subclass) whose list holds the spell; else the stat of the one casting class; else none.
+2. `SheetValue.cast(spell, part?)` and an `open` kind `cast` in the frame; the Spells tab calls it, with `part` for a granted spell that has uses.
+3. `CastPanel`: the ask is built from the state (slot, switch, grant); `castSpell` runs on a copy (`playerStamp`) to say if it is refused, and for real through `perform`. The dice are `spellDice(spell, computed.values, { slot, stat })`; the formulas are shown with each `@path` written as its current number.
+4. The concentration confirmation is a state of the panel; nothing is written until "End it and cast". The cast itself already replaces the concentration (ENG-20), so the panel adds no rule.
+
+#### 5. Stored data
+
+Nothing stored changes. A cast is the log entry ENG-20 already makes (`castSpell`).
+
+#### 6. What a person will see
+
+At 360×800: a bottom panel from a spell row. States: the spell; a missing spell ("Missing: <id>"); warnings; a refusal in a warning box; the concentration question in place of the buttons. "Cast", "Damage", "Healing" stay at the bottom of the panel. Keys: `cast.json` (line, slot labels, "Don't use a spell slot" and its hints, dice lines, roll buttons, `warning.*`, `concentration.*`, `refused.*`).
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-cast.test.ts` — 4 tests: the stat from the class whose list holds the spell (golden C: Intelligence, Charisma), none for a spell in no list with two casters, the single caster's stat (golden A: Wisdom), none with no class.
+- `apps/web/test/cast.test.tsx` — 8 tests: the line and slots, 1d8 + 2 and the chips, the buttons and "See full description", a spell with no dice, a cantrip, the two warnings, a missing spell.
+- `apps/web/e2e/sheet.spec.ts` — 2 new tests (the dice at level 1 and 2, the cast at level 2 with Undo, the free cast; the concentration question, Back, confirm, Undo); the SHEET-46 test now expects the cast panel from a spell row.
+- Control numbers from: SPEC §6.7 golden C (slots 4 and 3, Charisma 14, Intelligence 15), golden A; Cure Wounds' dice from SRD 5.1 (§8).
+
+#### 8. Checked against the source
+
+- SRD 5.1, Cure Wounds: "A creature you touch regains a number of hit points equal to 1d8 + your spellcasting ability modifier. … When you cast this spell using a spell slot of 2nd level or higher, the healing increases by 1d8 for each slot level above 1st." So level 1: 1d8 + 2, level 2: 2d8 + 2 for Charisma +2.
+- SPEC §6.4 (`setConcentration`): a new concentration spell ends the previous one, with a confirmation.
+- SRD 5.1, Concentration: casting another spell that requires concentration ends the first. No `[ПРОВЕРИТЬ]` is open for this ticket.
+
+#### 9. Not in this ticket
+
+- Typed faces ("I roll myself") for the spell's dice: the panel rolls the fair die. SHEET-74 covers hit dice; a spell's dice are the same change and are added to its row.
+- A spell's damage as a roll with advantage, a critical hit or a saving throw's result: the panel rolls the dice only.
+- Preparing or learning spells (phase 4); a tap on a dice number to open its breakdown.
+- The spell card in the Library (phase 3).
+
+#### 10. Rake check
+
+- **No rule in a component:** the cast, the concentration it replaces and the warnings are the module's; the panel asks the module and shows what it says.
+- **`compute()` is the UI's only source:** the dice are `spellDice` over `Computed`; a formula's number is a computed path read at the moment.
+- **Missing is not broken:** a spell no pack holds reads "Missing: <id>".
+- **Prerequisites and warnings never block:** the warnings show and the cast still happens.
+- **No user-facing string literal:** every text is an i18next key in `cast.json`.
+- **Stored shape:** nothing changes. **Golden values:** none touched.
+
+#### 11. What came out of it
+Quality gate, 2026-11-04: `pnpm lint` 419 files, no fixes; `pnpm typecheck` clean; `pnpm test` 128 files, 1493 passed, 0 failed, 31.4 s (12 new, from 1481), then speed 2 passed; coverage statements 99.05 % (3888/3925), lines 99.82 % (3405/3411); `pnpm e2e` 75 passed, 0 failed, 1.2 min (2 new). Screenshots at 360×800 shown in the chat.
+
+Differs from §3: nothing. Technical choices (ADR 002):
+- The spell row of the Spells tab no longer opens its description in place: ADR 011 item 2 says the cast panel holds it, with no separate spell card. The SHEET-46 e2e test's last step now expects the panel.
+- The first build put "Cast" below the long description; the buttons are now stuck to the panel's bottom, and the e2e test checks "Cast" is in view with the full text open.
+- A cast that changes nothing (a cantrip with no concentration, "Don't use a spell slot" on a plain spell) closes the panel and stores nothing, since `castSpell` refuses it as `unchanged` and there is no entry to keep.
+- The school has no entry in the packs yet, so the line shows its key with a capital: "Evocation".
+- A formula's `@path` is shown as the number it is now ("1d8 + 2").
+
+Found, not fixed: a long attribution address in "See full description" runs past the card's edge (new row SHEET-75, XS); the spell's typed faces ("I roll myself") are added to SHEET-74's row.
+
+Changelog: "A tap on a spell opens the cast panel: its summary and full text, what forbids a cast now, the dice at the slot you pick, the slot or no slot, and Cast with Undo; a new concentration spell asks before it ends the old one."

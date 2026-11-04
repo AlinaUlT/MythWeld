@@ -142,6 +142,7 @@ describe('SHEET-56 drawing the portrait', () => {
       editing: false,
       roll: () => {},
       breakdown: () => {},
+      cast: () => {},
     };
     const html = renderToStaticMarkup(
       <MemoryRouter>

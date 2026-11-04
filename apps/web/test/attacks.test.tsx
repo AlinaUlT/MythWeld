@@ -41,6 +41,7 @@ function drawn(golden: object, equipped = true): string {
     editing: false,
     roll: () => {},
     breakdown: () => {},
+    cast: () => {},
   };
   return renderToStaticMarkup(
     <MemoryRouter>

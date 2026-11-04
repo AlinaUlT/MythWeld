@@ -48,7 +48,16 @@ function sheetOf(golden: object, editing = false): SheetValue {
   if (system === undefined) throw new Error('no sheet');
   const content = contentOf(character, packs);
   const computed = compute(character, content.index, system.module);
-  return { character, content, computed, system, editing, roll: () => {}, breakdown: () => {} };
+  return {
+    character,
+    content,
+    computed,
+    system,
+    editing,
+    roll: () => {},
+    breakdown: () => {},
+    cast: () => {},
+  };
 }
 
 function draw(sheet: SheetValue, node: ReactNode): string {

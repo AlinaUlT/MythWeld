@@ -45,6 +45,7 @@ function sheetOf(golden: object): SheetValue {
     editing: false,
     roll: () => {},
     breakdown: () => {},
+    cast: () => {},
   };
 }
 

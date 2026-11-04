@@ -16,6 +16,11 @@ export interface SheetValue {
   roll(path: string): void;
   /** Opens the breakdown of the number at `path`, written as `format` (SHEET-33). */
   breakdown(path: string, format?: 'plain' | 'signed' | 'distance'): void;
+  /**
+   * Opens the cast panel for the spell `spell` (SHEET-47); `part` is the spell grant it is cast
+   * through, when the spell comes from a grant with uses of its own.
+   */
+  cast(spell: string, part?: string): void;
 }
 
 export const SheetContext = createContext<SheetValue | undefined>(undefined);

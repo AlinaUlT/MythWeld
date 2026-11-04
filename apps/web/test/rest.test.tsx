@@ -47,6 +47,7 @@ function drawn(state: {
     editing: false,
     roll: () => {},
     breakdown: () => {},
+    cast: () => {},
   };
   return renderToStaticMarkup(
     <MemoryRouter>

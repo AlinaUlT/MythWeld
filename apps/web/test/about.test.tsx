@@ -41,6 +41,7 @@ function drawn(character: AppCharacter, editing = false, drop?: string): string 
     editing,
     roll: () => {},
     breakdown: () => {},
+    cast: () => {},
   };
   return renderToStaticMarkup(
     <MemoryRouter>

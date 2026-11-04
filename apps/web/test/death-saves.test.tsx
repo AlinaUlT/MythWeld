@@ -49,6 +49,7 @@ function sheetOf({ hp, deathSaves, knockedOut, conditions }: Stored): SheetValue
     editing: false,
     roll: () => {},
     breakdown: () => {},
+    cast: () => {},
   };
 }
 

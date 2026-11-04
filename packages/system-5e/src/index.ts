@@ -38,6 +38,7 @@ export * from './rests';
 export * from './rolls';
 export * from './rulesets';
 export * from './sheet-attacks';
+export * from './sheet-cast';
 export * from './sheet-checks';
 export * from './sheet-choices';
 export * from './sheet-conditions';

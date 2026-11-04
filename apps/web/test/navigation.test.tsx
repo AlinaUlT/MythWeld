@@ -35,6 +35,7 @@ describe('SHEET-11 navigation', () => {
       'actions',
       'attacks',
       'breakdown',
+      'cast',
       'characters',
       'checks',
       'choices',

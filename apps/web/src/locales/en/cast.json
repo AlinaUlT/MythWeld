@@ -1,0 +1,42 @@
+{
+  "missing": "Missing: {{id}}",
+  "missingTitle": "Spell",
+  "cantrip": "Cantrip",
+  "level": "Level {{level}}",
+  "separator": " · ",
+  "slotsLeft": "Slots left: {{list}}",
+  "slotLeft": "{{name}} {{left}} of {{max}}",
+  "slotsHeading": "Slot level",
+  "pact": "Pact · level {{level}}",
+  "noSlotAvailable": "The character has no spell slot of this spell's level or higher.",
+  "noSlot": "Don't use a spell slot",
+  "noSlotHintGrant": "to spend one use of the feature that gives this spell",
+  "noSlotHint": "for a free cast from a feature or an item",
+  "usesLeft": "{{left}} of {{max}} uses left",
+  "diceHeading": "At this level",
+  "damage": "Damage: {{formula}} {{type}}",
+  "healing": "Healing: {{formula}}",
+  "healingTemp": "Temporary hit points: {{formula}}",
+  "rollDamage": "Damage",
+  "rollHealing": "Healing",
+  "rolledDamage": "{{name}} damage",
+  "rolledHealing": "{{name}} healing",
+  "rolled": "Rolled: {{parts}}",
+  "rolledPart": "{{total}} {{label}}",
+  "cast": "Cast",
+  "warning": {
+    "cannotCast": "A rule stops this character casting spells. The cast still works.",
+    "incapacitated": "{{name}}: the character can take no action to cast. The cast still works.",
+    "why": "Why"
+  },
+  "concentration": {
+    "confirm": "Casting {{name}} ends your concentration on {{held}}.",
+    "ok": "End it and cast",
+    "back": "Back"
+  },
+  "refused": {
+    "noSlotLeft": "No slot of that level is left.",
+    "noUseLeft": "No use of this feature is left.",
+    "slotTooLow": "That slot is lower than the spell."
+  }
+}

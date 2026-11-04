@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-47 · A tap on a spell opens the cast panel: its summary and full text, what forbids a cast now, the dice at the slot you pick, the slot or no slot, and Cast with Undo; a new concentration spell asks before it ends the old one.
 - 2026-11-04 · SHEET-45 · The Rest button opens the two rests: each lists what comes back before you confirm, a short rest spends hit dice you roll, a long rest in the 2014 rules reminds you that exhaustion goes down only if the character ate and drank; each rest is one change with Undo.
 - 2026-11-04 · SHEET-73 · The Escape key closes only the panel on top: with the roll dialog over the number pad, the first press closes the dialog and the second closes the pad.
 - 2026-11-04 · SHEET-71 · A change made inside an open panel shows its "Undo" toast at the top of the screen, above the panel, so you can undo it without closing the panel.

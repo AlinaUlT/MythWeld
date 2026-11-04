@@ -40,6 +40,7 @@ function sheetOf(change: object = {}): SheetValue {
     editing: false,
     roll: () => {},
     breakdown: () => {},
+    cast: () => {},
   };
 }
 

@@ -14,8 +14,11 @@ import {
   applyDamage,
   applyHealing,
   attackOutcome,
+  type CastWarning,
   type ChecksShown,
   type ConditionsShown,
+  castSpell,
+  castWarnings,
   concentrationOf,
   concentrationSavePath,
   conditionsToAdd,
@@ -85,6 +88,7 @@ import {
   rollInitiative,
   rollModeOf,
   type Situational,
+  type SpellDef,
   type SpellsShown,
   setConditionLevel,
   setRowAttuned,
@@ -93,6 +97,8 @@ import {
   setRowQuantity,
   setTempHp,
   shortRest,
+  spellCastingStat,
+  spellDice,
   spendInspiration,
   spendSlot,
   stabilize,
@@ -182,6 +188,7 @@ export const MANUAL_FORM_SYSTEMS: readonly ManualFormSystem[] = [
 export type {
   AboutListName,
   AttackShown,
+  CastWarning,
   ConditionsShown,
   DamageOutcome,
   DeathSaveOutcome,
@@ -196,6 +203,7 @@ export type {
   RestLine,
   RollTest,
   Situational,
+  SpellDef,
   SpellsShown,
 };
 
@@ -228,6 +236,11 @@ export interface SheetSystem {
   spells(character: AppCharacter, computed: AppComputed): SpellsShown;
   spendSlot: typeof spendSlot;
   regainSlot: typeof regainSlot;
+  /** The cast panel's spell: its cast, what forbids it now, its dice and its stat (SHEET-47). */
+  castSpell: typeof castSpell;
+  castWarnings: typeof castWarnings;
+  spellDice: typeof spellDice;
+  spellCastingStat: typeof spellCastingStat;
   /** The hit point actions the number pad runs (SHEET-40). */
   applyDamage: typeof applyDamage;
   applyHealing: typeof applyHealing;
@@ -329,6 +342,10 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     spells: fifthEditionSpells,
     spendSlot,
     regainSlot,
+    castSpell,
+    castWarnings,
+    spellDice,
+    spellCastingStat,
     deathSaves: fifthEditionDeathSaves,
     deathSavePath: DEATH_SAVE_PATH,
     rollDeathSave,

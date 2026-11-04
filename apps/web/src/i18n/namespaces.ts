@@ -7,6 +7,7 @@ import about from '../locales/en/about.json' with { type: 'json' };
 import actions from '../locales/en/actions.json' with { type: 'json' };
 import attacks from '../locales/en/attacks.json' with { type: 'json' };
 import breakdown from '../locales/en/breakdown.json' with { type: 'json' };
+import cast from '../locales/en/cast.json' with { type: 'json' };
 import characters from '../locales/en/characters.json' with { type: 'json' };
 import checks from '../locales/en/checks.json' with { type: 'json' };
 import choices from '../locales/en/choices.json' with { type: 'json' };
@@ -63,6 +64,7 @@ export const en = {
   token,
   numberPad,
   rest,
+  cast,
   actions,
   choices,
 };
