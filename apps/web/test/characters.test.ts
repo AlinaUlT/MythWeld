@@ -21,12 +21,17 @@ import {
 
 const saved = fifthEditionCharacterSchema.parse(goldenA);
 
-/** Golden A as a file of fifth edition's version 2 stores it: no `languageSource`, no `stable`. */
+/**
+ * Golden A as a file of fifth edition's version 2 stores it, in the core's version 2 too: no
+ * `languageSource`, no `stable`, and no `sections` (SHEET-57).
+ */
 function version2() {
   const { languageSource: _, ...data } = goldenA.systemData;
   const { stable: __, ...deathSaves } = data.state.deathSaves;
+  const { sections: ___, ...core } = goldenA;
   return {
-    ...goldenA,
+    ...core,
+    schemaVersion: 2,
     systemSchemaVersion: 2,
     systemData: { ...data, state: { ...data.state, deathSaves } },
   };
@@ -51,7 +56,7 @@ describe('SHEET-10 characters on the device', () => {
     expect(result).toEqual({
       ok: true,
       value: saved,
-      from: { schemaVersion: 2, systemSchemaVersion: FIFTH_EDITION_SCHEMA_VERSION },
+      from: { schemaVersion: 3, systemSchemaVersion: FIFTH_EDITION_SCHEMA_VERSION },
     });
     expect(await database.characters.get(goldenA.id)).toEqual(saved);
     expect(await openCharacter(goldenA.id, database.characters)).toEqual(result);
@@ -77,7 +82,7 @@ describe('SHEET-10 characters on the device', () => {
     if (!opened.ok) return;
     await saveCharacter(opened.value, database.characters);
     expect(await database.characters.get(goldenA.id)).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       systemSchemaVersion: FIFTH_EDITION_SCHEMA_VERSION,
     });
     expect(await database.characters.count()).toBe(1);
@@ -173,7 +178,7 @@ describe('SHEET-24 listing the characters on the device', () => {
     expect(listed[0]?.opened).toEqual({
       ok: true,
       value: newer,
-      from: { schemaVersion: 2, systemSchemaVersion: FIFTH_EDITION_SCHEMA_VERSION },
+      from: { schemaVersion: 3, systemSchemaVersion: FIFTH_EDITION_SCHEMA_VERSION },
     });
     expect(listed[1]?.opened).toMatchObject({ ok: true, from: { systemSchemaVersion: 2 } });
     expect(await database.characters.toArray()).toEqual([older, newer, old].sort(byId));

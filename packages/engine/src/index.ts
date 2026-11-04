@@ -11,6 +11,7 @@ export * from './overrides';
 export * from './phases';
 export * from './prerequisites';
 export * from './roll';
+export * from './sections';
 export * from './stats';
 export * from './trackers';
 export * from './version';

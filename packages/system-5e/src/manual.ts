@@ -93,6 +93,7 @@ export function manualCharacter(ask: ManualCharacterAsk): FifthEditionCharacter 
     overrides: [],
     localEntities: [],
     notes: {},
+    sections: [],
     systemData: {
       houseRules: {
         ...DEFAULT_HOUSE_RULES,

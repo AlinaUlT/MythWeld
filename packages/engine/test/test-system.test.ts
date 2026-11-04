@@ -86,7 +86,7 @@ describe('ENG-27 made-up test system', () => {
       expect(openTalesCharacter(file), file.name).toEqual({
         ok: true,
         value: file,
-        from: { schemaVersion: 2, systemSchemaVersion: 1 },
+        from: { schemaVersion: 3, systemSchemaVersion: 1 },
       });
     }
     const loaded = loadContentIndex('tales', [pack]);

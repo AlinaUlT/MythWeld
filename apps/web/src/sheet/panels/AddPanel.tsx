@@ -3,10 +3,15 @@
 // item (a name, a weight, how many, its words) goes in the inventory; a custom feature (a name and
 // its words) is a feat of the character's own. Neither has an effect: those are phase 5's. Each is
 // one change with its "Undo" toast; the panel closes when it is made, and a refusal is said in
-// the panel, never thrown. Sections and companions (SHEET-57) join the list in their row.
-import { Package, Sparkles } from 'lucide-react';
+// the panel, never thrown.
+// SHEET-57: the list also adds a section, a named list that becomes a tab (ADR 009 item 8), and a
+// companion, an entry of a section with its small stat block as text. A section's own tab opens
+// the entry form at once (`entryIn`). A new section, or an entry made from here, shows its tab.
+import { addSection, addSectionEntry } from '@grimoire/engine';
+import { ListPlus, Package, PawPrint, Sparkles } from 'lucide-react';
 import { type FormEvent, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 import { storedWeight } from '../../settings/units';
 import { useSettings } from '../../settings/useSettings';
 import { BottomSheet } from '../../shared/BottomSheet';
@@ -17,7 +22,7 @@ import { perform } from '../changes';
 import { useSheet } from '../SheetContext';
 import type { PanelProps } from './panel';
 
-type View = 'menu' | 'item' | 'feature';
+type View = 'menu' | 'item' | 'feature' | 'section' | 'entry';
 
 const field = 'h-control w-full bg-surface px-3 text-16 text-text';
 
@@ -39,34 +44,51 @@ function typedPositive(text: string): number | null | undefined {
   return value !== undefined && value > 0 ? value : undefined;
 }
 
-export function AddPanel({ onClose }: PanelProps) {
+export interface AddPanelProps extends PanelProps {
+  /** The section whose tab opened the panel: it opens on a new entry for it. */
+  entryIn?: string;
+}
+
+export function AddPanel({ onClose, entryIn }: AddPanelProps) {
   const { t } = useTranslation('add');
   const { character, system } = useSheet();
   const { weight: unit } = useSettings();
+  const [, setSearch] = useSearchParams();
   const id = useId();
-  const [view, setView] = useState<View>('menu');
+  const [view, setView] = useState<View>(entryIn === undefined ? 'menu' : 'entry');
   const [name, setName] = useState('');
   const [weight, setWeight] = useState('');
   const [count, setCount] = useState('1');
   const [text, setText] = useState('');
+  const [picked, setPicked] = useState(entryIn ?? character.sections[0]?.id ?? '');
   const [refused, setRefused] = useState<string | undefined>(undefined);
 
   const typedWeight = typedPositive(weight);
   const qty = typedCount(count);
   const named = /\S/.test(name);
-  const ready = named && (view === 'feature' || (typedWeight !== undefined && qty !== undefined));
+  const section = character.sections.find((each) => each.id === picked);
+  const ready =
+    named &&
+    (view === 'feature' ||
+      view === 'section' ||
+      (view === 'item' && typedWeight !== undefined && qty !== undefined) ||
+      (view === 'entry' && section !== undefined));
 
   const show = (next: View) => {
     setView(next);
     setRefused(undefined);
   };
 
+  /** The tab of a section the person just made or filled, so the new thing shows. */
+  const open = (tab: string) => setSearch({ tab }, { replace: true });
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!ready) return;
-    const made = await perform(character, (stamp) =>
-      view === 'item'
-        ? system.addCustomItem(
+    const made = await perform(character, (stamp) => {
+      switch (view) {
+        case 'item':
+          return system.addCustomItem(
             character,
             {
               uid: crypto.randomUUID(),
@@ -79,18 +101,36 @@ export function AddPanel({ onClose }: PanelProps) {
               text,
             },
             stamp,
-          )
-        : system.addCustomFeature(
+          );
+        case 'section':
+          return addSection(character, { id: crypto.randomUUID(), name }, stamp);
+        case 'entry':
+          return addSectionEntry(
+            character,
+            { section: picked, id: crypto.randomUUID(), name, text },
+            stamp,
+          );
+        default:
+          return system.addCustomFeature(
             character,
             { slug: `custom-${crypto.randomUUID().slice(0, 8)}`, name, text },
             stamp,
-          ),
-    ).catch((error: unknown) => {
+          );
+      }
+    }).catch((error: unknown) => {
       console.error(error);
       return undefined;
     });
-    if (made?.ok) onClose();
-    else setRefused(made !== undefined && 'code' in made ? made.code : 'other');
+    if (made?.ok) {
+      if (view === 'section') {
+        // The new section is the last one of the stored list.
+        const last = made.character.sections.at(-1);
+        if (last !== undefined) open(last.id);
+      } else if (view === 'entry' && entryIn === undefined) {
+        open(picked);
+      }
+      onClose();
+    } else setRefused(made !== undefined && 'code' in made ? made.code : 'other');
   };
 
   if (view === 'menu') {
@@ -109,17 +149,56 @@ export function AddPanel({ onClose }: PanelProps) {
             note={t('feature.note')}
             onClick={() => show('feature')}
           />
+          <ActionRow
+            icon={ListPlus}
+            label={t('section.title')}
+            note={t('section.note')}
+            onClick={() => show('section')}
+          />
+          <ActionRow
+            icon={PawPrint}
+            label={t('entry.menu')}
+            note={t('entry.note')}
+            onClick={() => show('entry')}
+          />
         </div>
       </BottomSheet>
     );
   }
 
+  const textLabel = view === 'entry' ? t('entry.text') : t('text');
+  const textHint = view === 'entry' ? t('entry.textPlaceholder') : t('textPlaceholder');
   return (
     <BottomSheet title={t(`${view}.title`)} onClose={onClose}>
       <form className="flex flex-col gap-3 pb-2" onSubmit={submit} aria-label={t(`${view}.title`)}>
+        {view === 'entry' && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${id}-section`} className="text-13 font-semibold text-muted">
+              {t('entry.section')}
+            </label>
+            {character.sections.length === 0 ? (
+              <p className="text-14 text-muted">{t('entry.noSections')}</p>
+            ) : (
+              <Part
+                as="select"
+                id={`${id}-section`}
+                name="field"
+                className={field}
+                value={picked}
+                onChange={(event: { target: { value: string } }) => setPicked(event.target.value)}
+              >
+                {character.sections.map((each) => (
+                  <option key={each.id} value={each.id}>
+                    {each.name}
+                  </option>
+                ))}
+              </Part>
+            )}
+          </div>
+        )}
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-name`} className="text-13 font-semibold text-muted">
-            {t('name')}
+            {view === 'section' ? t('section.name') : t('name')}
           </label>
           <Part
             as="input"
@@ -128,6 +207,7 @@ export function AddPanel({ onClose }: PanelProps) {
             autoComplete="off"
             className={field}
             value={name}
+            placeholder={view === 'section' ? t('section.placeholder') : undefined}
             onChange={(event: { target: { value: string } }) => setName(event.target.value)}
           />
         </div>
@@ -168,20 +248,22 @@ export function AddPanel({ onClose }: PanelProps) {
           </div>
         )}
         {view === 'item' && <p className="-mt-1.5 text-12 text-muted">{t('weightHint')}</p>}
-        <div className="flex flex-col gap-1">
-          <label htmlFor={`${id}-text`} className="text-13 font-semibold text-muted">
-            {t('text')}
-          </label>
-          <Part
-            as="textarea"
-            id={`${id}-text`}
-            name="field"
-            className="min-h-24 w-full resize-y bg-surface p-3 text-16 text-text"
-            value={text}
-            placeholder={t('textPlaceholder')}
-            onChange={(event: { target: { value: string } }) => setText(event.target.value)}
-          />
-        </div>
+        {view !== 'section' && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${id}-text`} className="text-13 font-semibold text-muted">
+              {textLabel}
+            </label>
+            <Part
+              as="textarea"
+              id={`${id}-text`}
+              name="field"
+              className="min-h-24 w-full resize-y bg-surface p-3 text-16 text-text"
+              value={text}
+              placeholder={textHint}
+              onChange={(event: { target: { value: string } }) => setText(event.target.value)}
+            />
+          </div>
+        )}
         {refused !== undefined && (
           <p className="bg-warn-bg px-3 py-2 text-13 text-warn-text" role="alert">
             {t(`refused.${refused}`, { defaultValue: t('refused.other') })}
@@ -193,7 +275,7 @@ export function AddPanel({ onClose }: PanelProps) {
             type="button"
             name="button-secondary"
             className="h-control grow px-4 text-16"
-            onClick={() => show('menu')}
+            onClick={() => (entryIn === undefined ? show('menu') : onClose())}
           >
             {t('back')}
           </Part>

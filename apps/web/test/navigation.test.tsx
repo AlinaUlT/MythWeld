@@ -56,6 +56,7 @@ describe('SHEET-11 navigation', () => {
       'player',
       'rest',
       'roll',
+      'sections',
       'settings',
       'sheet',
       'spells',

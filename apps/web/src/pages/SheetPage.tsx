@@ -25,7 +25,8 @@ import { SheetDice } from '../sheet/SheetDice';
 import { SheetDock } from '../sheet/SheetDock';
 import { SheetHeader } from '../sheet/SheetHeader';
 import type { NumberFormat } from '../sheet/SheetNumber';
-import { SHEET_TABS, type SheetTabId, tabOf } from '../sheet/tabs';
+import { SectionList } from '../sheet/sections/SectionList';
+import { SHEET_TABS, type SheetTabId, tabIdsOf, tabOf } from '../sheet/tabs';
 import { Page } from '../shell/Page';
 import { paths } from '../shell/routes';
 import { type AppCharacter, type SheetSystem, sheetSystemOf } from '../systems';
@@ -46,11 +47,15 @@ type Open =
 type Loaded = { status: 'loading' } | { status: 'failed' } | OpenedCharacter;
 
 /** The tab a swipe from `from` by `dx` and `dy` pixels moves to; the same tab when it is no swipe. */
-export function swipedTab(from: SheetTabId, dx: number, dy: number): SheetTabId {
+export function swipedTab(
+  from: SheetTabId,
+  dx: number,
+  dy: number,
+  ids: readonly SheetTabId[] = tabIdsOf(),
+): SheetTabId {
   if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < 2 * Math.abs(dy)) return from;
-  const at = SHEET_TABS.findIndex(({ id }) => id === from);
-  const next = SHEET_TABS[at + (dx < 0 ? 1 : -1)];
-  return next?.id ?? from;
+  const at = ids.indexOf(from);
+  return ids[at + (dx < 0 ? 1 : -1)] ?? from;
 }
 
 function Message({ text }: { text: string }) {
@@ -65,7 +70,8 @@ function Message({ text }: { text: string }) {
 function Frame({ character, system }: { character: AppCharacter; system: SheetSystem }) {
   const { t } = useTranslation('sheet');
   const [search, setSearch] = useSearchParams();
-  const tab = tabOf(search.get('tab'));
+  const tab = tabOf(search.get('tab'), character.sections);
+  const tabIds = tabIdsOf(character.sections);
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState<Open | undefined>(undefined);
   const close = () => setOpen(undefined);
@@ -97,6 +103,7 @@ function Frame({ character, system }: { character: AppCharacter; system: SheetSy
   };
 
   const sections = SHEET_TABS.find(({ id }) => id === tab)?.sections ?? [];
+  const custom = character.sections.some(({ id }) => id === tab);
 
   return (
     <SheetContext value={sheet}>
@@ -119,7 +126,7 @@ function Frame({ character, system }: { character: AppCharacter; system: SheetSy
             const from = start.current;
             start.current = undefined;
             if (from !== undefined) {
-              showTab(swipedTab(tab, event.clientX - from.x, event.clientY - from.y));
+              showTab(swipedTab(tab, event.clientX - from.x, event.clientY - from.y, tabIds));
             }
           }}
           onPointerCancel={() => {
@@ -136,6 +143,7 @@ function Frame({ character, system }: { character: AppCharacter; system: SheetSy
               {t('notInstalled', { id })}
             </Part>
           ))}
+          {custom && <SectionList id={tab} />}
           {sections.map((Section, at) => (
             // A tab's sections are fixed, so their place is their key.
             // biome-ignore lint/suspicious/noArrayIndexKey: the list never changes order.
@@ -144,6 +152,7 @@ function Frame({ character, system }: { character: AppCharacter; system: SheetSy
         </main>
         <SheetDock
           tab={tab}
+          sections={character.sections}
           onTab={showTab}
           onNumberPad={(mode) => setOpen({ kind: 'numberPad', mode })}
         />

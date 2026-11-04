@@ -7784,3 +7784,91 @@ Differences from the row: none. Technical choices (ADR 002): the board draws the
 Found, not fixed: an entry cannot be edited after it is added (new row SHEET-80, S).
 
 Changelog: "In edit mode a + button adds a custom item (name, weight, how many, description) to the Gear tab or a custom feature (name, description) to the Features tab, as text only; each has Undo, and a custom feature can be removed."
+
+---
+
+### SHEET-57 Custom sections hold the person's own lists
+
+**Hat:** A character keeps its own named lists as tabs
+**Depends on:** SHEET-52 (the "+" and `AddPanel`), SHEET-30 (the tabs), SHEET-23 (Undo)
+**Size:** S
+**Screen:** Yes — edit mode's "Add to the sheet" and a section's tab; board `V3-Add` in `docs/design/mockups/`, its row in `docs/design/BRIEF.md` Part 5 ("P4"). ADR 009 items 7 and 8.
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/schema/src/character.ts` — changes: `sections` in the core part, `CHARACTER_SCHEMA_VERSION` 3, the 2 → 3 step.
+- `packages/engine/src/sections.ts` — new: `addSection`, `removeSection`, `addSectionEntry`, `removeSectionEntry`, `SectionRefusal`; exported from `index.ts`.
+- `apps/web/src/sheet/sections/SectionList.tsx` — new: a section's tab. `apps/web/src/sheet/tabs.ts`, `SheetDock.tsx`, `apps/web/src/pages/SheetPage.tsx` — change: a tab for each section; `tabIdsOf`; `swipedTab` takes the ids.
+- `apps/web/src/sheet/panels/AddPanel.tsx` — change: "New section" and "Companion" rows, and the entry form.
+- `packages/system-5e/src/manual.ts` — change: a new character has `sections: []`.
+- `apps/web/src/locales/en/sections.json` — new namespace; `add.json`, `toast.json` — new keys.
+- Test fixtures: the goldens, Tales' characters and the 5e character literal are at version 3 with `sections` (see §5).
+
+#### 2. What is missing now
+
+The core holds no lists of the person's own: `grep -rn sections packages/schema/src` finds none. ADR 009 item 8 asks for them "next to the built-in tabs"; SHEET-52 left the "+" panel with two rows.
+
+#### 3. What it should look like when done
+
+1. In edit mode "+" → "New section" (a name; "Mounts, Pets, Familiars, Notes, or any list") adds a tab after the built-in ones, named by the person, and opens it. A name that shows nothing leaves "Add" off.
+2. The tab shows a card with the section's name and its entries: each entry's name, and under it its words, kept in lines. An empty section says "Nothing here yet."
+3. In edit mode the card has "Add an entry" (opens the entry form for that section), a remove button on each entry, and "Remove section". Play mode only reads: no button.
+4. "+" → "Companion" ("Familiar, pet or mount, with a small stat block") opens the same entry form with a Section picker; the entry goes to the section picked and its tab shows. With no section, the form says "Add a section first, such as Mounts." and "Add" is off.
+5. Each add and remove is one change with its "Undo" toast ("Mounts added", "Dapple added", "Dapple removed", "Mounts removed"). Removing the section whose tab is open goes back to Main; Undo brings the tab back.
+6. A swipe sideways moves along the tabs into the sections and back; the arrow keys too.
+7. Everything is stored; a character saved before this opens with no sections, and saves as version 3.
+8. The gate is green.
+
+#### 4. How to do it
+
+1. `sectionSchema`: `{ id (uuid), name, entries: [{ id (uuid), name, text? }] }`, ids unique; `sections` is a required list of the core part. `CHARACTER_MIGRATIONS` gets the step `(file) => ({ sections: [], ...file })`: pure, a file that holds sections keeps them.
+2. The four actions work on the whole list at `['sections']` (a log path steps only through objects, ENG-63), as `setOverride` does; ids are the app's; a name is trimmed and must show a character; no id is used twice across sections and entries.
+3. Tabs: `tabIdsOf(sections)` is the built-in ids then the sections'; `tabOf(value, sections)` finds one; the dock draws a tab for each; the frame draws `SectionList` for a section's tab.
+4. `AddPanel` gets `section` and `entry` views; a new section or an entry made from the panel opens that tab (`?tab=`).
+
+#### 5. Stored data
+
+`CharacterDoc` changes: `sections` is new (SPEC §5.8 lists the core's fields; ADR 009 item 8 adds this one). The core's `schemaVersion` goes **2 → 3**, with a step that returns the file with `sections: []`. Tests: `packages/schema/test/migration.test.ts` — a character of version 2 opens as version 3 with no sections and every other field as it was; the step is pure (a frozen file is not changed, a new object comes back, held sections stay); a character of version 1 opens through both steps; version 4 is refused as newer. `packages/schema/test/character.test.ts` — the section's shape. The golden characters, Tales' characters and the 5e test character are stored files, so they are at version 3 with `sections: []`: a change of shape, not of value (ENG-61 did the same for version 2); no expected value of a golden changed. The pack's version is not touched (a pack has no sections).
+
+#### 6. What a person will see
+
+At 360×800: a tab named by the person after Notes (the tab strip scrolls sideways); its card with the name as a heading, the entries (bold name, muted words), and in edit mode a full-width "Add an entry" and "Remove section" under them, the entries' ✕ on the right. The forms are SHEET-52's panel: "New section" is one field; "New entry" is Section, Name and "Stat block or description". Keys: `sections.json` (`none`, `addEntry`, `removeEntry`, `removeSection`), `add.json` (`section.*`, `entry.*`, `refused.noSection`, `refused.idUsed`), `toast.json` (`addSection`, `removeSection`, `addEntry`, `removeEntry`). Screenshots in the chat.
+
+#### 7. Tests
+
+- `packages/engine/test/sections.test.ts` — 10 tests on Tales' Ash: a section at the end as one entry that changes only the lists; order kept; refusals (no name, id used by a section or an entry); apply again and reverse; an entry to its own section only, its words trimmed, none when blank; refusals; removing an entry, a section with its entries, and what is not there.
+- `packages/schema/test/migration.test.ts` — 4 new tests (version 3), and the version 1 and "newer" tests moved to the current numbers; `packages/schema/test/character.test.ts` — 1 new test on the section's shape, the full character has two sections.
+- `apps/web/test/sections.test.tsx` — 9 tests on golden B: the tab ids and `tabOf`; a swipe into and out of the sections; a tab for each section in the dock; the card's entries and words; an empty section; play and edit mode; a missing section; the panel's four rows; the entry form opened for a section.
+- `apps/web/e2e/sheet.spec.ts` — 1 test: a character saved at version 2 opens with 8 tabs; a section; its tab, open; an entry from its button; a companion from the panel; a reload; play mode reads only; remove an entry, remove the section, Undo.
+- Control values: the tab counts (8 built-in, 9 with a section, 10 in the unit test with two) from `SHEET_TABS`; Tales' Ash for the engine; golden B for the screen. No rules number is involved: golden values are unchanged and their tests pass untouched.
+
+#### 8. Checked against the source
+
+ADR 009 items 7 and 8 and SPEC §5.8 (the migration rule: a pure `vN → vN+1` step with its own test). The wave rule in `BACKLOG.md`: this is the one row of its batch that changes a stored shape. Nothing rules-bound to check.
+
+#### 9. Not in this ticket
+
+- A companion with a sheet of its own: the table link (ADR 014 item 9). A companion here is an entry with its stat block as text.
+- Renaming a section, editing an entry, putting entries in another order: not asked; they join SHEET-80's editing row (custom entries) if wanted.
+- A section's entries with effects: phase 5 (HB).
+
+#### 10. Rake check
+
+- A stored-shape change needs a migration: `schemaVersion` 3 and a pure step with its own test (§5).
+- The core names no game: the lists are the core's (`schema`, `engine`); no system module knows them.
+- Ids are stable: a section's and an entry's id never change with a name.
+- Missing is not broken: a `?tab=` naming a section that is gone shows Main; a section that is not there draws nothing.
+- No look in a component, no literal string: parts, tokens and `sections.json`, `add.json` keys; a name the person typed is shown as typed.
+- Nothing invisible: names and text must show a character (`visibleTextSchema`).
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` 443 files, no fixes; `pnpm typecheck` clean; `pnpm test` 140 files, 1583 passed, 0 failed, 34.6 s (24 new, from 1559), then speed 2 passed; coverage statements 99.04 % (4051/4090), lines 99.77 % (3551/3559); `pnpm e2e` 82 passed, 0 failed, 1.5 min (1 new). Screenshots at 360×800 shown in the chat.
+
+Differences from the row: none. Technical choices (ADR 002): a section is a tab (ADR 009 item 8: "next to the built-in tabs"), so the tab list is built from the character's sections; a companion is the entry form with a Section picker, since the row makes it "such an entry"; the `sections` field is the core's, so every system has it, and it goes in the core's version, not the module's; removing a section removes its entries (one Undo brings both back).
+
+Found, not fixed: (1) the toast sits over both round buttons, the dice and the "+" (the screenshot of the entry shows it), for its 5 seconds: new row SHEET-81, XS. (2) After a tap on the toast's "Undo", the next toast stayed on screen for over 10 seconds in this test, past `TOAST_MS`; `ToastHost` pauses the timer while the toast has focus and a button that is removed sends no blur, which is the likely cause (not checked): new row SHEET-82, XS.
+
+Changelog: "In edit mode you can add a section of your own, such as Mounts or Pets, as a tab after the built-in ones, with entries of a name and free text (a companion's stat block among them); each add and remove has Undo."

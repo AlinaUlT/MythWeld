@@ -44,7 +44,7 @@ const ownTalent = {
 /** Every field a character can have. */
 const character = {
   id: '0f8fad5b-d9cb-469f-a165-70867728950e',
-  schemaVersion: 2,
+  schemaVersion: 3,
   rev: 3,
   createdAt: '2026-10-01T09:00:00.000Z',
   updatedAt: '2026-10-01T09:30:00.000Z',
@@ -78,6 +78,21 @@ const character = {
   ],
   localEntities: [ownTalent],
   notes: { backstory: 'Grew up by the river.', looks: 'Tall, with a grey cloak.' },
+  sections: [
+    {
+      id: '5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e',
+      name: 'Mounts',
+      entries: [
+        {
+          id: '6c7d8e9f-0a1b-4c2d-9e3f-4a5b6c7d8e9f',
+          name: 'Dapple',
+          text: 'Speed 60, 19 hit points',
+        },
+        { id: '7d8e9f0a-1b2c-4d3e-8f4a-5b6c7d8e9f0a', name: 'Saddlebags' },
+      ],
+    },
+    { id: '8e9f0a1b-2c3d-4e4f-9a5b-6c7d8e9f0a1b', name: 'Pets', entries: [] },
+  ],
   systemData: { level: 2, calling: 'tales-core:calling/warden', talents: [] },
 };
 
@@ -102,8 +117,8 @@ function refused(change: Record<string, unknown>): string[] {
 describe('ENG-06 character document', () => {
   it('parses a full character to an equal object', () => {
     expect(talesCharacterSchema.parse(character)).toEqual(character);
-    expect(CHARACTER_SCHEMA_VERSION).toBe(2);
-    expect(CHARACTER_MIGRATIONS).toHaveLength(1);
+    expect(CHARACTER_SCHEMA_VERSION).toBe(3);
+    expect(CHARACTER_MIGRATIONS).toHaveLength(2);
     expect(CHARACTER_PACK_ID).toBe('character');
     expect(DEFAULT_ACTOR_KIND).toBe('pc');
   });
@@ -122,6 +137,7 @@ describe('ENG-06 character document', () => {
       overrides: [],
       localEntities: [],
       notes: {},
+      sections: [],
     });
     expect(issuePaths(talesCharacterSchema, empty)).toEqual([]);
   });
@@ -142,7 +158,7 @@ describe('ENG-06 character document', () => {
       expect(refused({ ruleset }), ruleset).toEqual(['ruleset']);
     }
     expect(refused({ system: 'deep' })).toEqual(['system']);
-    for (const schemaVersion of [0, 1, 3, '2']) {
+    for (const schemaVersion of [0, 1, 2, '3']) {
       expect(refused({ schemaVersion }), String(schemaVersion)).toEqual(['schemaVersion']);
     }
     expect(refused({ systemSchemaVersion: 2 })).toEqual(['systemSchemaVersion']);
@@ -232,6 +248,30 @@ describe('ENG-06 character document', () => {
     ).toEqual(['localEntities.0.type']);
   });
 
+  it('takes a custom section: a name, and entries of a name and free text, no id twice (SHEET-57)', () => {
+    const [mounts] = character.sections;
+    const [dapple] = mounts?.entries ?? [];
+    const entry = (change: Record<string, unknown>) => ({ ...dapple, ...change });
+    const section = (change: Record<string, unknown>) => ({ ...mounts, ...change });
+    expect(refused({ sections: [section({ name: ' ' })] })).toEqual(['sections.0.name']);
+    expect(refused({ sections: [section({ id: 'mounts' })] })).toEqual(['sections.0.id']);
+    expect(refused({ sections: [section({ extra: 1 })] })).toEqual(['sections.0']);
+    expect(refused({ sections: [section({ entries: [entry({ name: '' })] })] })).toEqual([
+      'sections.0.entries.0.name',
+    ]);
+    expect(refused({ sections: [section({ entries: [entry({ text: '  ' })] })] })).toEqual([
+      'sections.0.entries.0.text',
+    ]);
+    expect(refused({ sections: [section({ entries: [entry({ id: 'dapple' })] })] })).toEqual([
+      'sections.0.entries.0.id',
+    ]);
+    expect(
+      refused({ sections: [section({ entries: [dapple, entry({ name: 'Twin' })] })] }),
+    ).toEqual(['sections.0.entries.1.id']);
+    expect(refused({ sections: [mounts, section({ name: 'Pets' })] })).toEqual(['sections.1.id']);
+    expect(refused({ sections: [] })).toEqual([]);
+  });
+
   it("checks the module's part by the module's schema, and refuses unknown fields", () => {
     expect(refused({ systemData: { ...character.systemData, level: 6 } })).toEqual([
       'systemData.level',
@@ -295,7 +335,7 @@ describe('ENG-06 character document', () => {
   it("types the character by the system's lists", () => {
     type Character = z.infer<typeof talesCharacterSchema>;
     expectTypeOf<Character['system']>().toEqualTypeOf<'tales'>();
-    expectTypeOf<Character['schemaVersion']>().toEqualTypeOf<2>();
+    expectTypeOf<Character['schemaVersion']>().toEqualTypeOf<3>();
     expectTypeOf<Character['systemSchemaVersion']>().toEqualTypeOf<1>();
     expectTypeOf<Character['ruleset']>().toEqualTypeOf<'first-age' | 'second-age'>();
     expectTypeOf<Character['mode']>().toEqualTypeOf<'guided' | 'manual'>();
@@ -317,19 +357,19 @@ describe("ENG-06 a character opens through the core's chain and the module's", (
     expect(openTalesCharacter(character)).toEqual({
       ok: true,
       value: character,
-      from: { schemaVersion: 2, systemSchemaVersion: 1 },
+      from: { schemaVersion: 3, systemSchemaVersion: 1 },
     });
   });
 
   it("refuses a character from a newer app, in the core's part or the module's", () => {
-    expect(openTalesCharacter(characterWith({ schemaVersion: 3 }))).toEqual({
+    expect(openTalesCharacter(characterWith({ schemaVersion: 4 }))).toEqual({
       ok: false,
       code: 'newer',
       field: 'schemaVersion',
-      found: 3,
-      current: 2,
+      found: 4,
+      current: 3,
       message:
-        'The file was saved by a newer version of the app: its "schemaVersion" is 3, and this app reads up to 2.',
+        'The file was saved by a newer version of the app: its "schemaVersion" is 4, and this app reads up to 3.',
     });
     expect(openTalesCharacter(characterWith({ systemSchemaVersion: 4 }))).toMatchObject({
       ok: false,
@@ -357,7 +397,7 @@ describe("ENG-06 a character opens through the core's chain and the module's", (
     expect(characterOpenerOf(rankSchema, [renameLevel])(character)).toEqual({
       ok: true,
       value: { ...character, systemSchemaVersion: 2, systemData: { ...rest, rank: level } },
-      from: { schemaVersion: 2, systemSchemaVersion: 1 },
+      from: { schemaVersion: 3, systemSchemaVersion: 1 },
     });
     expect(level).toBe(2);
     expect(() => characterOpenerOf(rankSchema, [])).toThrow(

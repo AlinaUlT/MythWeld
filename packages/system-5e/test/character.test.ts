@@ -141,7 +141,7 @@ const systemData = {
 /** Every field a fifth-edition character can have. */
 const character = {
   id: '5b0c1d2e-3f4a-4b5c-8d6e-7f8091a2b3c4',
-  schemaVersion: 2,
+  schemaVersion: 3,
   rev: 2,
   createdAt: '2026-10-01T09:00:00.000Z',
   updatedAt: '2026-10-01T09:30:00.000Z',
@@ -160,6 +160,15 @@ const character = {
   overrides: [],
   localEntities: [luckyFind],
   notes: { backstory: 'Made up for the tests.' },
+  sections: [
+    {
+      id: '9f0a1b2c-3d4e-4f5a-8b6c-7d8e9f0a1b2c',
+      name: 'Familiars',
+      entries: [
+        { id: '0a1b2c3d-4e5f-4a6b-9c7d-8e9f0a1b2c3d', name: 'Toad', text: 'Speed 20, 1 hit point' },
+      ],
+    },
+  ],
   systemData,
 };
 
@@ -556,7 +565,7 @@ describe('ENG-33 fifth-edition files open through both chains', () => {
     expect(openFifthEditionCharacter(character)).toEqual({
       ok: true,
       value: character,
-      from: { schemaVersion: 2, systemSchemaVersion: 9 },
+      from: { schemaVersion: 3, systemSchemaVersion: 9 },
     });
     expect(openFifthEditionCharacter({ ...character, systemSchemaVersion: 10 })).toMatchObject({
       ok: false,
@@ -609,7 +618,7 @@ describe('ENG-47 the pinned AC calculation is stored', () => {
     expect(openFifthEditionCharacter(old)).toEqual({
       ok: true,
       value: { ...character, systemSchemaVersion: 9, systemData: unpinned },
-      from: { schemaVersion: 2, systemSchemaVersion: 1 },
+      from: { schemaVersion: 3, systemSchemaVersion: 1 },
     });
     const [step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
     const frozen = Object.freeze({ ...old });
@@ -649,7 +658,7 @@ describe('ENG-58 stable is stored', () => {
     expect(openFifthEditionCharacter(old)).toEqual({
       ok: true,
       value: character,
-      from: { schemaVersion: 2, systemSchemaVersion: 2 },
+      from: { schemaVersion: 3, systemSchemaVersion: 2 },
     });
     expect(character.systemData.state.deathSaves).toEqual({
       success: 1,
@@ -722,7 +731,7 @@ describe("ENG-56 the starting languages' place is stored", () => {
           systemSchemaVersion: 9,
           systemData: { ...unplaced, languageSource: place },
         },
-        from: { schemaVersion: 2, systemSchemaVersion: 3 },
+        from: { schemaVersion: 3, systemSchemaVersion: 3 },
       });
     }
     const [, , step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
@@ -862,7 +871,7 @@ describe("ENG-57 a spell grant's uses are keyed", () => {
     expect(openFifthEditionCharacter(old)).toEqual({
       ok: true,
       value: { ...character, localEntities: [luckyFind, keyedOwn] },
-      from: { schemaVersion: 2, systemSchemaVersion: 4 },
+      from: { schemaVersion: 3, systemSchemaVersion: 4 },
     });
     const [, , , step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
     const ice = iced(old);
@@ -932,7 +941,7 @@ describe('ENG-65 the knock-out is stored', () => {
     expect(openFifthEditionCharacter(old)).toEqual({
       ok: true,
       value: { ...old, systemSchemaVersion: 9 },
-      from: { schemaVersion: 2, systemSchemaVersion: 5 },
+      from: { schemaVersion: 3, systemSchemaVersion: 5 },
     });
     const [, , , , step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
     const frozen = Object.freeze({ ...old });
@@ -975,7 +984,7 @@ describe('ENG-68 neither side of the ability increases is stored', () => {
     expect(openFifthEditionCharacter(old)).toEqual({
       ok: true,
       value: character,
-      from: { schemaVersion: 2, systemSchemaVersion: 6 },
+      from: { schemaVersion: 3, systemSchemaVersion: 6 },
     });
     const [, , , , , step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
     const frozen = Object.freeze({ ...old });
@@ -1005,7 +1014,7 @@ describe('ENG-66 the revival event is stored', () => {
     expect(openFifthEditionCharacter(old)).toEqual({
       ok: true,
       value: character,
-      from: { schemaVersion: 2, systemSchemaVersion: 7 },
+      from: { schemaVersion: 3, systemSchemaVersion: 7 },
     });
     const [, , , , , , step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
     const frozen = Object.freeze({ ...old });
@@ -1035,7 +1044,7 @@ describe('SHEET-08 the simple types that name keys are stored', () => {
     expect(openFifthEditionCharacter(old)).toEqual({
       ok: true,
       value: character,
-      from: { schemaVersion: 2, systemSchemaVersion: 8 },
+      from: { schemaVersion: 3, systemSchemaVersion: 8 },
     });
     const [, , , , , , , step] = FIFTH_EDITION_CHARACTER_MIGRATIONS;
     const frozen = Object.freeze({ ...old });

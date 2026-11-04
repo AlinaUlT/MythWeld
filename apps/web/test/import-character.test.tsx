@@ -134,7 +134,7 @@ describe('SHEET-26 importing a character file', () => {
 
   it('refuses a file saved by a newer version, in either version field', async () => {
     const newerCore = fileOf((file) => {
-      file.schemaVersion = 3;
+      file.schemaVersion = 4;
     });
     const newerSystem = fileOf((file) => {
       file.systemSchemaVersion = 10;

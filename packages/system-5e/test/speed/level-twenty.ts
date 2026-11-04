@@ -135,6 +135,7 @@ export const levelTwenty = {
   overrides: [],
   localEntities: [],
   notes: {},
+  sections: [],
   systemData: {
     ...untouched,
     houseRules,

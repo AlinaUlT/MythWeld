@@ -245,10 +245,10 @@ describe('ENG-61 version 2 of a pack and a character', () => {
     expect(frozen).toEqual(old);
   });
 
-  it('opens a character of version 1 as version 2, every other field as it was', () => {
-    expect(CHARACTER_SCHEMA_VERSION).toBe(2);
-    expect(CHARACTER_MIGRATIONS).toHaveLength(1);
-    const old = { ...ash, schemaVersion: 1 };
+  it('opens a character of version 1 as the current version, step 1 returning it as it is', () => {
+    // A file of version 1 has neither `recovery` nor `sections` (SHEET-57): it opens with none.
+    const { sections: _none, ...stored } = ash;
+    const old = { ...stored, schemaVersion: 1 };
     expect(openTalesCharacter(old)).toEqual({
       ok: true,
       value: ash,
@@ -261,13 +261,51 @@ describe('ENG-61 version 2 of a pack and a character', () => {
     expect(frozen).toEqual(old);
   });
 
-  it('refuses a character of version 3 as newer', () => {
-    expect(openTalesCharacter({ ...ash, schemaVersion: 3 })).toMatchObject({
+  it('refuses a character of version 4 as newer', () => {
+    expect(openTalesCharacter({ ...ash, schemaVersion: 4 })).toMatchObject({
       ok: false,
       code: 'newer',
       field: 'schemaVersion',
-      found: 3,
-      current: 2,
+      found: 4,
+      current: 3,
+    });
+  });
+});
+
+// SHEET-57: a character's own lists, `sections`, are new in the core's shape, so a character is at
+// version 3. A version 2 file has none: the step gives it an empty list and changes nothing else.
+describe('SHEET-57 version 3 of a character', () => {
+  const { sections: _none, ...stored } = ash;
+  const old = { ...stored, schemaVersion: 2 };
+
+  it('is at version 3, with a step for each version before it', () => {
+    expect(CHARACTER_SCHEMA_VERSION).toBe(3);
+    expect(CHARACTER_MIGRATIONS).toHaveLength(2);
+  });
+
+  it('opens a character of version 2 as version 3 with no sections, every other field as it was', () => {
+    expect(openTalesCharacter(old)).toEqual({
+      ok: true,
+      value: { ...ash, sections: [] },
+      from: { schemaVersion: 2, systemSchemaVersion: 1 },
+    });
+  });
+
+  it('is a pure step: the file is not changed, a new object comes back, and held sections stay', () => {
+    const [, step] = CHARACTER_MIGRATIONS;
+    const frozen = deepFreeze(JSON.parse(JSON.stringify(old)));
+    expect(step?.(frozen)).toEqual({ ...old, sections: [] });
+    expect(step?.(frozen)).not.toBe(frozen);
+    expect(frozen).toEqual(old);
+    const held = [{ id: 'a', name: 'Mounts', entries: [] }];
+    expect(step?.({ ...old, sections: held })).toEqual({ ...old, sections: held });
+  });
+
+  it('opens a character of version 1 through both steps', () => {
+    expect(openTalesCharacter({ ...old, schemaVersion: 1 })).toMatchObject({
+      ok: true,
+      value: { schemaVersion: 3, sections: [] },
+      from: { schemaVersion: 1 },
     });
   });
 });

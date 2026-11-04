@@ -15,7 +15,7 @@ import { houseRules, rested, untouched } from './character-parts.ts';
  */
 export const goldenF = {
   id: '2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d',
-  schemaVersion: 2,
+  schemaVersion: 3,
   rev: 0,
   createdAt: '2026-10-05T09:00:00.000Z',
   updatedAt: '2026-10-05T09:00:00.000Z',
@@ -41,6 +41,7 @@ export const goldenF = {
   overrides: [],
   localEntities: [],
   notes: {},
+  sections: [],
   systemData: {
     ...untouched,
     houseRules,

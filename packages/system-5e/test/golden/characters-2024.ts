@@ -10,7 +10,7 @@ type CharacterInput = z.input<typeof fifthEditionCharacterSchema>;
 
 /** The core part every 2024 character shares. */
 const core: Omit<CharacterInput, 'id' | 'name' | 'abilities' | 'choices' | 'systemData'> = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   rev: 0,
   createdAt: '2026-10-02T09:00:00.000Z',
   updatedAt: '2026-10-02T09:00:00.000Z',
@@ -25,6 +25,7 @@ const core: Omit<CharacterInput, 'id' | 'name' | 'abilities' | 'choices' | 'syst
   overrides: [],
   localEntities: [],
   notes: {},
+  sections: [],
 };
 
 /** Golden B's choices at fighter 1. The gaming set is test data. */

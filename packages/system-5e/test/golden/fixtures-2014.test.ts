@@ -14,7 +14,9 @@ import { goldenA, goldenC2014, srd2014 } from './index.ts';
 // ENG-09: the 2014 golden data is whole, agrees with itself, and gives what SPEC §6.7 says golden
 // A has. Expected counts are ENG-09 §8's; golden A's scores and sources are SPEC §6.7's.
 
-const FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 9 };
+/** A pack file's versions: the core's pack chain is at 2; a character's chain is at 3 (SHEET-57). */
+const PACK_FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 9 };
+const FROM_CURRENT = { schemaVersion: 3, systemSchemaVersion: 9 };
 
 const pack: FifthEditionPack = opened(openFifthEditionPack(srd2014));
 const entities: readonly FifthEditionEntity[] = pack.entities;
@@ -29,7 +31,11 @@ const c = opened(openFifthEditionCharacter(goldenC2014));
 
 describe('ENG-09 2014 fixtures', () => {
   it('opens and loads the pack as a file', () => {
-    expect(openFifthEditionPack(srd2014)).toEqual({ ok: true, value: srd2014, from: FROM_CURRENT });
+    expect(openFifthEditionPack(srd2014)).toEqual({
+      ok: true,
+      value: srd2014,
+      from: PACK_FROM_CURRENT,
+    });
     expect(refused).toEqual([]);
     expect(warnings).toEqual([]);
     expect(index.entities).toHaveLength(74);

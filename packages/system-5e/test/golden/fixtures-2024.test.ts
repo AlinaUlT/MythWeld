@@ -15,7 +15,9 @@ import { goldenB, goldenB4, goldenC2024, goldenD, srd2024 } from './index.ts';
 // ENG-10: the 2024 golden data is whole, agrees with itself, and gives what SPEC §6.7 says goldens
 // B, B4 and D have. Expected counts are ENG-10 §8's; scores, sources and numbers are SPEC §6.7's.
 
-const FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 9 };
+/** A pack file's versions: the core's pack chain is at 2; a character's chain is at 3 (SHEET-57). */
+const PACK_FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 9 };
+const FROM_CURRENT = { schemaVersion: 3, systemSchemaVersion: 9 };
 
 const pack: FifthEditionPack = opened(openFifthEditionPack(srd2024));
 const entities: readonly FifthEditionEntity[] = pack.entities;
@@ -68,7 +70,11 @@ const ITEMS_B = ['srd-2024:item/chain-mail', 'srd-2024:item/greatsword'];
 
 describe('ENG-10 2024 fixtures', () => {
   it('opens and loads the pack as a file', () => {
-    expect(openFifthEditionPack(srd2024)).toEqual({ ok: true, value: srd2024, from: FROM_CURRENT });
+    expect(openFifthEditionPack(srd2024)).toEqual({
+      ok: true,
+      value: srd2024,
+      from: PACK_FROM_CURRENT,
+    });
     expect(refused).toEqual([]);
     expect(warnings).toEqual([]);
     expect(index.entities).toHaveLength(66);

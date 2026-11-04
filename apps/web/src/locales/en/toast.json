@@ -40,6 +40,10 @@
     "addItem": "{{name}} added",
     "addFeature": "{{name}} added",
     "removeFeature": "{{name}} removed",
+    "addSection": "{{name}} added",
+    "removeSection": "{{name}} removed",
+    "addEntry": "{{name}} added",
+    "removeEntry": "{{name}} removed",
     "setOverride": "Manual edit saved",
     "clearOverride": "Manual edit removed",
     "other": "Change made"

@@ -28,6 +28,7 @@ import numberPad from '../locales/en/numberPad.json' with { type: 'json' };
 import player from '../locales/en/player.json' with { type: 'json' };
 import rest from '../locales/en/rest.json' with { type: 'json' };
 import roll from '../locales/en/roll.json' with { type: 'json' };
+import sections from '../locales/en/sections.json' with { type: 'json' };
 import settings from '../locales/en/settings.json' with { type: 'json' };
 import sheet from '../locales/en/sheet.json' with { type: 'json' };
 import spells from '../locales/en/spells.json' with { type: 'json' };
@@ -69,6 +70,7 @@ export const en = {
   actions,
   choices,
   add,
+  sections,
 };
 
 export type Namespaces = typeof en;

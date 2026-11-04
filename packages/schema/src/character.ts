@@ -21,13 +21,16 @@ import { visibleTextSchema } from './text';
 // have, so they never collide with a pack's entries.
 
 /** The stored shape of the character's core part. A change to it needs a migration (SPEC §5.8). */
-export const CHARACTER_SCHEMA_VERSION = 2;
+export const CHARACTER_SCHEMA_VERSION = 3;
 
 /** The steps to `CHARACTER_SCHEMA_VERSION`: step N takes version N + 1 to N + 2. */
 export const CHARACTER_MIGRATIONS: readonly Migration[] = [
   // 1 → 2 (ENG-61): a condition's `recovery` is new and optional; a character's own conditions of
   // version 1 have none.
   (file) => ({ ...file }),
+  // 2 → 3 (SHEET-57): `sections` is new, the person's own lists; a character of version 2 has
+  // none. A file that already holds some keeps them.
+  (file) => ({ sections: [], ...file }),
 ];
 
 /** The pack id in the ids of a character's own entities: `character:talent/lucky-charm`. */
@@ -45,6 +48,30 @@ const overrideSchema = z.strictObject({
   value: z.union([z.number(), z.boolean(), visibleTextSchema]),
   note: visibleTextSchema.optional(),
 });
+
+/** An entry of a custom section: a name and free text, a companion's stat block among them. */
+const sectionEntrySchema = z.strictObject({
+  id: uuidSchema,
+  name: visibleTextSchema,
+  text: visibleTextSchema.optional(),
+});
+
+/**
+ * A list of the person's own, shown as a tab next to the built-in ones (ADR 009 item 8): Mounts,
+ * Pets, Familiars, Notes, or any name. Each entry is free text; a companion with a sheet of its
+ * own waits for the table link (ADR 014 item 9).
+ */
+const sectionSchema = z.strictObject({
+  id: uuidSchema,
+  name: visibleTextSchema,
+  entries: listWithUnique(sectionEntrySchema, 'id'),
+});
+
+/** A custom section of a character. */
+export type CharacterSection = z.infer<typeof sectionSchema>;
+
+/** An entry of a custom section. */
+export type CharacterSectionEntry = z.infer<typeof sectionEntrySchema>;
 
 /** The trackers every system has: resources used, conditions, effects switched on or off. */
 const trackersSchema = z.strictObject({
@@ -123,6 +150,7 @@ export function characterSchemaOf<
       }
     }),
     notes: z.record(entityKeySchema, visibleTextSchema),
+    sections: listWithUnique(sectionSchema, 'id'),
     systemData: parts.systemData,
   });
 }

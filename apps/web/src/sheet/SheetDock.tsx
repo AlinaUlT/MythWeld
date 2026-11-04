@@ -57,11 +57,13 @@ function HitPoints() {
 
 interface DockProps {
   tab: SheetTabId;
+  /** SHEET-57: the character's own sections, each a tab after the built-in ones. */
+  sections?: readonly { id: string; name: string }[];
   onTab: (tab: SheetTabId) => void;
   onNumberPad: (mode: NumberPadMode) => void;
 }
 
-export function SheetDock({ tab, onTab, onNumberPad }: DockProps) {
+export function SheetDock({ tab, sections = [], onTab, onNumberPad }: DockProps) {
   const { t } = useTranslation('sheet');
   const dock = useRef<HTMLDivElement>(null);
 
@@ -79,10 +81,15 @@ export function SheetDock({ tab, onTab, onNumberPad }: DockProps) {
     };
   }, []);
 
+  const tabs = [
+    ...SHEET_TABS.map(({ id }) => ({ id: id as SheetTabId, label: t(`tabs.${id}`) })),
+    ...sections.map(({ id, name }) => ({ id, label: name })),
+  ];
+
   // Arrow keys move along the tabs, as a tab list does.
   const step = (by: number) => {
-    const at = SHEET_TABS.findIndex(({ id }) => id === tab);
-    const next = SHEET_TABS[(at + by + SHEET_TABS.length) % SHEET_TABS.length];
+    const at = tabs.findIndex(({ id }) => id === tab);
+    const next = tabs[(at + by + tabs.length) % tabs.length];
     if (next === undefined) return;
     onTab(next.id);
     document.getElementById(`sheet-tab-${next.id}`)?.focus();
@@ -124,7 +131,7 @@ export function SheetDock({ tab, onTab, onNumberPad }: DockProps) {
             event.preventDefault();
           }}
         >
-          {SHEET_TABS.map(({ id }) => {
+          {tabs.map(({ id, label }) => {
             const selected = id === tab;
             return (
               <button
@@ -140,7 +147,7 @@ export function SheetDock({ tab, onTab, onNumberPad }: DockProps) {
                   selected ? 'border-strong font-bold text-text' : 'border-transparent text-muted'
                 }`}
               >
-                {t(`tabs.${id}`)}
+                {label}
               </button>
             );
           })}

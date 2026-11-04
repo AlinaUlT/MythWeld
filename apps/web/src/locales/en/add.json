@@ -20,6 +20,23 @@
     "noName": "Give it a name.",
     "badWeight": "A weight is a number above 0.",
     "badQuantity": "How many is a whole number from 1.",
-    "other": "It could not be added."
+    "other": "It could not be added.",
+    "noSection": "Pick a section for it.",
+    "idUsed": "That one is there already; try again."
+  },
+  "section": {
+    "title": "New section",
+    "note": "Mounts, Pets, Familiars, Notes, or any list",
+    "name": "Name of the list",
+    "placeholder": "Mounts"
+  },
+  "entry": {
+    "title": "New entry",
+    "menu": "Companion",
+    "note": "Familiar, pet or mount, with a small stat block",
+    "section": "Section",
+    "text": "Stat block or description",
+    "textPlaceholder": "Speed 60 ft, 19 hit points, bite +4 …",
+    "noSections": "Add a section first, such as Mounts."
   }
 }

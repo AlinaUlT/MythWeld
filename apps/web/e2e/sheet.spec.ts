@@ -695,6 +695,85 @@ test('SHEET-52 edit mode adds a custom item and a custom feature as text, each w
   await expect(tab.locator('[data-feature^="character:feat/"]')).toHaveCount(1);
 });
 
+test('SHEET-57 a custom section is a tab of the person’s own list; a character saved before them opens', async ({
+  page,
+}, testInfo) => {
+  // A file of the core's version 2 has no `sections`: it opens with none, and saves as version 3.
+  const { sections: _none, ...stored } = goldenB;
+  await saveRows(page, [{ ...stored, schemaVersion: 2 }]);
+  await page.goto(`characters/${goldenB.id}`);
+  const tabs = page.getByRole('tab');
+  await expect(tabs).toHaveCount(8);
+  const add = page.getByRole('button', { name: 'Add to the sheet' });
+  const panel = page.getByRole('dialog', { name: 'Add to the sheet' });
+  const body = page.getByRole('tabpanel');
+
+  // A section: its name, then its tab, after the built-in ones, open.
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await add.click();
+  await panel.getByRole('button', { name: /^New section/ }).click();
+  const sectionForm = page.getByRole('dialog', { name: 'New section' });
+  const addSection = sectionForm.getByRole('button', { name: 'Add', exact: true });
+  await expect(addSection).toBeDisabled();
+  await sectionForm.getByLabel('Name of the list').fill('Mounts');
+  await addSection.click();
+  await expect(tabs).toHaveCount(9);
+  await expect(tabs.last()).toHaveText('Mounts');
+  await expect(tabs.last()).toHaveAttribute('aria-selected', 'true');
+  const section = body.locator('[data-section]');
+  await expect(section).toContainText('Mounts');
+  await expect(section).toContainText('Nothing here yet.');
+  await expect(page.getByRole('status').filter({ hasText: 'Mounts added' })).toBeVisible();
+
+  // An entry from the section's own button: the name and its words.
+  await section.getByRole('button', { name: 'Add an entry' }).click();
+  const entryForm = page.getByRole('dialog', { name: 'New entry' });
+  await expect(entryForm.getByLabel('Section')).toHaveValue(/.+/);
+  await expect(entryForm.getByLabel('Section').locator('option:checked')).toHaveText('Mounts');
+  await entryForm.getByLabel('Name', { exact: true }).fill('Dapple');
+  await entryForm.getByLabel('Stat block or description').fill('Speed 60 ft, 19 hit points');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('section-entry-dark.png') });
+  await entryForm.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(entryForm).toHaveCount(0);
+  const dapple = section.locator('[data-entry]').filter({ hasText: 'Dapple' });
+  await expect(dapple).toContainText('Speed 60 ft, 19 hit points');
+  await expect(page.getByRole('status').filter({ hasText: 'Dapple added' })).toBeVisible();
+  await expect(section.locator('[data-entry]')).toHaveCount(1);
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('section-light.png') });
+
+  // A companion from the panel's list goes to the section picked, and its tab shows.
+  await page.getByRole('tab', { name: 'Main' }).click();
+  // The toast of the last change sits over the "+" until it goes (5 s): found by this test.
+  await expect(page.getByRole('button', { name: en.toast.undo })).toHaveCount(0, {
+    timeout: 10_000,
+  });
+  await add.click();
+  await panel.getByRole('button', { name: /^Companion/ }).click();
+  await entryForm.getByLabel('Name', { exact: true }).fill('Saddlebags');
+  await entryForm.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(tabs.last()).toHaveAttribute('aria-selected', 'true');
+  await expect(section.locator('[data-entry]')).toHaveCount(2);
+
+  // Stored: a reload keeps the tab, its entries and the tab open; play mode only reads.
+  await page.reload();
+  await expect(tabs).toHaveCount(9);
+  await expect(tabs.last()).toHaveAttribute('aria-selected', 'true');
+  await expect(section.locator('[data-entry]')).toHaveCount(2);
+  await expect(section.getByRole('button')).toHaveCount(0);
+
+  // Edit mode takes an entry away, then the whole section with its tab, each with Undo.
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await section.getByRole('button', { name: 'Remove Saddlebags' }).click();
+  await expect(section.locator('[data-entry]')).toHaveCount(1);
+  await section.getByRole('button', { name: 'Remove section' }).click();
+  await expect(tabs).toHaveCount(8);
+  await expect(page.getByRole('tab', { name: 'Main' })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(tabs).toHaveCount(9);
+});
+
 /** The d20 faces a roll shows, and which of them it kept. */
 async function facesOf(page: Page) {
   return page
