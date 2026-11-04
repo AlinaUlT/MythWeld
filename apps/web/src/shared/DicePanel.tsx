@@ -290,7 +290,7 @@ function NewDie({ onAdd }: { onAdd: (faces: number) => void }) {
         type="submit"
         name="button-secondary"
         disabled={!ok}
-        className="flex h-control items-center px-4 text-14 font-semibold disabled:text-muted"
+        className="flex h-control items-center px-4 text-14 font-semibold"
       >
         {t('addDie')}
       </Part>

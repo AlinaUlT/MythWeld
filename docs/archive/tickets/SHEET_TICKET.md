@@ -7974,6 +7974,6 @@ Quality gate, 2026-11-04: `pnpm lint` 444 files, no fixes; `pnpm typecheck` clea
 
 Differences from the row: none on what is drawn. The "no press" part of the row: the app has no pressed look for a button, so the not-allowed cursor is the only other sign; a disabled button already takes no click. Technical choices (ADR 002): the token is a plain theme key (not a part's style pick), because a pick is a shape (border, corner, shadow) and this is a value; the rule sits in `index.css`'s base layer and selects the part by `data-skin-part`, so each button part gets it with no change in its component. Four panels' `disabled:opacity-50` became `disabled:opacity-disabled` (the same 0.5).
 
-Found, not fixed: `disabled:text-muted` buttons (`FeatureList` "Use", `DicePanel`'s Done) are plain buttons, not button parts, and show a disabled state by their text colour only; they are not covered by this rule and look fine, so no row.
+Found, not fixed: nothing. Two button parts (`FeatureList`'s "Use", `DicePanel`'s "Done") also wrote `disabled:text-muted`, which would have faded them twice under the new rule; the class is removed from both, so the token alone shows it (second commit of this ticket).
 
 Changelog: "A button that cannot be pressed now (Items' One less at 1, a coin's − at 0, a form's Save with nothing to save) is drawn faint, with a not-allowed cursor."
