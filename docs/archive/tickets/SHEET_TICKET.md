@@ -8284,3 +8284,29 @@ Design choices (ADR 002; board `V3-Keypad` has neither control, so they follow i
 Found, not fixed: SHEET-84, the missing damage types.
 
 Changelog: "The Hit points pad can name the damage's type: the character's resistance, vulnerability or immunity to it is shown and applied, and at 0 hit points a critical hit gives two death save failures."
+
+
+---
+
+### SHEET-83 The roll dialog names an attack by its own name · XS
+
+**Hat:** An attack's roll is named by its weapon
+**Where:** `packages/system-5e/src/sheet-roll.ts` — `RollTest` and `fifthEditionRollTest`; `apps/web/src/shared/RollDialog.tsx` — the name the dialog and the roll log use
+**Depends on:** SHEET-69 (found there)
+**Screen:** No — the formula line keeps its look (board `V3-Roll`).
+
+**What it should look like when done:**
+1. A weapon attack's `RollTest` carries `name`, the weapon's own name.
+2. The dialog's formula line for golden B's greatsword reads "1d20 + 5 (Greatsword)", and the roll log's label is the same.
+3. Every other test is named as before (Athletics stays "Athletics").
+4. The gate is green.
+
+**Tests:** `packages/system-5e/test/sheet-roll.test.ts` — the greatsword test now holds `name: { en: 'Greatsword' }`; `apps/web/test/roll.test.tsx` — the dialog for `attacks.greatsword.hit` reads "(Greatsword)" and has no "Attacks greatsword". Control numbers: SPEC §6.7 golden B, +5 to hit with the greatsword.
+**What came out of it:**
+Quality gate, 2026-11-04: `pnpm lint` no fixes; `pnpm typecheck` clean; `pnpm test` 143 files, 1613 passed, 0 failed, 38.7 s (1 new, from 1612); `pnpm e2e` 95 passed, 0 failed, 2.3 min (0 new: the formula line is a unit-tested string).
+
+Design choice (ADR 002): the name comes from the module's `RollTest` and not from the screen, so the screen does not look weapons up; a test with no `name` keeps the path's name. The damage roll keeps its label "Damage".
+
+Found, not fixed: nothing.
+
+Changelog: "The roll dialog calls a weapon attack by the weapon's name, 'Greatsword', not by its path."

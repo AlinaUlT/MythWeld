@@ -190,6 +190,12 @@ describe('SHEET-39 the dialog', () => {
     expect(html).not.toContain('data-testid="roll-result"');
   });
 
+  it('SHEET-83 names an attack by its weapon, not by its path', () => {
+    const html = dialog(sheetOf(goldenB), 'attacks.greatsword.hit');
+    expect(html).toContain('>1d20 + 5 (Greatsword)</p>');
+    expect(html).not.toContain('Attacks greatsword');
+  });
+
   it('shows the sheet’s advantage as a source and the d20 it rolls', () => {
     const html = dialog(sheetOf(goldenB4), 'skills.athletics.total');
     expect(html).toContain('2d20kh1 + 6 (Athletics)');

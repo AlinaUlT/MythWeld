@@ -43,6 +43,8 @@ export interface RollTest {
   /** A weapon attack's critical range path (`crit.range`). */
   critRange?: string;
   damage?: RollDamage;
+  /** SHEET-83: what names the roll when its path does not, a weapon attack's weapon. */
+  name?: L10n;
 }
 
 function has(computed: Computed<FifthEditionEntity>, path: string): boolean {
@@ -116,6 +118,7 @@ export function fifthEditionRollTest(
       mode: `attacks.${key}.mode`,
       targets: ROLL_TARGETS.weaponAttack(kind),
       critRange: CRIT_RANGE_PATH,
+      name: weapon.name,
       ...(damage !== undefined &&
         has(computed, damagePath) && {
           damage: { dice: damage.formula, bonus: damagePath, path: damagePath },

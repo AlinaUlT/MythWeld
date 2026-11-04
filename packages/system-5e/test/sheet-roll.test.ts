@@ -83,6 +83,7 @@ describe('SHEET-39 the test a number is', () => {
       mode: 'attacks.greatsword.mode',
       targets: ROLL_TARGETS.weaponAttack('melee'),
       critRange: 'crit.range',
+      name: { en: 'Greatsword' },
       damage: {
         dice: '2d6',
         bonus: 'attacks.greatsword.damage',

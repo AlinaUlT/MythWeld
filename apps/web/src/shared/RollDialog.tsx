@@ -117,8 +117,13 @@ export function RollDialog({ path, onClose, die }: RollDialogProps) {
     );
   }
 
+  // SHEET-83: an attack is named by its weapon, the others by their path.
   const name =
-    test.kind === 'deathSave' ? t('deathSave') : breakdownOf(computed, system, path, tb).name;
+    test.kind === 'deathSave'
+      ? t('deathSave')
+      : test.name !== undefined
+        ? nameIn(test.name)
+        : breakdownOf(computed, system, path, tb).name;
   const bonus = test.bonus === undefined ? 0 : (numberAt(computed, test.bonus) ?? 0);
   const offered = system.situational(computed, test.targets);
   const mode = system.rollMode(signsOf(computed, test, offered, on));

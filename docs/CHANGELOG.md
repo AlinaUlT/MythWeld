@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-83 · The roll dialog calls a weapon attack by the weapon's name, "Greatsword", not by its path.
 - 2026-11-04 · SHEET-72 · The Hit points pad can name the damage's type: the character's resistance, vulnerability or immunity to it is shown and applied, and at 0 hit points a critical hit gives two death save failures.
 - 2026-11-04 · SHEET-74 · With "I roll myself" on, a short rest's hit die and a spell's damage and healing rolls ask for the faces your dice show and count them.
 - 2026-11-04 · SHEET-69 · With "I roll myself" on, the roll dialog asks for the faces your dice show (the d20, and a weapon's damage dice) and counts them, as the dice panel does.
