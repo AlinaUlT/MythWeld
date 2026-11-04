@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-59 · The sheet's ⋯ menu opens Change history: your last 50 changes with the time of each and an Undo for any one of them; a change a later one wrote over waits until that later one is undone.
 - 2026-11-04 · SHEET-79 · In edit mode a skill's breakdown links to where its stat comes from, and you can set the stat by hand (Athletics on Dexterity, say) with a note; it has Undo and Remove.
 - 2026-11-04 · SHEET-80 · In edit mode a custom item and a custom feature have an Edit button: change the name, the weight and the words, with Undo.
 - 2026-11-04 · SHEET-84 · The Hit points pad offers all 13 damage types of the SRD, not one.

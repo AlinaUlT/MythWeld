@@ -618,6 +618,8 @@ test('SHEET-79 a skill’s stat is set by hand from its breakdown; Undo and Remo
   await expect(statSheet.getByTestId('key-summary')).toHaveText('Athletics uses Strength');
   await statSheet.getByLabel('Stat', { exact: true }).selectOption('dex');
   await statSheet.getByRole('button', { name: 'Save', exact: true }).click();
+  // The reload waits for the save to show: a reload sent first can beat the write.
+  await expect(statSheet.getByTestId('key-summary')).toHaveText('Athletics uses Dexterity');
   await page.reload();
   await expect(number(page, 'skills.athletics.total')).toHaveText('Athletics+3');
 });
@@ -641,16 +643,10 @@ test('SHEET-58 the sheet’s ⋯ menu lists the character’s actions; Export, C
     'Copy',
     'TransferComing later',
     'Rules optionsComing later',
-    'Change historyComing later',
+    'Change historyThe last 50 changes, each with its Undo',
     'DeleteUndo stays available for a moment',
   ]);
-  for (const name of [
-    /^Level up/,
-    /^Link for the DM/,
-    /^Transfer/,
-    /^Rules options/,
-    /^Change history/,
-  ]) {
+  for (const name of [/^Level up/, /^Link for the DM/, /^Transfer/, /^Rules options/]) {
     await expect(menu.getByRole('button', { name })).toBeDisabled();
   }
   await page.screenshot({ path: testInfo.outputPath('sheet-menu-dark.png') });
@@ -1301,6 +1297,77 @@ test('SHEET-51 the Gear tab changes coins by steps, each change with Undo', asyn
   await page.reload();
   await expect(gold.getByTestId('coin-amount')).toHaveText('22');
   await expect(silver.getByTestId('coin-amount')).toHaveText('0');
+});
+
+test('SHEET-59 the change history lists the last changes, each with its own Undo, and keeps one a later change wrote over', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [
+    {
+      ...goldenB,
+      systemData: { ...goldenB.systemData, currency: { cp: 0, sp: 3, ep: 0, gp: 12, pp: 0 } },
+    },
+  ]);
+  await page.goto(`characters/${goldenB.id}?tab=gear`);
+  const tab = page.getByRole('tabpanel');
+  const gold = tab.locator('[data-coin="gp"]');
+  const silver = tab.locator('[data-coin="sp"]');
+  const history = page.getByRole('dialog', { name: 'Change history' });
+  const rows = history.getByTestId('history').locator('li');
+
+  // Three changes: A takes 1 silver, B adds 1 gold (13), C adds 1 gold (14).
+  await silver.getByRole('button', { name: 'Take 1 silver' }).click();
+  await gold.getByRole('button', { name: 'Add 1 gold' }).click();
+  await gold.getByRole('button', { name: 'Add 1 gold' }).click();
+  await expect(gold.getByTestId('coin-amount')).toHaveText('14');
+  await expect(silver.getByTestId('coin-amount')).toHaveText('2');
+
+  // The ⋯ menu opens the history: newest first. B's place holds C's number now, so B's Undo is off.
+  await page.getByRole('button', { name: en.sheet.actions }).click();
+  await page
+    .getByRole('dialog', { name: 'Golden B' })
+    .getByRole('button', { name: /^Change history/ })
+    .click();
+  await expect(history).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0).getByRole('button', { name: /^Undo/ })).toBeEnabled();
+  await expect(rows.nth(1).getByRole('button', { name: /^Undo/ })).toBeDisabled();
+  await expect(rows.nth(1)).toContainText(
+    'A later change touched the same place. Undo that one first.',
+  );
+  await expect(rows.nth(2).getByRole('button', { name: /^Undo/ })).toBeEnabled();
+  await page.screenshot({ path: testInfo.outputPath('history-dark.png') });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.screenshot({ path: testInfo.outputPath('history-light.png') });
+
+  // The oldest change is undone while the newer ones stay: silver is back, gold is still 14.
+  await rows.nth(2).getByRole('button', { name: /^Undo/ }).click();
+  await expect(rows).toHaveCount(2);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect(silver.getByTestId('coin-amount')).toHaveText('3');
+  await expect(gold.getByTestId('coin-amount')).toHaveText('14');
+
+  // C first, then B is free: gold goes 14, 13, 12, and the list is empty.
+  await page.getByRole('button', { name: en.sheet.actions }).click();
+  await page
+    .getByRole('dialog', { name: 'Golden B' })
+    .getByRole('button', { name: /^Change history/ })
+    .click();
+  await rows.nth(0).getByRole('button', { name: /^Undo/ }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.nth(0).getByRole('button', { name: /^Undo/ })).toBeEnabled();
+  await rows.nth(0).getByRole('button', { name: /^Undo/ }).click();
+  await expect(history).toContainText('No change has been made yet.');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect(gold.getByTestId('coin-amount')).toHaveText('12');
+
+  // What was undone from the list is stored: a reload shows the same numbers.
+  await page.reload();
+  await expect(gold.getByTestId('coin-amount')).toHaveText('12');
+  await expect(silver.getByTestId('coin-amount')).toHaveText('3');
 });
 
 test('SHEET-46 the Spells tab shows the slot grid; a tap spends or gives back a slot, with Undo', async ({

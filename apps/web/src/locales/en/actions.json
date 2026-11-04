@@ -11,6 +11,13 @@
   "transfer": "Transfer",
   "rules": "Rules options",
   "history": "Change history",
+  "historyRow": "The last 50 changes, each with its Undo",
+  "historyNote": "Your last {{count}} changes, newest first.",
+  "historyLoading": "Loading the changes…",
+  "historyNone": "No change has been made yet.",
+  "historyUndo": "Undo: {{text}}",
+  "historyBlocked": "A later change touched the same place. Undo that one first.",
+  "historyRefused": "A change this app cannot read.",
   "delete": "Delete",
   "deleteNote": "Undo stays available for a moment",
   "swipe": {

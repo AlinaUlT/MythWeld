@@ -8538,3 +8538,80 @@ Differences from the row: the place to open the stat's breakdown is the skill's 
 Found, not fixed: nothing.
 
 Changelog: "In edit mode a skill's breakdown links to where its stat comes from, and you can set the stat by hand (Athletics on Dexterity, say) with a note; it has Undo and Remove."
+
+
+---
+
+### SHEET-59 The change history lists the last 50 changes
+
+**Hat:** The "⋯" menu opens the list of the last changes, each with its own Undo
+**Depends on:** SHEET-23 (the history), SHEET-58 (the menu)
+**Size:** S
+**Screen:** Yes — board `V3-Actions` (the "⋯" menu row "Change history"), BRIEF Part 5; no board draws the list, so it follows the Actions sheet's rows and the toast's words (ADR 002).
+**SPEC:** §7.2 (the last 50 states, "Отмена"), ADR 013 item 2 ("undo any change")
+
+---
+
+#### 1. Where the code lives
+
+**Main files:** `apps/web/src/sheet/panels/HistoryPanel.tsx` (new); `apps/web/src/sheet/panels/ActionsMenu.tsx` (the row opens it); `apps/web/src/locales/en/actions.json` (text). It reads `readHistory` and calls `undoChange` of `apps/web/src/db/history.ts`, which SHEET-23 made.
+
+#### 2. What is missing now
+
+The "Change history" row of the "⋯" menu is shown and not tappable ("Coming later"). `readHistory` and `undoChange` exist and nothing on screen uses them: only the newest change can be undone, while its toast shows.
+
+#### 3. What it should look like when done
+
+1. The row "Change history — The last 50 changes, each with its Undo" is tappable and opens a sheet over the menu.
+2. The sheet lists the kept changes, newest first, up to 50, each named as its toast names it ("Coins changed", "Damage taken") with the time it was made.
+3. Each row has its own "Undo". It reverses that one change and the row leaves the list; the sheet underneath updates at once.
+4. Where a later change wrote over the same place, the row says "A later change touched the same place. Undo that one first." and its Undo is off. A change in another place can be undone out of order.
+5. An empty history says "No change has been made yet."; a row that does not open says "A change this app cannot read." and has no Undo.
+
+#### 4. How to do it
+
+A panel that watches `readHistory(character.id)` with Dexie's `liveQuery`, as the sheet watches its character. A pure `HistoryList` draws it, so a test needs no database. Before it offers a row's button it asks the engine's `reverseEntry` on the character as the sheet holds it. Undo calls `undoChange(entry.id)`.
+
+#### 5. Stored data
+
+Nothing stored changes. The history table and its 50-change limit are SHEET-23's.
+
+#### 6. What a person will see
+
+"⋯" → Change history, a bottom sheet at 360×800 over the menu; Escape closes it first. Keys in `actions`: `historyRow`, `historyNote`, `historyLoading`, `historyNone`, `historyUndo` (the button's label, "Undo: <text>"), `historyBlocked`, `historyRefused`. The rows' text reuses `toast:done.*`. Screenshot in the chat.
+
+#### 7. Tests
+
+- `apps/web/test/history-panel.test.tsx` — 4 new, on golden B (12 hit points): damage 12 → 9, damage 9 → 7 and 5 temporary hit points; newest first; the first change's Undo is off with its reason, the other two are on; empty, loading and unreadable states.
+- `apps/web/test/sheet-actions.test.tsx` and the SHEET-58 e2e — the row is now tappable with its note.
+- `apps/web/e2e/sheet.spec.ts` — 1 new: three coin changes, the middle one blocked, the oldest undone out of order, then the others in turn, stored after a reload.
+- Control numbers from: SPEC §6.7 golden B (12 gold in the test's own purse, 3 silver, made up), SHEET-23's `history.test.ts`.
+
+#### 8. Checked against the source
+
+SPEC §7.2: "история последних 50 состояний персонажа" (the last 50 states of a character). The history keeps 50 changes (`HISTORY_LIMIT`), one for each state, so the list holds the same 50.
+
+#### 9. Not in this ticket
+
+- Redo of an undone change: not in SPEC §7.2.
+- Undoing a change by a different place's later change in one tap (a cascade): not planned; each undo is one change.
+- History from another device or the table link: phase 4.
+
+#### 10. Rake check
+
+- No rule in a component: whether an undo is possible is the engine's `reverseEntry`.
+- A person's saved data: nothing is overwritten. A change that a later one wrote over is not undone until that later one is.
+- No visible string in a component: every text is an i18next key; the time is formatted by the language.
+- No look written in a component: `Part` and tokens only.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` no fixes; `pnpm typecheck` clean; `pnpm test` 144 files, 1644 passed, 0 failed, 38.1 s (4 new, from 1640), then speed 2 passed; coverage statements 99.06 % (4110/4149), lines 99.77 % (3601/3609); `pnpm e2e` 98 passed, 0 failed, 2.1 min (1 new), twice in a row. Screenshot at 360×800 shown in the chat.
+
+Decision (ADR 002), undoing a change that later changes touched: the undo is refused, never forced. The row says why and its Undo is off, since the engine reverses a change only where the stored value is still what the change wrote. The person undoes the later change first. This loses nothing and writes nothing that was not asked for.
+
+Also fixed here: the SHEET-79 e2e test reloaded the page right after Save and failed once in six runs, because the reload could beat the write; it now waits for the saved stat to show first.
+
+Found, not fixed: nothing.
+
+Changelog: "The sheet's ⋯ menu opens Change history: your last 50 changes with the time of each and an Undo for any one of them; a change a later one wrote over waits until that later one is undone."

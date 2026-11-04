@@ -56,7 +56,7 @@ describe('SHEET-58 the sheet’s "⋯" menu', () => {
     expect(html).toContain('>Golden B</h2>');
   });
 
-  it('lists the rows top to bottom, five of them coming later and not tappable', () => {
+  it('lists the rows top to bottom, four of them coming later and not tappable', () => {
     expect(rows.filter(({ text }) => text !== 'Close')).toEqual([
       { disabled: true, text: 'Level up Coming later' },
       { disabled: true, text: 'Link for the DM Coming later' },
@@ -64,7 +64,7 @@ describe('SHEET-58 the sheet’s "⋯" menu', () => {
       { disabled: false, text: 'Copy' },
       { disabled: true, text: 'Transfer Coming later' },
       { disabled: true, text: 'Rules options Coming later' },
-      { disabled: true, text: 'Change history Coming later' },
+      { disabled: false, text: 'Change history The last 50 changes, each with its Undo' },
       { disabled: false, text: 'Delete Undo stays available for a moment' },
     ]);
   });

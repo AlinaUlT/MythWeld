@@ -261,7 +261,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-56 | The portrait makes a round token | S | ✅ 2026-11-03 |
 | SHEET-57 | Custom sections hold the person's own lists | S | ✅ 2026-11-04 |
 | SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | ✅ 2026-11-04 |
-| SHEET-59 | The change history lists the last 50 changes | S | 🔲 |
+| SHEET-59 | The change history lists the last 50 changes | S | ✅ 2026-11-04 |
 | SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
 | SHEET-69 | The roll dialog counts the faces a person types | S | ✅ 2026-11-04 |
 | SHEET-70 | The header keeps the class line whole beside the choices badge | XS | ✅ 2026-11-04 |
@@ -280,10 +280,6 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-83 | The roll dialog names an attack by its own name | XS | ✅ 2026-11-04 |
 | SHEET-84 | The packs hold every damage type of the SRD | S | ✅ 2026-11-04 |
 
-- **SHEET-59** — SPEC §7.2's 50 states, opened from "⋯" (ADR 013 item 2: "undo any change").
-  Undoing a change that later changes touched is decided in the row. Found by SHEET-23:
-  `readHistory` lists the kept changes, newest first; `undoChange` reverses any one of them, and
-  refuses as `changed` where a later change wrote over its place.
 - **SHEET-76** — found by SHEET-49: board `V3-Turn` lists feats (Alert, Defense) and a "Once per turn" group (Savage Attacker), and "Always on" lines with their numbers (Initiative +2, AC +1). `activation` is on features only (`featureDefSchema`), and its values have no once-per-turn. The row adds `activation` to feats and a once-per-turn value: a pack shape change, so `systemSchemaVersion` and a migration (SPEC §5.8), then the packs say it and the tab lists it. The numbers on an "Always on" line are the effects' own, read from `Computed` with their breakdown.
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat.
