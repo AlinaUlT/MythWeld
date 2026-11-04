@@ -43,5 +43,6 @@
     },
     "countOther": "back on {{event}}"
   },
+  "edit": "Edit {{name}}",
   "remove": "Remove {{name}}"
 }

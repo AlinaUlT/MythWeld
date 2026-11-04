@@ -21,6 +21,9 @@ import { fifthEditionModule } from './module';
 // Features tab lists it under the feats. Each is one entry; reversing it takes it away. Removing a
 // custom feature ends with `withDropped` (SHEET-22), as any removal of an entity does. Removing a
 // custom item is `removeRow`'s.
+// SHEET-80: both can be edited once added: a custom item's name, weight and words, a custom
+// feature's name and words, each one entry. The ids stay (SPEC §5.1): an item's `uid`, a feature's
+// entity id. An item's count, where it is kept, worn and attuned stay the Gear tab's own switches.
 
 /** What a custom item is asked: its row's own id (the app makes it), name, weight, count, text. */
 export interface CustomItemAsk {
@@ -49,6 +52,8 @@ export type CustomRefusal = { message: string } & (
   | { code: 'idUsed'; id: string }
   | { code: 'badId'; id: string }
   | { code: 'noFeature'; id: string }
+  | { code: 'noRow'; uid: string }
+  | { code: 'notCustom'; uid: string }
 );
 
 type Row = FifthEditionCharacter['systemData']['inventory'][number];
@@ -211,5 +216,121 @@ export function removeCustomFeature(
     ),
     index,
     fifthEditionModule,
+  );
+}
+
+/** What editing a custom item is asked: its row, and its name, weight and text as they should read. */
+export interface CustomItemEdit {
+  readonly uid: string;
+  readonly name: string;
+  /** One item's weight in pounds; none when it has none. */
+  readonly weight?: number | undefined;
+  /** The item's own words; none or empty clears them. */
+  readonly text?: string | undefined;
+}
+
+/** What editing a custom feature is asked: its entity id, and its name and text as they should read. */
+export interface CustomFeatureEdit {
+  readonly id: string;
+  readonly name: string;
+  readonly text?: string | undefined;
+}
+
+/** Changes the name, weight and words of a custom item; its count, place and switches stay. */
+export function editCustomItem(
+  character: FifthEditionCharacter,
+  ask: CustomItemEdit,
+  stamp: LogStamp,
+): Result {
+  const found = character.systemData.inventory.find((each) => each.uid === ask.uid);
+  if (found === undefined) {
+    return {
+      ok: false,
+      code: 'noRow',
+      uid: ask.uid,
+      message: `No row of the inventory has the uid "${ask.uid}".`,
+    };
+  }
+  if (found.custom === undefined) {
+    return {
+      ok: false,
+      code: 'notCustom',
+      uid: ask.uid,
+      message: `The row "${ask.uid}" is an item of a pack, not a custom one.`,
+    };
+  }
+  const name = visible(ask.name);
+  if (name === undefined) return { ok: false, code: 'noName', message: 'An item needs a name.' };
+  const { weight } = ask;
+  if (weight !== undefined && !(Number.isFinite(weight) && weight > 0)) {
+    return {
+      ok: false,
+      code: 'badWeight',
+      weight,
+      message: `${weight} is not a weight: a number above 0.`,
+    };
+  }
+  const text = visible(ask.text);
+  const { note: _, ...rest } = found;
+  const row: Row = {
+    ...rest,
+    custom: { name, ...(weight !== undefined && { weight }) },
+    ...(text !== undefined && { note: text }),
+  };
+  const rows = character.systemData.inventory.map((each) => (each.uid === ask.uid ? row : each));
+  return settled<CustomRefusal>(
+    character,
+    stamp,
+    {
+      action: 'editItem',
+      subject: name,
+      label: { en: name },
+      changes: [changeTo(character, INVENTORY_PATH, listOf(rows))],
+    },
+    'The inventory changes nothing.',
+  );
+}
+
+/** Changes the name and words of a custom feature; its id stays. */
+export function editCustomFeature(
+  character: FifthEditionCharacter,
+  ask: CustomFeatureEdit,
+  stamp: LogStamp,
+): Result {
+  const { id } = ask;
+  const found = character.localEntities.find((each) => each.id === id);
+  if (found === undefined || !character.systemData.feats.some((each) => each.id === id)) {
+    return {
+      ok: false,
+      code: 'noFeature',
+      id,
+      message: `"${id}" is not a feat of the character's own.`,
+    };
+  }
+  const name = visible(ask.name);
+  if (name === undefined) return { ok: false, code: 'noName', message: 'A feature needs a name.' };
+  const text = visible(ask.text);
+  const { text: _, ...rest } = found as FifthEditionEntity & { text?: unknown };
+  const entity = {
+    ...rest,
+    name: { ...found.name, en: name },
+    ...(text !== undefined && { text: { en: text } }),
+  } as FifthEditionEntity;
+  return settled<CustomRefusal>(
+    character,
+    stamp,
+    {
+      action: 'editFeature',
+      subject: id,
+      label: { en: name },
+      changes: [
+        changeTo(
+          character,
+          LOCAL_ENTITIES_PATH,
+          listOf(character.localEntities.map((each) => (each.id === id ? entity : each))),
+        ),
+      ],
+    },
+    'The features change nothing.',
   );
 }

@@ -4,6 +4,8 @@ import {
   addCustomFeature,
   addCustomItem,
   customFeatureId,
+  editCustomFeature,
+  editCustomItem,
   fifthEditionCharacterSchema,
   fifthEditionFeatures,
   fifthEditionGear,
@@ -180,5 +182,139 @@ describe('SHEET-52 addCustomFeature and removeCustomFeature', () => {
   it('its add entry reverses to the character it came from', () => {
     const made = ok(addCustomFeature(b, ask, stamp));
     expect(ok(reverseEntry(made.character, made.entry)).character).toEqual(b);
+  });
+});
+
+describe('SHEET-80 editCustomItem', () => {
+  // The rope is kept inside golden B's first row.
+  const PACK_ROW = b.systemData.inventory[0]?.uid ?? '';
+  const added = ok(
+    addCustomItem(b, { uid: UID, name: 'Rope', weight: 10, qty: 2, text: '50 feet' }, stamp),
+  ).character;
+  const worn = {
+    ...added,
+    systemData: {
+      ...added.systemData,
+      inventory: added.systemData.inventory.map((row) =>
+        row.uid === UID ? { ...row, container: PACK_ROW } : row,
+      ),
+    },
+  };
+
+  it('changes the name, weight and words, and keeps the count, the place and the uid', () => {
+    const made = ok(
+      editCustomItem(worn, { uid: UID, name: ' Silk rope ', weight: 5, text: ' 60 feet ' }, stamp),
+    );
+    const row = made.character.systemData.inventory.find((each) => each.uid === UID);
+    expect(row).toEqual({
+      uid: UID,
+      custom: { name: 'Silk rope', weight: 5 },
+      qty: 2,
+      equipped: false,
+      attuned: false,
+      container: PACK_ROW,
+      note: '60 feet',
+    });
+    expect(made.entry).toMatchObject({
+      action: 'editItem',
+      subject: 'Silk rope',
+      label: { en: 'Silk rope' },
+    });
+    expect(valid(made.character)).toBe(true);
+  });
+
+  it('takes the weight and the words away when they are left empty', () => {
+    const made = ok(editCustomItem(added, { uid: UID, name: 'Rope' }, stamp));
+    const row = made.character.systemData.inventory.find((each) => each.uid === UID);
+    expect(row?.custom).toEqual({ name: 'Rope' });
+    expect(row).not.toHaveProperty('note');
+  });
+
+  it('weighs what it is edited to: 2 ropes of 5 lb on top of the 61 lb of golden B make 71 lb', () => {
+    const made = ok(editCustomItem(added, { uid: UID, name: 'Rope', weight: 5 }, stamp)).character;
+    const gear = fifthEditionGear(made, compute(made, index, fifthEditionModule), findOf(made));
+    expect(gear.weight).toBe(71);
+    expect(gear.rows.at(-1)).toMatchObject({ uid: UID, customName: 'Rope', weight: 5 });
+  });
+
+  it('refuses a name that shows nothing, a weight of 0 or less, a row that is not there or is a pack’s', () => {
+    expect(editCustomItem(added, { uid: UID, name: ' ' }, stamp)).toMatchObject({
+      ok: false,
+      code: 'noName',
+    });
+    for (const weight of [0, -1, Number.NaN]) {
+      expect(editCustomItem(added, { uid: UID, name: 'Rope', weight }, stamp)).toMatchObject({
+        ok: false,
+        code: 'badWeight',
+      });
+    }
+    expect(editCustomItem(added, { uid: 'nope', name: 'Rope' }, stamp)).toMatchObject({
+      ok: false,
+      code: 'noRow',
+    });
+    const packRow = b.systemData.inventory[0];
+    expect(editCustomItem(b, { uid: packRow?.uid ?? '', name: 'Rope' }, stamp)).toMatchObject({
+      ok: false,
+      code: 'notCustom',
+    });
+  });
+
+  it('is unchanged when nothing is different, and its entry reverses', () => {
+    expect(
+      editCustomItem(added, { uid: UID, name: 'Rope', weight: 10, text: '50 feet' }, stamp),
+    ).toMatchObject({ ok: false, code: 'unchanged' });
+    const made = ok(editCustomItem(added, { uid: UID, name: 'Hemp rope', weight: 9 }, stamp));
+    expect(ok(reverseEntry(made.character, made.entry)).character).toEqual(added);
+  });
+});
+
+describe('SHEET-80 editCustomFeature', () => {
+  const added = ok(
+    addCustomFeature(b, { slug: SLUG, name: 'Keen Eyes', text: 'Sharp.' }, stamp),
+  ).character;
+
+  it('changes the name and words, and keeps the id in both lists', () => {
+    const made = ok(
+      editCustomFeature(added, { id: ID, name: ' Keen Sight ', text: 'Sharper.' }, stamp),
+    );
+    expect(made.character.localEntities.at(-1)).toEqual({
+      id: ID,
+      type: 'feat',
+      ruleset: 'any',
+      name: { en: 'Keen Sight' },
+      text: { en: 'Sharper.' },
+      source: { pack: 'character' },
+    });
+    expect(made.character.systemData.feats.at(-1)).toEqual({ id: ID });
+    expect(made.entry).toMatchObject({ action: 'editFeature', subject: ID });
+    expect(made.entry.changes.map(({ path }) => path.join('.'))).toEqual(['localEntities']);
+    expect(valid(made.character)).toBe(true);
+  });
+
+  it('takes the words away when they are left empty', () => {
+    const made = ok(editCustomFeature(added, { id: ID, name: 'Keen Eyes' }, stamp));
+    expect(made.character.localEntities.at(-1)).not.toHaveProperty('text');
+  });
+
+  it('refuses an empty name and what is not a feat of its own', () => {
+    expect(editCustomFeature(added, { id: ID, name: ' ' }, stamp)).toMatchObject({
+      ok: false,
+      code: 'noName',
+    });
+    expect(editCustomFeature(b, { id: ID, name: 'X' }, stamp)).toMatchObject({
+      ok: false,
+      code: 'noFeature',
+    });
+    expect(
+      editCustomFeature(b, { id: 'srd-2024:feat/savage-attacker', name: 'X' }, stamp),
+    ).toMatchObject({ ok: false, code: 'noFeature' });
+  });
+
+  it('is unchanged when nothing is different, and its entry reverses', () => {
+    expect(
+      editCustomFeature(added, { id: ID, name: 'Keen Eyes', text: 'Sharp.' }, stamp),
+    ).toMatchObject({ ok: false, code: 'unchanged' });
+    const made = ok(editCustomFeature(added, { id: ID, name: 'Keen Sight' }, stamp));
+    expect(ok(reverseEntry(made.character, made.entry)).character).toEqual(added);
   });
 });

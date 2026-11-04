@@ -695,6 +695,106 @@ test('SHEET-52 edit mode adds a custom item and a custom feature as text, each w
   await expect(tab.locator('[data-feature^="character:feat/"]')).toHaveCount(1);
 });
 
+test('SHEET-80 edit mode changes a custom item and a custom feature after they were added, with Undo', async ({
+  page,
+}, testInfo) => {
+  // Golden B (55 lb + 6 lb carried) with a made-up rope of 10 lb, two of them, and a made-up feat.
+  const ROPE = 'e1000000-0000-4000-8000-0000000000aa';
+  const FEAT = 'character:feat/custom-1a2b3c4d';
+  await saveRows(page, [
+    {
+      ...goldenB,
+      localEntities: [
+        {
+          id: FEAT,
+          type: 'feat',
+          ruleset: 'any',
+          name: { en: 'Keen Eyes' },
+          text: { en: 'You notice what others miss.' },
+          source: { pack: 'character' },
+        },
+      ],
+      systemData: {
+        ...goldenB.systemData,
+        feats: [...goldenB.systemData.feats, { id: FEAT }],
+        inventory: [
+          ...goldenB.systemData.inventory,
+          {
+            uid: ROPE,
+            custom: { name: 'Rope', weight: 10 },
+            qty: 2,
+            equipped: false,
+            attuned: false,
+            note: '50 feet of hemp',
+          },
+        ],
+      },
+    },
+  ]);
+  await page.goto(`characters/${goldenB.id}?tab=gear`);
+  const tab = page.getByRole('tabpanel');
+  const rope = tab.locator(`[data-row="${ROPE}"]`);
+  await expect(tab.getByTestId('carried')).toHaveText('Carrying 81 lb');
+
+  // Play mode has no Edit button; edit mode has one on the custom row only.
+  await expect(page.getByRole('button', { name: 'Edit Rope' })).toHaveCount(0);
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await expect(page.getByRole('button', { name: /^Edit / })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Edit Rope' }).click();
+  const form = page.getByRole('dialog', { name: 'Edit item' });
+  const save = form.getByRole('button', { name: 'Save', exact: true });
+  await expect(form.getByLabel('Name', { exact: true })).toHaveValue('Rope');
+  await expect(form.getByLabel('Weight (lb)')).toHaveValue('10');
+  await expect(form.getByLabel('Description')).toHaveValue('50 feet of hemp');
+  await form.getByLabel('Name', { exact: true }).fill(' ');
+  await expect(save).toBeDisabled();
+  await form.getByLabel('Name', { exact: true }).fill('Silk rope');
+  await form.getByLabel('Weight (lb)').fill('abc');
+  await expect(save).toBeDisabled();
+  await form.getByLabel('Weight (lb)').fill('5');
+  await form.getByLabel('Description').fill('60 feet of silk');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('edit-item-dark.png') });
+  await save.click();
+  await expect(form).toHaveCount(0);
+
+  // The name and words changed, the count stayed, and 2 ropes of 5 lb make 71 lb.
+  await expect(rope).toContainText('Silk rope');
+  await expect(rope).toContainText('×2 · 10 lb');
+  await expect(rope.getByTestId('row-note')).toHaveText('60 feet of silk');
+  await expect(tab.getByTestId('carried')).toHaveText('Carrying 71 lb');
+  await expect(page.getByRole('status').filter({ hasText: 'Silk rope changed' })).toBeVisible();
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(rope).toContainText('Rope');
+  await expect(rope).toContainText('×2 · 20 lb');
+  await expect(rope.getByTestId('row-note')).toHaveText('50 feet of hemp');
+  await expect(tab.getByTestId('carried')).toHaveText('Carrying 81 lb');
+
+  // A custom feature: its name and words, on the Features tab; it is stored.
+  await page.goto(`characters/${goldenB.id}?tab=features`);
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await expect(page.getByRole('button', { name: /^Edit / })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Edit Keen Eyes' }).click();
+  const featureForm = page.getByRole('dialog', { name: 'Edit feature' });
+  await expect(featureForm.getByLabel('Name', { exact: true })).toHaveValue('Keen Eyes');
+  await expect(featureForm.getByLabel('Weight (lb)')).toHaveCount(0);
+  await featureForm.getByLabel('Name', { exact: true }).fill('Keen Sight');
+  await featureForm.getByLabel('Description').fill('You notice more.');
+  await page.screenshot({ path: testInfo.outputPath('edit-feature-dark.png') });
+  await featureForm.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(featureForm).toHaveCount(0);
+  const keen = tab.locator(`[data-feature="${FEAT}"]`);
+  await expect(keen).toContainText('Keen Sight');
+  await expect(page.getByRole('status').filter({ hasText: 'Keen Sight changed' })).toBeVisible();
+  await page.reload();
+  await expect(tab.locator(`[data-feature="${FEAT}"]`)).toContainText('Keen Sight');
+  await page.getByRole('button', { name: en.sheet.edit }).tap();
+  await page.getByRole('button', { name: 'Edit Keen Sight' }).click();
+  await expect(
+    page.getByRole('dialog', { name: 'Edit feature' }).getByLabel('Description'),
+  ).toHaveValue('You notice more.');
+});
+
 test('SHEET-57 a custom section is a tab of the person’s own list; a character saved before them opens', async ({
   page,
 }, testInfo) => {

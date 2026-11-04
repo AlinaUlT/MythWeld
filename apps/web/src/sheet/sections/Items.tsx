@@ -6,7 +6,8 @@
 // its "Undo" toast. Adding an item from the packs is the creation form's (SHEET-28) and, later, the
 // library's; a free-text item is SHEET-52's (the "+" in edit mode), and its words show under its name.
 import { finderOf } from '@grimoire/engine';
-import { Minus, Plus, X } from 'lucide-react';
+import { Minus, Pencil, Plus, X } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { shownWeight } from '../../settings/units';
 import { useSettings } from '../../settings/useSettings';
@@ -14,6 +15,7 @@ import { Description } from '../../shared/Description';
 import { Part } from '../../theme/Part';
 import { perform } from '../changes';
 import { nameIn } from '../names';
+import { EditCustomPanel } from '../panels/EditCustomPanel';
 import { useSheet } from '../SheetContext';
 import { SwitchRow } from '../SwitchRow';
 
@@ -22,7 +24,9 @@ const stepper = 'flex size-control shrink-0 items-center justify-center text-tex
 export function Items() {
   const { t } = useTranslation('gear');
   const { weight: unit } = useSettings();
-  const { character, content, computed, system } = useSheet();
+  const { character, content, computed, editing, system } = useSheet();
+  // SHEET-80: the uid of the custom row whose edit form is open.
+  const [edited, setEdited] = useState<string | undefined>(undefined);
   const find = finderOf(character, content.index);
   const gear = system.gear(character, computed, find);
   const weightOf = (pounds: number) => {
@@ -205,6 +209,18 @@ export function Items() {
                       </option>
                     ))}
                   </Part>
+                  {editing && row.customName !== undefined && (
+                    <Part
+                      as="button"
+                      type="button"
+                      name="icon-button"
+                      aria-label={t('edit', { name })}
+                      className={stepper}
+                      onClick={() => setEdited(row.uid)}
+                    >
+                      <Pencil aria-hidden className="size-5" />
+                    </Part>
+                  )}
                   <Part
                     as="button"
                     type="button"
@@ -225,6 +241,21 @@ export function Items() {
           );
         })}
       </ul>
+      {(() => {
+        const row = gear.rows.find((each) => each.uid === edited);
+        return row === undefined || row.customName === undefined ? null : (
+          <EditCustomPanel
+            target={{
+              kind: 'item',
+              uid: row.uid,
+              name: row.customName,
+              weight: row.weight,
+              text: row.note ?? '',
+            }}
+            onClose={() => setEdited(undefined)}
+          />
+        );
+      })()}
     </Part>
   );
 }

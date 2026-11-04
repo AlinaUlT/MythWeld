@@ -9,9 +9,11 @@ import { contentOf, installBuiltInPacks } from '../src/content/packs';
 import '../src/i18n';
 import { storedWeight } from '../src/settings/units';
 import { AddPanel } from '../src/sheet/panels/AddPanel';
+import { EditCustomPanel } from '../src/sheet/panels/EditCustomPanel';
 import { SheetAdd } from '../src/sheet/SheetAdd';
 import { SheetContext, type SheetValue } from '../src/sheet/SheetContext';
 import { FeatureList } from '../src/sheet/sections/FeatureList';
+import { Items } from '../src/sheet/sections/Items';
 import { type AppCharacter, sheetSystemOf } from '../src/systems';
 
 // SHEET-52: the "+" and its panel in edit mode, a custom feature's remove button, and the weight a
@@ -93,5 +95,56 @@ describe('SHEET-52 a weight typed in the person’s unit', () => {
     expect(storedWeight(2, 'kg')).toBe(4.41);
     expect(storedWeight(0.5, 'kg')).toBe(1.1);
     expect(storedWeight(1, 'kg')).toBe(2.2);
+  });
+});
+
+describe('SHEET-80 editing a custom entry', () => {
+  const ROPE = 'e1000000-0000-4000-8000-0000000000aa';
+  const withRope = {
+    systemData: {
+      ...goldenB.systemData,
+      inventory: [
+        ...goldenB.systemData.inventory,
+        {
+          uid: ROPE,
+          custom: { name: 'Rope', weight: 10 },
+          qty: 2,
+          equipped: false,
+          attuned: false,
+        },
+      ],
+    },
+  };
+
+  it('puts an Edit button on a custom item in edit mode, not on a pack’s item or in play mode', () => {
+    const edit = drawn(true, <Items />, withRope);
+    expect(edit).toContain('aria-label="Edit Rope"');
+    expect(edit.match(/aria-label="Edit /g)).toHaveLength(1);
+    expect(drawn(false, <Items />, withRope)).not.toContain('aria-label="Edit');
+  });
+
+  it('puts an Edit button on a custom feature in edit mode only, not on a pack’s feat', () => {
+    const edit = drawn(true, <FeatureList />, withOwn);
+    expect(edit).toContain('aria-label="Edit Keen Eyes"');
+    expect(edit).not.toContain('aria-label="Edit Savage Attacker"');
+    expect(drawn(false, <FeatureList />, withOwn)).not.toContain('aria-label="Edit');
+  });
+
+  it('opens on the item as it is: its name, its weight in the unit shown, its words', () => {
+    const target = { kind: 'item', uid: ROPE, name: 'Rope', weight: 10, text: '50 feet' } as const;
+    const html = drawn(true, <EditCustomPanel target={target} onClose={() => {}} />);
+    expect(text(html)).toContain('|Edit item|');
+    expect(html).toMatch(/<input[^>]*value="Rope"/);
+    expect(html).toMatch(/<input[^>]*value="10"/);
+    expect(html).toContain('>50 feet</textarea>');
+    expect(text(html)).toContain('|Save|');
+  });
+
+  it('opens on the feature as it is, with no weight field', () => {
+    const target = { kind: 'feature', id: ID, name: 'Keen Eyes', text: 'Sharp.' } as const;
+    const html = drawn(true, <EditCustomPanel target={target} onClose={() => {}} />);
+    expect(text(html)).toContain('|Edit feature|');
+    expect(html).toMatch(/<input[^>]*value="Keen Eyes"/);
+    expect(html).not.toContain('Weight');
   });
 });

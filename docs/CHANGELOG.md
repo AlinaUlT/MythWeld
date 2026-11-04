@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-04 · SHEET-80 · In edit mode a custom item and a custom feature have an Edit button: change the name, the weight and the words, with Undo.
 - 2026-11-04 · SHEET-84 · The Hit points pad offers all 13 damage types of the SRD, not one.
 - 2026-11-04 · SHEET-83 · The roll dialog calls a weapon attack by the weapon's name, "Greatsword", not by its path.
 - 2026-11-04 · SHEET-72 · The Hit points pad can name the damage's type: the character's resistance, vulnerability or immunity to it is shown and applied, and at 0 hit points a critical hit gives two death save failures.

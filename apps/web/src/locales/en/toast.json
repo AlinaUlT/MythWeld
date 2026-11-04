@@ -39,6 +39,8 @@
     "changeCoin": "Coins changed",
     "addItem": "{{name}} added",
     "addFeature": "{{name}} added",
+    "editItem": "{{name}} changed",
+    "editFeature": "{{name}} changed",
     "removeFeature": "{{name}} removed",
     "addSection": "{{name}} added",
     "removeSection": "{{name}} removed",

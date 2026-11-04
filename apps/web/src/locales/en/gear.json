@@ -17,6 +17,7 @@
   "more": "One more {{name}}",
   "keptIn": "Kept in",
   "noContainer": "Not in anything",
+  "edit": "Edit {{name}}",
   "remove": "Remove {{name}}",
   "warn": {
     "attunementLimit": "Attuned to {{attuned}} magic items: no more than {{limit}} at a time.",

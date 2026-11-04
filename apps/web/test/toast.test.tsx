@@ -141,6 +141,8 @@ describe('SHEET-23 the undo toast', () => {
       'changeCoin',
       'addItem',
       'addFeature',
+      'editItem',
+      'editFeature',
       'removeFeature',
       'addSection',
       'removeSection',

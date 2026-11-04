@@ -24,6 +24,14 @@
     "noSection": "Pick a section for it.",
     "idUsed": "That one is there already; try again."
   },
+  "edit": {
+    "item": "Edit item",
+    "feature": "Edit feature",
+    "open": "Edit {{name}}",
+    "save": "Save",
+    "cancel": "Cancel",
+    "refused": "It could not be saved."
+  },
   "section": {
     "title": "New section",
     "note": "Mounts, Pets, Familiars, Notes, or any list",

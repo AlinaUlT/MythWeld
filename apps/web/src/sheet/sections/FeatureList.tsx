@@ -10,13 +10,14 @@ import {
   setToggle,
   useResource as spendResource,
 } from '@grimoire/engine';
-import { X } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Pencil, X } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Description } from '../../shared/Description';
 import { Part } from '../../theme/Part';
 import { perform } from '../changes';
 import { nameIn } from '../names';
+import { EditCustomPanel } from '../panels/EditCustomPanel';
 import { useSheet } from '../SheetContext';
 import { SheetNumber } from '../SheetNumber';
 import { SwitchRow } from '../SwitchRow';
@@ -136,6 +137,7 @@ function Row({
 }) {
   const { t } = useTranslation('features');
   const { character, computed, content, editing, system } = useSheet();
+  const [editOpen, setEditOpen] = useState(false);
   const found = hadOf(computed, row.id);
   if (found === undefined) {
     return <p className="px-4 py-2 text-14 text-muted">{t('missing', { id: row.id })}</p>;
@@ -159,6 +161,18 @@ function Row({
     const name = nameIn(found.name);
     controls.push(
       <Part
+        key="edit"
+        as="button"
+        type="button"
+        name="button-secondary"
+        aria-label={t('edit', { name })}
+        onClick={() => setEditOpen(true)}
+        className="flex h-control w-fit items-center gap-2 px-4 text-14"
+      >
+        <Pencil aria-hidden className="size-4" />
+        {t('edit', { name })}
+      </Part>,
+      <Part
         key="remove"
         as="button"
         type="button"
@@ -180,6 +194,17 @@ function Row({
     <li className="flex flex-col" data-feature={row.id}>
       <Description entity={found} />
       {controls.length > 0 && <div className="flex flex-col gap-2 px-4 pb-3">{controls}</div>}
+      {editOpen && (
+        <EditCustomPanel
+          target={{
+            kind: 'feature',
+            id: row.id,
+            name: nameIn(found.name),
+            text: 'text' in found && found.text !== undefined ? nameIn(found.text) : '',
+          }}
+          onClose={() => setEditOpen(false)}
+        />
+      )}
     </li>
   );
 }

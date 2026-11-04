@@ -8385,3 +8385,80 @@ Differences from the row: the 2014 pack held Bludgeoning and not Slashing, so it
 Found, not fixed: nothing.
 
 Changelog: "The Hit points pad offers all 13 damage types of the SRD, not one."
+
+
+---
+
+### SHEET-80 A custom entry is edited after it is added
+
+**Hat:** A custom item and a custom feature are changed in a form
+**Depends on:** SHEET-52 (found there)
+**Size:** S
+**Screen:** Yes — the form follows the add form of board `V3-Add` and BRIEF Part 5's panels; no board draws an edit form, so it is the add form with the entry's words in it (ADR 002).
+**SPEC:** §5.1 (ids stay), §7.2 (edit mode), §7.5 (stored pounds)
+
+---
+
+#### 1. Where the code lives
+
+**Main files:** `packages/system-5e/src/custom.ts` (new `editCustomItem`, `editCustomFeature`); `apps/web/src/sheet/panels/EditCustomPanel.tsx` (new); `apps/web/src/sheet/sections/Items.tsx` and `FeatureList.tsx` (an Edit button each, in edit mode); `apps/web/src/systems.ts` (the two actions); `apps/web/src/locales/en/add.json`, `gear.json`, `features.json`, `toast.json` (text).
+
+#### 2. What is missing now
+
+A custom item's name, weight and words, and a custom feature's name and words, cannot be changed once added. A typing error means remove and add again, and that loses the count, the place and the id.
+
+#### 3. What it should look like when done
+
+1. In edit mode a custom item's row has a pencil button "Edit <name>"; a pack's item has none; play mode has none.
+2. In edit mode a custom feature has an "Edit <name>" button; a pack's feat has none.
+3. The form opens on what the entry says now. Save is off when the name shows nothing or the weight is not a number above 0. An empty weight is no weight.
+4. A save is one change with the Undo toast ("Silk rope changed"). The row's `uid` and count, its place, worn and attuned, and a feature's id stay.
+5. 2 ropes of 10 lb with golden B's 61 lb make 81 lb; after the edit to 5 lb, 71 lb; Undo, 81 lb.
+
+#### 4. How to do it
+
+Two module actions, each one entry (`editItem`, `editFeature`), written with `settled` as `addCustomItem` is. One panel with a target of the two kinds. A state in `Items` and in the feature `Row` holds which form is open.
+
+#### 5. Stored data
+
+Nothing stored changes: same fields, new values. No `schemaVersion` bump.
+
+#### 6. What a person will see
+
+Gear and Features tabs in edit mode: "Edit <name>". The form (a bottom sheet at 360×800): Name; Weight (lb or kg) for an item; Description; Cancel and Save. Keys: `add:edit.item` "Edit item", `edit.feature` "Edit feature", `edit.save` "Save", `edit.cancel` "Cancel", `edit.refused` "It could not be saved.", `gear:edit` / `features:edit` "Edit {{name}}", `toast:actions.editItem` / `editFeature` "{{name}} changed". Screenshots in the chat.
+
+#### 7. Tests
+
+- `packages/system-5e/test/custom.test.ts` — 10 new tests: fields changed and the rest kept, empty weight and words cleared, the carried weight 71 lb, refusals (`noName`, `badWeight` for 0, −1 and NaN, `noRow`, `notCustom`, `noFeature`), `unchanged`, and the entry reverses.
+- `apps/web/test/add.test.tsx` — 4 new: the buttons in edit mode only and not on a pack's entries; the form opens on the entry as it is.
+- `apps/web/test/toast.test.tsx` — the two action keys in `sheetActions`.
+- `apps/web/e2e/sheet.spec.ts` — 1 new: both forms, the gates, the carried weight 81, 71, 81 lb with Undo, and the feature stored after a reload.
+- Control numbers from: SPEC §6.7 golden B (55 + 6 lb carried), a made-up rope.
+
+#### 8. Checked against the source
+
+Nothing to check.
+
+#### 9. Not in this ticket
+
+- Changing a custom item's count: the Gear row's stepper.
+- Effects on a custom entry: phase 5.
+- Editing a section's entry (SHEET-57): not asked.
+
+#### 10. Rake check
+
+- Ids are stable: the uid and the entity id stay.
+- Stored units are pounds: the form shows the person's unit and stores pounds; a weight left as shown keeps its stored value, since a kilogram shows rounded to a tenth.
+- No visible string in a component: every text is an i18next key.
+- No look written in a component: `Part` and tokens only.
+- Missing is not broken: an id with no entry is refused as `noFeature`, never thrown.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` no fixes; `pnpm typecheck` clean; `pnpm test` 143 files, 1627 passed, 0 failed, 36.0 s (13 new, from 1614), then speed 2 passed; coverage statements 99.05 % (4088/4127), lines 99.77 % (3582/3590); `pnpm e2e` 96 passed, 0 failed, 2.0 min (1 new). Screenshots at 360×800 shown in the chat.
+
+Design choices (ADR 002): the Edit button shows in edit mode only, as adding does (SHEET-52); a save that changes nothing closes the panel, since `unchanged` is not an error to show; the form is one panel for both kinds, in the `add` namespace; a feature keeps its other locales' names (only `name.en` is replaced).
+
+Found, not fixed: nothing.
+
+Changelog: "In edit mode a custom item and a custom feature have an Edit button: change the name, the weight and the words, with Undo."

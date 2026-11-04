@@ -36,6 +36,8 @@ import {
   d20Formula,
   EDITION_RULES,
   type EditionTerms,
+  editCustomFeature,
+  editCustomItem,
   endConcentration,
   type FeatureGroup,
   FIFTH_EDITION_HEADER_NUMBERS,
@@ -308,6 +310,9 @@ export interface SheetSystem {
   /** The free text a person adds in edit mode: items, and features of their own (SHEET-52). */
   addCustomItem: typeof addCustomItem;
   addCustomFeature: typeof addCustomFeature;
+  /** SHEET-80: a custom item or feature changed after it was added. */
+  editCustomItem: typeof editCustomItem;
+  editCustomFeature: typeof editCustomFeature;
   removeCustomFeature: typeof removeCustomFeature;
   /** The money of the Gear tab: each coin with its count, and the steps offered (SHEET-51). */
   coins: typeof fifthEditionCoins;
@@ -408,6 +413,8 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     removeRow,
     addCustomItem,
     addCustomFeature,
+    editCustomItem,
+    editCustomFeature,
     removeCustomFeature,
     coins: fifthEditionCoins,
     changeCoin,
