@@ -72,6 +72,9 @@ export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
   (file) => ({ ...file }),
   // 8 → 9 (SHEET-08): seven simple entity types are new, and no version 8 file has one.
   (file) => ({ ...file }),
+  // 9 → 10 (SHEET-76): an own feat may say `activation`, and `oncePerTurn` is a new timing; no
+  // version 9 file has either, so its own entities are kept as they are.
+  (file) => ({ ...file }),
 ];
 
 /** The successes, or the failures, that end a run of death saves (ENG-33 §8). */

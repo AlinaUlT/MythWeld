@@ -2104,7 +2104,23 @@ test('SHEET-49 the Turn tab lists the attack and the features by timing, each op
   await expect(wind).toContainText('Fighter · 2 of 2 left');
   await expect(wind.getByTestId('recovery')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+
+  // SHEET-76: Savage Attacker is once per turn; Alert and Defense are always on, with their numbers
+  // (SPEC §6.7: Initiative +3 is Dexterity +1 and Alert +2; AC 17 is chain mail 16 and Defense +1).
+  const once = tab.locator('[data-timing="oncePerTurn"]');
+  await expect(once.getByRole('heading', { name: 'Once per turn' })).toBeVisible();
+  await expect(once.locator('[data-turn-feature="srd-2024:feat/savage-attacker"]')).toBeVisible();
+  const always = tab.locator('[data-timing="passive"]');
+  await expect(always.getByRole('heading', { name: 'Always on' })).toBeVisible();
+  await expect(always.locator('[data-turn-feature="srd-2024:feat/alert"]')).toContainText(
+    'Initiative+2',
+  );
+  await expect(always.locator('[data-turn-feature="srd-2024:feat/defense"]')).toContainText('AC+1');
+  await always.scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('turn-dark.png') });
+  await always.locator('[data-path="init.bonus"]').click();
+  await expect(page.getByTestId('breakdown-summary')).toHaveText('Initiative bonus +2 = Alert +2');
+  await page.keyboard.press('Escape');
 
   // A name opens its description in place; the attack's bonus still rolls.
   await wind.getByRole('button', { name: /Second Wind/ }).click();

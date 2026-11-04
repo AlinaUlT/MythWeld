@@ -79,3 +79,47 @@ describe('SHEET-49 the Turn tab', () => {
     expect(text(drawn(empty))).toContain('Nothing to remind you of yet.');
   });
 });
+
+describe('SHEET-76 feats and once-per-turn timings', () => {
+  // Golden B (SPEC §6.7): Initiative +3 is Dexterity +1 and Alert +2; AC 17 is chain mail 16 and
+  // Defense +1; Savage Attacker comes from the Soldier background.
+  const html = drawn(goldenB);
+  const group = (timing: string) =>
+    text(html.split(`data-timing="${timing}"`)[1]?.split('</section>')[0] ?? '');
+
+  it('lists the groups in the board’s order: Action, Bonus action, Once per turn, Always on', () => {
+    const at = (timing: string) => html.indexOf(`data-timing="${timing}"`);
+    expect(at('action')).toBeLessThan(at('bonus'));
+    expect(at('bonus')).toBeLessThan(at('oncePerTurn'));
+    expect(at('oncePerTurn')).toBeLessThan(at('passive'));
+    expect(text(html)).toContain('|Once per turn|');
+    expect(text(html)).toContain('|Always on|');
+  });
+
+  it('puts Savage Attacker under Once per turn, with what gave it', () => {
+    const once = group('oncePerTurn');
+    expect(once).toContain('Savage Attacker');
+    expect(once).toContain('Soldier');
+    expect(once).not.toContain('Alert');
+  });
+
+  it('puts Alert and Defense under Always on, each with its number: Initiative +2 and AC +1', () => {
+    const always = group('passive');
+    expect(always).toContain('Alert');
+    expect(always).toContain('Defense');
+    expect(html).toContain('aria-label="Initiative +2: where it comes from"');
+    expect(html).toContain('aria-label="AC +1: where it comes from"');
+    expect(html).toContain('data-path="init.bonus"');
+    expect(html).toContain('data-path="ac.bonus"');
+    expect(always).toContain('|Initiative|+2|');
+    expect(always).toContain('|AC|+1|');
+  });
+
+  it('shows no number under the other groups', () => {
+    for (const timing of ['action', 'bonus', 'oncePerTurn']) {
+      expect(html.split(`data-timing="${timing}"`)[1]?.split('</section>')[0]).not.toContain(
+        'turn-numbers',
+      );
+    }
+  });
+});

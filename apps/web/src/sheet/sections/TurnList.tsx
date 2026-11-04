@@ -4,14 +4,18 @@
 // uses of a feature that names no timing. The equipped weapons' attacks are the first lines of
 // "Action", from the Combat tab's own attack list, so nothing is typed twice. Each feature opens its
 // description in place, and shows what gave it, and its uses with when they come back.
+// SHEET-76: a feat is listed by its `activation` as a feature is, "Once per turn" is a group of its
+// own, and an always-on line shows the numbers its effects add ("Initiative +2", "AC +1"): each is
+// the effect's own change, and a tap or a long press opens the breakdown of the path it changes.
 import { finderOf, resourceUses } from '@grimoire/engine';
 import { useTranslation } from 'react-i18next';
 import { Description } from '../../shared/Description';
 import type { TurnGroup, TurnTiming } from '../../systems';
 import { Part } from '../../theme/Part';
+import { pathName } from '../breakdown';
 import { nameIn } from '../names';
 import { useSheet } from '../SheetContext';
-import { SheetNumber } from '../SheetNumber';
+import { SheetNumber, signed } from '../SheetNumber';
 import { wordsOf } from './AboutList';
 import { Recovery } from './FeatureList';
 
@@ -82,6 +86,37 @@ function AttackLine({
   );
 }
 
+/** What an always-on feature adds, one button for each number: its name and the effect's change. */
+function Numbers({ numbers }: { numbers: TurnGroup['rows'][number]['numbers'] }) {
+  const { t } = useTranslation('turn');
+  const { t: tb } = useTranslation('breakdown');
+  const { t: ts } = useTranslation('sheet');
+  const { computed, system, breakdown } = useSheet();
+  if (numbers.length === 0) return null;
+  return (
+    <ul className="flex flex-wrap gap-x-3 px-4 pb-2" data-testid="turn-numbers">
+      {numbers.map(({ path, of, change }) => {
+        const name = pathName(computed, system, of, tb);
+        const value = signed(change, ts);
+        return (
+          <li key={path}>
+            <button
+              type="button"
+              data-path={path}
+              aria-label={t('numberOpen', { name, value })}
+              onClick={() => breakdown(path, 'signed')}
+              className="flex min-h-control items-baseline gap-1 text-15"
+            >
+              <span className="text-muted">{name}</span>
+              <span className="font-bold">{value}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 /** A feature as a row: its description in place, what gave it, and its uses. */
 function FeatureLine({ row }: { row: TurnGroup['rows'][number] }) {
   const { t } = useTranslation('turn');
@@ -118,6 +153,7 @@ function FeatureLine({ row }: { row: TurnGroup['rows'][number] }) {
           <Recovery resource={key} />
         </div>
       ))}
+      <Numbers numbers={row.numbers} />
     </li>
   );
 }

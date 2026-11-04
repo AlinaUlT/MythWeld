@@ -156,18 +156,34 @@ export type SubclassDef = z.infer<typeof subclassDefSchema>;
 export const backgroundDefSchema = base.safeExtend({ type: z.literal('background') });
 export type BackgroundDef = z.infer<typeof backgroundDefSchema>;
 
-/** A feat. */
+/**
+ * When a feature or a feat is used (SPEC §5.2): the Turn tab groups by it. SHEET-76: `oncePerTurn`
+ * is a timing of its own, for what may be done once on each turn, as a weapon hit's second roll.
+ */
+export const activationSchema = z.enum([
+  'action',
+  'bonus',
+  'reaction',
+  'free',
+  'passive',
+  'oncePerTurn',
+  'special',
+]);
+export type Activation = z.infer<typeof activationSchema>;
+
+/** A feat. SHEET-76: it may say when it is used, as a feature does. */
 export const featDefSchema = base.safeExtend({
   type: z.literal('feat'),
   category: entityKeySchema.optional(),
   repeatable: z.boolean().optional(),
+  activation: activationSchema.optional(),
 });
 export type FeatDef = z.infer<typeof featDefSchema>;
 
 /** A feature of a class, species, background, feat or item. Its uses are a `resource` grant. */
 export const featureDefSchema = base.safeExtend({
   type: z.literal('feature'),
-  activation: z.enum(['action', 'bonus', 'reaction', 'free', 'passive', 'special']).optional(),
+  activation: activationSchema.optional(),
 });
 export type FeatureDef = z.infer<typeof featureDefSchema>;
 

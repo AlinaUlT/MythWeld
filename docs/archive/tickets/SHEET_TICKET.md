@@ -8615,3 +8615,80 @@ Also fixed here: the SHEET-79 e2e test reloaded the page right after Save and fa
 Found, not fixed: nothing.
 
 Changelog: "The sheet's ⋯ menu opens Change history: your last 50 changes with the time of each and an Undo for any one of them; a change a later one wrote over waits until that later one is undone."
+
+
+---
+
+### SHEET-76 The Turn tab lists feats and once-per-turn timings
+
+**Hat:** A feat says when it is used, and the Turn tab lists it with its numbers
+**Depends on:** SHEET-49 (found there)
+**Size:** S
+**Screen:** Yes — board `V3-Turn` (Action, Bonus action, Once per turn, Always on; "Initiative +2", "AC +1") and its row in BRIEF Part 5.
+**SPEC:** §5.2 (`activation`), §5.8 (migration), §6.2 (breakdown)
+
+---
+
+#### 1. Where the code lives
+
+**Main files:** `packages/system-5e/src/entity-types.ts` (the shared `activationSchema`, on feats too); `system.ts`, `pack.ts`, `character.ts` (version 10 and its two steps); `sheet-turn.ts` (the timing, the numbers); `packages/content/src/packs/srd-2024.ts` (three feats say their timing); `apps/web/src/sheet/sections/TurnList.tsx` and `locales/en/turn.json`; `apps/web/public/schema/5e/pack.schema.json` (rewritten by its test).
+
+#### 2. What is missing now
+
+`activation` is on `featureDefSchema` only, so a feat never reaches the Turn tab, and its values have no once-per-turn. Golden B has Alert, Defense and Savage Attacker; the tab lists none of them (measured: one group, Bonus action).
+
+#### 3. What it should look like when done
+
+1. A feat takes `activation`, as a feature does, and `oncePerTurn` is one of its values: `action`, `bonus`, `reaction`, `free`, `passive`, `oncePerTurn`, `special`.
+2. `FIFTH_EDITION_SCHEMA_VERSION` is 10; a file of version 9 opens as it is, both for a pack and for a character; a file of version 11 is refused as newer.
+3. Savage Attacker is `oncePerTurn`; Alert and Defense are `passive` (SRD 5.2.1, §8).
+4. The Turn tab's groups go Action, Bonus action, Reaction, No action, Once per turn, Always on, Other, Limited uses.
+5. Golden B: Once per turn holds Savage Attacker; Always on holds Alert with "Initiative +2" and Defense with "AC +1". A tap on a number opens the breakdown of the path it changes, "Initiative bonus +2 = Alert +2".
+6. A number whose effect does not apply is not shown: Defense with no armor worn has none.
+
+#### 4. How to do it
+
+One `activationSchema` for feature and feat. Both migration lists get a step that returns the file as it is (no version 9 file has the field or the value). The module reads each row's numbers from `Computed.breakdown`: the `change` of every `add` step of an effect whose `source` is the row's entity, for a row in the Always on group only; a `.bonus` path is named by its `.total` ("Initiative", "AC"). The screen draws them as buttons that open the breakdown of that path.
+
+#### 5. Stored data
+
+A pack's and a character's own entities may carry `activation` on a feat, and the value `oncePerTurn`. `systemSchemaVersion` goes 9 → 10. Migration 9 → 10, pure, one for packs and one for characters, each returning a copy of the file; each has its test (`character.test.ts`: "opens a character of version 9 as it is", "opens a pack of version 9 as it is", with the step called on a frozen file). Version 11 is refused as `newer`. The published JSON Schema (`pack.schema.json`) is rewritten.
+
+#### 6. What a person will see
+
+The Turn tab at 360×800: a new group "Once per turn" and, under "Always on", a line of numbers under a feature (Initiative +2, AC +1), each a button. Keys in `turn`: `group.oncePerTurn` "Once per turn", `numberOpen` "{{name}} {{value}}: where it comes from". Screenshot in the chat.
+
+#### 7. Tests
+
+- `packages/system-5e/test/character.test.ts` — 3 new (both migration steps, and the field and value on the schemas, with three bad values refused at `activation`); the version, the step counts (9) and the "newer" cases move to 10 and 11.
+- `packages/system-5e/test/sheet-turn.test.ts` — 4 new: the feats by timing, Alert +2 and Defense +1, Defense with no armor worn has no number, a row that is not always on has none; the made-up groups hold the new one in the board's order.
+- `apps/web/test/turn.test.tsx` — 4 new; `apps/web/e2e/sheet.spec.ts` — the SHEET-49 test now checks the new groups, the numbers and the breakdown.
+- Control numbers from: SPEC §6.7 golden B (Init +3 = Dexterity +1 and Alert +2; AC 17 = chain mail 16 and Defense +1).
+
+#### 8. Checked against the source
+
+SRD 5.2.1 (`SRD_CC_v5.2.1.pdf`, CC-BY-4.0), Feats: "Savage Attacker (Origin Feat): … Once per turn when you hit a target with a weapon, you can roll the weapon's damage dice twice and use either roll" — a once-per-turn timing. "Alert": "You gain the following benefits. Initiative Proficiency …" — the benefit is always there: always on. "Defense (Fighting Style Feat): While you're wearing Light, Medium, or Heavy armor, you gain a +1 bonus to Armor Class" — always on, the number only while armor is worn (the pack's `when`).
+
+#### 9. Not in this ticket
+
+- A timing for a 2014 feat or a species trait: the 2014 pack holds none.
+- Alert's Initiative Swap and other benefits that are an event, not a number: not in the tab; their words are in the description.
+- Numbers from an effect that is not an `add`: not planned.
+
+#### 10. Rake check
+
+- A stored-shape change needs a migration: version 10, two pure steps, each with its test.
+- Everything is data: the timing is the entity's own; the numbers come from the breakdown, and no feat or path is named in the screen.
+- `compute()` is the only source of a number: the tab shows the breakdown step's `change`, and a tap opens its breakdown.
+- Missing is not broken: a feature with no timing and no uses is not listed, as before.
+- No rules text: the pack holds a timing word, no description.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-04: `pnpm lint` no fixes; `pnpm typecheck` clean; `pnpm test` 144 files, 1655 passed, 0 failed, 40.3 s (11 new, from 1644), then speed 2 passed; coverage statements 99.03 % (4123/4163), lines 99.77 % (3613/3621); `pnpm e2e` 98 passed, 0 failed, 2.2 min. Screenshot at 360×800 shown in the chat.
+
+Differences from the row: the "Once per turn" value is `oncePerTurn` on the existing `activation` enum, shared by feature and feat; the version literal moved in every fixture (`systemSchemaVersion: 9` → 10), and the one test that had counted the Turn tab as empty for a character with no class now also drops the species and the background, whose feats now say a timing.
+
+Found, not fixed: nothing.
+
+Changelog: "The Turn tab lists your feats too: Savage Attacker under Once per turn, and Alert and Defense under Always on with their numbers (Initiative +2, AC +1), each opening its breakdown."

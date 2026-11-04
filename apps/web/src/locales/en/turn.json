@@ -8,6 +8,7 @@
     "bonus": "Bonus action",
     "reaction": "Reaction",
     "free": "No action",
+    "oncePerTurn": "Once per turn",
     "passive": "Always on",
     "special": "Other",
     "limited": "Limited uses"
@@ -23,5 +24,6 @@
   "damageBonus": "Damage bonus",
   "mastery": "Mastery: {{name}}",
   "left": "{{left}} of {{max}} left",
+  "numberOpen": "{{name}} {{value}}: where it comes from",
   "separator": " · "
 }

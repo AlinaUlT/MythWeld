@@ -16,8 +16,8 @@ import { goldenB, goldenB4, goldenC2024, goldenD, srd2024 } from './index.ts';
 // B, B4 and D have. Expected counts are ENG-10 §8's; scores, sources and numbers are SPEC §6.7's.
 
 /** A pack file's versions: the core's pack chain is at 2; a character's chain is at 3 (SHEET-57). */
-const PACK_FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 9 };
-const FROM_CURRENT = { schemaVersion: 3, systemSchemaVersion: 9 };
+const PACK_FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 10 };
+const FROM_CURRENT = { schemaVersion: 3, systemSchemaVersion: 10 };
 
 const pack: FifthEditionPack = opened(openFifthEditionPack(srd2024));
 const entities: readonly FifthEditionEntity[] = pack.entities;

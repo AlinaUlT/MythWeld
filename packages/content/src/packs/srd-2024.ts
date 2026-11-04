@@ -175,13 +175,21 @@ const soldier: Of<'background'> = {
 const feats: Of<'feat'>[] = [
   {
     ...feat('alert', 'Alert', 'origin'),
+    // SHEET-76: SRD 5.2.1 "Alert": its benefit is always there ("When you roll Initiative ...").
+    activation: 'passive',
     // SPEC §5.4's own example.
     effects: [{ id: 'initiative', target: 'init.bonus', op: 'add', value: '@prof' }],
   },
-  feat('savage-attacker', 'Savage Attacker', 'origin'),
+  {
+    ...feat('savage-attacker', 'Savage Attacker', 'origin'),
+    // SHEET-76: SRD 5.2.1 "Savage Attacker": "Once per turn when you hit a target with a weapon".
+    activation: 'oncePerTurn',
+  },
   {
     // Its prerequisite, any Fighting Style feature, has no shape (ENG-10 §4).
     ...feat('defense', 'Defense', 'fightingStyle'),
+    // SHEET-76: SRD 5.2.1 "Defense": the +1 AC is there while armor is worn.
+    activation: 'passive',
     // SPEC §5.4's own example.
     effects: [{ id: 'armor-class', target: 'ac.bonus', op: 'add', value: 1, when: '@armor.worn' }],
   },
@@ -792,7 +800,7 @@ export const srd2024 = {
   version: '0.1.0',
   schemaVersion: 2,
   system: '5e',
-  systemSchemaVersion: 9,
+  systemSchemaVersion: 10,
   title: { en: 'SRD 5.2.1' },
   ruleset,
   // The attribution text is checked against the SRD's legal page by the import (ENG-09 §4).
