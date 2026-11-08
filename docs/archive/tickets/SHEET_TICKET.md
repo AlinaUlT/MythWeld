@@ -8803,3 +8803,81 @@ Checked that the e2e test catches the bug: with `ChoicesPanel` back to storing t
 Found, not fixed: a pick taken back lowers the maximum and leaves the current hit points above it. Measured on golden A at 12 current with the Hill Dwarf taken back: current 12, maximum 11. The header would read 12 of 11. It is a change that lowers the maximum, not one that raises it, so it is outside this hat. New row SHEET-88 in `BACKLOG.md`.
 
 Changelog: "A character at full hit points stays at full when a pick raises the maximum: a Hill Dwarf reads 12 of 12, not 11 of 12. A character below full keeps the hit points it has."
+
+
+---
+
+### SHEET-86 The Spells tab shows how many spells are prepared and how many cantrips are known
+
+**Hat:** The Spells tab shows two spell counts of a class, each with its breakdown
+**Depends on:** SHEET-46 (the Spells tab), SHEET-60 (found there); ADR 019 item 1
+**Size:** S
+**Screen:** Yes — the Spells tab, board `V3-Spells` in `docs/design/mockups/`, and the P4 row in `docs/design/BRIEF.md` Part 5. The board draws the casting card with the stat, Save DC and Attack; it has no counts, so they follow the card's own number style.
+**SPEC:** §6.7 golden A ("Заклинания": 4 prepared, 3 cantrips), §7.2 (a number opens its breakdown)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/sheet/sections/SpellList.tsx` — changes (`AtAGlance`). `packages/system-5e/src/sheet-header.ts` — `HeaderCasting` gets two optional paths. `apps/web/src/locales/en/spells.json` — two keys. `docs/design/BRIEF.md` — the P4 row names the two numbers.
+
+#### 2. What is missing now
+
+Measured on `main` at `2f1f4f5`: `classes.cleric.spell.prepared` is 4 and `classes.cleric.spell.cantrips` is 3 in `compute()` for golden A (`spellcasting.ts`, `countStep`), and no screen shows either. The casting card of the Spells tab shows the stat, Save DC and Attack only.
+
+#### 3. What it should look like when done
+
+1. Golden A's casting card shows "Spells prepared 4" and "Cantrips known 3", after Save DC 13 and Attack +5.
+2. A long press (or the context menu) on each opens its breakdown: "Cleric spell prepared 4 = Cleric 4" and "Cleric spell cantrips 3 = Cleric 3".
+3. A number shows only where the class has that count: golden C's wizard shows both; its paladin shows "Spells prepared" and no cantrips; golden B (no spells) shows neither.
+4. Nothing picks a spell. The 360 px width holds (`scrollWidth` 360).
+5. The gate is green.
+
+#### 4. How to do it
+
+1. `fifthEditionCasting` adds `prepared` and `cantrips` to a class's entry when `Computed.values` holds `classes.<key>.spell.prepared` or `.cantrips` (`Object.hasOwn`).
+2. `AtAGlance` draws a `SheetNumber` for each path it is given, in the card's own style (label 13, value 20 bold), so the tap, long press and context menu are the sheet's own.
+3. New keys: `spells.preparedCount` "Spells prepared", `spells.cantripsCount` "Cantrips known".
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+The Spells tab at 360×800: the Spellcasting card, second line, "Spells prepared 4" and "Cantrips known 3". Their states: shown with a number; not shown when the class has no such count. Where a class has the count and `compute()` gave no number, `SheetNumber` shows its usual "no value" mark. Keys: `spells.preparedCount`, `spells.cantripsCount`. Screenshot in the chat.
+
+#### 7. Tests
+
+- `packages/system-5e/test/sheet-header.test.ts` — golden A's casting entry holds both paths and their values are 13, 5, 4, 3; golden C's wizard has both, its paladin only the prepared path.
+- `apps/web/test/spells.test.tsx` — 3 new: golden A's two numbers and their paths; golden C's counts by class; golden B shows none.
+- `apps/web/e2e/sheet.spec.ts` — 1 new: the two numbers on golden A's Spells tab and their breakdowns on a long press.
+- Control numbers from: SPEC §6.7 golden A, 4 prepared and 3 cantrips.
+
+#### 8. Checked against the source
+
+The two counts are the packs' own: the 2014 cleric's `preparedCount` is `max(1, @abilities.wis.mod + @classes.cleric.level)` and its `cantripsKnown` is the full-caster column (`packages/content/src/packs/srd-2014.ts`, lines 278 and 279). The 2014 paladin has `preparedCount` and no `cantripsKnown` (lines 418 and after). No rules text is added.
+
+#### 9. Not in this ticket
+
+- A way to pick the spells of a class list, and a count of the spells picked against these two numbers: phases 3 and 4 (ADR 019 item 2).
+- `classes.<id>.spell.known` (the number of spells known, for classes that know and do not prepare): this ticket names two counts, ADR 019 names two.
+- The counts in the header: the header row keeps its Save DC and Attack.
+
+#### 10. Rake check
+
+- A number on screen has a breakdown: each is a `SheetNumber`, and both open their breakdown.
+- No user-facing string in a component: two i18next keys.
+- No look in a component: the same classes the card's other numbers use, which are token classes.
+- Everything is data: the paths come from the module; the component names no class.
+- Missing is not broken: a class without a count shows no number and no error.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-08: `pnpm lint` 455 files, no fixes; `pnpm typecheck` clean; `pnpm test` 145 files, 1666 passed, 0 failed, 31.9 s (4 new, from 1662), then speed 2 passed; coverage statements 99.04 % (4139/4179), lines 99.77 % (3626/3634); `pnpm e2e` 104 passed, 0 failed, 1.9 min (1 new, from 103). Screenshot of golden A's Spells tab at 360×800 shown in the chat.
+
+Differences from the row: the board has no counts, so the numbers sit in the casting card in the style of Save DC and Attack; the BRIEF's P4 row says so. The breakdown names the path ("Cleric spell prepared 4 = Cleric 4"): that is how the sheet names every `classes.<key>.spell.*` number; it is not changed here.
+
+Found, not fixed: nothing.
+
+Changelog: "The Spells tab shows how many spells a class prepares and how many cantrips it knows, each opening its breakdown; a class without that count shows no number."

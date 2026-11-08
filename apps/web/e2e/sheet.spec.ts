@@ -1118,6 +1118,37 @@ function beforeHillDwarf(current: number) {
   };
 }
 
+test('SHEET-86 the Spells tab shows 4 prepared and 3 cantrips, each with its breakdown on a long press', async ({
+  page,
+}, testInfo) => {
+  await saveRows(page, [goldenA]);
+  await page.goto(`characters/${goldenA.id}`);
+  await page.getByRole('tab', { name: 'Spells' }).click();
+  // SPEC §6.7 golden A: 4 prepared and 3 cantrips.
+  const prepared = number(page, 'classes.cleric.spell.prepared');
+  const cantrips = number(page, 'classes.cleric.spell.cantrips');
+  await expect(prepared).toHaveText('Spells prepared4');
+  await expect(cantrips).toHaveText('Cantrips known3');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  await page.screenshot({ path: testInfo.outputPath('spells-counts.png') });
+
+  const sheet = page.getByRole('dialog', { name: en.breakdown.title });
+  for (const [target, summary] of [
+    [prepared, /prepared 4 = Cleric 4$/],
+    [cantrips, /cantrips 3 = Cleric 3$/],
+  ] as const) {
+    const box = await target.boundingBox();
+    await page.mouse.move((box?.x ?? 0) + 20, (box?.y ?? 0) + 10);
+    await page.mouse.down();
+    await page.waitForTimeout(650);
+    await page.mouse.up();
+    await expect(sheet).toBeVisible();
+    await expect(page.getByTestId('breakdown-summary')).toHaveText(summary);
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+  }
+});
+
 test('SHEET-85 a character at full hit points stays at full when the Hill Dwarf pick raises the maximum', async ({
   page,
 }) => {

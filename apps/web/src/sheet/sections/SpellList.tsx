@@ -7,6 +7,8 @@
 // resource of its grant's key (ENG-57), so two grants of one entity are told apart. Every spell
 // shows its edition or warns that it is of the other one (ENG-49). SHEET-47: a tap on a spell opens
 // the cast panel, which holds its description (ADR 011 item 2: no separate spell card).
+// SHEET-86: the casting card also shows how many spells a class prepares and how many cantrips it
+// knows (ADR 019), each a number with its breakdown.
 import { finderOf, recoveryOf, resourceUses, shareRuleset } from '@grimoire/engine';
 import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -97,7 +99,7 @@ function AtAGlance() {
       aria-label={t('casting')}
     >
       <h2 className={heading}>{t('casting')}</h2>
-      {casting.map(({ source, ability, dc, attack }) => {
+      {casting.map(({ source, ability, dc, attack, prepared, cantrips }) => {
         const stat = computed.byKey.ability?.[ability];
         const abbr = stat?.type === 'ability' ? nameIn(stat.abbr) : ability;
         const owner = computed.entities.find(({ entity }) => entity.id === source)?.entity;
@@ -124,6 +126,26 @@ function AtAGlance() {
               labelClassName="text-13 text-muted"
               valueClassName="text-20 font-bold"
             />
+            {/* SHEET-86: how many spells the class prepares and how many cantrips it knows, each
+                with its breakdown on a long press; only where the class has that count. */}
+            {prepared !== undefined && (
+              <SheetNumber
+                path={prepared}
+                label={t('preparedCount')}
+                className="flex min-h-control items-baseline gap-2"
+                labelClassName="text-13 text-muted"
+                valueClassName="text-20 font-bold"
+              />
+            )}
+            {cantrips !== undefined && (
+              <SheetNumber
+                path={cantrips}
+                label={t('cantripsCount')}
+                className="flex min-h-control items-baseline gap-2"
+                labelClassName="text-13 text-muted"
+                valueClassName="text-20 font-bold"
+              />
+            )}
           </div>
         );
       })}

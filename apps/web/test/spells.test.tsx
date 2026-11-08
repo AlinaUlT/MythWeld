@@ -81,6 +81,14 @@ describe('SHEET-46 the Spells tab of golden A', () => {
     expect(html).toContain('data-path="classes.cleric.spell.dc"');
   });
 
+  it('SHEET-86 shows 4 spells prepared and 3 cantrips known, each a number with a breakdown', () => {
+    // SPEC §6.7 golden A: 4 prepared (Wisdom +3 and level 1) and 3 cantrips.
+    expect(text(html)).toMatch(/\|Spells prepared\|4\|/);
+    expect(text(html)).toMatch(/\|Cantrips known\|3\|/);
+    expect(html).toContain('data-path="classes.cleric.spell.prepared"');
+    expect(html).toContain('data-path="classes.cleric.spell.cantrips"');
+  });
+
   it('draws the slots as a column of level 1 with two circles, both left', () => {
     const column = columnOf(html, '1');
     expect(text(html)).toContain('|Level 1|');
@@ -114,6 +122,23 @@ describe('SHEET-46 the Spells tab of golden A', () => {
     }
     expect(text(spellOf(html, 'srd-2014:spell/bless'))).toContain('|Bless|');
     expect(html).not.toContain('role="alert"');
+  });
+});
+
+describe('SHEET-86 a count is shown only where the class has it', () => {
+  it('shows the wizard’s prepared spells and cantrips, and the paladin’s prepared spells only', () => {
+    const html = drawn(goldenC2014);
+    expect(html).toContain('data-path="classes.wizard.spell.prepared"');
+    expect(html).toContain('data-path="classes.wizard.spell.cantrips"');
+    expect(html).toContain('data-path="classes.paladin.spell.prepared"');
+    expect(html).not.toContain('data-path="classes.paladin.spell.cantrips"');
+    expect(text(html).match(/Cantrips known/g)).toHaveLength(1);
+    expect(text(html).match(/Spells prepared/g)).toHaveLength(2);
+  });
+
+  it('shows no count for a character that casts nothing', () => {
+    expect(text(drawn(goldenB))).not.toContain('Spells prepared');
+    expect(text(drawn(goldenB))).not.toContain('Cantrips known');
   });
 });
 

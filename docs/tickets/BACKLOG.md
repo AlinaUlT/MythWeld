@@ -281,7 +281,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-83 | The roll dialog names an attack by its own name | XS | ✅ 2026-11-04 |
 | SHEET-84 | The packs hold every damage type of the SRD | S | ✅ 2026-11-04 |
 | SHEET-85 | Current hit points follow a pick that raises the maximum | S | ✅ 2026-11-08 |
-| SHEET-86 | The Spells tab shows how many spells are prepared and how many cantrips are known | S | 🔲 |
+| SHEET-86 | The Spells tab shows how many spells are prepared and how many cantrips are known | S | ✅ 2026-11-08 |
 | SHEET-87 | The SHEET-11 route test waits for the back arrow before it measures it | XS | ✅ 2026-11-08 |
 | SHEET-88 | Current hit points stay inside the maximum when a pick is taken back | XS | 🔲 |
 
@@ -292,10 +292,6 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 - **SHEET-88** — found by SHEET-85: taking a pick back lowers the maximum and leaves the current
   hit points above it (golden A, 12 current, Hill Dwarf taken back: 12 of 11). Not needed for the
   phase 2 gate (ADR 019 item 1 does not list it).
-- **SHEET-86** — found by SHEET-60: `classes.<id>.spell.prepared` and `.cantrips` are computed
-  (golden A: 4 and 3) and no screen shows them. This row shows the two numbers, each with its
-  breakdown, only where a class has them. Picking the spells of a class list is not here (ADR 019;
-  phase 3 and 4 below).
 
 ---
 

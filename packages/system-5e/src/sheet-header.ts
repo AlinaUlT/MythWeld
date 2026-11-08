@@ -41,7 +41,11 @@ export function fifthEditionClassLine({
   return systemData.classes.map(({ id, level }) => ({ id, level }));
 }
 
-/** A casting class's spellcasting at a glance: its stat's key, and the paths of its DC and attack. */
+/**
+ * A casting class's spellcasting at a glance: its stat's key, and the paths of its DC and attack.
+ * SHEET-86: and, only where the class has that count, the paths of how many spells it prepares and
+ * how many cantrips it knows.
+ */
 export interface HeaderCasting {
   /** The class's id. */
   source: string;
@@ -49,6 +53,10 @@ export interface HeaderCasting {
   ability: string;
   dc: string;
   attack: string;
+  /** The spells the class prepares; none when the class has no such count. */
+  prepared?: string;
+  /** The cantrips the class knows; none when the class has no such count. */
+  cantrips?: string;
 }
 
 /**
@@ -63,8 +71,19 @@ export function fifthEditionCasting(
     const path = `classes.${entity.key}.spell`;
     const def = entity.spellcasting ?? subclass?.spellcasting;
     if (def === undefined || !Object.hasOwn(computed.values, `${path}.dc`)) return [];
+    const counted = (count: string) =>
+      Object.hasOwn(computed.values, `${path}.${count}`) ? `${path}.${count}` : undefined;
+    const prepared = counted('prepared');
+    const cantrips = counted('cantrips');
     return [
-      { source: entity.id, ability: def.ability, dc: `${path}.dc`, attack: `${path}.attack` },
+      {
+        source: entity.id,
+        ability: def.ability,
+        dc: `${path}.dc`,
+        attack: `${path}.attack`,
+        ...(prepared !== undefined && { prepared }),
+        ...(cantrips !== undefined && { cantrips }),
+      },
     ];
   });
 }

@@ -5,6 +5,8 @@
   "castingOf": "{{name}} · {{ability}}",
   "saveDc": "Save DC",
   "attack": "Attack",
+  "preparedCount": "Spells prepared",
+  "cantripsCount": "Cantrips known",
   "slots": "Spell slots",
   "level": "Level {{level}}",
   "pact": "Pact · level {{level}}",

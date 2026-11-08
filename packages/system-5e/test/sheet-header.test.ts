@@ -72,7 +72,7 @@ describe('SHEET-30 the sheet header', () => {
     ]);
   });
 
-  it('golden A casts with Wisdom: spell save DC 13, spell attack +5', () => {
+  it('golden A casts with Wisdom: spell save DC 13, spell attack +5, 4 prepared, 3 cantrips', () => {
     const { character, computed } = sheetOf(goldenA);
     const casting = fifthEditionCasting(character, computed);
     expect(casting).toEqual([
@@ -81,11 +81,30 @@ describe('SHEET-30 the sheet header', () => {
         ability: 'wis',
         dc: 'classes.cleric.spell.dc',
         attack: 'classes.cleric.spell.attack',
+        prepared: 'classes.cleric.spell.prepared',
+        cantrips: 'classes.cleric.spell.cantrips',
       },
     ]);
-    expect(casting.map(({ dc, attack }) => [computed.values[dc], computed.values[attack]])).toEqual(
-      [[13, 5]],
-    );
+    // SPEC §6.7 golden A: DC 13, attack +5, 4 prepared, 3 cantrips.
+    expect(
+      casting.map(({ dc, attack, prepared = '', cantrips = '' }) =>
+        [dc, attack, prepared, cantrips].map((path) => computed.values[path]),
+      ),
+    ).toEqual([[13, 5, 4, 3]]);
+  });
+
+  it('SHEET-86 names a count only where the class has it: the paladin prepares and knows no cantrips', () => {
+    const c = sheetOf(goldenC2014);
+    expect(
+      fifthEditionCasting(c.character, c.computed).map(({ source, prepared, cantrips }) => [
+        source,
+        prepared,
+        cantrips,
+      ]),
+    ).toEqual([
+      ['srd-2014:class/wizard', 'classes.wizard.spell.prepared', 'classes.wizard.spell.cantrips'],
+      ['srd-2014:class/paladin', 'classes.paladin.spell.prepared', undefined],
+    ]);
   });
 
   it('golden B casts nothing; golden C casts by both classes, in the order taken', () => {
