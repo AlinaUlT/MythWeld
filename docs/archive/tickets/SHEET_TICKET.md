@@ -8692,3 +8692,31 @@ Differences from the row: the "Once per turn" value is `oncePerTurn` on the exis
 Found, not fixed: nothing.
 
 Changelog: "The Turn tab lists your feats too: Savage Attacker under Once per turn, and Alert and Defense under Always on with their numbers (Initiative +2, AC +1), each opening its breakdown."
+
+
+---
+
+### SHEET-87 The SHEET-11 route test waits for the back arrow before it measures it · XS
+
+**Hat:** The size check of a control waits for the control
+**Where:** `apps/web/e2e/navigation.spec.ts` — `expectControlSize`
+**Depends on:** SHEET-60 (found there); ADR 019
+**Screen:** No.
+
+**What it should look like when done:**
+1. `expectControlSize` waits until the control is visible, then reads `boundingBox()`.
+2. The two size checks (width and height at least 44) and every other line of the file stay as they were.
+3. `navigation.spec.ts` passes 5 runs in a row.
+4. The gate is green.
+
+**Tests:** `apps/web/e2e/navigation.spec.ts` — the same 6 tests. Control numbers: the 44 px floor in the file, unchanged.
+**What came out of it:**
+Quality gate, 2026-11-08: `pnpm lint` 454 files, no fixes; `pnpm typecheck` clean; `pnpm test` 144 files, 1655 passed, 0 failed, 30.7 s, then speed 2 passed; `pnpm e2e` 101 passed, 0 failed, 1.8 min.
+
+Repeat run: `navigation.spec.ts` alone, 5 runs in a row, 6 passed and 0 failed each time (9.2 to 9.5 s a run).
+
+Cause: `boundingBox()` does not wait for the element. When the page was slow under two workers, the element was not there yet and the call returned `undefined`, so `box?.width` was `undefined`. The fix adds `await expect(control).toBeVisible()` before the read. Nothing else in the file changed.
+
+Found, not fixed: nothing.
+
+Changelog: Nothing for the changelog.

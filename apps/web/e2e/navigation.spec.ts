@@ -17,7 +17,10 @@ const back = (page: Page) => page.getByRole('link', { name: en.common.back });
 const gear = (page: Page) => page.getByRole('link', { name: en.common.settings });
 
 async function expectControlSize(page: Page, name: string) {
-  const box = await page.getByRole('main').getByLabel(name, { exact: true }).boundingBox();
+  // SHEET-87: wait for the control before measuring it; boundingBox() alone does not wait.
+  const control = page.getByRole('main').getByLabel(name, { exact: true });
+  await expect(control).toBeVisible();
+  const box = await control.boundingBox();
   expect(box?.width).toBeGreaterThanOrEqual(44);
   expect(box?.height).toBeGreaterThanOrEqual(44);
 }

@@ -282,7 +282,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-84 | The packs hold every damage type of the SRD | S | ✅ 2026-11-04 |
 | SHEET-85 | Current hit points follow a pick that raises the maximum | S | 🔲 |
 | SHEET-86 | The Spells tab shows how many spells are prepared and how many cantrips are known | S | 🔲 |
-| SHEET-87 | The SHEET-11 route test waits for the back arrow before it measures it | XS | 🔲 |
+| SHEET-87 | The SHEET-11 route test waits for the back arrow before it measures it | XS | ✅ 2026-11-08 |
 
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat. The test is built and
@@ -295,8 +295,6 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
   (golden A: 4 and 3) and no screen shows them. This row shows the two numbers, each with its
   breakdown, only where a class has them. Picking the spells of a class list is not here (ADR 019;
   phase 3 and 4 below).
-- **SHEET-87** — found by SHEET-60: `apps/web/e2e/navigation.spec.ts` line 21 reads `boundingBox()`
-  with no wait; once in two full runs under two workers it got `undefined`.
 
 ---
 
