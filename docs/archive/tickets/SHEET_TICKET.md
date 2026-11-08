@@ -8720,3 +8720,86 @@ Cause: `boundingBox()` does not wait for the element. When the page was slow und
 Found, not fixed: nothing.
 
 Changelog: Nothing for the changelog.
+
+
+---
+
+### SHEET-85 Current hit points follow a pick that raises the maximum
+
+**Hat:** A character at full hit points stays at full when a pick raises the maximum
+**Depends on:** SHEET-36 (the choices panel), SHEET-60 (found there); ADR 019 item 1
+**Size:** S
+**Screen:** No new screen. The hit points in the header change their number only. Boards: none new.
+**SPEC:** §6.4 (hit points), §6.7 golden A ("Хиты": 12)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/sheet-choices.ts` — changes. New function `keepFullHitPoints`.
+`apps/web/src/systems.ts` — the sheet system lists it. `apps/web/src/sheet/panels/ChoicesPanel.tsx` — its `save` passes every pick's entry through it. New test: `packages/system-5e/test/keep-full-hit-points.test.ts`; `apps/web/e2e/sheet.spec.ts` — two tests.
+
+#### 2. What is missing now
+
+Measured on `main` at `720db77`: a character made in the form and then given the Hill Dwarf pick reads **11 of 12** hit points. The form stores the current hit points as the computed maximum at creation, before any pick (`packages/system-5e/src/manual.ts`, `madeByHand`). The pick later raises the maximum by 1 (Dwarven Toughness) and the current ones stay 11. With the fix taken out, the new e2e test reads "Hit points 11 of 12, temporary 0".
+
+#### 3. What it should look like when done
+
+1. Golden A made by hand at full hit points (11 of 11), then the Hill Dwarf picked: 12 of 12.
+2. The same character at 5 of 11: after the pick 5 of 12.
+3. The extra hit points change is in the same entry as the pick, so one "Undo" takes both back: 11 of 11 again.
+4. A character at 0 hit points is not healed by a pick. An entry that does not raise the maximum is returned as it is.
+5. The gate is green.
+
+#### 4. How to do it
+
+1. `keepFullHitPoints(character, entry, index)` computes the maximum before, applies the entry (`applyEntry`), computes the maximum after. When the current hit points equal the maximum before, and the maximum after is higher, it returns the entry with one more change: `hp.current` to the new maximum, built with `changeTo`.
+2. The sheet system exposes it, and `ChoicesPanel` runs every entry it stores through it (a pick, a take-back, a key answer).
+3. The rule is in the module, not in the component (CLAUDE.md, the engine rule).
+
+**Why this way (ADR 002).** Three ways were open.
+- Store the damage taken instead of the current hit points: it changes the stored shape, needs a migration, and every action that reads `hp.current` changes. Too big for what is wrong.
+- Make the form wait and store the current hit points after the picks: the form has no picks, and a later pick (a level, a feat) raises the maximum the same way.
+- Add the change to the pick's own entry (chosen): no stored shape changes, no migration, one Undo, and the rule is one function that every later place a pick is stored can call.
+
+#### 5. Stored data
+
+Nothing stored changes. The entry is a log entry with one more change in it (ENG-30).
+
+#### 6. What a person will see
+
+Not a new screen. After the pick in the choices panel, the header's hit points read 12 of 12 instead of 11 of 12.
+
+#### 7. Tests
+
+- `packages/system-5e/test/keep-full-hit-points.test.ts` — 7 tests: golden A at full goes to 12; the entry holds both changes; below full keeps 5; 0 hit points is not healed; an entry that does not raise the maximum is returned as it is; an entry that cannot be applied is returned as it is; a character with no class has no maximum.
+- `apps/web/e2e/sheet.spec.ts` — 2 tests: full goes 11 of 11 to 12 of 12 and Undo gives 11 of 11; below full goes 5 of 11 to 5 of 12.
+- Control numbers from: SPEC §6.7 golden A, hit points 12 (after the pick). The 11 before the pick is the cleric's die at level 1 (8) and Constitution +3, by hand.
+
+#### 8. Checked against the source
+
+SPEC §6.7 golden A: hit points 12 = 8 + 3 + 1, the 1 from the Hill Dwarf's Dwarven Toughness (`hp.max.bonus` in `packages/content/src/packs/srd-2014.ts`). The SRD gives no rule for the current hit points when the maximum rises; the rule here is ADR 019 item 1's (the owner's).
+
+#### 9. Not in this ticket
+
+- A pick taken back, or any change that lowers the maximum: the current hit points stay as they are (see "Found, not fixed").
+- A level gained, a Constitution change or a manual edit of the maximum: they do not go through the choices panel. The function can be called from them later.
+- Picking the spells of a class list: phase 4 (ADR 019).
+
+#### 10. Rake check
+
+- Rules live in `engine` or `content`/the module, never in a component: the rule is in `sheet-choices.ts`; the component only calls it.
+- Golden tests are the truth: no golden value changed; 12 is SPEC §6.7's.
+- A stored-shape change needs a migration: none changes.
+- Everything is data: no ability, class or species is named in the function.
+- Manual overrides always win: an override of the maximum is read by `compute()`, so a character at full follows the maximum the override gives; nothing is written over an override.
+
+#### 11. What came out of it
+
+Quality gate, 2026-11-08: `pnpm lint` 455 files, no fixes; `pnpm typecheck` clean; `pnpm test` 145 files, 1662 passed, 0 failed, 30.4 s (7 new, from 1655), then speed 2 passed; coverage statements 99.04 % (4135/4175), lines 99.77 % (3622/3630); `pnpm e2e` 103 passed, 0 failed, 1.9 min (2 new, from 101).
+
+Checked that the e2e test catches the bug: with `ChoicesPanel` back to storing the pick alone, the full-hit-points test fails with "Hit points 11 of 12, temporary 0" and the below-full test still passes.
+
+Found, not fixed: a pick taken back lowers the maximum and leaves the current hit points above it. Measured on golden A at 12 current with the Hill Dwarf taken back: current 12, maximum 11. The header would read 12 of 11. It is a change that lowers the maximum, not one that raises it, so it is outside this hat. New row SHEET-88 in `BACKLOG.md`.
+
+Changelog: "A character at full hit points stays at full when a pick raises the maximum: a Hill Dwarf reads 12 of 12, not 11 of 12. A character below full keeps the hit points it has."

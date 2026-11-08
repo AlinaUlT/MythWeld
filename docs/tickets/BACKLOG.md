@@ -280,17 +280,18 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-82 | The toast goes after its time once Undo was tapped | XS | ✅ 2026-11-04 |
 | SHEET-83 | The roll dialog names an attack by its own name | XS | ✅ 2026-11-04 |
 | SHEET-84 | The packs hold every damage type of the SRD | S | ✅ 2026-11-04 |
-| SHEET-85 | Current hit points follow a pick that raises the maximum | S | 🔲 |
+| SHEET-85 | Current hit points follow a pick that raises the maximum | S | ✅ 2026-11-08 |
 | SHEET-86 | The Spells tab shows how many spells are prepared and how many cantrips are known | S | 🔲 |
 | SHEET-87 | The SHEET-11 route test waits for the back arrow before it measures it | XS | ✅ 2026-11-08 |
+| SHEET-88 | Current hit points stay inside the maximum when a pick is taken back | XS | 🔲 |
 
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat. The test is built and
   green; the phase stays open until SHEET-85, 86 and 87 are closed (ADR 019). Then SHEET-60 runs
   again, fills the rest of its §11 and closes phase 2.
-- **SHEET-85** — found by SHEET-60: a character made in the form shows 11 / 12 hit points when its
-  subrace pick raises the maximum after creation. The form stores the current ones at creation
-  (`packages/system-5e/src/manual.ts`, lines 153 to 160).
+- **SHEET-88** — found by SHEET-85: taking a pick back lowers the maximum and leaves the current
+  hit points above it (golden A, 12 current, Hill Dwarf taken back: 12 of 11). Not needed for the
+  phase 2 gate (ADR 019 item 1 does not list it).
 - **SHEET-86** — found by SHEET-60: `classes.<id>.spell.prepared` and `.cantrips` are computed
   (golden A: 4 and 3) and no screen shows them. This row shows the two numbers, each with its
   breakdown, only where a class has them. Picking the spells of a class list is not here (ADR 019;

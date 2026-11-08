@@ -1105,6 +1105,62 @@ test('SHEET-36 the choices badge opens every pending choice, each answered from 
   await expect(badge).toHaveText('!7');
 });
 
+/** Golden A as the form leaves it: the Hill Dwarf not picked yet (11 hit points at most). */
+function beforeHillDwarf(current: number) {
+  const { 'srd-2014:species/dwarf#subrace': _picked, ...choices } = goldenA.choices;
+  return {
+    ...goldenA,
+    choices,
+    systemData: {
+      ...goldenA.systemData,
+      state: { ...goldenA.systemData.state, hp: { current, temp: 0 } },
+    },
+  };
+}
+
+test('SHEET-85 a character at full hit points stays at full when the Hill Dwarf pick raises the maximum', async ({
+  page,
+}) => {
+  // 8 for the cleric's die at level 1 and Constitution +3: 11 before the pick, 12 after it (SPEC §6.7 golden A).
+  await saveRows(page, [beforeHillDwarf(11)]);
+  await page.goto(`characters/${goldenA.id}`);
+  const hp = number(page, 'hp.max');
+  await expect(hp).toHaveAttribute('aria-label', /Hit points 11 of 11,/);
+  await page
+    .getByRole('banner')
+    .getByRole('button', { name: /choices to make/ })
+    .click();
+  const panel = page.getByRole('dialog', { name: en.choices.title });
+  await panel
+    .locator('[data-part="srd-2014:species/dwarf#subrace"]')
+    .getByRole('button', { name: 'Pick Hill Dwarf' })
+    .click();
+  await expect(hp).toHaveAttribute('aria-label', /Hit points 12 of 12,/);
+
+  // One Undo takes the pick and the hit points back together.
+  await page.getByRole('button', { name: en.toast.undo }).click();
+  await expect(hp).toHaveAttribute('aria-label', /Hit points 11 of 11,/);
+});
+
+test('SHEET-85 a character below full keeps its hit points when the Hill Dwarf pick raises the maximum', async ({
+  page,
+}) => {
+  await saveRows(page, [beforeHillDwarf(5)]);
+  await page.goto(`characters/${goldenA.id}`);
+  const hp = number(page, 'hp.max');
+  await expect(hp).toHaveAttribute('aria-label', /Hit points 5 of 11,/);
+  await page
+    .getByRole('banner')
+    .getByRole('button', { name: /choices to make/ })
+    .click();
+  const panel = page.getByRole('dialog', { name: en.choices.title });
+  await panel
+    .locator('[data-part="srd-2014:species/dwarf#subrace"]')
+    .getByRole('button', { name: 'Pick Hill Dwarf' })
+    .click();
+  await expect(hp).toHaveAttribute('aria-label', /Hit points 5 of 12,/);
+});
+
 test('SHEET-48 the Features tab groups features by source; a use and a switch are changes with Undo', async ({
   page,
 }, testInfo) => {

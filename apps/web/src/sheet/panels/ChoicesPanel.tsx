@@ -34,7 +34,10 @@ export function ChoicesPanel({ onClose }: PanelProps) {
   const { character, content, computed, system } = useSheet();
   const missing = (id: string) => t('missing', { id });
   const save = (entry: ReturnType<typeof choiceEntry>) => {
-    changeCharacter(character.id, entry).catch((error: unknown) => console.error(error));
+    // SHEET-85: a character at full hit points follows a maximum the pick raises.
+    changeCharacter(character.id, system.keepFullHitPoints(character, entry, content.index)).catch(
+      (error: unknown) => console.error(error),
+    );
   };
   const nameOf = (choice: PendingChoice, pick: string) =>
     pickName(computed, system, content.index, choice, pick, missing);

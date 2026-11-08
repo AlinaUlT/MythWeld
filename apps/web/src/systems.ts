@@ -76,6 +76,7 @@ import {
   type HeaderHitPoints,
   type HeaderNumber,
   type InspirationShown,
+  keepFullHitPoints,
   knockOutOffered,
   type ListLinePart,
   longRest,
@@ -257,6 +258,8 @@ export interface SheetSystem {
   rollInitiative: typeof rollInitiative;
   /** How the pending key at `path` is answered, or none when this system cannot (SHEET-36). */
   pendingKey(path: string): PendingKeyAnswer | undefined;
+  /** A pick's entry, with the current hit points following a maximum it raises (SHEET-85). */
+  keepFullHitPoints: typeof keepFullHitPoints;
   /** The slots, spell lists and granted spells of the Spells tab (SHEET-46). */
   spells(character: AppCharacter, computed: AppComputed): SpellsShown;
   spendSlot: typeof spendSlot;
@@ -429,6 +432,7 @@ export const SHEET_SYSTEMS: Readonly<Record<string, SheetSystem>> = {
     },
     pathParts: fifthEditionPathParts,
     pendingKey: fifthEditionPendingKey,
+    keepFullHitPoints,
     rollTest: fifthEditionRollTest,
     situational: fifthEditionSituational,
     rollMode: rollModeOf,
