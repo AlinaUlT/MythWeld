@@ -140,8 +140,10 @@ except two lines of golden A below.
    picks the spells of a class list: the Spells tab reads `character.systemData.spells`, which the
    form leaves empty. The tab shows the slots (2 of 2) and the two domain spells.
 
-**Phase 2 is not closed.** Two of golden A's §6.7 lines are not on the sheet. Whether the gate needs
-them is a decision about what the app does, so it is the owner's; the question is in the chat.
+**Phase 2 is not closed.** Two of golden A's §6.7 lines are not on the sheet. ADR 019 decides what
+the gate needs: SHEET-85, SHEET-86 (the two numbers only) and SHEET-87 close first, then this
+ticket runs again, fills the rest of §11 and closes phase 2. Picking the spells of a class list
+waits for phases 3 and 4.
 
 **Found, not fixed:**
 - SHEET-85: current hit points stay below the maximum after a pick raises the maximum.

@@ -185,7 +185,8 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | 7 | SHEET-29, 34, 40, 41, 42, 43, 44, 45, 47, 49, 51, 52, 57, 58 | Wave 6 is closed |
 | 8 | SHEET-35, 59, 69, 70, 72, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84 | Wave 7 is closed |
 | 9 | SHEET-74 | Wave 8 is closed: it reuses the field SHEET-69 makes for typed faces |
-| 10 | SHEET-60 | Every other row is closed |
+| 10 | SHEET-85, 86, 87 | Wave 9 is closed; found by SHEET-60, needed by the gate (ADR 019) |
+| 11 | SHEET-60 | Wave 10 is closed: the gate runs again and closes phase 2 |
 
 | ID | Hat | Size | Status |
 |---|---|---|---|
@@ -285,14 +286,15 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
   empty form to its values, and carries every tab's screenshot in the chat. The test is built and
-  green; the phase stays open until the owner answers whether SHEET-85 and SHEET-86 are part of the
-  gate (SHEET-60 §11).
+  green; the phase stays open until SHEET-85, 86 and 87 are closed (ADR 019). Then SHEET-60 runs
+  again, fills the rest of its §11 and closes phase 2.
 - **SHEET-85** — found by SHEET-60: a character made in the form shows 11 / 12 hit points when its
   subrace pick raises the maximum after creation. The form stores the current ones at creation
   (`packages/system-5e/src/manual.ts`, lines 153 to 160).
 - **SHEET-86** — found by SHEET-60: `classes.<id>.spell.prepared` and `.cantrips` are computed
-  (golden A: 4 and 3) and no screen shows them. Picking the spells of a class list has no screen
-  either; whether it joins this row is the owner's.
+  (golden A: 4 and 3) and no screen shows them. This row shows the two numbers, each with its
+  breakdown, only where a class has them. Picking the spells of a class list is not here (ADR 019;
+  phase 3 and 4 below).
 - **SHEET-87** — found by SHEET-60: `apps/web/e2e/navigation.spec.ts` line 21 reads `boundingBox()`
   with no wait; once in two full runs under two workers it got `undefined`.
 
@@ -310,6 +312,9 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | RU | — | `RU` | Russian locale, glossary check, Russian overlays for SRD texts (ADR 000); placed when phase 3 closes |
 | SYS | — | `SYS` | More game systems: other D&D editions, Pathfinder, later others (ADR 004); placed when phase 2 closes |
 
+- **Phase 3 and 4** — found by SHEET-60 (ADR 019): choosing the spells of a class list (cantrips
+  known, spells prepared) has no screen. Phase 3's library gives the lists; phase 4's wizard asks
+  for the choices.
 - **Phase 3** — found by ENG-57: the SRD traits that cast a spell with no slot (SRD 5.1 Infernal
   Legacy; SRD 5.2.1 Elven Lineage, Fiendish Legacy, Gnomish Lineage, Magic Initiate; ENG-57 §8)
   are one `spell` grant per spell, each with its `atLevel`, its `uses` and a `key`.
