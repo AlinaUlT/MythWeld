@@ -300,116 +300,304 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 
 ---
 
-## Phases 3–7 — cut when the phase before closes
+## Phase 3 — The SRDs and the library (SPEC stage 3)
+
+Gate: SPEC §12 stage 3, as ADR 000 changes it (the Russian overlays go to the Russian phase) and as
+OPS-35 reads it: the import repeats with one command, every entity passes the schema and the counts
+equal the source's; every feature of levels 1 to 5 is mechanized or marked `manual: true`; a typo
+search ("fireb") finds Fireball; the About screen carries both SRDs' attribution. The "огнен" line
+of the stage's list needs Russian names, so it moves to the Russian phase with them. CONT-62 is the
+phase's last row: its §11 carries the proof.
+
+**Cut on 2026-11-08 by OPS-35**, before phase 2 closed: SHEET-85, 86 and 87 and then SHEET-60 are
+its last rows (ADR 019), and the owner asked for rows she can start in parallel chats. No phase 3
+row starts before phase 2's gate is proved. The rows come from SPEC §12 stage 3, §3, §6.8, §7.3 and
+§9 (search), and from the ADRs that put work in phase 3: ADR 003, 009, 010, 011, 012, 013 and 014. A
+screen row builds from its boards in `docs/design/mockups/` and its row in BRIEF Part 5 (P7 Library
+and an entry's card, P17 Player page), with `<Slot>`, `<Part>` and `<Motion>` as phase 2's rows do.
+This cut is a first guess, as the sizes are: a row the work shows is wrong is re-cut, and its §11
+says so.
+
+**Running rows at the same time.** The rows of one wave run in parallel chats once every row of the
+waves before it is closed (`PROMPTS.md` prompt 8 runs several in one chat). Each row owns files no
+other row of its wave touches: an importer is one file in `packages/content/src/import/` (CONT-04
+creates them empty); a mechanics file is one `packages/content/mechanics/<pack>/<type>/<slug>.json`
+for one entity, so two class rows never meet; a topic's list and a window are files CONT-03 creates
+empty. Every chat still edits `BACKLOG.md`, `CONT_TICKET.md` and the archive, so the second chat to
+push rebases, keeps both sides and runs the gate again (`CLAUDE.md`, the steps). Two things a wave
+holds at most one of: a row that edits the fifth-edition schemas and so the published JSON Schema
+(CONT-05 in wave 1, CONT-06 in wave 2), and a row that claims a database version (CONT-02).
+Mechanics rows check in their §8 what each SRD says before they write an effect, and what a
+multiclass does with it (ENG-29: two `resource` grants of one key give one resource, with the
+highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
+
+| Wave | Rows | Starts when |
+|---|---|---|
+| 1 | CONT-01 to 05 | Phase 2 is closed (SHEET-60) |
+| 2 | CONT-06 to 19 | Wave 1 is closed |
+| 3 | CONT-20 to 59 | Wave 2 is closed |
+| 4 | CONT-60 to 61 | Wave 3 is closed |
+| 5 | CONT-62 | Wave 4 is closed |
+
+| ID | Hat | Size | Status |
+|---|---|---|---|
+| CONT-01 | One command fetches the import source at a pinned commit | S | 🔲 |
+| CONT-02 | Phase 3's device tables arrive in one database version | XS | 🔲 |
+| CONT-03 | Every phase 3 screen has its own empty file | S | 🔲 |
+| CONT-04 | The import frame maps both SRDs' entries to our ids | S | 🔲 |
+| CONT-05 | The fifth-edition schemas hold the SRD values found so far | M | 🔲 |
+| CONT-06 | Monsters have an entity type | S | 🔲 |
+| CONT-07 | Spells are imported from both SRDs | M | 🔲 |
+| CONT-08 | Classes are imported with their subclasses | M | 🔲 |
+| CONT-09 | Species are imported with their subraces | S | 🔲 |
+| CONT-10 | Backgrounds are imported from both SRDs | S | 🔲 |
+| CONT-11 | Feats are imported from both SRDs | S | 🔲 |
+| CONT-12 | Equipment is imported from both SRDs | M | 🔲 |
+| CONT-13 | Magic items are imported from both SRDs | S | 🔲 |
+| CONT-14 | The small rule types are imported from both SRDs | S | 🔲 |
+| CONT-15 | The rules chapters are imported as rules with topics | M | 🔲 |
+| CONT-16 | The build merges hand-written mechanics into the imports by id | S | 🔲 |
+| CONT-17 | Search finds a name by prefix, case, accent or typo | M | 🔲 |
+| CONT-18 | The library page lists one topic under a search field | M | 🔲 |
+| CONT-19 | An entry opens in a floating window over its list | M | 🔲 |
+| CONT-20 | Monsters are imported from both SRDs | M | 🔲 |
+| CONT-21 | The import's entry counts match the sources | S | 🔲 |
+| CONT-22 | The Barbarian's levels 1 to 5 have mechanics in both SRDs | S | 🔲 |
+| CONT-23 | The Bard's levels 1 to 5 have mechanics in both SRDs | M | 🔲 |
+| CONT-24 | The Cleric's levels 1 to 5 have mechanics in both SRDs | M | 🔲 |
+| CONT-25 | The Druid's levels 1 to 5 have mechanics in both SRDs | M | 🔲 |
+| CONT-26 | The Fighter's levels 1 to 5 have mechanics in both SRDs | S | 🔲 |
+| CONT-27 | The Monk's levels 1 to 5 have mechanics in both SRDs | S | 🔲 |
+| CONT-28 | The Paladin's levels 1 to 5 have mechanics in both SRDs | M | 🔲 |
+| CONT-29 | The Ranger's levels 1 to 5 have mechanics in both SRDs | M | 🔲 |
+| CONT-30 | The Rogue's levels 1 to 5 have mechanics in both SRDs | S | 🔲 |
+| CONT-31 | The Sorcerer's levels 1 to 5 have mechanics in both SRDs | M | 🔲 |
+| CONT-32 | The Warlock's levels 1 to 5 have mechanics in both SRDs | M | 🔲 |
+| CONT-33 | The Wizard's levels 1 to 5 have mechanics in both SRDs | M | 🔲 |
+| CONT-34 | The 2014 races have mechanics | S | 🔲 |
+| CONT-35 | The 2024 species have mechanics | S | 🔲 |
+| CONT-36 | The backgrounds have mechanics | S | 🔲 |
+| CONT-37 | The feats have mechanics | S | 🔲 |
+| CONT-38 | The spells that give features have mechanics | M | 🔲 |
+| CONT-39 | The magic items with effects have mechanics | M | 🔲 |
+| CONT-40 | The conditions have mechanics | S | 🔲 |
+| CONT-41 | The device keeps the search index | S | 🔲 |
+| CONT-42 | Entry text links a word to its entry or rule | M | 🔲 |
+| CONT-43 | The Spells topic lists its spells by level with filters | M | 🔲 |
+| CONT-44 | A spell's window lists who can cast it in each ruleset | S | 🔲 |
+| CONT-45 | The Classes topic opens a class with its level table | M | 🔲 |
+| CONT-46 | The Species topic lists species or races by ruleset | S | 🔲 |
+| CONT-47 | The Backgrounds topic lists its entries | S | 🔲 |
+| CONT-48 | The Feats topic lists its entries | S | 🔲 |
+| CONT-49 | The equipment topics list their entries | M | 🔲 |
+| CONT-50 | The Magic items topic lists its entries | S | 🔲 |
+| CONT-51 | The Conditions topic lists its entries | XS | 🔲 |
+| CONT-52 | The Monsters topic lists its entries | M | 🔲 |
+| CONT-53 | Quick rules show their topics as cards | M | 🔲 |
+| CONT-54 | A Quick rules topic or rule opens in a floating window | M | 🔲 |
+| CONT-55 | A bookmark is kept from an entry's window | S | 🔲 |
+| CONT-56 | The Bookmarks page lists the person's bookmarks | S | 🔲 |
+| CONT-57 | The Sources page lists every book with its license | S | 🔲 |
+| CONT-58 | A ruleset switch hides the other edition's entries | S | 🔲 |
+| CONT-59 | The About screen shows both SRDs' attribution | S | 🔲 |
+| CONT-60 | Every feature of levels 1 to 5 is mechanized or marked manual | S | 🔲 |
+| CONT-61 | The built-in packs are the full SRDs | M | 🔲 |
+| CONT-62 | The phase 3 gate is shown on the built packs | M | 🔲 |
+
+- **CONT-01** — the 5e-database files of 5e-bits/5e-srd-api,
+  `packages/5e-database/src/{2014,2024}/en/*.json` (SPEC §3.2), pinned to one commit (ENG-02 and
+  ENG-32 measured `e6edf9a`). `docs/RUNNING.md` gets the command. `src/2014/ru` is not a source of
+  terms (SPEC §3.2); nothing is taken from ttg.club or wikidot (`CLAUDE.md`).
+- **CONT-02** — `bookmarks`, `entityIndex` (SHEET-07 left it for phase 3) and any other table phase
+  3 stores into, in one Dexie version, as SHEET-07 did, so no two rows claim one version. Later rows
+  add fields to a row, never a version. Bookmarks stay on the device, outside any character (ADR 014
+  item 13).
+- **CONT-03** — as SHEET-11 and SHEET-30 did: a route for the library (with a topic), Quick rules,
+  Bookmarks, Sources and About, an empty page file and an i18n namespace file for each, one empty
+  file for each topic list and each window the later rows fill, and the player page's tiles linking
+  to them. Its §11 lists each file with the row that fills it.
+- **CONT-04** — the frame also reads both text shapes. Found by ENG-02: 11 of 4,428 slugs do not fit the
+  entity id's slug pattern; the frame maps them (ENG-02 §11 lists them). SPEC §3.2: 2014 keeps text
+  in `desc: string[]`, 2024 in `description: string`. The frame checks every entity with the pack
+  schema and creates one empty importer file for each type, with a registry, so no two wave 2 rows
+  edit one file.
+- **CONT-05** — the only row of wave 1 that edits the fifth-edition schemas and the published JSON
+  Schema (`pnpm vitest run apps/web/test/pack-schema.test.ts --update`, `docs/RUNNING.md`); no
+  migration, every field optional. It widens them for what phase 1 found:
+  - ENG-32: 2014 `mounts-and-vehicles` (40 entries) has no `ItemDef.category`; 2024's "Until
+    dispelled or triggered" (2 spells) has no place for "or triggered"; 2024's `elven-lineage`,
+    `gnomish-lineage`, `magic-initiate` let the person choose the casting stat among three, and a
+    `spell` grant's `ability` takes one (`grantCastingStat`, ENG-51, then reads the choice).
+  - ENG-50: growth a spell's `scaling` cannot hold: SRD 5.1 Flame Blade and Spiritual Weapon (every
+    two slot levels), Flame Strike's die type; SRD 5.2.1 Eldritch Blast beams, Shillelagh's die,
+    Spare the Dying's range, True Strike's extra damage.
+  - ENG-53: healing `healing` cannot hold: Aid (both), 2014 Heroes' Feast (hit point maximum), 2024
+    Arcane Vigor (by hit die), Regenerate and Heroism (each turn).
+  - ENG-16: a `mastery` choice's filter cannot say "Melee weapons" or "with which you have
+    proficiency"; a growing die needs its own field; a magic weapon has no kind of its own (dnd5e
+    `type.baseItem`).
+  - ENG-33: a feat taken twice needs its own choices (2024 `ability-score-improvement`,
+    `magic-initiate`, `skilled`); 2024's Ability Score Improvement under one id needs a class grant
+    for each level.
+  - ENG-10: the 2024 human's size is Medium or Small, chosen; `prerequisites.feature_named` (the
+    four fighting style feats; Boon of Spell Recall) has no prerequisite kind.
+- **CONT-06** — ADR 010 item 3 lists a Monsters topic in phase 3; the schemas have no monster type
+  (measured: no `monster` in `packages/schema/src` or `packages/system-5e/src`). The only row of
+  wave 2 that edits the schemas. The type lives in the fifth-edition module (ADR 004).
+- **CONT-07** — 5e-database gives 2024 spells no `heal_at_slot_level` and no table by slot (ENG-50,
+  ENG-53): their healing and growth are read from the text or from dnd5e's data, into the fields
+  CONT-05 made. A pack writes the spellcasting modifier as `@mod` (5e-database: `MOD`).
+- **CONT-08** — each class's level table (SPEC §3.1: 12 classes, one subclass each, in both SRDs).
+- **CONT-09** — found by ENG-10: 5e-database gives the 2024 human one size, `Medium`; the SRD's text
+  is Medium or Small (the field CONT-05 made holds the choice). High elf's Extra Language is a trait
+  (`language_options`): the import puts its grant on the lineage, because ENG-56 reads a side's own
+  grants and a grant left on the trait is never left out.
+- **CONT-10** — SRD 5.1 has one (Acolyte), SRD 5.2.1 four. 5e-database has no text for the 2024
+  backgrounds (SPEC §3.2): it comes from the SRD 5.2.1 PDF, CC-BY-4.0, with its page named in the
+  row's §8. No 2024 species or background gives a language; dnd5e puts Common and two standard
+  languages on each background, and ENG-56 reads a 2024 background's `language` grants as 2024's
+  starting languages (`languageSource`, `rulesets/2024.ts`): the import puts them there, or changes
+  that field.
+- **CONT-11** — SRD 5.1 has one (Grappler), SRD 5.2.1 seventeen: 4 origin, 2 general, 4 fighting
+  style, 7 epic boons (SPEC §3.1). `prerequisites.feature_named` takes the kind CONT-05 made.
+- **CONT-12** — armor, weapons, gear, tools, packs, mounts and vehicles. Weapons are tagged so
+  ENG-16's "Melee weapons" and "with which you have proficiency" filters can read them (the filter
+  field is CONT-05's); `mounts-and-vehicles` takes the category CONT-05 made.
+- **CONT-13** — the import only; their effects are CONT-39.
+- **CONT-14** — skills, abilities, conditions, damage types, languages, proficiencies and the other
+  small types the packs carry (SHEET-84 closed the damage types in the mini-pack).
+- **CONT-15** — ADR 014 item 13: both SRDs' rules chapters become `rule` entries, each with a
+  `topic` (the `ruleTopic` entries of ADR 013 item 18's list) and an optional icon key, for Quick
+  rules.
+- **CONT-16** — SPEC §6.8: files at `packages/content/mechanics/<pack>/<type>/<slug>.json`, merged
+  by `EntityId`. A mechanics file whose id the import lacks fails the build; an entity with no
+  mechanics carries `meta.manual: true`. Foundry dnd5e's `packs/_source` is the reference for
+  effects (MIT code, CC-BY-4.0 content).
+- **CONT-17** — pure code in `packages/engine`, over `name.en`, `name.ru` and `aliases` (ADR 014
+  item 4, SPEC §9): case and ё = е, prefix, typos. Gate line: a typo search, "fireb", finds
+  Fireball. The gate's "огнен" line needs Russian names, which come with the Russian phase (OPS-35
+  §11).
+- **CONT-18** — ADR 012 items 2, 3 and 5; board `Library` (BRIEF P7): the topic picker, the search
+  field, the Filter and Sources buttons, grouping and sorting, a legend; each entry a card with its
+  kind's icon, name, source badge (ADR 009 item 12), second line and markers. A topic names its own
+  markers through the empty files of CONT-03. The Export button waits for phase 5's `.gmpack` export
+  (ADR 003 item A5).
+- **CONT-19** — ADR 012 items 1 and 4, ADR 013 item 6; board `Entry`: the other-language name under
+  the name, a small top part (type line, source, properties box), the full text with tappable dice
+  that roll (SHEET-39's dialog), "See full description" (ADR 011). No "Damage dice" list. Closing
+  returns to the same place in the list. Share is here; the bookmark button is CONT-55, the homebrew
+  copy and edit in "⋯" are phase 5.
+- **CONT-20** — takes the type CONT-06 made.
+- **CONT-21** — a test counts each type in each edition against the pinned source (SPEC §12 stage 3
+  gate) and runs every entity through the pack schema.
+- **CONT-22** — ENG-16: the mastery choice's filter "Melee weapons" (the field CONT-05 made).
+- **CONT-23** — ENG-13: 2014 Jack of All Trades is half the proficiency bonus on every ability
+  check, and `skills.<key>.prof` 0.5 rounds down; the mechanics add what they need.
+- **CONT-24** — ENG-60: Disciple of Life is two effects in each SRD (SRD 5.1 `healing.spell.bonus` 2
+  and `healing.spell.bonusPerLevel` 1; SRD 5.2.1 the same on `healing.slot.*`).
+- **CONT-25** — Wild Shape is a tracked use (SPEC §6.8 item 2); the row's §8 reads what each SRD
+  gives at levels 1 to 5.
+- **CONT-26** — golden B and B4's hand-written fixtures (ENG-10) are the reference for its entries.
+- **CONT-27** — its pool of points is a `resource` grant with its recovery (SPEC §6.8 item 2); the
+  row's §8 reads the pool's name in each edition.
+- **CONT-28** — ENG-16: the mastery choice's filter "with which you have proficiency".
+- **CONT-29** — ENG-16: the mastery choice's filter "with which you have proficiency".
+- **CONT-30** — ENG-16: the mastery choice's filter "with which you have proficiency".
+- **CONT-31** — the sorcery points are a tracked resource (SPEC §6.8 item 2); the row's §8 reads
+  what each SRD gives at levels 1 to 5.
+- **CONT-32** — ENG-55: Agonizing Blast adds to one cantrip's damage (2014 Eldritch Blast; 2024 a
+  chosen one); the mechanics add a narrower target or a condition for `when`.
+- **CONT-33** — Arcane Recovery is a tracked use (SPEC §6.8 item 2); which spells the spellbook
+  holds is the person's list, which phase 4 asks for (ADR 019).
+- **CONT-34** — the races and their subraces. ENG-57: SRD 5.1 Infernal Legacy casts spells with no
+  slot: one `spell` grant per spell, each with its `atLevel`, `uses` and `key`.
+- **CONT-35** — ENG-57: Elven Lineage, Fiendish Legacy, Gnomish Lineage (one `spell` grant per
+  spell, as above). ENG-64: Resourceful (the human) is one effect, `add 1` on
+  `inspiration.longRest`; golden B's fixture holds the name only. ENG-10: the human's size is
+  chosen.
+- **CONT-36** — each 2024 background's origin feat and tool or skill grants; the language grants of
+  CONT-10.
+- **CONT-37** — ENG-33: a feat taken twice gets its own choices (the field CONT-05 made); Magic
+  Initiate's spells are `spell` grants (ENG-57).
+- **CONT-38** — SPEC §6.8 item 3. ENG-50, ENG-53: growth and healing in the fields CONT-05 made.
+  ENG-55: a spell bonus limited to a type, a school or one spell needs a narrower target. ENG-16:
+  Shillelagh uses the casting stat for a club or quarterstaff and a d8 (2024: a die that grows at
+  levels 5, 11 and 17).
+- **CONT-39** — ENG-12: an item that puts a score above its maximum raises `abilities.<key>.max` too
+  (the belt, `max 21`). ENG-46: `prof.armor`, `prof.weapon`, `prof.tool` and `prof.language` are
+  computed by no path; a proficiency by effect becomes a computed list or grants. ENG-51: items that
+  cast a spell "using your spell save DC" (2014 Staff of Fire, Staff of Healing, Staff of Power)
+  pick one DC, or let the person pick. ENG-16: a "Longsword, +1" with a key of its own loses
+  proficiency and mastery.
+- **CONT-40** — golden D's exhaustion (SPEC §6.7) is the reference for how a condition's effects are
+  written; the row's §8 lists each condition of each SRD.
+- **CONT-41** — fills the `entityIndex` CONT-02 made, from the packs in use at start (SHEET-09),
+  rebuilt when they change.
+- **CONT-42** — ADR 013 item 18: a word whose entry or rule exists is a link ("concentration" in a
+  spell opens the Concentration rule); a word with no target stays plain; the link plugin of SPEC
+  §4.2 reads `{@…}`.
+- **CONT-43** — ADR 012 item 3: groups by level (Cantrips, Level 1, …), the school's icon, markers V
+  S M, concentration, ritual. SPEC §7.3 filters: level, school, class, casting time, concentration,
+  ritual, components. One entry per ruleset (ADR 013 item 5).
+- **CONT-44** — ADR 013 item 4: "Wizard (2014)", "Wizard (2024)", each with its source.
+- **CONT-45** — ADR 013: classes and subclasses per ruleset, one entry per ruleset; board `Classes`.
+- **CONT-46** — the word "Race" in 2014 and "Species" in 2024 (SPEC §9).
+- **CONT-47** — SRD 5.1 has one entry, SRD 5.2.1 four (SPEC §3.1).
+- **CONT-48** — grouped as SPEC §3.1 groups the 2024 feats: origin, general, fighting style, epic
+  boon.
+- **CONT-49** — ADR 010 item 3: Armor, Weapons and Items.
+- **CONT-50** — rarity and attunement as markers.
+- **CONT-51** — a condition's text, and its levels where it has them (exhaustion).
+- **CONT-52** — needs CONT-20.
+- **CONT-53** — ADR 013 item 18; board `QuickRules`: the title, a search field, the topics as cards.
+- **CONT-54** — ADR 013 item 18; board `QuickRule`: the rule's window over the topic's, everything
+  behind dimmed; a small box with the topic (a link back) and the source, a one-line summary, the
+  full text.
+- **CONT-55** — the bookmark button of ADR 013 items 6 and 17, in the entry window and the rule
+  window; the table is CONT-02's.
+- **CONT-56** — ADR 013 item 17.
+- **CONT-57** — ADR 010 item 2, ADR 013 item 17; board `Sources`: both SRDs built in from the first
+  start, whether each is in use (ADR 009: several rulebooks at once). Packs of the person's own come
+  with phase 5.
+- **CONT-58** — SPEC §7.3: 2014, 2024 or both. ADR 005 item 3.5: a setting "prefer 2014" or "prefer
+  2024" hides the other copy of an entry in lists; a badge shows each entry's edition.
+- **CONT-59** — the texts of SPEC Appendix В, `[ПРОВЕРИТЬ]` word for word against the legal page of
+  each SRD PDF (SPEC §3.5), in §8. "5E compatible" is the only phrase for the edition; no WotC name
+  or logo (`CLAUDE.md`).
+- **CONT-60** — a check over the build (SPEC §6.8, gate): each feature has effects or `meta.manual:
+  true`; each mechanized entity has a unit test.
+- **CONT-61** — replaces the mini-pack of SHEET-08 in `BUILT_IN_PACKS`. The goldens and `pnpm e2e`
+  stay green; the ids the sheet uses do not change; the build's size, the first frame and the
+  offline start (SETUP-07) are measured.
+- **CONT-62** — its §11 carries the proof of SPEC §12 stage 3 as ADR 000 and OPS-35 change it, and
+  each screen's screenshot at 360×800 in the chat.
+
+---
+## Phases 4–7 — cut when the phase before closes
 
 | Phase | SPEC stage | Area | What it delivers |
 |---|---|---|---|
-| 3 | 3 | `CONT` | SRD 2014 and 2024 import, mechanics for levels 1–5, the library, search, attribution |
 | 4 | 4 | `WIZ` | The creation wizard, the level-up wizard, house rules |
 | 5 | 5 | `HB` | The homebrew editor, the effect builder, before/after preview, several personal packs, `.gmpack` import and export with the import checks (ADR 003) |
 | 6 | 6 | `PDF` | Own template (6a), filling an uploaded sheet (6b) |
 | 7 | 7 | `POL` | Accessibility, performance, onboarding, optional Android |
-| RU | — | `RU` | Russian locale, glossary check, Russian overlays for SRD texts (ADR 000); placed when phase 3 closes |
+| RU | — | `RU` | Russian locale, glossary check, Russian overlays for SRD texts (ADR 000); placed when phase 3 closes (its section above) |
 | SYS | — | `SYS` | More game systems: other D&D editions, Pathfinder, later others (ADR 004); placed when phase 2 closes |
 
-- **Phase 3 and 4** — found by SHEET-60 (ADR 019): choosing the spells of a class list (cantrips
-  known, spells prepared) has no screen. Phase 3's library gives the lists; phase 4's wizard asks
-  for the choices.
-- **Phase 3** — found by ENG-57: the SRD traits that cast a spell with no slot (SRD 5.1 Infernal
-  Legacy; SRD 5.2.1 Elven Lineage, Fiendish Legacy, Gnomish Lineage, Magic Initiate; ENG-57 §8)
-  are one `spell` grant per spell, each with its `atLevel`, its `uses` and a `key`.
-- **Phase 3** — found by ENG-02: 11 of 4,428 5e-database slugs do not fit the entity id's slug
-  pattern; the import maps them. ENG-02 §11 lists them.
-- **Phase 3** — found by ENG-32: SRD values the fifth-edition schemas cannot hold yet, measured
-  at 5e-database `e6edf9a` (ENG-32 §8, §11): 2014's `mounts-and-vehicles` equipment (40 entries)
-  has no `ItemDef.category`; 2024's "Until dispelled or triggered" (2 spells) has no place for
-  "or triggered"; 2024's `elven-lineage`, `gnomish-lineage` and `magic-initiate` let the person
-  choose the spellcasting stat among three, and a `spell` grant's `ability` takes one stat. The
-  import widens the schema for each (no migration) or maps the value. The stat a grant casts
-  with is read in one place, `grantCastingStat` (ENG-51), which then reads the choice.
-- **Phase 3** — found by ENG-33: an entity two grants give is gathered once, with one choice
-  per grant (ENG-11). That is right for a trait two sources give, and wrong for a feat taken
-  twice: of 2024's feats, `ability-score-improvement`, `magic-initiate` and `skilled` say "You
-  can take this feat more than once" (ENG-33 §8), and Magic Initiate can come twice at level 1
-  (the Acolyte's, and a human's Versatile origin feat). 2024 gives its Ability Score Improvement feature at several levels under
-  one id, so each level's choice needs its own class grant. The import, or a core row before it,
-  gives a feat taken twice its own choices.
-- **Phase 3** — found by ENG-10: 5e-database at `e6edf9a` gives the 2024 human one size,
-  `Medium`, where the SRD's text, as dnd5e quotes it, is Medium or Small, chosen (ENG-10 §8). Its
-  `prerequisites.feature_named` (the four fighting style feats: "Fighting Style"; Boon of Spell
-  Recall: "Spellcasting") has no prerequisite kind: `entity` names one entity. The import decides
-  each. No 2024 species or background gives a language; dnd5e puts Common and two standard
-  languages on each background, and ENG-56 reads a 2024 background's `language` grants as 2024's
-  starting languages (`languageSource` in `rulesets/2024.ts`), so the import puts them there, or
-  changes that field. ENG-56 reads a side's own grants: 5e-database's high elf Extra Language is a
-  trait (`extra-language`'s `language_options`). The import puts its grant on the high elf
-  lineage; left on the trait, it is never left out, and adds to a 2024 background's three.
-- **Phase 3** — found by ENG-29: two `resource` grants of one key give one resource, with the
-  highest of their maximums. Mechanics that give one key from two classes (a multiclass) check
-  in their §8 what the SRD says for that case; uses that add up are an effect `add` on
-  `resources.<key>.max`.
-- **Phase 3** — found by ENG-12: a stat's maximum caps its score after every base-phase effect
-  (SPEC §6.1 step 4), so an item whose mechanics put a score above the maximum must raise
-  `abilities.<key>.max` too (SPEC §5.4's belt, `max 21`). The mechanics' §8 checks which items
-  do this.
-- **Phase 3** — found by ENG-46: SPEC §5.4's targets `prof.armor`, `prof.weapon`, `prof.tool`,
-  `prof.language` are computed by no path, so an effect on one changes nothing; proficiencies
-  come only from grants (`gathered.proficiencies`, read by ENG-13, ENG-16, ENG-46). The mechanics
-  that give a proficiency by an effect, if the SRDs have any, decide: a computed list, or grants.
-- **Phase 3** — found by ENG-16, three things the weapons of the import and its mechanics meet:
-  - Shillelagh (SRD 5.1, SRD 5.2.1) lets a club or a quarterstaff attack and deal damage with the
-    spellcasting stat instead of Strength, and makes its die a d8; in 2024 the die grows at levels
-    5, 11 and 17 (d10, d12, 2d6). ENG-16's attack stat is the weapon's kind's, or the higher with
-    finesse, and its dice are the item's; a key path for the stat (ENG-43's road) would hold the
-    stat. ENG-50's `scaling` adds dice and never changes a die's faces, so the growing die needs
-    its own field.
-  - A magic weapon has no kind of its own: dnd5e keeps `type.baseItem`, which its proficiency and
-    mastery read. ENG-16 reads a weapon proficiency by key and a `mastery` kind by the item's own
-    `key`, so a "Longsword, +1" with a key of its own loses both.
-  - A `mastery` choice's filter (`type`, `tag`, `category`) cannot say the barbarian's "Melee
-    weapons" nor the paladin's, ranger's and rogue's "with which you have proficiency" (ENG-16
-    §8). The import widens the filter, tags the weapons, or lists them.
-- **Phase 3** — found by ENG-50: growth a spell's `scaling` cannot hold (one formula, added to
-  the first damage once per step; ENG-50 §8). SRD 5.1: Flame Blade and Spiritual Weapon grow every
-  two slot levels; Flame Strike's die goes to the fire or the radiant damage, the caster's choice.
-  SRD 5.2.1: Eldritch Blast gains beams, Shillelagh's die changes, Spare the Dying's range grows,
-  True Strike gains extra damage it has none of at first. 5e-database `e6edf9a` gives the 2024
-  spells no table by slot (one entry each), so the import reads 2024's growth from the text or
-  dnd5e's data. The import widens the field (no migration) or maps each.
-- **Phase 3** — found by ENG-53: healing a spell's `healing` (`{ formula, kind }`, `hp` or
-  `tempHp`) cannot hold (ENG-53 §8): Aid (both SRDs) and 2014 Heroes' Feast raise the hit point
-  maximum; 2024 Arcane Vigor heals by the hit die spent (dnd5e: one activity per die size);
-  Regenerate's hit point each turn and Heroism's temporary hit points each turn. 5e-database's 2024
-  spells have no `heal_at_slot_level`, so 2024's healing is read from dnd5e's data or the text. The
-  import maps or widens each. A pack writes the spellcasting modifier as `@mod` (5e-database:
-  `MOD`).
-- **Phase 3** — found by ENG-51: SRD items that cast a spell "using your spell save DC" (2014
-  Staff of Fire, Staff of Healing, Staff of Power, among others) do not say which DC when a
-  character has more than one: a class's (`classes.<key>.spell.dc`) and a stat's a grant names
-  (`abilities.<stat>.spell.dc`). The mechanics of those items pick one, or let the person pick.
-- **Phase 3** — found by ENG-55: every spell's first damage adds `damage.spell.bonus`
-  (`spellDice`, `spell-dice.ts`), so an effect on it cannot be limited to some spells. Each SRD
-  bonus to a spell's damage is limited (ENG-55 §8): to a damage type (Elemental Affinity), a school
-  (Empowered Evocation), one cantrip (Agonizing Blast: 2014 Eldritch Blast, 2024 a chosen one), a
-  class's cantrips (2024 Potent Spellcasting); and "one damage roll of that spell" is one ray of a
-  spell that rolls several (Scorching Ray). The mechanics of those features add a narrower target,
-  or a condition an effect's `when` can test.
-- **Phase 3** — found by ENG-60: Disciple of Life's mechanics are two effects in each SRD (ENG-60
-  §3): SRD 5.1's `healing.spell.bonus` 2 and `healing.spell.bonusPerLevel` 1, SRD 5.2.1's the same
-  on `healing.slot.*`. The Life domain's other healing features have no target: Blessed Healer
-  (both SRDs, level 6) heals the caster 2 + the level when a spell heals another creature, and
-  Supreme Healing (both, level 17) uses each healing die's highest number. The mechanics that
-  reach those levels add what they need.
-- **Phase 3** — found by ENG-64: SRD 5.2.1's Resourceful (the human) is one effect, `add 1` on
-  `inspiration.longRest` (ENG-64 §3); the golden fixture's Resourceful is a name, and ENG-64's test
-  index carries the effect. The Champion's Heroic Warrior (level 10) gives Heroic Inspiration at
-  the start of a turn in combat; no action tracks turns, so the person gains it with
-  `gainInspiration`. Its mechanics decide whether that stays the person's.
-- **Phase 3** — found by ENG-13: a half proficiency that rounds up (2014's Remarkable Athlete:
-  "half your proficiency bonus (round up)") and half a proficiency on every ability check (2014's
-  Jack of All Trades). `skills.<key>.prof` 0.5 rounds down (`checkSteps`), and an ability check
-  (`checks.<key>.total`) has no proficiency level. The mechanics of those features add what they
-  need.
+- **Levels 6 to 20** — found by ENG-60, ENG-64, ENG-13 and ENG-55, placed by OPS-35: SPEC §12 stage
+  3's gate ends at level 5, so no phase 3 row writes these mechanics, and they have no row yet; the
+  owner places them when phase 3 closes. What phase 1 found for them: Blessed Healer (both SRDs,
+  level 6) heals the caster 2 + the level when a spell heals another creature, and Supreme Healing
+  (both, level 17) uses each healing die's highest number (ENG-60); the Champion's Heroic Warrior
+  (level 10) gives Heroic Inspiration at the start of a turn in combat, no action tracks turns, so
+  the person gains it with `gainInspiration`, and its mechanics decide whether that stays the
+  person's (ENG-64); 2014's Remarkable Athlete is half the proficiency bonus, rounded up, and
+  `skills.<key>.prof` 0.5 rounds down (ENG-13); Elemental Affinity (a damage type), Empowered
+  Evocation (a school) and 2024 Potent Spellcasting (a class's cantrips) limit a spell damage bonus
+  (ENG-55).
+- **Phase 4** — found by SHEET-60 (ADR 019): choosing the spells of a class list (cantrips
+  known, spells prepared) has no screen. Phase 3's library (CONT-43) gives the lists; phase 4's
+  wizard asks for the choices.
 - **Phase 5** — found by ENG-39: a locale overlay keys its texts by field name, but carries only
   the core's `schemaVersion`. When a module renames a text field, a stored overlay keeps the old
   name and its text is no longer shown. The row that stores imported overlays gives them the
@@ -443,7 +631,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
   `docs/design/mockups/` and its row in BRIEF Part 5; a design change made during a phase is
   made in the mockup and the canvas too.
 - **ADR 009, by phase** — added by OPS-09. Phase 2: rows (SHEET-30, 38, 46, 48, 52, 53, 55, 56,
-  57). Phase 3: several rulebooks at once, the source on every entry. Phase 5: custom stats, the person's packs next to the books, custom entries with effects. The
+  57). Phase 3: rows (CONT-18, 19, 57, 58). Phase 5: custom stats, the person's packs next to the books, custom entries with effects. The
   dice phase (with ADR 005 item 11): the honest animated roll, custom roll modifiers. The table
   link's phase: the campaign copy, the DM's changes, approval of important changes.
 - **Phase 4** — found by ENG-33: SPEC §8.4's point-buy budget is the point-buy method's (ADR 010
@@ -476,16 +664,13 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
   `encumbrance: 'variant'`, which no code reads; ENG-45's `speed.armorReduction` (`combat.ts`)
   reads no house rule. The row that makes the encumbrance house rule work gives it 0 under the
   variant.
-- **ADR 010, by phase** — added by OPS-10. Phase 2: rows (SHEET-38, 40, 46, 47, 49). Phase
-  3: the one-page library with topics and full entries, the All sources list. Phase 4: steps
+- **ADR 010, by phase** — added by OPS-10. Phase 2: rows (SHEET-38, 40, 46, 47, 49). Phase 3: rows (CONT-18, 19, 43 to 52, 57). Phase 4: steps
   that open and close, ability score methods, level-up by XP or milestone. Phase 5: adding
   packs from "Books in use". DM tools: encounter templates. The table link's phase: the DM's
   level-up control, changes reviewed together.
-- **ADR 012** — added by OPS-14. Phase 3: the library's list page and its floating entry window.
+- **ADR 012** — added by OPS-14. Phase 3: rows (CONT-18, 19).
 - **ADR 013, by phase** — added by OPS-15 to OPS-19. Phase 2: rows (SHEET-11, 12, 30, 31, 40,
-  58). Phase 3: classes and subclasses per ruleset, one entry per ruleset, the spell's description
-  layout, Sources with the SRDs built in, Quick rules with every SRD rule and linked terms,
-  Bookmarks. Phase 4: the turning arrow on creation steps, the roll calculator, optional feats, the ability
+  58). Phase 3: rows (CONT-19, 42, 44, 45, 53 to 58). Phase 4: the turning arrow on creation steps, the roll calculator, optional feats, the ability
   bonus conflict window. The dice phase: the roll that looks like a real throw. The table link's
   phase: level-up approval in a campaign, the DM's edit before approving, the approvals tab, the
   DM's setting for the conflict window. The DM tools' phase: actors with types. A second system:
@@ -493,9 +678,8 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 - **ADR 015** — added by OPS-26. Phase 2: rows (SHEET-01 to SHEET-06, SHEET-56). The theme
   editor's phase: the skin schema, import, export. The dice phase: dice skins and their effects.
   The purchases phase: frames, backgrounds, seasons.
-- **ADR 014** — added by OPS-20. Phase 3: the import brings in both SRDs' rules chapters as
-  `rule` entries with topics, for Quick rules; bookmarks are a table on the device.
-- **ADR 011, by phase** — added by OPS-12. Phase 2: SHEET-31. Phase 3: the SRD texts. Phase 5:
+- **ADR 014** — added by OPS-20. Phase 3: rows (CONT-02, 15, 56).
+- **ADR 011, by phase** — added by OPS-12. Phase 2: SHEET-31. Phase 3: rows (CONT-07 to 15, 19, 42). Phase 5:
   the person's packs.
 
 Phases L1–L6 (Foundry, game master tools, assistant, accounts, shared room) are in SPEC §12 and
@@ -511,11 +695,11 @@ person's own AI key, free; L5's campaign sync becomes the table link. It adds th
 
 **Phase 0 → phase 1 → phase 2 → phase 3 → phase 4 → phase 5 → phase 6 → phase 7.** Inside a
 phase, rows go in the order of its table unless a row's "Depends on" allows otherwise.
-Phase 2's waves (its section) say which of its rows can run in parallel chats.
+The waves of phase 2 and phase 3 (their sections) say which of their rows can run in parallel chats.
 
 Three things can change this order, and all are the owner's decision (SPEC §14):
 - if she plays in Foundry now, L1 can move ahead of phase 6;
-- the Russian phase is placed when phase 3 closes;
+- the Russian phase is placed when phase 3 closes (its section above);
 - the more-systems phase is placed when phase 2 closes (ADR 004).
 
 ---
@@ -558,3 +742,4 @@ Three things can change this order, and all are the owner's decision (SPEC §14)
 | OPS-32 | The changelog's format example names no real ticket | XS | ✅ 2026-10-29 |
 | OPS-33 | The rows found in wave 7 join the waves, and a prompt runs several rows in one chat | XS | ✅ 2026-11-04 |
 | OPS-34 | The rows found in wave 7's last batch join wave 8 | XS | ✅ 2026-11-04 |
+| OPS-35 | Phase 3 is cut into rows that run in waves | S | ✅ 2026-11-08 |

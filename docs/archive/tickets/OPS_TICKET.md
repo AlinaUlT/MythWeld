@@ -1223,3 +1223,113 @@ Found by those six tickets (their §11): rows SHEET-77 to SHEET-82 were added wi
 
 **Tests:** none; `pnpm lint && pnpm typecheck && pnpm test` stay green.
 **What came out of it:** Quality gate, 2026-11-04: `pnpm lint` 443 files, no fixes; `pnpm typecheck` clean; `pnpm test` 140 files, 1583 passed, 0 failed, 36.0 s, then speed 2 passed (no code touched; e2e not run). Nothing found. No changelog line (nothing a person can see).
+
+---
+
+### OPS-35 Phase 3 is cut into rows that run in waves
+
+**Hat:** Phase 3 is cut into rows that run in waves
+**Depends on:** Nothing (the cut is documents only; the rows wait for phase 2's gate)
+**Size:** S
+**Screen:** No
+**SPEC:** §12 stage 3; §3, §6.8, §7.3, §9; ADR 003, 009, 010, 011, 012, 013, 014, 019
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `docs/tickets/BACKLOG.md` — a phase 3 section (new), the later phases' table and notes,
+the Order section, the OPS table. `docs/tickets/CONT_TICKET.md` and
+`docs/archive/tickets/CONT_TICKET.md` — new, the theme header only, so two first rows of wave 1
+never both create them. No code changes.
+
+#### 2. What is missing now
+
+Measured on `main` at `2cb9c48`:
+- Phase 3 is one line in the later phases' table: "SRD 2014 and 2024 import, mechanics for levels
+  1–5, the library, search, attribution". No row, no size, no wave.
+- 17 notes name phase 3 (16 found by phase 1's tickets, 1 by SHEET-60) and six ADR notes list phase 3
+  work by topic. None names a row.
+- `packages/content` holds the two mini-packs of SHEET-08 and no import script.
+
+#### 3. What it should look like when done
+
+1. Phase 3 has rows of size XS, S or M, each with a hat of one phrase without "and", in work order,
+   under the gate of SPEC §12 stage 3 as ADR 000 changes it. Its last row carries the gate's proof.
+2. Every line of SPEC §12 stage 3's list, and every item ADRs 003, 009 to 014 place in phase 3, has a
+   row. No row adds or drops a feature (ADR 007 item 4); a move to another phase is named in §11.
+3. Every phase 3 note of phase 1 is the note of the row that takes it, and is gone from the later
+   phases' notes. A note that also names a later phase keeps that part there.
+4. A wave table says which rows can run in parallel chats: in one wave no two rows own one file, and
+   at most one row edits the schemas and at most one claims a database version.
+5. The CONT theme files exist with the header only.
+6. No code changes. The quality gate stays green.
+
+#### 4. How to do it
+
+1. Read SPEC §3, §6.8, §7.3, §9 and §12 stage 3, ADR 003, 009 to 014 and 019, the 17 notes, the
+   mockup boards of BRIEF P7 and P17, and `packages/content` as it is.
+2. Split by file: one importer file per type, one mechanics file per entity, one list and one
+   window file per topic. The files that every row would edit are made first (CONT-02, 03, 04, 05)
+   so the later rows own different files.
+3. Write the section and the notes with one script, then check it with a second one over the file.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+None new. Control numbers: a script over `BACKLOG.md` counts the rows, the hats that hold "and", the
+sizes, each row's place in the waves and each row's note; the gate's counts.
+
+#### 8. Checked against the source
+
+- ADR 010 item 3 lists a Monsters topic in phase 3, and the schemas have no monster type (no
+  `monster` in `packages/schema/src` or `packages/system-5e/src`, measured). So CONT-06, 20 and 52.
+- SPEC §12 stage 3's gate line "поиск по «огнен» и по «fireb» находит одно и то же заклинание"
+  needs a Russian name for Fireball. ADR 000 moves the Russian overlays to the Russian phase.
+
+#### 9. Not in this ticket
+
+- Any phase 3 code. Nothing starts before phase 2's gate is proved (SHEET-85, 86, 87, 60).
+- The cut of phases 4 to 7: each is cut when the phase before closes.
+
+#### 10. Rake check
+
+- Hard invariants are not touched: no code, no content, no string.
+- Owner's decisions: none is made for her. The four moves of §11 follow ADR 000, ADR 003 and
+  ADR 010; each is named there so she can reverse it.
+
+#### 11. What came out of it
+
+The owner asked on 2026-11-08, while SHEET-85, 86 and 87 waited, for rows she can run in parallel
+without breaking the process. Phase 3 now has 62 rows, CONT-01 to CONT-62: 2 XS, 32 S, 28 M (counted
+by a script). No hat holds "and". Every row has a note and sits in exactly one of five waves: 5, 14,
+40, 2 and 1 rows. Every phase 3 item of SPEC §12 stage 3 and of ADRs 003, 009 to 014 has a row. 16
+notes moved from the later phases' notes into rows; six ADR notes now name rows.
+
+Decided here (ADR 002, ADR 007 items 4 and 7; the easiest to undo is taken):
+- **Monsters** are in phase 3 because ADR 010 item 3 says so: a type (CONT-06), an import (CONT-20)
+  and a list (CONT-52).
+- **The library's Export button** waits for phase 5's `.gmpack` export (ADR 003 item A5); CONT-18
+  draws the page without it.
+- **The gate's "огнен" line** moves to the Russian phase with the Russian names; phase 3 proves the
+  typo search with "fireb".
+- **Mechanics for levels 6 to 20** have no row: SPEC §12 stage 3's gate ends at level 5. The five
+  facts phase 1 found for them wait in one note, "Levels 6 to 20", for the owner to place.
+- **All schema widening** is one wave 1 row (CONT-05), so the importers of wave 2 never edit the
+  schemas or the published JSON Schema.
+- **The mini-packs are replaced late**, in wave 4 (CONT-61), so the goldens and `pnpm e2e` stay
+  green while the mechanics rows write their files.
+- **The SHEET-60 note** about picking the spells of a class list is now phase 4's alone; phase 3's
+  Spells topic (CONT-43) shows the lists.
+
+Quality gate, 2026-11-08: `pnpm lint` 454 files, no fixes; `pnpm typecheck` clean; `pnpm test` 144 files,
+1655 passed, 0 failed, 33.0 s, then speed 2 passed, 2.7 s (no code touched; e2e not run). Found, not
+fixed: nothing. Nothing for the changelog;
+a person sees no change.
