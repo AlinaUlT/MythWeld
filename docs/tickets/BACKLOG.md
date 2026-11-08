@@ -262,7 +262,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-57 | Custom sections hold the person's own lists | S | ✅ 2026-11-04 |
 | SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | ✅ 2026-11-04 |
 | SHEET-59 | The change history lists the last 50 changes | S | ✅ 2026-11-04 |
-| SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🔲 |
+| SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🚧 |
 | SHEET-69 | The roll dialog counts the faces a person types | S | ✅ 2026-11-04 |
 | SHEET-70 | The header keeps the class line whole beside the choices badge | XS | ✅ 2026-11-04 |
 | SHEET-71 | The undo toast shows above an open panel | XS | ✅ 2026-11-04 |
@@ -279,9 +279,22 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-82 | The toast goes after its time once Undo was tapped | XS | ✅ 2026-11-04 |
 | SHEET-83 | The roll dialog names an attack by its own name | XS | ✅ 2026-11-04 |
 | SHEET-84 | The packs hold every damage type of the SRD | S | ✅ 2026-11-04 |
+| SHEET-85 | Current hit points follow a pick that raises the maximum | S | 🔲 |
+| SHEET-86 | The Spells tab shows how many spells are prepared and how many cantrips are known | S | 🔲 |
+| SHEET-87 | The SHEET-11 route test waits for the back arrow before it measures it | XS | 🔲 |
 
 - **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
-  empty form to its values, and carries every tab's screenshot in the chat.
+  empty form to its values, and carries every tab's screenshot in the chat. The test is built and
+  green; the phase stays open until the owner answers whether SHEET-85 and SHEET-86 are part of the
+  gate (SHEET-60 §11).
+- **SHEET-85** — found by SHEET-60: a character made in the form shows 11 / 12 hit points when its
+  subrace pick raises the maximum after creation. The form stores the current ones at creation
+  (`packages/system-5e/src/manual.ts`, lines 153 to 160).
+- **SHEET-86** — found by SHEET-60: `classes.<id>.spell.prepared` and `.cantrips` are computed
+  (golden A: 4 and 3) and no screen shows them. Picking the spells of a class list has no screen
+  either; whether it joins this row is the owner's.
+- **SHEET-87** — found by SHEET-60: `apps/web/e2e/navigation.spec.ts` line 21 reads `boundingBox()`
+  with no wait; once in two full runs under two workers it got `undefined`.
 
 ---
 
