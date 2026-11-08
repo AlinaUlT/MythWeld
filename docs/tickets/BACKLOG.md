@@ -149,6 +149,11 @@ at most 5 minutes each and show their SPEC §6.7 values; the e2e scenario "damag
 concentrating → save → undo" passes; every tab has a screenshot at 360×800, in English. No
 creation wizard, no homebrew editor. SHEET-60 is the phase's last row: its §11 carries the proof.
 
+**Closed 2026-11-08.** The gate's proof is in SHEET-60 §11, in
+[`docs/archive/tickets/SHEET_TICKET.md`](../archive/tickets/SHEET_TICKET.md). ADR 019 decided what the
+gate needed (SHEET-85, 86 and 87) and what waits for phases 3 and 4: picking the spells of a class
+list, and a person's own timing of the 5 minutes. SHEET-88 is open and outside the gate.
+
 **Cut on 2026-10-22 by OPS-29**, before phase 1 closed: ENG-64 is phase 1's last open row, and the
 owner asked for rows she can start in parallel chats once it lands. No phase 2 row starts before
 phase 1's gate is proved. The rows come from SPEC §12 stage 2 and from the ADRs that put work in
@@ -263,7 +268,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-57 | Custom sections hold the person's own lists | S | ✅ 2026-11-04 |
 | SHEET-58 | The sheet's "⋯" menu opens the character's actions | S | ✅ 2026-11-04 |
 | SHEET-59 | The change history lists the last 50 changes | S | ✅ 2026-11-04 |
-| SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | 🚧 |
+| SHEET-60 | The phase 2 gate is shown on golden characters made by hand | M | ✅ 2026-11-08 |
 | SHEET-69 | The roll dialog counts the faces a person types | S | ✅ 2026-11-04 |
 | SHEET-70 | The header keeps the class line whole beside the choices badge | XS | ✅ 2026-11-04 |
 | SHEET-71 | The undo toast shows above an open panel | XS | ✅ 2026-11-04 |
@@ -285,10 +290,6 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-87 | The SHEET-11 route test waits for the back arrow before it measures it | XS | ✅ 2026-11-08 |
 | SHEET-88 | Current hit points stay inside the maximum when a pick is taken back | XS | 🔲 |
 
-- **SHEET-60** — the gate above, in English (ADR 000). Its §11 measures each golden's time from an
-  empty form to its values, and carries every tab's screenshot in the chat. The test is built and
-  green; the phase stays open until SHEET-85, 86 and 87 are closed (ADR 019). Then SHEET-60 runs
-  again, fills the rest of its §11 and closes phase 2.
 - **SHEET-88** — found by SHEET-85: taking a pick back lowers the maximum and leaves the current
   hit points above it (golden A, 12 current, Hill Dwarf taken back: 12 of 11). Not needed for the
   phase 2 gate (ADR 019 item 1 does not list it).

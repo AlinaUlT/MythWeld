@@ -233,9 +233,8 @@ test('SHEET-60 golden A is made by hand and shows its SPEC §6.7 values', async 
   await expect(number(page, 'init.total')).toHaveText('+0Init');
   await expect(number(page, 'speed.walk')).toHaveText('25 ftSpeed');
   await expect(header.locator('[data-path="skills.perception.passive"]')).toHaveText('13Passive');
-  // The maximum is SPEC §6.7's 12. The current hit points are not asserted: the form stored 11
-  // before the subrace pick raised the maximum (found, not fixed: SHEET-60 §11).
-  await expect(number(page, 'hp.max')).toHaveAttribute('aria-label', /Hit points \d+ of 12,/);
+  // SPEC §6.7 golden A: 12 hit points, and the current ones are 12 too (SHEET-85).
+  await expect(number(page, 'hp.max')).toHaveAttribute('aria-label', /Hit points 12 of 12,/);
   await expect(number(page, 'classes.cleric.spell.dc')).toHaveText('Save DC13');
   await expect(number(page, 'classes.cleric.spell.attack')).toHaveText('Attack+5');
 
@@ -276,9 +275,12 @@ test('SHEET-60 golden A is made by hand and shows its SPEC §6.7 values', async 
   await expect(attack).toContainText('1d8');
   await expect(attack).toContainText('Bludgeoning');
 
-  // The Spells tab: 2 slots of level 1; Bless and Cure Wounds from the domain, always prepared.
+  // The Spells tab: 4 spells prepared and 3 cantrips known (SHEET-86); 2 slots of level 1; Bless and
+  // Cure Wounds from the domain, always prepared.
   await openTab(page, 'Spells');
   const spells = page.getByRole('tabpanel');
+  await expect(number(page, 'classes.cleric.spell.prepared')).toHaveText('Spells prepared4');
+  await expect(number(page, 'classes.cleric.spell.cantrips')).toHaveText('Cantrips known3');
   await expect(spells.locator('[data-slot="1"]').getByTestId('slots-left')).toHaveText(
     '2 of 2 left',
   );
@@ -307,11 +309,8 @@ test('SHEET-60 golden A is made by hand and shows its SPEC §6.7 values', async 
 test('SHEET-60 damage while concentrating, the save, then undo', async ({ page }) => {
   await makeGoldenA(page);
   const hp = number(page, 'hp.max');
-  await expect(hp).toHaveAttribute('aria-label', /Hit points \d+ of 12,/);
-  const now = Number(
-    (await hp.getAttribute('aria-label'))?.match(/Hit points (\d+) of/)?.[1] ?? Number.NaN,
-  );
-  expect(now).toBeGreaterThan(4);
+  await expect(hp).toHaveAttribute('aria-label', /Hit points 12 of 12,/);
+  const now = 12;
   const after = (left: number) => new RegExp(`Hit points ${left} of 12,`);
 
   // Bless is cast with a level 1 slot and held: its card is on the Combat tab.
