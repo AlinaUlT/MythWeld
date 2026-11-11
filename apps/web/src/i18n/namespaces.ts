@@ -2,11 +2,19 @@
 // never edit one locale file. A new screen or piece adds its file here.
 // SHEET-30: one namespace per section of the sheet's tabs, and per panel the sheet opens, each
 // empty until its row fills it (`apps/web/src/sheet/`).
+// CONT-03: one namespace for each phase 3 screen, holding only the page's title until its row
+// fills it: `library`, `quickRules`, `bookmarks`, `sources` and `aboutApp` (the About screen; `about`
+// is the sheet's About tab). Each empty file below the library, Quick rules and the bookmark button
+// has a namespace of its own, empty, so two rows of one wave never edit one locale file: `lib*` for
+// the library's topics and windows, `rules*` for Quick rules' windows, `bookmarkButton`.
 
 import about from '../locales/en/about.json' with { type: 'json' };
+import aboutApp from '../locales/en/aboutApp.json' with { type: 'json' };
 import actions from '../locales/en/actions.json' with { type: 'json' };
 import add from '../locales/en/add.json' with { type: 'json' };
 import attacks from '../locales/en/attacks.json' with { type: 'json' };
+import bookmarkButton from '../locales/en/bookmarkButton.json' with { type: 'json' };
+import bookmarks from '../locales/en/bookmarks.json' with { type: 'json' };
 import breakdown from '../locales/en/breakdown.json' with { type: 'json' };
 import cast from '../locales/en/cast.json' with { type: 'json' };
 import characters from '../locales/en/characters.json' with { type: 'json' };
@@ -23,14 +31,33 @@ import dice from '../locales/en/dice.json' with { type: 'json' };
 import features from '../locales/en/features.json' with { type: 'json' };
 import gear from '../locales/en/gear.json' with { type: 'json' };
 import inspiration from '../locales/en/inspiration.json' with { type: 'json' };
+import libArmor from '../locales/en/libArmor.json' with { type: 'json' };
+import libBackgrounds from '../locales/en/libBackgrounds.json' with { type: 'json' };
+import libClass from '../locales/en/libClass.json' with { type: 'json' };
+import libClasses from '../locales/en/libClasses.json' with { type: 'json' };
+import libConditions from '../locales/en/libConditions.json' with { type: 'json' };
+import libEntry from '../locales/en/libEntry.json' with { type: 'json' };
+import libFeats from '../locales/en/libFeats.json' with { type: 'json' };
+import libItems from '../locales/en/libItems.json' with { type: 'json' };
+import libMagicItems from '../locales/en/libMagicItems.json' with { type: 'json' };
+import libMonsters from '../locales/en/libMonsters.json' with { type: 'json' };
+import library from '../locales/en/library.json' with { type: 'json' };
+import libSpecies from '../locales/en/libSpecies.json' with { type: 'json' };
+import libSpellCasters from '../locales/en/libSpellCasters.json' with { type: 'json' };
+import libSpells from '../locales/en/libSpells.json' with { type: 'json' };
+import libWeapons from '../locales/en/libWeapons.json' with { type: 'json' };
 import notes from '../locales/en/notes.json' with { type: 'json' };
 import numberPad from '../locales/en/numberPad.json' with { type: 'json' };
 import player from '../locales/en/player.json' with { type: 'json' };
+import quickRules from '../locales/en/quickRules.json' with { type: 'json' };
 import rest from '../locales/en/rest.json' with { type: 'json' };
 import roll from '../locales/en/roll.json' with { type: 'json' };
+import rulesRule from '../locales/en/rulesRule.json' with { type: 'json' };
+import rulesTopic from '../locales/en/rulesTopic.json' with { type: 'json' };
 import sections from '../locales/en/sections.json' with { type: 'json' };
 import settings from '../locales/en/settings.json' with { type: 'json' };
 import sheet from '../locales/en/sheet.json' with { type: 'json' };
+import sources from '../locales/en/sources.json' with { type: 'json' };
 import spells from '../locales/en/spells.json' with { type: 'json' };
 import start from '../locales/en/start.json' with { type: 'json' };
 import toast from '../locales/en/toast.json' with { type: 'json' };
@@ -71,6 +98,28 @@ export const en = {
   choices,
   add,
   sections,
+  library,
+  quickRules,
+  bookmarks,
+  sources,
+  aboutApp,
+  libSpells,
+  libClasses,
+  libSpecies,
+  libBackgrounds,
+  libFeats,
+  libArmor,
+  libWeapons,
+  libItems,
+  libMagicItems,
+  libConditions,
+  libMonsters,
+  libEntry,
+  libSpellCasters,
+  libClass,
+  rulesTopic,
+  rulesRule,
+  bookmarkButton,
 };
 
 export type Namespaces = typeof en;

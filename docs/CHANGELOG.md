@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-11 · CONT-03 · On the player page, Sources, Library, Quick rules and Bookmarks now open their pages instead of saying "Coming later". Each page shows its title and a back arrow and nothing else yet.
 - 2026-11-08 · SHEET-86 · The Spells tab shows how many spells a class prepares and how many cantrips it knows, each opening its breakdown; a class without that count shows no number.
 - 2026-11-08 · SHEET-85 · A character at full hit points stays at full when a pick raises the maximum: a Hill Dwarf reads 12 of 12, not 11 of 12. A character below full keeps the hit points it has.
 - 2026-11-04 · SHEET-76 · The Turn tab lists your feats too: Savage Attacker under Once per turn, and Alert and Defense under Always on with their numbers (Initiative +2, AC +1), each opening its breakdown.

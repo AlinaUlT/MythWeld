@@ -45,10 +45,14 @@ describe('SHEET-12 the player page', () => {
     ]);
   });
 
-  it('links Characters to the list, and Dice roll to the dice page (SHEET-38)', () => {
+  it('links every section to its page (SHEET-38, CONT-03)', () => {
     expect(links(render(2))).toEqual([
       ['/characters', ['Characters', '2 characters']],
+      ['/sources', ['Sources', '']],
+      ['/library', ['Library', '']],
       ['/dice', ['Dice roll', '']],
+      ['/quick-rules', ['Quick rules', '']],
+      ['/bookmarks', ['Bookmarks', '']],
     ]);
   });
 
@@ -63,14 +67,8 @@ describe('SHEET-12 the player page', () => {
     expect(lines(render(undefined))[0]).toEqual(['Characters', '']);
   });
 
-  it('shows the four sections not open yet as coming later', () => {
-    expect(lines(render(2)).map(([, line]) => line)).toEqual([
-      '2 characters',
-      en.common.comingLater,
-      en.common.comingLater,
-      '',
-      en.common.comingLater,
-      en.common.comingLater,
-    ]);
+  it('shows no section as coming later: all six open a page', () => {
+    expect(render(2)).not.toContain(en.common.comingLater);
+    expect(lines(render(2)).map(([, line]) => line)).toEqual(['2 characters', '', '', '', '', '']);
   });
 });

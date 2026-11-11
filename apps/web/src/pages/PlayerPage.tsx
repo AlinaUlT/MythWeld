@@ -1,6 +1,8 @@
 // SHEET-12: the player page's six sections (ADR 013 item 17, board V3-Player). Characters opens
 // the list and shows how many are stored, with no limit (ADR 005 item 2); the other five open with
 // their phases and show as coming later until then. SHEET-38: Dice roll opens the dice page.
+// CONT-03: Sources, Library, Quick rules and Bookmarks open their pages, empty until their rows fill
+// them.
 import {
   Bookmark,
   BookOpen,
@@ -29,11 +31,11 @@ interface Section {
 
 export const sections: readonly Section[] = [
   { key: 'characters', icon: Users, to: paths.characters },
-  { key: 'sources', icon: BookOpen },
-  { key: 'library', icon: Search },
+  { key: 'sources', icon: BookOpen, to: paths.sources },
+  { key: 'library', icon: Search, to: paths.library },
   { key: 'dice', icon: Dices, to: paths.dice },
-  { key: 'quickRules', icon: ScrollText },
-  { key: 'bookmarks', icon: Bookmark },
+  { key: 'quickRules', icon: ScrollText, to: paths.quickRules },
+  { key: 'bookmarks', icon: Bookmark, to: paths.bookmarks },
 ];
 
 /** The six tiles; `characters` is the stored count, `undefined` until it is read. */

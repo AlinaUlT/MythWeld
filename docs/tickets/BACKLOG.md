@@ -335,7 +335,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 |---|---|---|---|
 | CONT-01 | One command fetches the import source at a pinned commit | S | ✅ 2026-11-11 |
 | CONT-02 | Phase 3's device tables arrive in one database version | XS | ✅ 2026-11-11 |
-| CONT-03 | Every phase 3 screen has its own empty file | S | 🔲 |
+| CONT-03 | Every phase 3 screen has its own empty file | S | ✅ 2026-11-11 |
 | CONT-04 | The import frame maps both SRDs' entries to our ids | S | 🔲 |
 | CONT-05 | The fifth-edition schemas hold the SRD values found so far | M | 🔲 |
 | CONT-06 | Monsters have an entity type | S | 🔲 |
@@ -396,10 +396,6 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-61 | The built-in packs are the full SRDs | M | 🔲 |
 | CONT-62 | The phase 3 gate is shown on the built packs | M | 🔲 |
 
-- **CONT-03** — as SHEET-11 and SHEET-30 did: a route for the library (with a topic), Quick rules,
-  Bookmarks, Sources and About, an empty page file and an i18n namespace file for each, one empty
-  file for each topic list and each window the later rows fill, and the player page's tiles linking
-  to them. Its §11 lists each file with the row that fills it.
 - **CONT-04** — the frame also reads both text shapes. Found by ENG-02: 11 of 4,428 slugs do not fit the
   entity id's slug pattern; the frame maps them (ENG-02 §11 lists them). SPEC §3.2: 2014 keeps text
   in `desc: string[]`, 2024 in `description: string`. The frame checks every entity with the pack

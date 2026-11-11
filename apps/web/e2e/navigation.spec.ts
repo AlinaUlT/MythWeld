@@ -11,6 +11,13 @@ const pages = [
   { path: 'characters/golden-b', title: en.sheet.title, back: 'characters' },
   { path: 'dice', title: en.dice.title, back: 'player' },
   { path: 'settings', title: en.settings.title, back: '' },
+  // CONT-03: the phase 3 pages, each with its title and a back arrow, empty until its row fills it.
+  { path: 'library', title: en.library.title, back: 'player' },
+  { path: 'library/spells', title: en.library.title, back: 'player' },
+  { path: 'quick-rules', title: en.quickRules.title, back: 'player' },
+  { path: 'bookmarks', title: en.bookmarks.title, back: 'player' },
+  { path: 'sources', title: en.sources.title, back: 'player' },
+  { path: 'about', title: en.aboutApp.title, back: 'settings' },
 ];
 
 const back = (page: Page) => page.getByRole('link', { name: en.common.back });
@@ -132,9 +139,20 @@ test('SHEET-12 the player page shows its six sections', async ({ page }, testInf
     await expect(tile).toBeVisible();
     expect((await tile.locator('..').boundingBox())?.height).toBeGreaterThanOrEqual(44);
   }
-  // Characters and Dice roll open (SHEET-38); the other four are coming later.
-  await expect(page.getByRole('link')).toHaveCount(4);
-  await expect(main.getByText(en.common.comingLater)).toHaveCount(4);
+  // CONT-03: all six open a page; none is coming later.
+  await expect(page.getByRole('link')).toHaveCount(8);
+  await expect(main.getByText(en.common.comingLater)).toHaveCount(0);
+  for (const [name, path] of [
+    [en.player.sources.title, 'sources'],
+    [en.player.library.title, 'library'],
+    [en.player.quickRules.title, 'quick-rules'],
+    [en.player.bookmarks.title, 'bookmarks'],
+  ] as const) {
+    await expect(page.getByRole('link', { name })).toHaveAttribute(
+      'href',
+      `${APP_BASE_PATH}${path}`,
+    );
+  }
   await expect(page.getByRole('link', { name: en.player.dice.title })).toHaveAttribute(
     'href',
     `${APP_BASE_PATH}dice`,
@@ -153,4 +171,25 @@ test('SHEET-12 the player page shows its six sections', async ({ page }, testInf
 
   await characters.tap();
   await expect(page).toHaveURL('characters');
+});
+
+test('CONT-03 each phase 3 tile opens its page, and the back arrow returns to the player page', async ({
+  page,
+}) => {
+  for (const [name, path, title] of [
+    [en.player.sources.title, 'sources', en.sources.title],
+    [en.player.library.title, 'library', en.library.title],
+    [en.player.quickRules.title, 'quick-rules', en.quickRules.title],
+    [en.player.bookmarks.title, 'bookmarks', en.bookmarks.title],
+  ] as const) {
+    await page.goto('player');
+    await page.getByRole('link', { name }).tap();
+    await expect(page).toHaveURL(path);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
+    // Empty until its row fills it: the header, and nothing in the page below it.
+    await expect(page.getByRole('main').locator('> :not(header)')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+    await back(page).tap();
+    await expect(page).toHaveURL('player');
+  }
 });

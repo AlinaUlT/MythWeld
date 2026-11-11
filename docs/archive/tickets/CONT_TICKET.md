@@ -174,3 +174,113 @@ Found in the same change, inside the hat: `characters.spec.ts` and `sheet.spec.t
 Found, not fixed: nothing.
 
 Changelog: Nothing for the changelog (no screen reads the tables yet).
+
+---
+
+### CONT-03 Every phase 3 screen has its own empty file
+
+**Hat:** Every phase 3 screen has a route, an empty page file and its own text namespace
+**Depends on:** CONT-02 (wave 1 order only)
+**Size:** S
+**Screen:** No — the pages are empty frames (a title and a back arrow, as SHEET-11 made them); the boards are drawn into them by the rows in §11. The player page's tiles change from "Coming later" to links.
+**SPEC:** §7.3, §9; ADR 010 items 2 and 3, ADR 012, ADR 013 items 17 and 18
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `apps/web/src/shell/routes.ts` — changes: six paths, the library's topics.
+- `apps/web/src/App.tsx` — six routes. `apps/web/src/pages/` — `LibraryPage`, `QuickRulesPage`, `BookmarksPage`, `SourcesPage`, `AboutPage`: new.
+- `apps/web/src/pages/PlayerPage.tsx` — four tiles get their `to`.
+- `apps/web/src/library/topics/` (11), `library/windows/` (3), `quickRules/` (2), `shared/BookmarkButton.tsx` — new, empty.
+- `apps/web/src/locales/en/` and `i18n/namespaces.ts` — 22 new namespaces.
+
+#### 2. What is missing now
+
+Measured on `763d6cd`: `paths` has 7 entries, all phase 2. `/library`, `/quick-rules`, `/bookmarks`, `/sources` and `/about` open the start page (the `*` route). The player page's Sources, Library, Quick rules and Bookmarks tiles show "Coming later" and link nowhere (`player.test.tsx`, `navigation.spec.ts` pin it). `apps/web/src` has no `library/` or `quickRules/` folder.
+
+#### 3. What it should look like when done
+
+1. These paths open a page of their own, with the title and a back arrow, and nothing else: `/library`, `/library/<topic>`, `/quick-rules`, `/bookmarks`, `/sources`, `/about`. Back goes to `/player`, except About, which goes to `/settings` (BRIEF: About is a Settings item).
+2. The library is one page. The topic is the last segment of its path: `libraryTopics` lists 11 (spells, classes, species, backgrounds, feats, armor, weapons, items, magic-items, conditions, monsters), and `libraryPath(topic)` builds the path. Encounter templates come with the DM tools (ADR 010 item 3).
+3. The player page's six tiles all link: Sources `/sources`, Library `/library`, Quick rules `/quick-rules`, Bookmarks `/bookmarks`. None says "Coming later".
+4. Each page has its namespace with one key, `title`: `library` "Library", `quickRules` "Quick rules", `bookmarks` "Bookmarks", `sources` "Sources", `aboutApp` "About" (`about` is the sheet's About tab).
+5. 17 empty files exist: 11 topic lists, 3 library windows, 2 Quick rules windows, the bookmark button. Each holds a comment naming the row that fills it and `export {}`; each has its own empty namespace, so no two rows of a wave edit one locale file.
+6. The page is 360 px wide; nothing else changes.
+
+#### 4. How to do it
+
+1. `routes.ts`: the paths, `libraryTopics`, `libraryPath`.
+2. Pages as SHEET-11 made them: `<Page title back />` and nothing under it. `LibraryPage` serves both library routes and ignores the topic until CONT-18.
+3. The empty files carry no shape. A topic's "markers" (CONT-18) and a window's props are the filling row's to decide, so a file exports nothing yet.
+4. A namespace for each page and each empty file, as SHEET-30 did, each `{}` except the pages' `title`.
+5. The player tiles' `to`. Tests follow.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+At 360×800: the player page's four tiles open pages that show a title and a back arrow, and nothing below. Keys: `library.title`, `quickRules.title`, `bookmarks.title`, `sources.title`, `aboutApp.title`. No empty, loading or error state exists yet; the rows in §11 add them.
+
+#### 7. Tests
+
+- `apps/web/test/phase3-frames.test.tsx` — 9: each page renders its title, its back target and no other element; the library at each of the 11 topics; the 17 files exist, each with a namespace of its own that `en` holds.
+- `apps/web/test/navigation.test.tsx` — the 13 paths, the 11 topics in order, `libraryPath`, the 55 namespace files, the five titles. `apps/web/test/player.test.tsx` — six links, no "Coming later".
+- `apps/web/e2e/navigation.spec.ts` — the six paths open with title and back arrow in Chromium; each of the four tiles opens its page, shows nothing under the header, is 360 px wide, and back returns to `/player`.
+- Control numbers from: the row's list of screens, ADR 010 item 3 (the topic names), BRIEF P10 (About inside Settings).
+
+#### 8. Checked against the source
+
+Nothing to check: no rules fact is used. ADR 010 item 3 names Armor, Backgrounds, Classes, Encounter templates, Feats, Items, Monsters, Species, Spells and Weapons; the rows CONT-50 and CONT-51 add Magic items and Conditions.
+
+#### 9. Not in this ticket
+
+- What any page or window shows, and the topic picker: the rows in §11.
+- A Settings row that opens About: CONT-59.
+- A redirect or a message for an unknown topic (`/library/xyz`): CONT-18.
+- The Russian locale: its own phase (ADR 000).
+
+#### 10. Rake check
+
+- **No look in a component, no visible literal:** the pages use `Page` and a namespace key; no colour, size or string is written in them.
+- **Ids are stable, missing is not broken:** an unknown path still opens the start page; `/library/xyz` opens the library.
+- **Nothing stored changes**, no rules, no content, no external request.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 504 files, no fixes; `pnpm typecheck` clean; `pnpm test` 147 files, 1691 passed, 0 failed, 27.7 s (10 new, from 1681), then speed 2 passed; coverage statements 99.01 % (4142/4183), lines 99.78 % (3629/3637); `pnpm e2e` 106 passed, 0 failed, 1.8 min (1 new, from 105).
+
+**Which row fills which file** (each text in the namespace named, in `apps/web/src/locales/en/`):
+
+| File in `apps/web/src/` | Row | Namespace |
+|---|---|---|
+| `pages/LibraryPage.tsx` | CONT-18 | `library` |
+| `library/windows/EntryWindow.tsx` | CONT-19 | `libEntry` |
+| `library/topics/spells.ts` | CONT-43 | `libSpells` |
+| `library/windows/SpellCasters.tsx` | CONT-44 | `libSpellCasters` |
+| `library/topics/classes.ts`, `library/windows/ClassWindow.tsx` | CONT-45 | `libClasses`, `libClass` |
+| `library/topics/species.ts` | CONT-46 | `libSpecies` |
+| `library/topics/backgrounds.ts` | CONT-47 | `libBackgrounds` |
+| `library/topics/feats.ts` | CONT-48 | `libFeats` |
+| `library/topics/armor.ts`, `weapons.ts`, `items.ts` | CONT-49 | `libArmor`, `libWeapons`, `libItems` |
+| `library/topics/magicItems.ts` | CONT-50 | `libMagicItems` |
+| `library/topics/conditions.ts` | CONT-51 | `libConditions` |
+| `library/topics/monsters.ts` | CONT-52 | `libMonsters` |
+| `pages/QuickRulesPage.tsx` | CONT-53 | `quickRules` |
+| `quickRules/TopicWindow.tsx`, `RuleWindow.tsx` | CONT-54 | `rulesTopic`, `rulesRule` |
+| `shared/BookmarkButton.tsx` | CONT-55 | `bookmarkButton` |
+| `pages/BookmarksPage.tsx` | CONT-56 | `bookmarks` |
+| `pages/SourcesPage.tsx` | CONT-57 | `sources` |
+| `pages/AboutPage.tsx` | CONT-59 | `aboutApp` |
+
+**Decisions (ADR 002):** the topic is a path segment of one library page, not a page of its own, because ADR 010 item 3 says "one library page" with the topic picked on top. The empty files export nothing, because their shape (a topic's markers, a window's props) belongs to CONT-18 and CONT-19. Each empty file got its own namespace, 17 beyond the row's five, because the wave-3 rows CONT-43 to 52 would all have added keys to one `library.json`, and CONT-53 with CONT-54 and CONT-55 with CONT-56 would have shared `quickRules.json` and `bookmarks.json`. `CONT-58` ("prefer 2014") has no file of its own: it fills a switch in `library`, `sources` and `settings`, and runs after the rows that own those.
+
+**Difference from the row:** the row names five namespaces; there are 22. Nothing else.
+
+**Screenshots:** the player page, dark and light, 360×800, with the four tiles now links (`player-dark.png`, `player-light.png`, from the SHEET-12 e2e test), sent in the chat as files. The new pages are empty frames and have none of their own.
+
+**Found, not fixed:** nothing.
+
+**Changelog:** one line.
