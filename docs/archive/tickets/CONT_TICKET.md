@@ -1125,3 +1125,109 @@ Not a screen.
 - The spell list a background's feat names has no field: the Acolyte's feat is Magic Initiate (Cleric) and the Sage's Magic Initiate (Wizard), and the `feat` grant names only the feat. It is in the words. Added to the notes of CONT-36 and CONT-37.
 
 **Changelog:** nothing for the changelog; a person sees nothing yet.
+
+---
+
+### CONT-07 Spells are imported from both SRDs
+
+**Hat:** The spells of both SRDs become `spell` entities
+**Depends on:** CONT-05 (the fields for growth, healing and duration), CONT-14 (the school, damage type and area shape keys)
+**Size:** M
+**Screen:** No
+**SPEC:** §3 (both SRDs), §5.1, §5.3 (`SpellDef`); ADR 004, ADR 014 items 6 and 7
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/import/spells.ts` — changes: from the empty importer to the real one.
+- `packages/content/test/import-spells.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on `4c59ec9`: `spells` has no types, no files and makes nothing. The source at `e6edf9a` has 319 spells in SRD 5.1 and 339 in SRD 5.2.1 (339 spell headings in the SRD 5.2.1 PDF too).
+
+#### 3. What it should look like when done
+
+1. The importer makes `spell`: 319 and 339, 0 problems in both rulesets, one for each entry under its slug, with its name, its words (with the higher-level words after them) and its fields.
+2. The fields the source holds are read: level, school key, casting time (`1 action` and `Action` both are `{ value: 1, unit: 'action' }`; SRD 5.2.1's trigger words are the `note`), range in feet (a mile is 5280), components (a material's words, its price when they name one amount, `mConsumed`), duration, `concentration`, `ritual`, `classes`, `attack`.
+3. SRD 5.1's `dc` is the `save`, its `area_of_effect` is `range.area`, its damage tables give the `damage` at the spell's own level, its `heal_at_slot_level` the `healing`. SRD 5.2.1 has none of these fields, so its `save` is the first "<stat> saving throw" of the words, its healing is read from the words of the 11 spells that heal, and it has no `area` (§8).
+4. A slot `scaling` is read from the words of the higher level (the field, or after "Using a Higher-Level Spell Slot" in SRD 5.2.1's entries) when they name one die or number for each slot level (`every` for "every two"), and the spell has a damage or a healing to grow. A growth of two dice, or of a damage the spell does not list, gives none. A cantrip's `scaling` is the die that joins at levels 5, 11 and 17.
+5. `upgrades` (CONT-05): Eldritch Blast's beams (both rulesets), Shillelagh's die, Spare the Dying's range and True Strike's extra damage (SRD 5.2.1).
+6. `healingEachTurn`: Heroism and Regenerate. `healing.kind`: `maxHp` for Aid and Heroes' Feast, `tempHp` for False Life.
+7. The two hand-written spells (SRD 5.1's Bless and Cure Wounds) are imported with every field the pack holds, each equal.
+
+#### 4. How to do it
+
+1. Each field is read where it lives; a form the importer cannot read (a casting time, a range, a duration, a material that does not match its component list) throws, so no spell is imported under a wrong value.
+2. A roll is the source's, with `MOD` as `@mod`, and "4d6 OR 5d6" as its first roll. The damage is the roll at the lowest level of its table.
+3. SRD 5.2.1's save and healing come from the words by patterns anchored on the SRD's own phrasing; the healing reads only the 11 spells SRD 5.1 gives a healing roll (ten of its tables, and Heroes' Feast), since a healing that is one choice of a list (Conjure Celestial) or a side effect is not the spell's healing.
+4. What the source has no field for and the words do not say in one pattern is left out, and named in §11.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/content/test/import-spells.test.ts` — 39: for each ruleset, 0 problems, one spell for each entry under its slug and name with words, the school and classes exist, the damage types, shapes and `damageTypes` exist; the counts of levels, schools, casting units, range kinds, duration kinds, rituals, concentration, attacks, materials, V, S, class pairs, areas, saves by stat and damages against the source's own; a mile in feet; areas of SRD 5.1; the casting notes of SRD 5.2.1; the nine spells whose components are in the range's tail; durations; materials priced and consumed (and the two amounts that give no price); the saves; the damage; the two lists of slot scalings, the die of a growth, `every`, `damageTypes` and `pickOne`, the typo of Moonbeam, the garbled words of Shatter, the growth in the entry's words, the cases that give none, and SRD 5.1's growth against its own damage tables; the cantrips' growth and `upgrades`; the 11 healings of each ruleset by value and kind, `healingEachTurn`, and the healings left out; the hand-written pack.
+- The registry test of CONT-04 runs `spells` with the others over the real source: 0 problems, so no id is made twice.
+- Control numbers from: §8, measured by a script outside the repository from the source files, not from the importer's output.
+
+#### 8. Checked against the source
+
+5e-bits/5e-srd-api at `e6edf9a`, measured 2026-11-11, and SRD 5.2.1 (CC-BY-4.0) PDF page and text:
+- **Counts:** SRD 5.1 319 spells (cantrips 24, then 49, 54, 42, 31, 37, 31, 20, 16, 15); SRD 5.2.1 339 (27, 57, 57, 42, 34, 38, 31, 20, 17, 16). The SRD 5.2.1 PDF has 339 spell headings, equal to the source.
+- **SRD 5.1's fields:** `dc` on 92, `area_of_effect` on 88 (sphere 39, cube 26, cylinder 9, line 8, cone 6), `damage` on 66, `heal_at_slot_level` on 10, `attack_type` on 16, `higher_level` on 90. SRD 5.2.1's entries have none of `dc`, `area_of_effect` and `heal_at_slot_level`; `damage` is one object on 89, `higher_level` a string on 103.
+- **Two damages of SRD 5.1 name no type** (`sleep`, `prismatic-spray`: a roll alone), so they are left out.
+- **SRD 5.2.1 puts the components of 9 spells in the range** ("Touch Component: V, S", `contagion`, `divine-smite`, `find-steed`, `guidance`, `power-word-heal`, `power-word-kill`, `resistance`, `searing-smite`, `sorcerous-burst`) and gives them an empty `components`. The source disagrees with itself; its other field, the range's tail, is the list, and what is left is the range. In SRD 5.2.1 casting times, a reaction or bonus action has its trigger after a comma (9 spells), and Plant Growth "Action (Overgrowth) or 8 hours (Enrichment)".
+- **Areas of SRD 5.2.1:** none in the source; the words name an area phrase in 72 spells, some of them an object ("a 5-foot Cube") and not the spell's area, and not all spells with an area say it. An area read from words would be wrong for some, so it is left out (§11).
+- **Saves:** SRD 5.1 has 92 `dc` and 25 spells whose words name a save with none; 117 in all (dex 34, wis 35, con 29, cha 13, str 4, int 2). SRD 5.2.1's words give 134 (dex 38, wis 40, con 31, cha 12, str 10, int 3). The two editions differ for real (Black Tentacles is Strength now, Poison Spray an attack, Sleep a Wisdom save). Where `dc` and the first mention of the words differ, `dc` wins: Hold Monster only (the words say no stat).
+- **Growth:** SRD 5.1's `higher_level` and SRD 5.2.1's `higher_level` or its tail of the words. Of the entries that name a die, the importer reads those with exactly one die and one "for each slot level". The source's own damage tables agree for every SRD 5.1 case that has one (a test checks it). Moonbeam's words say "1dl0" (a letter l) while its table goes 2d10, 3d10: the importer reads 1d10. Shatter's words say "for each level of higher spell slot 2" and its table gains 1d8: read as 1d8.
+- **Healing:** SRD 5.1's tables: aid 5 (hit point maximum), cure-wounds 1d8 + MOD, false-life 1d4 + 4 (temporary), heal 70, healing-word 1d4 + MOD, mass-cure-wounds 3d8 + MOD, mass-heal 700, mass-healing-word 1d4 + MOD, prayer-of-healing 2d8 + MOD, regenerate 4d8 + 15; Heroes' Feast's "hit point maximum also increases by 2d10" is in its words in both. SRD 5.2.1's words: cure-wounds 2d8 plus the modifier, healing-word and mass-healing-word 2d4 plus it, mass-cure-wounds 5d8 plus it, prayer-of-healing 2d8 (no modifier), false-life 2d4 + 4, heal 70, mass-heal 700, regenerate 4d8 + 15, aid 5. Heroism "gains Temporary Hit Points equal to your spellcasting ability modifier at the start of each of its turns" (both); Regenerate "regains 1 Hit Point at the start of each of its turns" (both).
+- **Cantrip upgrades (CONT-05 §8, read again from the source):** Eldritch Blast "two beams at 5th level, three beams at 11th level, and four beams at 17th level" (SRD 5.1), the same at levels 5, 11, 17 (SRD 5.2.1); Shillelagh d10, d12, 2d6; Spare the Dying 30, 60, 120 feet; True Strike Radiant 1d6, 2d6, 3d6. A test checks the numbers are in the words.
+- **Arcane Vigor** (CONT-05 §3 item 6, `healing.hitDice`) is not in the source and not in the SRD 5.2.1 PDF (the word "Vigor" is there only in Fiendish Vigor): `hitDice` is used by no SRD spell.
+- **Source typos in the words kept as they are** (the words are the SRD's, the importer does not edit them): stray commas in SRD 5.2.1's materials ("which the, spell consumes"), and the like.
+- No `[ПРОВЕРИТЬ]` is involved.
+
+#### 9. Not in this ticket
+
+- SRD 5.2.1's areas, and the damages the source lists no field for: CONT-72.
+- Reading `abilityFrom`, `healing`, `scaling.every`, `damageTypes`, `pickOne`, `upgrades` and `healingEachTurn` in the engine's cast panel: CONT-63 and CONT-65.
+- Which spells give features, their effects and their mechanics: CONT-38.
+- The class spell lists as `spellList` of a class, and each class's spells by level: CONT-08.
+
+#### 10. Rake check
+
+- **Everything is data:** the six stats come from `Ability-Scores`, the damage types from `Damage-Types`; no list of either is in the code. The two lists the importer owns are the spells whose words are read for healing (§4.3) and the cantrip upgrades, each by the spell's index.
+- **No ruleset checks scattered:** the two SRDs go through one path where their fields allow; the places they differ (a table or the words, the label of a higher-level paragraph, the upgrades) are named in the file.
+- **Stored units are feet:** a mile is converted at import (`FEET_IN_A_MILE`), as SPEC §7.5 says.
+- **Formulas never run code:** the formulas are the source's rolls with `@mod`; none is built from text the importer does not match.
+- **No rules text in a test:** the tests assert ids, keys, counts, shapes and numbers.
+- **Missing is not broken:** a growth the importer cannot read is left out; it does not stop the import.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 528 files, no fixes; `pnpm typecheck` clean; `pnpm test` 157 files, 1927 passed, 0 failed, 34.0 s (39 new, from 1888), then speed 2 passed; coverage statements 99.02 % (4162/4203), lines 99.78 % (3648/3656). No `pnpm e2e`: `apps/web` is not touched.
+
+**Results:** SRD 5.1 imports 319 spells and SRD 5.2.1 339, 0 problems. Of them with a slot scaling: 38 and 45; with a cantrip scaling: 9 and 11; with a healing: 11 and 11; with a `save`: 117 and 134; with a damage: 64 and 89; with an area: 88 and 0; with a priced material: 47 and 55.
+
+**Differences from the row's note:**
+- "5e-database gives 2024 spells no table by slot": the growth is read from the words of the higher level, which both SRDs have, for both rulesets, so the editions go through one reader. SRD 5.1's own tables check it (a test).
+- The row says healing and growth come "from the text or from dnd5e's data". The text is used; dnd5e's data is not read, since it is not in the pinned source (CONT-01) and an unpinned file would make the import differ from run to run.
+
+**Source disagreed with itself, resolved from its other field, not a stop:** SRD 5.2.1's empty `components` of 9 spells (§8), Moonbeam's "1dl0" and Shatter's garbled words (§8).
+
+**Found, not fixed:**
+- SRD 5.2.1's spells have no `area` (0 of 339; the words name an area in 72), and about 19 spells of each SRD (by a pattern over the words) roll a damage in the words that no `damage` field lists (SRD 5.1's Sleep and Prismatic Spray have a roll and no type). A growth that joins such a damage is left out too: SRD 5.1's Arcane Hand, Color Spray, Glyph of Warding, Sleep, Spirit Guardians and Wall of Ice, and about as many of SRD 5.2.1's (Arcane Hand, Chromatic Orb, Conjure Elemental and Fey, Delayed Blast Fireball, Disintegrate, Dragon's Breath, Flame Blade, Glyph of Warding, Ice Knife, Spiritual Weapon, Wall of Ice, and others). New row CONT-72.
+- A growth that is not dice (one more dart, a target, a longer duration, a bigger area) is not a field of the schema, 46 spells of SRD 5.1 and 47 of SRD 5.2.1: Magic Missile's darts, Bless's targets. Nothing to fix until the schema has a place for it; the words carry it.
+- SRD 5.2.1's Flame Strike lists one damage (fire); its words give fire and radiant. The importer follows the source's list.
+- A spell with more than one save takes the first (Prismatic Spray and Wall of Force have none that matters); a `save` of the first mention can be a rider's, not the spell's: the words carry the rest.
+- CONT-05's Arcane Vigor is not an SRD spell (§8); `healing.hitDice` stays unused.
+- The stray commas of SRD 5.2.1's material text (§8).
+
+**Changelog:** nothing for the changelog; a person sees nothing yet.

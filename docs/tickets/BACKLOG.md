@@ -327,7 +327,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 |---|---|---|
 | 1 | CONT-01 to 05 | Phase 2 is closed (SHEET-60) |
 | 2 | CONT-06 to 19, 63 to 67 | Wave 1 is closed |
-| 3 | CONT-20 to 59, 68 to 70 | Wave 2 is closed |
+| 3 | CONT-20 to 59, 68 to 70, 72 | Wave 2 is closed |
 | 4 | CONT-60 to 61, 71 | Wave 3 is closed |
 | 5 | CONT-62 | Wave 4 is closed |
 
@@ -339,7 +339,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-04 | The import frame maps both SRDs' entries to our ids | S | ✅ 2026-11-11 |
 | CONT-05 | The fifth-edition schemas hold the SRD values found so far | M | ✅ 2026-11-11 |
 | CONT-06 | Monsters have an entity type | S | ✅ 2026-11-11 |
-| CONT-07 | Spells are imported from both SRDs | M | 🔲 |
+| CONT-07 | Spells are imported from both SRDs | M | ✅ 2026-11-11 |
 | CONT-08 | Classes are imported with their subclasses | M | 🔲 |
 | CONT-09 | Species are imported with their subraces | S | ✅ 2026-11-11 |
 | CONT-10 | Backgrounds are imported from both SRDs | S | ✅ 2026-11-11 |
@@ -404,10 +404,8 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-69 | Alignments and poisons have a place in the packs | S | 🔲 |
 | CONT-70 | The item schema holds the equipment values the import left out | M | 🔲 |
 | CONT-71 | A starting package or gold is a choice the grants can hold | M | 🔲 |
+| CONT-72 | SRD 5.2.1's spell areas and the damages the source lists no field for are imported | M | 🔲 |
 
-- **CONT-07** — 5e-database gives 2024 spells no `heal_at_slot_level` and no table by slot (ENG-50,
-  ENG-53): their healing and growth are read from the text or from dnd5e's data, into the fields
-  CONT-05 made. A pack writes the spellcasting modifier as `@mod` (5e-database: `MOD`).
 - **CONT-08** — each class's level table (SPEC §3.1: 12 classes, one subclass each, in both SRDs).
 - **CONT-15** — ADR 014 item 13: both SRDs' rules chapters become `rule` entries, each with a
   `topic` (the `ruleTopic` entries of ADR 013 item 18's list) and an optional icon key, for Quick
@@ -567,6 +565,15 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
     what holds it (a choice between a package of items and an amount of gold, in the schema and
     the published JSON Schema), reads it in the engine's inventory step, and fills it in the
     importers of backgrounds and classes. It is wave 4's schema row.
+  - **CONT-72** — found by CONT-07: SRD 5.2.1's entries have no `area_of_effect` (0 of 339 spells;
+    SRD 5.1 has it on 88), and about 19 spells of each SRD (by a pattern over the words) roll a damage in the words that the source's
+    `damage` field does not list (SRD 5.1's Sleep and Prismatic Spray list a roll and no type;
+    SRD 5.2.1's Flame Strike lists fire alone). `spells.ts` leaves them out, and a growth that joins
+    such a damage with them (SRD 5.1's Arcane Hand, Color Spray, Glyph of Warding, Sleep, Spirit
+    Guardians; SRD 5.2.1's Chromatic Orb, Conjure Elemental, Disintegrate, Flame Blade, Spiritual
+    Weapon and others). The row reads them from the SRD's own text (the PDF) or from a pinned
+    second source added to CONT-01's fetch, checks each against the other edition's data where both
+    have it, and fills `range.area`, `damage` and `scaling` in `spells.ts`.
 
 ---
 ## Phases 4–7 — cut when the phase before closes
