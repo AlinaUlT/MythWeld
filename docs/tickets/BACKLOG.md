@@ -334,7 +334,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | ID | Hat | Size | Status |
 |---|---|---|---|
 | CONT-01 | One command fetches the import source at a pinned commit | S | ✅ 2026-11-11 |
-| CONT-02 | Phase 3's device tables arrive in one database version | XS | 🔲 |
+| CONT-02 | Phase 3's device tables arrive in one database version | XS | ✅ 2026-11-11 |
 | CONT-03 | Every phase 3 screen has its own empty file | S | 🔲 |
 | CONT-04 | The import frame maps both SRDs' entries to our ids | S | 🔲 |
 | CONT-05 | The fifth-edition schemas hold the SRD values found so far | M | 🔲 |
@@ -396,10 +396,6 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-61 | The built-in packs are the full SRDs | M | 🔲 |
 | CONT-62 | The phase 3 gate is shown on the built packs | M | 🔲 |
 
-- **CONT-02** — `bookmarks`, `entityIndex` (SHEET-07 left it for phase 3) and any other table phase
-  3 stores into, in one Dexie version, as SHEET-07 did, so no two rows claim one version. Later rows
-  add fields to a row, never a version. Bookmarks stay on the device, outside any character (ADR 014
-  item 13).
 - **CONT-03** — as SHEET-11 and SHEET-30 did: a route for the library (with a topic), Quick rules,
   Bookmarks, Sources and About, an empty page file and an i18n namespace file for each, one empty
   file for each topic list and each window the later rows fill, and the player page's tiles linking

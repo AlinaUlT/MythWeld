@@ -143,3 +143,34 @@ hers to decide before CONT-61 puts the built packs in the public build. Written 
 report; no row.
 
 **Changelog:** Nothing for the changelog.
+
+---
+
+### CONT-02 Phase 3's device tables arrive in one database version · XS
+
+**Hat:** The database gets the tables phase 3 stores into, in one version
+**Where:** `apps/web/src/db/db.ts` — version 3, `BookmarkRow`, `EntityIndexRow`; `apps/web/test/storage.test.ts` and `apps/web/e2e/storage.spec.ts` — the tables and the upgrade; `characters.spec.ts` and `sheet.spec.ts` — the version they pin
+**Depends on:** CONT-01 (wave 1 order only; no code depends on it)
+**Screen:** No
+
+**What it should look like when done:**
+1. The database is at Dexie version 3 (IndexedDB version 30) with eight tables: SHEET-07's six as version 2 made them, and two new ones.
+2. `bookmarks`: primary key `id` (the id of the entry or rule it marks, so one bookmark per entry), index `addedAt` (an ISO time, for the Bookmarks page's order). Bookmarks stay on the device, outside any character (ADR 014 item 13).
+3. `entityIndex`: primary key `id` (the entity's id), indexes `packId` (a pack's rows go together when the packs in use change) and `type` (a search narrowed to one kind of entry).
+4. No other table is claimed. Every setting phase 3 stores ("prefer 2014", books in use) fits the existing `settings` and `packs` tables, which take new fields and need no version.
+5. A version 2 database with rows opens at version 3 with every row kept and both new tables empty; a database that never existed opens straight at version 3.
+6. No auto-increment key; `schemaVersion` of a character or a pack does not change.
+
+**Tests:** `apps/web/test/storage.test.ts` — the eight tables with their keys and indexes; the upgrade test (a version 2 database written out in the test, with one row in each of its six tables, opened by `GrimoireDb`: rows equal, both new tables empty); a fresh database at version 3; the new indexes read back. `apps/web/e2e/storage.spec.ts` — Chromium opens at IndexedDB version 30 with the eight tables; a version 1 and a version 2 database (with a character) upgrade to it and keep the row. Control numbers: the keys and indexes of items 2 and 3 above; the version numbers are Dexie's (3 is IndexedDB's 30).
+**What came out of it:**
+Quality gate, 2026-11-11: `pnpm lint` 459 files, no fixes; `pnpm typecheck` clean; `pnpm test` 146 files, 1681 passed, 0 failed, 26.5 s (3 new, from 1678), then speed 2 passed; coverage statements 99.01 % (4142/4183), lines 99.78 % (3629/3637); `pnpm e2e` 105 passed, 0 failed, 1.7 min (1 new, from 104).
+
+Design choices (ADR 002): `bookmarks` is keyed by the id of what it marks, so one entry has one bookmark and a second tap finds the first; it has an `addedAt` index for the page's order. `entityIndex` is keyed by the entity's id, with `packId` and `type` indexes: a pack's rows go together when the packs in use change (CONT-41), and a search can narrow to one type. Both are fixed now because an index, like a key, can only be added by a version. The search words themselves are not indexed in Dexie; MiniSearch holds them (SPEC §4, search row), and CONT-41 decides what the row carries beyond these three fields.
+
+Measured: no other table is needed. "Prefer 2014" (CONT-58) is a setting and "in use" (CONT-57) is a field of a pack's row, in tables that exist.
+
+Found in the same change, inside the hat: `characters.spec.ts` and `sheet.spec.ts` waited for IndexedDB version 20, so the first full e2e run of this row passed only 38 of 105 until they read 30. Both are changed. Nothing else pins the version.
+
+Found, not fixed: nothing.
+
+Changelog: Nothing for the changelog (no screen reads the tables yet).

@@ -13,7 +13,7 @@ async function saveRows(page: Page, rows: readonly object[], store = 'characters
   await page.goto('./');
   await expect
     .poll(() => page.evaluate(() => indexedDB.databases()))
-    .toContainEqual({ name: DB_NAME, version: 20 });
+    .toContainEqual({ name: DB_NAME, version: 30 });
   await page.evaluate(
     ([name, toSave, into]) =>
       new Promise<void>((resolve, reject) => {
