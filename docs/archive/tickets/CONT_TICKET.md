@@ -840,3 +840,90 @@ Not a screen.
 **Found, not fixed:** nothing outside the hat. For CONT-66: Magic Initiate's "different spell list each time" is in the words only.
 
 **Changelog:** nothing for the changelog; a person sees nothing yet.
+
+---
+
+### CONT-13 Magic items are imported from both SRDs
+
+**Hat:** The magic items of both SRDs become `item` entities with a `magic` block
+**Depends on:** CONT-14 (the rarity keys), CONT-05 (`magic.bonus` and the item fields)
+**Size:** S
+**Screen:** No
+**SPEC:** §3.1 (magic items in both SRDs), §5.1, §5.3 (`ItemDef`), §6.8; ADR 003
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/import/magicItems.ts` — changes: from the empty importer to the real one.
+- `packages/content/test/import-magic-items.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on `fd44abf`: `magicItems` has no types, no files and makes nothing. The source at `e6edf9a` has 362 magic items in SRD 5.1 and 262 in SRD 5.2.1.
+
+#### 3. What it should look like when done
+
+1. The importer makes `item`: 362 and 262, 0 problems in both rulesets. Each has its name, its words, the source's equipment category as a tag, and a `magic` block with a `rarity` key CONT-14 made.
+2. Rarity: one rarity is its key; an item that comes in several (`Uncommon (+1), Rare (+2), or Very Rare (+3)`) or says it varies is `varies`. SRD 5.1: common 4, uncommon 94, rare 119, very rare 90, legendary 43, artifact 1, varies 11. SRD 5.2.1: 1, 74, 87, 54, 32, 1, 13.
+3. Attunement: `true` when anyone may, or the words of who may. SRD 5.1: 146 and 29 (read from the first line of the words); SRD 5.2.1: 113 and 23 (`attunement` and `limited-to`). An item with no attunement has none.
+4. Category: `consumable` for potions and scrolls (51; 20), `ammunition` (5; 5), `shield` (4; 8), and `gear` for the other 302 and 229. No item has a `weapon` or an `armor` block.
+5. A variant ("Armor, +1") has `meta.variantOf`, the id of its parent: 123 and 19. It takes its kind from its parent's first line, and has `magic.bonus` 1, 2 or 3: 12 and 15, from its rarity ("Uncommon (+1)") or the end of its name.
+6. SRD 5.2.1's magic `shield` has the slug `shield-magic`, since `shield` is the equipment's, which the hand-written pack names. No other id of either ruleset differs from the source's slug.
+
+#### 4. How to do it
+
+1. The magic item and the equipment of a ruleset share the type `item`, so the importer reads `Equipment` for its slugs, and a magic item whose slug an equipment item has takes `-magic`. The equipment keeps the source's slug. It is 1 item in SRD 5.2.1 and none in SRD 5.1.
+2. A magic weapon or armor is `gear` with its category as a tag, because the schema asks a `weapon` block (a group, a kind) of the category `weapon` and an `armor` block of `armor`, and the source says only "any sword" or "light, medium, or heavy". CONT-39 gives a block, and so the category, to an item that needs one. A technical choice (ADR 002).
+3. The first line of SRD 5.1's words is where it writes the kind, the rarity and "(requires attunement …)". SRD 5.2.1 has the flag and `limited-to`.
+4. No `key` is set: an item's key is for a formula to read, and the mechanics rows add one.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/content/test/import-magic-items.test.ts` — 25: for each ruleset, 0 problems, one item for each entry, the slugs and the one `-magic`, words and a magic block and no weapon or armor block, the four categories' counts, the tags, each rarity's count and that each key exists, the variants and their parents, the bonuses, the two kinds of attunement; SRD 5.1's first lines (a ring, a bag, the Holy Avenger, the Ring of Shooting Stars), ammunition by its parent, a potion, a shield; SRD 5.2.1's flag and `limited-to`, the magic shield and its three variants, bonuses from rarity and name; the hand-written packs' items are not made here.
+- Control numbers from: §8, measured by a script outside the repository.
+
+#### 8. Checked against the source
+
+5e-bits/5e-srd-api at `e6edf9a`, measured 2026-11-11:
+- **Counts and shape:** 362 and 262 entries; `equipment_category` (SRD 5.1: wondrous-items 177, weapon 30, armor 29, potion 40, ring 36, wand 16, staff 12, scroll 11, rod 6, ammunition 5; SRD 5.2.1: wondrous-items 133, weapons 36, armor 23, rings 22, potions 20, wands 16, staffs 12); `variant` true on 123 and 19, each listed by exactly one parent's `variants`; no parent is missing.
+- **Rarity:** SRD 5.1 has 7 names (`Varies` on 11). SRD 5.2.1 has 12 strings, 6 of them composite or bracketed: `Rarity Varies` (7), `Uncommon (+1), Rare (+2), or Very Rare (+3)` (4), `Rare (+1), Very Rare (+2), or Legendary (+3)` (1), `Rare (Silver or Brass), Very Rare (Bronze), or Legendary (Iron)` (1), and `Uncommon (+1)`, `Rare (+2)`, `Very Rare (+3)` (one each, the variants).
+- **Attunement:** SRD 5.1 has none as a field; 175 first lines say "(requires attunement …)": 146 plain and 29 with who or when ("by a spellcaster", "outdoors at night"). SRD 5.2.1 has `attunement` (136 true) and `limited-to` on 23, all with `attunement` true.
+- **The id clash:** SRD 5.2.1 `Magic-Items` `shield` (the parent of Shield +1, +2, +3, category armor) and `Equipment` `shield` (the plain shield). SRD 5.1 has none.
+- **A gap:** SRD 5.1 `hammer-of-thunderbolts`: its first line is "Weapon (maul), legendary", and its words say "While attuned to it". Imported as the source gives it, without attunement.
+- No `[ПРОВЕРИТЬ]` is involved.
+
+#### 9. Not in this ticket
+
+- What an item does (effects, charges, spells, resources): CONT-39.
+- A `weapon` or `armor` block, and so the category, for a magic weapon or armor: CONT-39. A magic weapon counting as the weapon it is a kind of: CONT-67.
+- The plain weapons, armor and gear: CONT-12.
+- An item's price and weight: the source has neither.
+
+#### 10. Rake check
+
+- **Ids are stable:** an id is the source's slug; the one that clashes takes a suffix and is written in §3 and in CONT-39's note, and the hand-written `shield` is untouched (the last test).
+- **Missing is not broken:** an item without a block is still an item; no field is read that is not there.
+- **Everything is data:** no stat or ability is named in the code.
+- **No rules text:** the test asserts ids, keys, counts and shapes; the one phrase it reads ("a paladin") is who may attune, as a value of the field.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 525 files, no fixes; `pnpm typecheck` clean; `pnpm test` 154 files, 1839 passed, 0 failed, 35.3 s (25 new, from 1814), then speed 2 passed; coverage statements 99.02 % (4162/4203), lines 99.78 % (3648/3656). No `pnpm e2e`: `apps/web` is not touched.
+
+**Difference from the row:** none. The row says "the import only".
+
+**Found, not fixed** (all three are in CONT-39's note in `BACKLOG.md`):
+- A magic weapon or armor is `gear` with a tag until CONT-39 gives it a block (§4.2).
+- The id `srd-2024:item/shield-magic`.
+- `hammer-of-thunderbolts` has no attunement in the source while its words speak of being attuned: to be checked against SRD 5.1's own text.
+
+**Changelog:** nothing for the changelog; a person sees nothing yet.

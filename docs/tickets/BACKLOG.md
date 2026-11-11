@@ -345,7 +345,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-10 | Backgrounds are imported from both SRDs | S | 🔲 |
 | CONT-11 | Feats are imported from both SRDs | S | ✅ 2026-11-11 |
 | CONT-12 | Equipment is imported from both SRDs | M | 🔲 |
-| CONT-13 | Magic items are imported from both SRDs | S | 🔲 |
+| CONT-13 | Magic items are imported from both SRDs | S | ✅ 2026-11-11 |
 | CONT-14 | The small rule types are imported from both SRDs | S | ✅ 2026-11-11 |
 | CONT-15 | The rules chapters are imported as rules with topics | M | 🔲 |
 | CONT-16 | The build merges hand-written mechanics into the imports by id | S | 🔲 |
@@ -416,7 +416,6 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 - **CONT-12** — armor, weapons, gear, tools, packs, mounts and vehicles. Weapons are tagged so
   ENG-16's "Melee weapons" and "with which you have proficiency" filters can read them (the filter
   field is CONT-05's); `mounts-and-vehicles` takes the category CONT-05 made.
-- **CONT-13** — the import only; their effects are CONT-39.
 - **CONT-15** — ADR 014 item 13: both SRDs' rules chapters become `rule` entries, each with a
   `topic` (the `ruleTopic` entries of ADR 013 item 18's list) and an optional icon key, for Quick
   rules.
@@ -479,7 +478,12 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
   computed by no path; a proficiency by effect becomes a computed list or grants. ENG-51: items that
   cast a spell "using your spell save DC" (2014 Staff of Fire, Staff of Healing, Staff of Power)
   pick one DC, or let the person pick. ENG-16: a "Longsword, +1" with a key of its own loses
-  proficiency and mastery.
+  proficiency and mastery. Found by CONT-13: a magic weapon or armor is imported as `gear` (tagged
+  "Weapon" or "Armor"), with no `weapon` or `armor` block, because the source does not say which
+  weapon it is; the row gives a block, and so the category, to each item that needs one. SRD 5.2.1's
+  magic `shield` has the id `srd-2024:item/shield-magic`, since `shield` is the equipment's. SRD 5.1's
+  `hammer-of-thunderbolts` first line has no "(requires attunement)" while its text speaks of being
+  attuned: check SRD 5.1's own text and fix its attunement.
 - **CONT-40** — golden D's exhaustion (SPEC §6.7) is the reference for how a condition's effects are
   written; the row's §8 lists each condition of each SRD.
 - **CONT-41** — fills the `entityIndex` CONT-02 made, from the packs in use at start (SHEET-09),
