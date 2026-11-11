@@ -1028,3 +1028,100 @@ Not a screen.
 **Found, not fixed:** the values of §8's last bullet, which the item schema has no field for: CONT-70 (M, wave 3's schema row). Nothing else.
 
 **Changelog:** nothing for the changelog; a person sees nothing yet.
+
+---
+
+### CONT-10 Backgrounds are imported from both SRDs
+
+**Hat:** The backgrounds of both SRDs become `background` entities
+**Depends on:** CONT-14 (the tool kinds, languages and skills it names), CONT-11 (the feats a 2024 background gives), CONT-12 (the items SRD 5.1's gives)
+**Size:** S
+**Screen:** No
+**SPEC:** §3 (both SRDs), §5.1, §5.5 (grants), §6.3 (the ruleset difference); ADR 003, ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/import/backgrounds.ts` — changes: from the empty importer to the real one.
+- `packages/content/test/import-backgrounds.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on `d7f2648`: `backgrounds` has no types, no files and makes nothing. The source at `e6edf9a` has 1 background in SRD 5.1 (Acolyte) and 4 in SRD 5.2.1 (Acolyte, Criminal, Sage, Soldier).
+
+#### 3. What it should look like when done
+
+1. The importer makes `background`: 1 and 4, 0 problems in both rulesets, one for each entry under its slug and name, each with words. SRD 5.1's Acolyte also makes the `feature` entity `srd-2014:feature/shelter-of-the-faithful`, which its `feature` grant names (the hand-written pack holds the same id).
+2. SRD 5.2.1: each background has an `abilityScore` grant `ability-scores` in `distribute` mode over its three stats with the patterns `[2, 1]` and `[1, 1, 1]`, an `entity` grant `feat` of its origin feat, a `skill` grant of two skills and a `tool` grant (a fixed tool, or for the Soldier one of four gaming sets).
+3. SRD 5.2.1: each background has a `language` grant with Common fixed and two to choose among the nine other Standard Languages (§8). ENG-56 reads them as 2024's starting languages (`languageSource: 'background'`).
+4. SRD 5.1: the Acolyte has a `skill` grant (insight, religion), a `language` grant of two to choose from `{ type: 'language' }`, an `entity` grant of its feature and `item` grants: Clothes, common and a Pouch fixed, one item to choose from the three holy symbols.
+5. The words of a 2024 background are its five lines of SRD 5.2.1 page 83, in its order (§8). The words of SRD 5.1's Acolyte are its proficiencies, languages, equipment, feature name and the four tables of suggested characteristics (8, 6, 6 and 6 rows), each ideal ending in its alignment word.
+6. Every id a grant names exists: feats, features, items, skills, languages. Each background the two hand-written packs hold (the 2014 Acolyte, the 2024 Soldier) is imported under the same id with every grant the pack holds, each equal.
+
+#### 4. How to do it
+
+1. A complete map from each entry of `Proficiencies` to a category and keys: a skill by its key, a stat by its key (`save`), an armor by group (`light`, `medium`, `heavy`; `all-armor` by the three; `shield`; another armor by its item key), a weapon by group (`simple`, `martial`) or item key, and every tool, game, instrument and vehicle by CONT-14's tool kind key. It is this file's own (`CONT-68` moves it into the frame); a kind it does not name throws.
+2. SRD 5.1's equipment: fixed items become one `item` grant with quantities; a choice of one item from a category becomes a `choose` over the category's items, read from `Equipment-Categories`.
+3. SRD 5.2.1's languages: Common fixed, and a choice of two of the nine Standard Languages besides Common, a list in the importer with its page (the source has no such field).
+4. The words of a 2024 background come from its structured fields in the SRD's order; the equipment line is the source's own `desc`.
+5. What no grant can hold is left out and named in §11.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/content/test/import-backgrounds.test.ts` — 22: for each ruleset, 0 problems (the whole registry runs), one background for each entry under its slug and name with words, every named entity exists; SRD 5.1: the one background and its feature, the five grants, the characteristic tables by row count and alignment word, the equipment line; SRD 5.2.1: the four ids, each one's stats, feat, skills and tool, the Soldier's gaming-set choice, the languages on all four with the nine keys existing, no item grant, the five labels in order and the equipment line equal to the source's; the two hand-written packs' backgrounds and the features they name.
+- Control numbers from: §8, measured by a script outside the repository.
+
+#### 8. Checked against the source
+
+5e-bits/5e-srd-api at `e6edf9a`, measured 2026-11-11, and SRD 5.2.1 (CC-BY-4.0):
+- **Counts:** SRD 5.1 `Backgrounds` 1 entry (Acolyte: 2 skills, `language_options` choose 2 from all languages, 2 fixed items, 15 gp, one choice of a holy symbol, a `feature` of a name and 2 paragraphs, 8 personality traits, 6 ideals each with its alignments, 6 bonds, 6 flaws). SRD 5.2.1 `Backgrounds` 4 entries, each with `ability_scores` (3), `feat`, `proficiencies`, `equipment_options` (one `desc`); the Soldier also has `proficiency_choices`. The 2024 entries have no text and no language.
+- **The words of SRD 5.2.1's backgrounds** are from the SRD 5.2.1 PDF, page 83 ("Background Descriptions": Acolyte, Criminal, Sage, Soldier), read from `https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf`, D&D Beyond's own SRD file (the SRD page `https://www.dndbeyond.com/srd` named in the pack's attribution answered 403 from the container). Each of the five lines of each background was compared with the PDF's text by a script outside the repository: 20 of 20 equal once the quotation marks and the "(see “Feats”)" cross-references are set aside.
+- **One gap in the source:** the PDF prints the Sage's feat as "Magic Initiate (Wizard)" and the Acolyte's as "Magic Initiate (Cleric)". The source's `feat` has `note: "Cleric"` for the Acolyte and no note for the Sage. The importer takes the Sage's note from the PDF (a one-entry table, `FEAT_NOTE_2024`, with the page).
+- **Languages:** "Your character knows at least three languages: Common plus two languages you roll or choose from the Standard Languages table" (SRD 5.2.1, page 20). The table: Common, Common Sign Language, Draconic, Dwarvish, Elvish, Giant, Gnomish, Goblin, Halfling, Orc. `Languages` in the source (19) has no standard or rare field, so the list is the importer's. SRD 5.1's Acolyte: "Two of your choice" (the source's `language_options`).
+- **Ability scores:** "Increase one by 2 and another one by 1, or increase all three by 1" (SRD 5.2.1 page 83): the same patterns the hand-written Soldier has.
+- **Proficiency kinds in the source:** SRD 5.1 has Armor 17, Weapons 39, Artisan's Tools 19, Gaming Sets 2, Musical Instruments 10, Other 4, Vehicles 2, Saving Throws 6, Skills 18; SRD 5.2.1 has Armor 5, Weapons 8, Skills 18, Artisan's Tools 18, Tools 8, Saving Throws 6, Musical Instruments 10, Other 1. The map names them all.
+- No `[ПРОВЕРИТЬ]` is involved.
+
+#### 9. Not in this ticket
+
+- A starting package or 50 gp as a choice, and SRD 5.1's 15 gp: no grant holds them (CONT-71).
+- The spell list a feat names for a background (Magic Initiate (Cleric), (Wizard)): CONT-36, CONT-37.
+- Any effect of a background: CONT-36. The feat's own mechanics: CONT-37.
+- The suggested characteristics as data a sheet can roll on: not planned; they are in the words.
+
+#### 10. Rake check
+
+- **Everything is data:** a stat, a skill, a tool kind, a language are read from the source and named by key; no list of the six stats or the 18 skills is in the code. The one list the importer owns is the Standard Languages table, which the source lacks.
+- **No ruleset checks scattered:** the two rulesets' backgrounds are different shapes in the source, so two functions of one file; no check of the ruleset reaches another file.
+- **Ids are stable:** a background's id is the source's slug; the feature's is the slug of its name, as the hand-written pack has it. A test compares.
+- **No rules text in a test:** the tests assert ids, keys, counts, shapes and labels.
+- **Licensing:** the words of the four backgrounds are SRD 5.2.1 (CC-BY-4.0); no other source was read.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 527 files, no fixes; `pnpm typecheck` clean; `pnpm test` 156 files, 1888 passed, 0 failed, 34.5 s (22 new, from 1866), then speed 2 passed; coverage statements 99.02 % (4162/4203), lines 99.78 % (3648/3656). No `pnpm e2e`: `apps/web` is not touched.
+
+**Results:** SRD 5.1 imports 1 background and 1 feature; SRD 5.2.1 imports 4 backgrounds. Both rulesets run the whole registry with 0 problems.
+
+**Differences from the row's note:**
+- The row says the 2024 text comes from the PDF. The PDF's text for a background is exactly the five lines the source's structured fields hold, so the importer builds the lines from the fields and the PDF checks them (§8): there is no PDF text in the repository, and the import needs no network. The Sage's "(Wizard)" is the one thing the source lacks.
+- The row asks for the languages "there, or changes that field". They are there, as dnd5e has them: Common fixed and two of nine, so `languageSource` stays `background`. The Soldier in the 2024 hand-written pack has no language grant; the test requires the pack's grants to be equal to the import's, not the reverse.
+
+**Source disagreed with the SRD, resolved from the SRD, not a stop:** the Sage's feat note (§8). The row names the PDF as the source of the words, so the PDF decides; I name it here.
+
+**Own, complete map, in this file:** `proficienciesOf` maps every kind of `Proficiencies` to a category and keys (§4.1). `species.ts` has an incomplete private one. Moving both into the frame is CONT-68 (its note now names this copy).
+
+**Found, not fixed:**
+- No grant holds a starting package or gold: SRD 5.1's `starting_gold` (15 gp) and SRD 5.2.1's "Choose A or B: (A) items; or (B) 50 GP". The 2024 backgrounds give no item grant, since a fixed grant would give the package to a person who takes the gold; the words keep the line. CONT-08's classes have the same gap. New row CONT-71.
+- The spell list a background's feat names has no field: the Acolyte's feat is Magic Initiate (Cleric) and the Sage's Magic Initiate (Wizard), and the `feat` grant names only the feat. It is in the words. Added to the notes of CONT-36 and CONT-37.
+
+**Changelog:** nothing for the changelog; a person sees nothing yet.

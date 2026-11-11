@@ -328,7 +328,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | 1 | CONT-01 to 05 | Phase 2 is closed (SHEET-60) |
 | 2 | CONT-06 to 19, 63 to 67 | Wave 1 is closed |
 | 3 | CONT-20 to 59, 68 to 70 | Wave 2 is closed |
-| 4 | CONT-60 to 61 | Wave 3 is closed |
+| 4 | CONT-60 to 61, 71 | Wave 3 is closed |
 | 5 | CONT-62 | Wave 4 is closed |
 
 | ID | Hat | Size | Status |
@@ -342,7 +342,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-07 | Spells are imported from both SRDs | M | 🔲 |
 | CONT-08 | Classes are imported with their subclasses | M | 🔲 |
 | CONT-09 | Species are imported with their subraces | S | ✅ 2026-11-11 |
-| CONT-10 | Backgrounds are imported from both SRDs | S | 🔲 |
+| CONT-10 | Backgrounds are imported from both SRDs | S | ✅ 2026-11-11 |
 | CONT-11 | Feats are imported from both SRDs | S | ✅ 2026-11-11 |
 | CONT-12 | Equipment is imported from both SRDs | M | ✅ 2026-11-11 |
 | CONT-13 | Magic items are imported from both SRDs | S | ✅ 2026-11-11 |
@@ -403,17 +403,12 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-68 | The key and proficiency helpers live in the import frame | S | 🔲 |
 | CONT-69 | Alignments and poisons have a place in the packs | S | 🔲 |
 | CONT-70 | The item schema holds the equipment values the import left out | M | 🔲 |
+| CONT-71 | A starting package or gold is a choice the grants can hold | M | 🔲 |
 
 - **CONT-07** — 5e-database gives 2024 spells no `heal_at_slot_level` and no table by slot (ENG-50,
   ENG-53): their healing and growth are read from the text or from dnd5e's data, into the fields
   CONT-05 made. A pack writes the spellcasting modifier as `@mod` (5e-database: `MOD`).
 - **CONT-08** — each class's level table (SPEC §3.1: 12 classes, one subclass each, in both SRDs).
-- **CONT-10** — SRD 5.1 has one (Acolyte), SRD 5.2.1 four. 5e-database has no text for the 2024
-  backgrounds (SPEC §3.2): it comes from the SRD 5.2.1 PDF, CC-BY-4.0, with its page named in the
-  row's §8. No 2024 species or background gives a language; dnd5e puts Common and two standard
-  languages on each background, and ENG-56 reads a 2024 background's `language` grants as 2024's
-  starting languages (`languageSource`, `rulesets/2024.ts`): the import puts them there, or changes
-  that field.
 - **CONT-15** — ADR 014 item 13: both SRDs' rules chapters become `rule` entries, each with a
   `topic` (the `ruleTopic` entries of ADR 013 item 18's list) and an optional icon key, for Quick
   rules.
@@ -463,10 +458,13 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
   spell, as above). ENG-64: Resourceful (the human) is one effect, `add 1` on
   `inspiration.longRest`; golden B's fixture holds the name only. ENG-10: the human's size is
   chosen.
-- **CONT-36** — each 2024 background's origin feat and tool or skill grants; the language grants of
-  CONT-10.
+- **CONT-36** — CONT-10 imported each background's stats, origin feat, skills, tool and languages
+  (Common and two Standard Languages for 2024); this row adds what they do. Found by CONT-10: the
+  Acolyte's feat is Magic Initiate (Cleric) and the Sage's Magic Initiate (Wizard), and the `feat`
+  grant cannot name the spell list; it is in the background's words only.
 - **CONT-37** — ENG-33: a feat taken twice gets its own choices (the field CONT-05 made); Magic
-  Initiate's spells are `spell` grants (ENG-57).
+  Initiate's spells are `spell` grants (ENG-57). Found by CONT-10: two backgrounds fix its spell
+  list (CONT-36).
 - **CONT-38** — SPEC §6.8 item 3. ENG-50, ENG-53: growth and healing in the fields CONT-05 made.
   ENG-55: a spell bonus limited to a type, a school or one spell needs a narrower target. ENG-16:
   Shillelagh uses the casting stat for a club or quarterstaff and a d8 (2024: a die that grows at
@@ -549,7 +547,8 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
     `smallTypes.ts`, and the later importers import it from there. `species.ts` keeps a private
     map from a `Proficiencies` entry to a `proficiency` grant's category and key (skills, weapons
     by item, tools; armor, saving throws and the weapon groups are not mapped), which CONT-08 and
-    CONT-10 need whole. The row moves both into `frame.ts`, maps every kind, and fixes the imports.
+    CONT-10 need whole. CONT-10's `backgrounds.ts` holds a complete copy (`proficienciesOf`), and
+    CONT-08's `classes.ts` another. The row moves them into `frame.ts` as one, and fixes the imports.
   - **CONT-69** — found by CONT-14: the source has 9 alignments (SRD 5.1; SRD 5.2.1 has 10, with
     `unaligned`) and 14 poisons (SRD 5.2.1 only, with a cost and a kind) and no importer takes
     them. An alignment has no entity type; a poison is an item or a `rule`. The row decides where
@@ -561,6 +560,13 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
     `craft` list and `utilize` checks, and an armor's `don_time` and `doff_time`. The row is the
     wave's schema row, so it edits the published JSON Schema (it may add a version and a migration),
     and then fills the fields in `equipment.ts`.
+  - **CONT-71** — found by CONT-10: no grant holds a starting package or gold. SRD 5.1's Acolyte
+    has `starting_gold` (15 gp); SRD 5.2.1's backgrounds and classes say "Choose A or B: (A) items;
+    or (B) 50 GP". `backgrounds.ts` gives SRD 5.2.1's backgrounds no item grant, since a fixed one
+    would give the package to a person who takes the gold; the words keep the line. The row adds
+    what holds it (a choice between a package of items and an amount of gold, in the schema and
+    the published JSON Schema), reads it in the engine's inventory step, and fills it in the
+    importers of backgrounds and classes. It is wave 4's schema row.
 
 ---
 ## Phases 4–7 — cut when the phase before closes
