@@ -1341,3 +1341,98 @@ Not a screen.
 All of these are in the notes of CONT-71 (the schema row) and of the mechanics rows that read them.
 
 **Changelog:** nothing for the changelog; a person sees nothing yet.
+
+---
+
+### CONT-15 The rules chapters are imported as rules with topics
+
+**Hat:** The rules of the SRDs become `rule` entities, each under a `ruleTopic`
+**Depends on:** CONT-04 (the frame), CONT-14 (nothing it names; the conditions stay entities)
+**Size:** M
+**Screen:** No
+**SPEC:** §3 (both SRDs), §5.1, §9 (Quick rules); ADR 013 item 18, ADR 014 item 13
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/import/rules.ts` — changes: from the empty importer to the real one.
+- `packages/content/test/import-rules.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on `be9970c`: `rules` has no types, no files and makes nothing, and no `ruleTopic` entity exists. SRD 5.1's `Rules` has 137 entries. SRD 5.2.1 has no `Rules` file in 5e-database (§8).
+
+#### 3. What it should look like when done
+
+1. The importer makes `ruleTopic` for each topic of ADR 013 item 18 (15) and for the two chapters of SRD 5.1's rules that none of them holds (Equipment, Appendix): 17, in each ruleset, 0 problems, each with a `key` in camelCase and its name.
+2. It makes `rule`: 137 in SRD 5.1, one for each entry of `Rules` under its slug, with its name and words (3 chapters have none), and a `topic` that is the key of a topic that exists.
+3. A rule's topic is that of the nearest chapter, section or sub-section above it (itself included) that the importer names; a rule with none fails the import.
+4. SRD 5.2.1 has the 17 topics and no rule (CONT-73).
+5. No rule has an icon: the source has none.
+
+#### 4. How to do it
+
+1. The topics are ADR 013 item 18's list in its order, then Equipment and Appendix, named as SRD 5.1 names those two chapters. The ADR says "for example", so a topic more is within it.
+2. Each chapter and section of SRD 5.1 is mapped to a topic in one table, `TOPIC_OF`, by its index, and its sub-sections follow it:
+   - Combat: the order of combat, mounted and underwater combat → Combat; its Reactions → Reaction; Movement and Position → Move (Interacting with Objects Around You → Other actions); Actions in Combat → Action; Making an Attack and Cover → Damage and attack; Damage and Healing → Damage and attack (its rolls and resistances), with Hit Points, Healing, Dropping to 0 Hit Points, Knocking a Creature Out and Temporary Hit Points → Hit points, death and rest.
+   - Using Ability Scores → Abilities and skills.
+   - Adventuring: Time, The Environment, Traps → Environment; Movement → Move; Diseases and Madness → Conditions and diseases; Resting → Hit points, death and rest; Between Adventures → Other actions.
+   - Spellcasting → Spells; Equipment → Equipment; Appendix → Appendix.
+3. A table keyed by index fails the import for a rule the source adds, so none is left without a topic.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/content/test/import-rules.test.ts` — 15: for each ruleset, 0 problems, the 17 topics by key, name and id in order, each rule's topic exists; SRD 5.1: 137 rules under their slugs with names and words equal to the source's, the three without words, the count for each topic (summing to 137), the actions, moves and reactions, the split of Damage and Healing, the chapters under their own topics, each sub-section with its section's topic except the named ones, no icon; SRD 5.2.1: no `Rules` file in the source, 17 topics, no rule.
+- The registry test of CONT-04 runs `rules` with the others over the real source: 0 problems.
+- Control numbers from: §8, measured by a script outside the repository.
+
+#### 8. Checked against the source
+
+5e-bits/5e-srd-api at `e6edf9a`, measured 2026-11-11:
+- **SRD 5.1 `Rules`:** 137 entries in a tree: 6 chapters (Combat, Using Ability Scores, Adventuring, Spellcasting, Equipment, Appendix), 40 sections and 91 sub-sections (`parent`, `children`); `desc` is one string; the entries of Combat, Adventuring and Appendix have no `desc`. Each entry holds only its own words, its children being entries of their own.
+- **SRD 5.2.1 has no `Rules` file:** the 25 files of its folder are abilities, alignments, backgrounds, classes, conditions, damage types, equipment categories, equipment, feats, features, languages, levels, magic items, magic schools, monsters, poisons, proficiencies, skills, species, spells, subclasses, subspecies, traits, weapon mastery properties and weapon properties. Its rules are in the SRD 5.2.1 PDF (CC-BY-4.0): the chapter "Playing the Game", and the "Rules Glossary", which starts at page 176 of 364. In the PDF's text each glossary entry has a heading in one font (size 18, bold, `#88191f`) over paragraphs in another (size 15), which `pdftohtml -xml` reports, so its entries are readable as rules; reading them is CONT-73.
+- **ADR 013 item 18's topics:** "Move, Action, Bonus action, Reaction, Combat, Other actions, Environment, Damage and attack, Hit points, death and rest, Abilities and skills, Origins, Conditions and diseases, Active class features, Spells, Multiclassing". SRD 5.1's `Rules` has none for Bonus action, Origins, Active class features and Multiclassing: they are in its class and character chapters, which are other entities.
+- No `[ПРОВЕРИТЬ]` is involved.
+
+#### 9. Not in this ticket
+
+- SRD 5.2.1's rules: CONT-73.
+- An icon for a rule or a topic, and the summary line of a rule window (ADR 013 item 18): CONT-53 and CONT-54, which build the screens, choose the icons from the design (`docs/design/BRIEF.md`).
+- Links from a word to its rule: CONT-42.
+- The conditions as rules: they are `condition` entities (CONT-14).
+
+#### 10. Rake check
+
+- **Everything is data:** the topics and their order are one list in the file; a rule's topic is from one table keyed by the source's index.
+- **Missing is not broken:** a rule with no mapping fails the import loudly; a rule with no words has no text and is not an error.
+- **Ids are stable:** a rule's id is the source's slug, a topic's the slug of its key.
+- **Licensing:** the rules are SRD 5.1's (CC-BY-4.0, through 5e-database); no other source was read for this ticket.
+- **No rules text in a test:** the tests assert ids, keys, counts and shapes; the words are compared with the source's own.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 530 files, no fixes; `pnpm typecheck` clean; `pnpm test` 159 files, 1982 passed, 0 failed, 37.4 s (15 new, from 1967), then speed 2 passed; coverage statements 99.02 % (4162/4203), lines 99.78 % (3648/3656). No `pnpm e2e`: `apps/web` is not touched.
+
+**Results:** SRD 5.1 imports 17 topics and 137 rules; SRD 5.2.1 17 topics and no rule. By topic, SRD 5.1: Move 10, Action 11, Reaction 1, Combat 10, Other actions 4, Environment 11, Damage and attack 9, Hit points, death and rest 8, Abilities and skills 18, Conditions and diseases 6, Spells 18, Equipment 18, Appendix 13; none for Bonus action, Origins, Active class features and Multiclassing.
+
+**The list of topics the importer makes** (the row asked for it; its key, then its name): `move` Move; `action` Action; `bonusAction` Bonus action; `reaction` Reaction; `combat` Combat; `otherActions` Other actions; `environment` Environment; `damageAndAttack` Damage and attack; `hitPointsDeathAndRest` Hit points, death and rest; `abilitiesAndSkills` Abilities and skills; `origins` Origins; `conditionsAndDiseases` Conditions and diseases; `activeClassFeatures` Active class features; `spells` Spells; `multiclassing` Multiclassing; and, added for SRD 5.1's chapters, `equipment` Equipment and `appendix` Appendix. The ids are `<pack>:ruleTopic/<key in kebab case>`.
+
+**Differences from the row:**
+- The row asks for both SRDs' chapters. SRD 5.2.1's are not in the pinned source (§8), and a second source is CONT-01's to add, not an importer's (the frame and the fetch are not this row's files): SRD 5.2.1 has its topics and no rule, and the whole of its rules is CONT-73.
+- The three chapters of SRD 5.1 with no words (Combat, Adventuring, Appendix) are rules without `text`, so that all 137 entries are made and the counts agree with the source.
+
+**Found, not fixed:**
+- SRD 5.2.1's rules (above): CONT-73.
+- 4 of the 15 topics have no SRD 5.1 rule (Bonus action, Origins, Active class features, Multiclassing). Their words are in other entities; the rows of the Quick rules screens (CONT-53, CONT-54) decide what a topic with no rule shows, and CONT-73 may fill the 2024 side of them.
+- The sub-sections of SRD 5.1 are separate rules and a rule has no parent: the window of a rule cannot say "in Actions in Combat". A `parent` field is the schema's to add; the topic and the name carry it for now.
+
+**Changelog:** nothing for the changelog; a person sees nothing yet.
