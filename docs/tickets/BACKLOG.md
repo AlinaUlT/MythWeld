@@ -327,7 +327,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 |---|---|---|
 | 1 | CONT-01 to 05 | Phase 2 is closed (SHEET-60) |
 | 2 | CONT-06 to 19, 63 to 67 | Wave 1 is closed |
-| 3 | CONT-20 to 59 | Wave 2 is closed |
+| 3 | CONT-20 to 59, 68, 69 | Wave 2 is closed |
 | 4 | CONT-60 to 61 | Wave 3 is closed |
 | 5 | CONT-62 | Wave 4 is closed |
 
@@ -346,7 +346,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-11 | Feats are imported from both SRDs | S | 🔲 |
 | CONT-12 | Equipment is imported from both SRDs | M | 🔲 |
 | CONT-13 | Magic items are imported from both SRDs | S | 🔲 |
-| CONT-14 | The small rule types are imported from both SRDs | S | 🔲 |
+| CONT-14 | The small rule types are imported from both SRDs | S | ✅ 2026-11-11 |
 | CONT-15 | The rules chapters are imported as rules with topics | M | 🔲 |
 | CONT-16 | The build merges hand-written mechanics into the imports by id | S | 🔲 |
 | CONT-17 | Search finds a name by prefix, case, accent or typo | M | 🔲 |
@@ -400,6 +400,8 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-65 | A spell's growth and healing fields reach the cast panel's dice | M | 🔲 |
 | CONT-66 | A feat taken twice has choices of its own for each take | S | 🔲 |
 | CONT-67 | A magic weapon counts as the weapon it is a kind of | S | 🔲 |
+| CONT-68 | The key helper lives in the import frame | XS | 🔲 |
+| CONT-69 | Alignments and poisons have a place in the packs | S | 🔲 |
 
 - **CONT-07** — 5e-database gives 2024 spells no `heal_at_slot_level` and no table by slot (ENG-50,
   ENG-53): their healing and growth are read from the text or from dnd5e's data, into the fields
@@ -421,8 +423,6 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
   ENG-16's "Melee weapons" and "with which you have proficiency" filters can read them (the filter
   field is CONT-05's); `mounts-and-vehicles` takes the category CONT-05 made.
 - **CONT-13** — the import only; their effects are CONT-39.
-- **CONT-14** — skills, abilities, conditions, damage types, languages, proficiencies and the other
-  small types the packs carry (SHEET-84 closed the damage types in the mini-pack).
 - **CONT-15** — ADR 014 item 13: both SRDs' rules chapters become `rule` entries, each with a
   `topic` (the `ruleTopic` entries of ADR 013 item 18's list) and an optional icon key, for Quick
   rules.
@@ -548,6 +548,13 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
     each take of a repeatable feat needs its own choices.
   - **CONT-67** — a weapon's `baseKey` (dnd5e `type.baseItem`): a proficiency and a mastery find a
     "Longsword, +1" by `longsword` (ENG-16).
+  - **CONT-68** — found by CONT-14: `keyOf` (a slug in camelCase, `deep-speech` to `deepSpeech`) is
+    not in `frame.ts`, and wave 2 may not edit the frame. It is exported from `smallTypes.ts`, and
+    the later importers import it from there. The row moves it into `frame.ts` and fixes the imports.
+  - **CONT-69** — found by CONT-14: the source has 9 alignments (SRD 5.1; SRD 5.2.1 has 10, with
+    `unaligned`) and 14 poisons (SRD 5.2.1 only, with a cost and a kind) and no importer takes
+    them. An alignment has no entity type; a poison is an item or a `rule`. The row decides where
+    each goes, after reading the SRD's own text, and imports them.
 
 ---
 ## Phases 4–7 — cut when the phase before closes

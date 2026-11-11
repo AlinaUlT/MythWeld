@@ -569,3 +569,101 @@ Not a screen. The published JSON Schema accepts a `monster`.
 **Found, not fixed:** nothing outside the hat. For CONT-20: the 16 `choose` damage parts, the repeated Blinded, the 134 empty 2014 `languages`, and `size` as a list.
 
 **Changelog:** one line (the published JSON Schema is a public file).
+
+---
+
+### CONT-14 The small rule types are imported from both SRDs
+
+**Hat:** The small rule types of both SRDs become entities
+**Depends on:** CONT-04 (the frame), CONT-05 (wave 1 order only)
+**Size:** S
+**Screen:** No
+**SPEC:** §3 (both SRDs), §5.1 (ids), §5.3 (the simple types), §5.7 (the pack); ADR 003, ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/import/smallTypes.ts` — changes: from the empty importer to the real one.
+- `packages/content/test/import-small-types.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on `77b6707`: `smallTypes` has no types, no files and makes nothing. The source at `e6edf9a` has the small files (SRD 5.1 / SRD 5.2.1): ability scores 6 / 6, skills 18 / 18, conditions 15 / 15, damage types 13 / 13, languages 16 / 19, magic schools 8 / 8, weapon properties 11 / 10, weapon mastery properties 0 / 8, proficiencies 117 / 74. Seven types that other entities name by key have no file: `size`, `creatureType`, `spellSchool` (has one), `itemRarity`, `areaShape`, `featCategory`, `toolKind`.
+
+#### 3. What it should look like when done
+
+1. The importer makes `ability`, `skill`, `condition`, `damageType`, `language`, `weaponProperty`, `weaponMastery` (2024 only), `spellSchool`, `toolKind`, `size`, `creatureType`, `itemRarity`, `areaShape` and `featCategory` (2024 only). Run through the frame over the real source, it gives 0 problems in both rulesets.
+2. Counts, SRD 5.1 / SRD 5.2.1: ability 6 / 6, skill 18 / 18, condition 15 / 15, damageType 13 / 13, language 16 / 19, weaponProperty 11 / 10, weaponMastery 0 / 8, spellSchool 8 / 8, toolKind 37 / 37, size 6 / 6, creatureType 14 / 14, itemRarity 7 / 7, areaShape 5 / 6, featCategory 0 / 4. Total 156 / 171.
+3. An entity made from a file has the id `<pack>:<type>/<slug>` of its entry and the key in camelCase (`deep-speech` is `deepSpeech`).
+4. A stat is named by its `full_name`, has the source's short form as `abbr` and the file's order. A skill names its stat's key. Only Perception is `passive`.
+5. A tool kind is made for each proficiency of a tool group, named by the item it is a proficiency of.
+6. Every value the source uses for a size, a creature type, a rarity, a school, an area shape and a feat category has an entity (the test reads each set from the source).
+7. Each small entity the hand-written packs hold has, in the import, the same id, key and name.
+
+#### 4. How to do it
+
+1. A file's entries become entities with the frame's `baseOf` and a `key`. A stat's name and `abbr` swap the source's two fields.
+2. A type with no file is a table in the importer, one row of slug and name, from the values measured in the source (§8). Names are the source's spelling.
+3. `keyOf` is written here and exported, since the frame is not edited in wave 2.
+4. Tool kinds read `Proficiencies` (the proficiencies of tools and vehicles) and take the id and name of `reference`, so a tool item (CONT-12) and its kind share a key.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/content/test/import-small-types.test.ts` — 33: `keyOf`; for each ruleset, 0 problems, the count of each type, the id and key of each entity, the ids of each file's entities against its entries, the stats' names and order, the skills' stats and the one passive skill, unique keys; the sizes, creature types, rarities and schools against what the source uses; the area shapes (SRD 5.1's `area_of_effect.type`, SRD 5.2.1's spell texts); the feat kinds; 37 tool kinds in each ruleset and the golden characters' tool keys; the hand-written packs' small entities against the import. No rules text is written in the test.
+- Control numbers from: §8, measured by a script outside the repository.
+
+#### 8. Checked against the source
+
+5e-bits/5e-srd-api at `e6edf9a`, measured 2026-11-11:
+- **Files:** the counts in §2. 2024 `Languages` has `common-sign-language`, `druidic` and `thieves-cant`, which 2014 does not. 2014 `Weapon-Properties` has `monk` and `special`; 2024 has `range` and no `special`.
+- **Sizes:** both rulesets' monsters use Tiny, Small, Medium, Large, Huge, Gargantuan; 2024 also has "Medium or small" (30), which is two of them.
+- **Creature types:** 14 in each ruleset (aberration, beast, celestial, construct, dragon, elemental, fey, fiend, giant, humanoid, monstrosity, ooze, plant, undead), and the swarm types ("swarm of Tiny beasts" 10 in 2014 and 6 in 2024, "swarm of tiny undead" 1) are a beast or an undead. 2024 species: `type` "Humanoid" for 9.
+- **Rarities:** 2014: Common, Uncommon, Rare, Very Rare, Legendary, Artifact, Varies. 2024 has the same and writes "Rarity Varies", and 9 items whose rarity is one of 6 other strings ("Uncommon (+1), Rare (+2), or Very Rare (+3)" on 4 of them); CONT-13 reads each into one key.
+- **Area shapes:** 2014 `area_of_effect.type` on 88 spells: cube 26, sphere 39, line 8, cone 6, cylinder 9. 2024 spells have no such field; their texts name Sphere, Cube, Emanation, Cone, Cylinder and Line.
+- **Feat kinds:** 2024 `Feats.type`: origin 4, general 2, fighting-style 4, epic-boon 7; 2014's one feat has none.
+- **Tool proficiencies:** types "Artisan's Tools", "Gaming Sets", "Musical Instruments", "Other", "Vehicles" (2014: 19, 2, 10, 4, 2) and "Artisan's Tools", "Tools", "Musical Instruments", "Other" (2024: 18, 8, 10, 1), 37 each. 2024's `tool-dice` is a proficiency of `dice`; the key is the `reference`'s. Two 2014 entries are vehicles (`land-vehicles`, `waterborne-vehicles`) and are kept as kinds.
+- **Passive:** 5e-database has no passive flag; Perception is the one passive skill as the hand-written packs have it (ENG-09, SPEC §8).
+- No `[ПРОВЕРИТЬ]` is involved.
+
+#### 9. Not in this ticket
+
+- Conditions' levels and effects (`maxLevel`, exhaustion): mechanics, CONT-16 and the rows after it.
+- Alignments (9 and 10) and poisons (14, SRD 5.2.1): no entity type takes them; CONT-69.
+- A language's kind (standard or exotic, rare) and its speakers: the source's `type`, `typical_speakers` and `note` are not read, since no field holds them.
+- Which rarity a composite string means: CONT-13.
+
+#### 10. Rake check
+
+- **Everything is data:** the six stats and 18 skills come from the source's files, never from the code; a skill's stat is read from the entry.
+- **Ids are stable:** an id is the source's slug, as the hand-written packs have it; the test compares them.
+- **No rules text:** the test asserts ids, keys and counts; the tables hold names only.
+- **Names:** the entities hold no trademarked name.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 522 files, no fixes; `pnpm typecheck` clean; `pnpm test` 151 files, 1772 passed, 0 failed, 36.6 s (33 new, from 1739), then speed 2 passed; coverage statements 99.02 % (4162/4203), lines 99.78 % (3648/3656). No `pnpm e2e`: `apps/web` is not touched.
+
+**Keys the later rows name, which this ticket makes** (the id is `<pack>:<type>/<slug>`, the key is the slug in camelCase):
+- `size`: tiny, small, medium, large, huge, gargantuan.
+- `creatureType`: aberration, beast, celestial, construct, dragon, elemental, fey, fiend, giant, humanoid, monstrosity, ooze, plant, undead.
+- `spellSchool`: abjuration, conjuration, divination, enchantment, evocation, illusion, necromancy, transmutation.
+- `itemRarity`: common, uncommon, rare, veryRare (slug `very-rare`), legendary, artifact, varies.
+- `areaShape`: cone, cube, cylinder, line, sphere; and `emanation` in SRD 5.2.1.
+- `featCategory` (SRD 5.2.1): origin, general, fightingStyle (slug `fighting-style`), epicBoon (slug `epic-boon`).
+- `toolKind`: the camelCase of the equipment item's index: `smithsTools`, `brewersSupplies`, `diceSet` (2014) and `dice`, `playingCards`, `threeDragonAnte` (2024), and `landVehicles`, `waterborneVehicles` (2014). A tool item (CONT-12) uses the same key.
+- `keyOf(slug)` is exported from `smallTypes.ts`.
+
+**Difference from the row:** the row says "proficiencies". There is no proficiency entity type: a proficiency names a skill, stat, language, tool kind, armor group or weapon key, so only tool kinds needed entities. The other kinds name entities that already exist.
+
+**Found, not fixed:** `keyOf` is not in the frame (CONT-68, XS). Alignments and poisons have no importer (CONT-69, S). A language's standard or exotic kind, and its speakers, are in the source and in no field.
+
+**Changelog:** nothing for the changelog; a person sees nothing yet.
