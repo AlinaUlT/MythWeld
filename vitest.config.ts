@@ -6,6 +6,7 @@ import { defineConfig } from 'vitest/config';
 // after it, alone and without coverage, whose counters slow the code they count.
 // OPS-28: a test fails by what it checks, never by the machine's load. The time limits only stop a
 // test that hangs, so they sit far above the slowest test, which takes about 3 s on a quiet machine.
+// CONT-04: the unit project first puts the import source in place (`vitest.fetch-source.ts`).
 const limits = { testTimeout: 60_000, hookTimeout: 60_000 };
 
 export default defineConfig({
@@ -14,6 +15,7 @@ export default defineConfig({
       {
         test: {
           name: 'unit',
+          globalSetup: ['./vitest.fetch-source.ts'],
           include: ['packages/*/test/**/*.test.ts', 'apps/web/test/**/*.test.{ts,tsx}'],
           ...limits,
         },

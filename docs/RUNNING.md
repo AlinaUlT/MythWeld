@@ -51,6 +51,9 @@ pnpm e2e
      over 10 ms (SPEC §6.6). It prints one line: `compute(), level 20: fastest … ms × 4 = … ms
      (budget 10 ms); of 500, median … ms, slowest … ms`. Where Vitest picks its `minimal`
      reporter, the line is shown only on a failure; `--reporter=default` shows it always.
+- The import's tests read the source `pnpm fetch-source` fetches. The `unit` pass first puts it in
+  place (`vitest.fetch-source.ts`) and fetches nothing when it is there. With no network a test of
+  the source fails and says to run `pnpm fetch-source`; run it once online.
 - Each test may take up to 60 s before Vitest stops it (`vitest.config.ts`). The limit only
   catches a test that hangs; a busy machine slows tests without failing them.
 - One pass alone: `pnpm vitest run --project unit` or `pnpm vitest run --project speed`. One file:

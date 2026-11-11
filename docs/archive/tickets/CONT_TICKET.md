@@ -284,3 +284,93 @@ Nothing to check: no rules fact is used. ADR 010 item 3 names Armor, Backgrounds
 **Found, not fixed:** nothing.
 
 **Changelog:** one line.
+
+---
+
+### CONT-04 The import frame maps both SRDs' entries to our ids
+
+**Hat:** The import frame names, reads and checks the entries every importer makes
+**Depends on:** CONT-01 (the fetched files)
+**Size:** S
+**Screen:** No
+**SPEC:** §3.2 (the two text shapes), §5.1 (ids), §5.7 (the pack); ENG-02 §11
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/import/frame.ts` — new: the slug mapping, the text reader, the importer shape, `runImport`.
+- `packages/content/src/import/source.ts` — new: reads a fetched file (Node only).
+- `packages/content/src/import/registry.ts` — new: every importer, by file.
+- `packages/content/src/import/{spells,classes,species,backgrounds,feats,equipment,magicItems,smallTypes,rules,monsters}.ts` — new, empty.
+- `vitest.config.ts`, `vitest.fetch-source.ts` — the unit tests put the fetched source in place first. `docs/RUNNING.md`.
+
+#### 2. What is missing now
+
+Measured on `6695af0`: `packages/content/src` has `index.ts` and two hand-written pack files; no `import/`. Nothing turns a source entry into an entity input. The source at `e6edf9a` (fetched by CONT-01): 4,428 entries in 49 files; 11 indexes are not slugs (ENG-02 §11); `desc` is a list of paragraphs in most SRD 5.1 entries and one string in 206 of them; SRD 5.2.1 uses `description`, and its magic items still use `desc`; `Levels` has no `name`; one SRD 5.1 spell (Scrying) has an empty paragraph.
+
+#### 3. What it should look like when done
+
+1. `slugOf(index)` leaves 4,417 indexes as they are and maps the 11: `dragon-ancestor-<color>---<damage>-damage` → `dragon-ancestor-<color>-<damage>-damage` (10) and `stone-of-good-luck-(luckstone)` → `stone-of-good-luck-luckstone`. It throws for an index it cannot map to a slug.
+2. `entityIdOf(pack, type, index)` gives `<pack>:<type>/<slug>`.
+3. `textOf(entry)` reads `desc` as a list or a string and `description` as a string, joins paragraphs with a blank line, drops empty paragraphs, and gives `undefined` for no words.
+4. `runImport` runs each importer for one ruleset, checks every entity it returns with the fifth-edition entity schema, and returns the entities that pass and a list of problems: a schema refusal (each issue with its path), an id of another pack, a type the importer does not name, an id made twice.
+5. Ten importer files exist, each empty (no types, no files, makes nothing), and a registry lists them.
+6. Run over the registry, both rulesets give no entity and no problem.
+7. Over the 4,428 entries: every slug maps; none repeats in its file; the text of each entry that has any reads as text.
+
+#### 4. How to do it
+
+1. `frame.ts` is pure; it reads no file. `source.ts` reads a file by its short name (`Spells` is `5e-SRD-Spells.json`) and says to run `pnpm fetch-source` when it is missing.
+2. An `Importer` names its entity `types` and, for each ruleset, its source `files`. `runImport` reads those files and calls `run`. A row fills one file and never edits the registry or the frame.
+3. Importer files are cut by the row that fills them, not by entity type. The row says "one for each type", but CONT-12 and CONT-13 both make `item`, and CONT-08 makes two types; a file per type would put two wave 2 rows in one file, which the wave rule forbids. Ten files: seven rows of wave 2, CONT-14 (all the small types), CONT-15 (rules) and CONT-20 (monsters, wave 3; the `monster` type is CONT-06's).
+4. The frame stops at entities. The pack's own fields (id, title, license) are CONT-61's.
+5. The source is not committed (CONT-01), so the unit pass of Vitest fetches it before the tests run when it is not there (a global setup), and fetches nothing when it is.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/content/test/import-frame.test.ts` — 22: the 11 slugs by name; a slug left as it is; refusals; the id; the text in each shape, both fields, empty paragraphs; `runImport` with made-up importers (damage types, no rules text) for a pass, a schema refusal with its path, another pack, an undeclared type, a repeated id, the files read per ruleset; the registry's ten names and shape; the registry over the real source for each ruleset; the real source's counts and text.
+- Control numbers from: ENG-02 §11 (4,428 indexes, 4,417 slugs, 11 mapped), SPEC §3.2, and §8 below (206).
+
+#### 8. Checked against the source
+
+Measured 2026-11-11 on the files CONT-01 fetched (5e-bits/5e-srd-api at `e6edf9a`), read by a script outside the repository:
+- 4,428 entries; 11 indexes do not fit the slug pattern, the 11 of ENG-02 §11; after the mapping none repeats in its file.
+- Text in SRD 5.1: `desc` as a list of strings, and, for 206 entries, as one string (134 rules, 45 monsters, 9 alignments, 8 schools of magic, 6 languages, 4 subraces). SRD 5.2.1: `description`, except that its 262 magic items keep `desc`. No entry has both. SPEC §3.2 names only `desc: string[]` and `description: string`; the frame reads the third shape as well.
+- One empty paragraph in one list: SRD 5.1 `scrying`.
+- 290 `Levels` entries have `index` and no `name`; no other entry lacks a name.
+- No rules fact beyond the source's shape is used.
+
+#### 9. Not in this ticket
+
+- What any importer makes: CONT-07 to CONT-15 and CONT-20.
+- The pack's header (title, license, attribution) and the build that writes the packs: CONT-61.
+- The count of each type against the source: CONT-21.
+- The `monster` type: CONT-06.
+
+#### 10. Rake check
+
+- **Licensing:** the frame and its tests carry no rules text; the made-up entities are named "Made up".
+- **Ids are stable:** the 11 are mapped once, here, by a rule; an index it cannot map is refused.
+- **Missing is not broken:** an entry with no text or no name is read, not refused; the importer decides.
+- **The engine stays pure:** the frame is in `packages/content`; only `source.ts` reads a file.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 519 files, no fixes; `pnpm typecheck` clean; `pnpm test` 148 files, 1713 passed, 0 failed, 27.4 s (22 new, from 1691), then speed 2 passed; coverage statements 99.01 % (4142/4183), lines 99.78 % (3629/3637). `pnpm e2e` not run: `apps/web` is not touched. With `packages/content/.source` removed, `pnpm vitest run packages/content/test/import-frame.test.ts` fetched it and passed (3.6 s).
+
+**Measured, not in the row:** the three text shapes of §8; the empty paragraph; 290 `Levels` entries with no `name`. The frame reads the first two and leaves a missing `name` to the importer.
+
+**Difference from the row:** ten importer files cut by row, not one per type (§4 item 3).
+
+**Found, not fixed:** 2024's magic items keep `desc`, so a row that reads "2014 `desc`, 2024 `description`" from SPEC §3.2 alone would lose their text; `textOf` reads both for every file, and CONT-13's §8 should check the text of each ruleset's magic items against it.
+
+**Changelog:** Nothing for the changelog.
