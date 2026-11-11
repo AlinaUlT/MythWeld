@@ -5,3 +5,6 @@ coverage
 .DS_Store
 test-results
 playwright-report
+
+# CONT-01: the import source, fetched by `pnpm fetch-source` and never committed
+packages/content/.source

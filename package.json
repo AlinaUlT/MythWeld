@@ -12,7 +12,8 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "vitest run --project unit --coverage && vitest run --project speed",
     "build": "pnpm -r --if-present build",
-    "e2e": "pnpm --filter @grimoire/web e2e"
+    "e2e": "pnpm --filter @grimoire/web e2e",
+    "fetch-source": "pnpm --filter @grimoire/content fetch-source"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",

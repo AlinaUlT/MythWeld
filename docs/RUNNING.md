@@ -92,6 +92,27 @@ pnpm e2e
 - The container cannot reach `alinault.github.io` unless that host is added to the environment's
   allowed domains. The public site is checked from GitHub's runner instead (below).
 
+## Fetch the import source
+
+The SRDs' structured data is read from 5e-bits/5e-srd-api, `packages/5e-database/src/{2014,2024}/en`,
+at one pinned commit (`SOURCE_COMMIT` in `packages/content/src/source/pin.ts`). One command fetches it:
+
+```
+pnpm fetch-source
+```
+
+- It needs `git` and a network. It writes `packages/content/.source/5e-database/`, which git
+  ignores: the files are not committed (their legal text is an MIT license for the code and a line
+  putting the material under the OGL 1.0a, not the CC-BY-4.0 the packs carry, so the repository
+  carries the packs the importers write instead).
+- The folder holds `2014/` and `2024/` (the English files only), the data package's `LICENSE.md`,
+  and `SOURCE.json`: the repository, the commit, and each file's size and SHA-256.
+- Run again, it checks every file against `SOURCE.json` and fetches nothing when all are as they
+  were fetched. A folder with a changed, missing or extra file is replaced by a new fetch. A folder
+  with other files and no `SOURCE.json` is refused and left alone.
+- Measured on 2026-11-11 in the cloud container: 50 files (24 for 2014, 25 for 2024, `LICENSE.md`),
+  7,205,835 bytes; first fetch 3.0 s, second run 0.8 s.
+
 ## Deploy
 
 - Every push to `main` runs `.github/workflows/ci.yml`:
