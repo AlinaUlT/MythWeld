@@ -327,7 +327,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 |---|---|---|
 | 1 | CONT-01 to 05 | Phase 2 is closed (SHEET-60) |
 | 2 | CONT-06 to 19, 63 to 67 | Wave 1 is closed |
-| 3 | CONT-20 to 59, 68, 69 | Wave 2 is closed |
+| 3 | CONT-20 to 59, 68 to 70 | Wave 2 is closed |
 | 4 | CONT-60 to 61 | Wave 3 is closed |
 | 5 | CONT-62 | Wave 4 is closed |
 
@@ -344,7 +344,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-09 | Species are imported with their subraces | S | ✅ 2026-11-11 |
 | CONT-10 | Backgrounds are imported from both SRDs | S | 🔲 |
 | CONT-11 | Feats are imported from both SRDs | S | ✅ 2026-11-11 |
-| CONT-12 | Equipment is imported from both SRDs | M | 🔲 |
+| CONT-12 | Equipment is imported from both SRDs | M | ✅ 2026-11-11 |
 | CONT-13 | Magic items are imported from both SRDs | S | ✅ 2026-11-11 |
 | CONT-14 | The small rule types are imported from both SRDs | S | ✅ 2026-11-11 |
 | CONT-15 | The rules chapters are imported as rules with topics | M | 🔲 |
@@ -402,6 +402,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-67 | A magic weapon counts as the weapon it is a kind of | S | 🔲 |
 | CONT-68 | The key and proficiency helpers live in the import frame | S | 🔲 |
 | CONT-69 | Alignments and poisons have a place in the packs | S | 🔲 |
+| CONT-70 | The item schema holds the equipment values the import left out | M | 🔲 |
 
 - **CONT-07** — 5e-database gives 2024 spells no `heal_at_slot_level` and no table by slot (ENG-50,
   ENG-53): their healing and growth are read from the text or from dnd5e's data, into the fields
@@ -413,9 +414,6 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
   languages on each background, and ENG-56 reads a 2024 background's `language` grants as 2024's
   starting languages (`languageSource`, `rulesets/2024.ts`): the import puts them there, or changes
   that field.
-- **CONT-12** — armor, weapons, gear, tools, packs, mounts and vehicles. Weapons are tagged so
-  ENG-16's "Melee weapons" and "with which you have proficiency" filters can read them (the filter
-  field is CONT-05's); `mounts-and-vehicles` takes the category CONT-05 made.
 - **CONT-15** — ADR 014 item 13: both SRDs' rules chapters become `rule` entries, each with a
   `topic` (the `ruleTopic` entries of ADR 013 item 18's list) and an optional icon key, for Quick
   rules.
@@ -556,6 +554,13 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
     `unaligned`) and 14 poisons (SRD 5.2.1 only, with a cost and a kind) and no importer takes
     them. An alignment has no entity type; a poison is an item or a `rule`. The row decides where
     each goes, after reading the SRD's own text, and imports them.
+  - **CONT-70** — found by CONT-12: the source holds values the item schema has no field for, so the
+    import left them out: a thrown weapon's own range (`throw_range`, 8 weapons in SRD 5.1 and 7 in
+    SRD 5.2.1: 20/60 for a dagger), a bundle's `quantity` (arrows 20, needles 50: 4 and 5 items), a
+    mount's or vehicle's `speed` and `capacity` (15 and 9 items of SRD 5.1), a 2024 tool's `ability`,
+    `craft` list and `utilize` checks, and an armor's `don_time` and `doff_time`. The row is the
+    wave's schema row, so it edits the published JSON Schema (it may add a version and a migration),
+    and then fills the fields in `equipment.ts`.
 
 ---
 ## Phases 4–7 — cut when the phase before closes

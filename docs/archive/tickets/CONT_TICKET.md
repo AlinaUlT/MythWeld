@@ -927,3 +927,104 @@ Not a screen.
 - `hammer-of-thunderbolts` has no attunement in the source while its words speak of being attuned: to be checked against SRD 5.1's own text.
 
 **Changelog:** nothing for the changelog; a person sees nothing yet.
+
+---
+
+### CONT-12 Equipment is imported from both SRDs
+
+**Hat:** The armor, weapons, gear, tools, packs, mounts and vehicles of both SRDs become `item` entities
+**Depends on:** CONT-14 (the keys of damage types, properties, masteries and tool kinds), CONT-05 (`transport`), CONT-13 (the one id it shares)
+**Size:** M
+**Screen:** No
+**SPEC:** §3 (both SRDs), §5.1, §5.3 (`ItemDef`), §5.5 (an item grant); ADR 003, ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/import/equipment.ts` — changes: from the empty importer to the real one.
+- `packages/content/test/import-equipment.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on `9d0137f`: `equipment` has no types, no files and makes nothing. The source at `e6edf9a` has 237 equipment entries in SRD 5.1 and 182 in SRD 5.2.1.
+
+#### 3. What it should look like when done
+
+1. The importer makes `item`: 237 and 182, 0 problems in both rulesets, one for each entry under the entry's slug, with its name, a `key` (the slug in camelCase, unique) and its words where it has any.
+2. Categories, SRD 5.1 / SRD 5.2.1: weapon 37 / 38, armor 12 / 12, shield 1 / 1, tool 35 / 37, pack 7 / 7, ammunition 4 / 5, focus 12 / 10, transport 40 / 0, gear 89 / 72.
+3. A weapon has a `weapon` block: its group (simple or martial), its kind (melee or ranged), its damage as a formula and a damage type key, `versatile` (the two-handed die), `properties` as keys, `range` in feet, and in SRD 5.2.1 its `mastery`. Each is tagged `melee` or `ranged`, the tag the barbarian's "Melee weapons" choice reads (CONT-05 §3 item 8).
+4. An armor has an `armor` block: 3 light, 5 medium, 4 heavy; `dexCap` null for light, 2 for medium, 0 for heavy; `strRequirement` for the 3 that have one; `stealthDisadvantage` for the 7.
+5. A shield has no armor block and the effect SPEC §5.3 writes: `ac.bonus`, `add`, its armor class, `when` `@equipped`.
+6. A pack's contents are an `item` grant `contents` with each item's id and quantity; every item named exists.
+7. SRD 5.1's 40 mounts and vehicles are `transport`, tagged with the source's kind: 9, 25 and 6.
+8. A price or a weight of 0 is left out (7 free items in SRD 5.1 have no price; 52 and 22 items have no weight).
+9. The hand-written packs' items (chain mail, shield, warhammer in SRD 5.1; chain mail, greatsword and the others in SRD 5.2.1) are imported with the same key, name, category, price, weight, armor block and effects, and a weapon block that contains the pack's.
+
+#### 4. How to do it
+
+1. The category comes from the source's lists, first that fits: a pack, a weapon, a shield, an armor, a tool, a mount or vehicle, ammunition, a focus, else gear. A weapon is first, so SRD 5.2.1's quarterstaff, which is also a focus, is a weapon.
+2. The source's lists are both read. SRD 5.2.1's entries and its `Equipment-Categories` file disagree on 6 items (§8): an item is in a category when either lists it, a pack is any entry with `contents`, and an armor whose own list names two groups takes the one the categories file gives. The categories file is also what SRD 5.1 and the AC of the armor agree with.
+3. A tool is an item that a tool proficiency is of (`Proficiencies`' `reference`), so the four SRD 5.1 kits that are tools are tools, and each tool kind CONT-14 made has an item with its key.
+4. A weapon's kind and group, and an armor's group, are read from the categories, not from a ruleset's own field, so the two SRDs go through one path.
+5. What the schema cannot hold is left out and named in §11 (CONT-70).
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/content/test/import-equipment.test.ts` — 27: for each ruleset, 0 problems, one item for each entry under its slug and name, unique keys, each category's count, the blocks only where a category has them and a shield's effect, no price or weight of 0 and the number without either, the words, the weapons by group, kind, versatile and mastery with their tags, damage types, properties and masteries that exist, the armor groups and caps, the packs and what they name; SRD 5.1: the 40 transport items by kind, the four kits, a longsword, a longbow, a net, the free items; SRD 5.2.1: no transport, the packs and the disguise kit, a longsword with its mastery, the quarterstaff, the lance; the hand-written packs' items.
+- The registry test of CONT-04 now runs `equipment` and `magicItems` together over the real source: 0 problems, so no id is made twice.
+- Control numbers from: §8, measured by a script outside the repository.
+
+#### 8. Checked against the source
+
+5e-bits/5e-srd-api at `e6edf9a`, measured 2026-11-11:
+- **Counts:** SRD 5.1 237 entries: weapon 37 (simple 14, martial 23), armor 12 and shield 1, tools 31 (artisan's 17, gaming sets 2, musical instruments 10, other 2), `mounts-and-vehicles` 40, packs 7 (each with `contents`), adventuring gear 116 (standard 86, kits 7, packs 7, ammunition 4, holy symbols 3, arcane foci 5, druidic foci 4). SRD 5.2.1 182 entries: weapons 38 (simple 14, martial 24), armor 12 and shield 1, tools 36, packs 7 with `contents`, ammunition 5; it has no mount or vehicle.
+- **Two lists:** each SRD 5.2.1 entry lists its `equipment_categories`, and `Equipment-Categories` lists its `equipment`. They differ for `hide-armor` (the entry: light armor; the file: medium), `disguise-kit` (the file: tools; the entry: adventuring gear), `forgery-kit` (the entry: tools; the file: other tools only), `explorers-pack` (the file: packs; the entry: gear only), `entertainers-pack` (the entry: gear), `longsword` (the entry: martial melee; the file: not), `spellbook` (the entry: gear). SRD 5.1's two lists agree. The importer follows §4.2. Hide Armor has AC 12 with Dexterity capped at 2, as the three other medium armors of the SRD 5.2.1 file have, where the three light ones have no cap.
+- **Tool kits (SRD 5.1):** the disguise, forgery, herbalism and poisoner's kits are the `reference` of tool proficiencies and have `gear_category` "Kits", so the source files them under gear.
+- **Weapons:** 36 of 37 SRD 5.1 weapons have `damage` (the net has none), all 38 in SRD 5.2.1; `two_handed_damage` on 6 and 7 (each has the `versatile` property); `range` `{ normal, long? }` in feet (5 for most melee weapons); `mastery` on 38 SRD 5.2.1 weapons (8 kinds); `properties` 11 kinds in SRD 5.1 and 9 in SRD 5.2.1 (as CONT-14 lists them).
+- **Armor:** `armor_class` `{ base, dex_bonus, max_bonus? }`: `dex_bonus` false for the heavy armors and the shield, true for the others, `max_bonus` 2 for the 5 medium armors, absent for light ones (SRD 5.2.1's heavy armors carry `max_bonus` 0). `str_minimum` 13 (1) and 15 (2). `stealth_disadvantage` true on 7.
+- **Costs and weights:** `cost` `{ quantity, unit }` in cp, sp or gp, 0 for 7 SRD 5.1 items (`alms-box`, `block-of-incense`, `censer`, `little-bag-of-sand`, `small-knife`, `string-10-feet`, `vestments`); no `weight` on 22 and weight 0 on 30 SRD 5.1 items, none and 0 on 1 and 21 SRD 5.2.1 items; 6 and 5 weights have fractions.
+- **What the schema has no field for:** `throw_range` on 8 and 7 weapons; `quantity` on 4 and 5 bundles of ammunition; `speed` on 15 and `capacity` on 9 mounts and vehicles; SRD 5.2.1's tool `ability` (37), `craft` (20) and `utilize` (36), `storage` (5), `don_time` and `doff_time` (12 armors), `ammunition` (9).
+- No `[ПРОВЕРИТЬ]` is involved.
+
+#### 9. Not in this ticket
+
+- The values of §8's last bullet: CONT-70.
+- A weapon's, armor's or tool's effects other than the shield's: the mechanics rows.
+- The magic items: CONT-13. The poisons of SRD 5.2.1 and the alignments: CONT-69.
+- Reading `baseKey`, `proficient` or the `melee` tag in the engine: CONT-64, CONT-67; the filter reads the tag already.
+
+#### 10. Rake check
+
+- **Ids are stable:** an id is the source's slug, as the hand-written packs have it; the last test compares.
+- **Everything is data:** the six stats and the damage types are never named in the code; a damage type, a property and a mastery are read from the entry and exist as CONT-14's entities (a test).
+- **Stored units are feet and pounds:** a weapon's range is the source's feet, a weight its pounds; no conversion.
+- **No ruleset checks scattered:** the two SRDs go through one path, by the categories each lists; the only edition-specific field read is none.
+- **No rules text:** the test asserts ids, keys, counts and shapes.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 526 files, no fixes; `pnpm typecheck` clean; `pnpm test` 155 files, 1866 passed, 0 failed, 35.0 s (27 new, from 1839), then speed 2 passed; coverage statements 99.02 % (4162/4203), lines 99.78 % (3648/3656). No `pnpm e2e`: `apps/web` is not touched.
+
+**First run found five things in the source, none in the code's first guess:**
+1. A price of 0 on 7 SRD 5.1 items: the schema asks an amount above 0, so it is left out.
+2. SRD 5.2.1's entries and its categories file disagree for 6 items (§8). My first rule (the entry's own list) made Hide Armor a light armor with a Dexterity cap of 2, and two packs and the disguise kit gear. Both lists now count, and §4.2 decides between two groups.
+3. Four SRD 5.1 kits are tools by proficiency and gear by category: they are tools (§4.3).
+4. A pack is an entry with `contents`, since two SRD 5.2.1 packs lack the pack category.
+5. The `shield` of SRD 5.2.1 is the equipment's; CONT-13 gave the magic one `shield-magic`.
+
+**Difference from the row:** the row says nothing of the two lists or the kits. Mounts and vehicles are `transport` as it says, and weapons are tagged `melee` or `ranged`.
+
+**To check (the owner's, if it differs from the SRD):** SRD 5.2.1 `hide-armor` is imported as medium armor (the categories file, and the SRD 5.1 table), where the entry says light; the importer follows the file. If SRD 5.2.1's armor table says otherwise, the one place is `armorOf` in `equipment.ts`.
+
+**Found, not fixed:** the values of §8's last bullet, which the item schema has no field for: CONT-70 (M, wave 3's schema row). Nothing else.
+
+**Changelog:** nothing for the changelog; a person sees nothing yet.
