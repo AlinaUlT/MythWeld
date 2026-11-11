@@ -9023,3 +9023,31 @@ current hit points above it. It is open in `BACKLOG.md` and is not in the gate's
 item 1).
 
 **Changelog:** Nothing for the changelog.
+
+
+---
+
+### SHEET-88 Current hit points stay inside the maximum when a pick is taken back · XS
+
+**Hat:** The current hit points never stay above a maximum a taken-back pick lowers
+**Where:** `packages/system-5e/src/sheet-choices.ts` — `keepFullHitPoints` becomes `followMaximum`; `apps/web/src/systems.ts` and `apps/web/src/sheet/panels/ChoicesPanel.tsx` — the new name
+**Depends on:** SHEET-85 (found there)
+**Screen:** No.
+
+**What it should look like when done:**
+1. Golden A with the Hill Dwarf picked and at 12 of 12: the entry that takes the pick back also sets the current hit points to 11, in the same entry, so one Undo gives both back.
+2. Hit points already at or under the lower maximum (0, 5, 11) stay as they are.
+3. SHEET-85's rule is unchanged: a maximum that rises moves only a character at full.
+4. The gate is green.
+
+**Tests:** `packages/system-5e/test/follow-maximum.test.ts` (renamed from `keep-full-hit-points.test.ts`) — 2 new: 12 of 12 becomes 11 of 11 with both changes in the entry; 0, 5 and 11 stay. Control numbers: SPEC §6.7 golden A, 12 hit points with the Hill Dwarf, 11 without (8 + 3 by hand).
+**What came out of it:**
+Quality gate, 2026-11-11: `pnpm lint` 455 files, no fixes; `pnpm typecheck` clean; `pnpm test` 145 files, 1668 passed, 0 failed, 33.9 s (2 new, from 1666), then speed 2 passed; coverage statements 99.01 % (4142/4183), lines 99.78 % (3629/3637); `pnpm e2e` 104 passed, 0 failed, 2.0 min (0 new; the wiring is the one SHEET-85's e2e tests already run).
+
+Design choice (ADR 002): one function in the module covers both directions, so the rule "current hit points follow the maximum" lives in one place; it is renamed `followMaximum` because it no longer only keeps a full character full.
+
+Measured, not stated in the row: no screen reaches this case today. The choices panel lists a choice only while it is pending, so a pick can be taken back with its chip only when the choice needs more picks than were made, and the one pick that moves the maximum (the Hill Dwarf) takes one. The rule is tested on the entry, and a later screen that takes a pick back (the library, phase 4's wizard) gets it by calling the same function. No e2e test: nothing in the interface drives it.
+
+Found, not fixed: nothing.
+
+Changelog: Nothing for the changelog (no screen reaches it yet).

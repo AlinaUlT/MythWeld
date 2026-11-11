@@ -35,7 +35,7 @@ export function ChoicesPanel({ onClose }: PanelProps) {
   const missing = (id: string) => t('missing', { id });
   const save = (entry: ReturnType<typeof choiceEntry>) => {
     // SHEET-85: a character at full hit points follows a maximum the pick raises.
-    changeCharacter(character.id, system.keepFullHitPoints(character, entry, content.index)).catch(
+    changeCharacter(character.id, system.followMaximum(character, entry, content.index)).catch(
       (error: unknown) => console.error(error),
     );
   };

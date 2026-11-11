@@ -152,7 +152,7 @@ creation wizard, no homebrew editor. SHEET-60 is the phase's last row: its §11 
 **Closed 2026-11-08.** The gate's proof is in SHEET-60 §11, in
 [`docs/archive/tickets/SHEET_TICKET.md`](../archive/tickets/SHEET_TICKET.md). ADR 019 decided what the
 gate needed (SHEET-85, 86 and 87) and what waits for phases 3 and 4: picking the spells of a class
-list, and a person's own timing of the 5 minutes. SHEET-88 is open and outside the gate.
+list, and a person's own timing of the 5 minutes. SHEET-88, found after the gate, is closed too.
 
 **Cut on 2026-10-22 by OPS-29**, before phase 1 closed: ENG-64 is phase 1's last open row, and the
 owner asked for rows she can start in parallel chats once it lands. No phase 2 row starts before
@@ -288,11 +288,7 @@ change a stored shape (SHEET-53, SHEET-57, SHEET-76), so two chats never claim o
 | SHEET-85 | Current hit points follow a pick that raises the maximum | S | ✅ 2026-11-08 |
 | SHEET-86 | The Spells tab shows how many spells are prepared and how many cantrips are known | S | ✅ 2026-11-08 |
 | SHEET-87 | The SHEET-11 route test waits for the back arrow before it measures it | XS | ✅ 2026-11-08 |
-| SHEET-88 | Current hit points stay inside the maximum when a pick is taken back | XS | 🔲 |
-
-- **SHEET-88** — found by SHEET-85: taking a pick back lowers the maximum and leaves the current
-  hit points above it (golden A, 12 current, Hill Dwarf taken back: 12 of 11). Not needed for the
-  phase 2 gate (ADR 019 item 1 does not list it).
+| SHEET-88 | Current hit points stay inside the maximum when a pick is taken back | XS | ✅ 2026-11-11 |
 
 ---
 

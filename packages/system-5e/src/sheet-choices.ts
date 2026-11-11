@@ -37,6 +37,7 @@ export function fifthEditionPendingKey(path: string): PendingKeyAnswer | undefin
 // form stores the current hit points at the maximum it computes at creation, before any pick. So
 // a character at full hit points follows the maximum up, and one below full keeps what it has
 // (SPEC §6.7 golden A: 12 hit points once the hill dwarf is picked; ADR 019 item 1).
+// SHEET-88: a pick taken back can lower the maximum; the current hit points then never stay above it.
 
 /** The whole-number maximum hit points of `character`, or `undefined` when it has none to speak of. */
 function maximumOf(
@@ -48,21 +49,26 @@ function maximumOf(
 }
 
 /**
- * `entry`, with one change more when it raises the maximum hit points of a character that is at
- * full: its current hit points go to the new maximum, in the same entry, so one "Undo" gives both
- * back. Any other entry comes back as it is: the maximum stays or falls, the character is below
- * full (so a character at 0 is not healed), or the entry cannot be applied.
+ * `entry`, with one change more when it moves the maximum hit points under the current ones: a
+ * character at full follows a maximum that rises, and a character above a maximum that falls goes
+ * down to it. The change is in the same entry, so one "Undo" gives both back. Any other entry
+ * comes back as it is: the character is below full when the maximum rises (so a character at 0 is
+ * not healed), the maximum falls but is still at or above the current hit points, or the entry
+ * cannot be applied.
  */
-export function keepFullHitPoints(
+export function followMaximum(
   character: FifthEditionCharacter,
   entry: LogEntry,
   index: ContentIndex<FifthEditionEntity>,
 ): LogEntry {
   const before = maximumOf(character, index);
-  if (before === undefined || character.systemData.state.hp.current !== before) return entry;
+  if (before === undefined) return entry;
+  const { current } = character.systemData.state.hp;
   const applied = applyEntry(character, entry);
   if (!applied.ok) return entry;
   const after = maximumOf(applied.character, index);
-  if (after === undefined || after <= before) return entry;
+  if (after === undefined) return entry;
+  const follows = after > before ? current === before : after < before && current > after;
+  if (!follows) return entry;
   return { ...entry, changes: [...entry.changes, changeTo(character, HP_CURRENT_PATH, after)] };
 }
