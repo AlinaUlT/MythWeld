@@ -638,7 +638,7 @@ export const srd2014 = {
   version: '0.1.0',
   schemaVersion: 2,
   system: '5e',
-  systemSchemaVersion: 10,
+  systemSchemaVersion: 11,
   title: { en: 'SRD 5.1' },
   ruleset,
   // The attribution text is checked against the SRD's legal page by the import (ENG-09 §4).

@@ -15,8 +15,8 @@ import { goldenA, goldenC2014, srd2014 } from './index.ts';
 // A has. Expected counts are ENG-09 §8's; golden A's scores and sources are SPEC §6.7's.
 
 /** A pack file's versions: the core's pack chain is at 2; a character's chain is at 3 (SHEET-57). */
-const PACK_FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 10 };
-const FROM_CURRENT = { schemaVersion: 3, systemSchemaVersion: 10 };
+const PACK_FROM_CURRENT = { schemaVersion: 2, systemSchemaVersion: 11 };
+const FROM_CURRENT = { schemaVersion: 3, systemSchemaVersion: 11 };
 
 const pack: FifthEditionPack = opened(openFifthEditionPack(srd2014));
 const entities: readonly FifthEditionEntity[] = pack.entities;

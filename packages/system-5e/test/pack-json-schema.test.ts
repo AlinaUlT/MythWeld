@@ -59,14 +59,16 @@ describe('ENG-38 fifth-edition pack JSON Schema', () => {
       packJsonSchemaOf(fifthEditionPackSchema, FIFTH_EDITION_CHECKS_LEFT_OUT),
     );
     expect(jsonSchema.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
-    expect(everyEntity).toHaveLength(28);
+    expect(everyEntity).toHaveLength(29);
     expect(fifthEditionPackSchema.safeParse(pack).success).toBe(true);
     expect(jsonValid(pack), JSON.stringify(jsonValid.errors)).toBe(true);
   });
 
   it('writes a shared part once, in `$defs`, in printable ASCII', () => {
     expect(Object.keys(jsonSchema.$defs ?? {}).length).toBeGreaterThan(0);
-    expect(text.length).toBeLessThan(100_000);
+    // CONT-06: the monster type took the file past 100,000 bytes (105,077); the limit is a technical
+    // choice, here 150,000.
+    expect(text.length).toBeLessThan(150_000);
     expect(text).toMatch(/^[\n\x20-\x7e]*$/);
   });
 

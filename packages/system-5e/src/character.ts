@@ -75,6 +75,8 @@ export const FIFTH_EDITION_CHARACTER_MIGRATIONS: readonly Migration[] = [
   // 9 → 10 (SHEET-76): an own feat may say `activation`, and `oncePerTurn` is a new timing; no
   // version 9 file has either, so its own entities are kept as they are.
   (file) => ({ ...file }),
+  // 10 → 11 (CONT-06): `monster` is a new entity type, and no version 10 file has one.
+  (file) => ({ ...file }),
 ];
 
 /** The successes, or the failures, that end a run of death saves (ENG-33 §8). */

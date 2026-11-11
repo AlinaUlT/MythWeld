@@ -6,6 +6,7 @@ ticket id. Changes nobody can see (tests, refactoring, CI) do not go here; they 
 Format:
 
 ```
+- 2026-11-11 · CONT-06 · The published fifth-edition pack JSON Schema accepts a `monster`: the stat block of both SRDs, with its scores, armor, hit points, speeds, senses, challenge rating and its traits, actions and legendary actions. The schema version is 11.
 - 2026-11-11 · CONT-05 · The published fifth-edition pack JSON Schema accepts the fields a pack needs for the SRD's spells and items that grow or heal in ways the old fields could not hold: a cantrip's growth by level, a spell's growth every other slot level, healing that raises the hit point maximum or comes each turn, a casting stat picked from a list, an item of mounts and vehicles, a magic weapon's base weapon, and a prerequisite by a feature's name.
 - 2026-11-11 · CONT-03 · On the player page, Sources, Library, Quick rules and Bookmarks now open their pages instead of saying "Coming later". Each page shows its title and a back arrow and nothing else yet.
 - 2026-11-08 · SHEET-86 · The Spells tab shows how many spells a class prepares and how many cantrips it knows, each opening its breakdown; a class without that count shows no number.

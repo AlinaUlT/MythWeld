@@ -34,6 +34,8 @@ export const FIFTH_EDITION_PACK_MIGRATIONS: readonly Migration[] = [
   // 9 → 10: SHEET-76: a feat may say `activation`, and `oncePerTurn` is a new timing; no version 9
   // pack has either, so each entity is kept as it is.
   (file) => ({ ...file }),
+  // 10 → 11: CONT-06: `monster` is a new entity type, and no version 10 pack has one.
+  (file) => ({ ...file }),
 ];
 
 /** A fifth-edition content pack: its entities are fifth edition's union (ENG-32). */

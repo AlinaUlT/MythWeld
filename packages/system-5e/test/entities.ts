@@ -322,6 +322,44 @@ export const rule = {
   icon: 'lantern',
 };
 
+export const monster = {
+  id: 'hb-test:monster/lantern-moth',
+  type: 'monster',
+  ruleset: '2024',
+  name: { en: 'Lantern Moth' },
+  source,
+  size: ['small'],
+  creatureType: 'fey',
+  subtype: { en: 'glimmer' },
+  alignment: { en: 'unaligned' },
+  armorClass: [{ value: 12, kind: 'natural' }],
+  hitPoints: { average: 9, formula: '2d6 + 2' },
+  speed: { walk: 10, fly: 40 },
+  hover: true,
+  scores: { str: 6, dex: 14, con: 12, san: 10 },
+  saves: { dex: 4 },
+  skills: { stealth: 6 },
+  resistances: [{ en: 'glare' }],
+  conditionImmunities: ['dazzled'],
+  senses: { darkvision: 60 },
+  passivePerception: 10,
+  languages: { en: 'understands Lanternese' },
+  challengeRating: 0.25,
+  proficiencyBonus: 2,
+  xp: 50,
+  traits: [{ name: { en: 'Glow' }, text: { en: 'It sheds dim light.' } }],
+  actions: [
+    {
+      name: { en: 'Flutter' },
+      text: { en: 'A made-up attack.' },
+      attackBonus: 4,
+      damage: [{ formula: '1d4 + 2', type: 'glare' }],
+      save: { ability: 'san', dc: 11 },
+      usage: { kind: 'recharge', dice: '1d6', min: 5 },
+    },
+  ],
+};
+
 export const everyEntity = [
   ability,
   skill,
@@ -351,4 +389,5 @@ export const everyEntity = [
   featCategory,
   ruleTopic,
   rule,
+  monster,
 ];

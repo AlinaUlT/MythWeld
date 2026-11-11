@@ -338,7 +338,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-03 | Every phase 3 screen has its own empty file | S | ✅ 2026-11-11 |
 | CONT-04 | The import frame maps both SRDs' entries to our ids | S | ✅ 2026-11-11 |
 | CONT-05 | The fifth-edition schemas hold the SRD values found so far | M | ✅ 2026-11-11 |
-| CONT-06 | Monsters have an entity type | S | 🔲 |
+| CONT-06 | Monsters have an entity type | S | ✅ 2026-11-11 |
 | CONT-07 | Spells are imported from both SRDs | M | 🔲 |
 | CONT-08 | Classes are imported with their subclasses | M | 🔲 |
 | CONT-09 | Species are imported with their subraces | S | 🔲 |
@@ -401,9 +401,6 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-66 | A feat taken twice has choices of its own for each take | S | 🔲 |
 | CONT-67 | A magic weapon counts as the weapon it is a kind of | S | 🔲 |
 
-- **CONT-06** — ADR 010 item 3 lists a Monsters topic in phase 3; the schemas have no monster type
-  (measured: no `monster` in `packages/schema/src` or `packages/system-5e/src`). The only row of
-  wave 2 that edits the schemas. The type lives in the fifth-edition module (ADR 004).
 - **CONT-07** — 5e-database gives 2024 spells no `heal_at_slot_level` and no table by slot (ENG-50,
   ENG-53): their healing and growth are read from the text or from dnd5e's data, into the fields
   CONT-05 made. A pack writes the spellcasting modifier as `@mod` (5e-database: `MOD`).

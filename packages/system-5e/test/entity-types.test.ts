@@ -85,7 +85,7 @@ function without<T extends object>(entity: T, field: keyof T & string): Omit<T, 
 }
 
 describe('ENG-32 fifth-edition entity types', () => {
-  it('parses every type to an equal object, chosen among 25 types', () => {
+  it('parses every type to an equal object, chosen among 26 types', () => {
     for (const entity of everyEntity) {
       expect(fifthEditionEntitySchema.parse(entity), entity.id).toEqual(entity);
     }
@@ -115,8 +115,9 @@ describe('ENG-32 fifth-edition entity types', () => {
       'featCategory',
       'ruleTopic',
       'rule',
+      'monster',
     ]);
-    expect(issuePaths(fifthEditionEntitySchema, { ...rule, type: 'monster' })).toEqual(['type']);
+    expect(issuePaths(fifthEditionEntitySchema, { ...rule, type: 'vehicle' })).toEqual(['type']);
     expect(MAX_LEVEL).toBe(20);
     expect(MAX_SPELL_LEVEL).toBe(9);
   });
@@ -482,6 +483,7 @@ describe('ENG-32 fifth-edition entity types', () => {
       | 'featCategory'
       | 'ruleTopic'
       | 'rule'
+      | 'monster'
     >();
     expectTypeOf<FifthEditionEntity['ruleset']>().toEqualTypeOf<'2014' | '2024' | 'any'>();
     type Grant = NonNullable<FifthEditionEntity['grants']>[number];
@@ -500,7 +502,7 @@ describe('ENG-32 fifth-edition entity types', () => {
     const json = z.toJSONSchema(fifthEditionEntitySchema) as unknown as {
       oneOf: { additionalProperties: unknown; properties: { ruleset: { enum: unknown } } }[];
     };
-    expect(json.oneOf).toHaveLength(25);
+    expect(json.oneOf).toHaveLength(26);
     for (const option of json.oneOf) {
       expect(option.additionalProperties).toBe(false);
       expect(option.properties.ruleset.enum).toEqual(['2014', '2024', 'any']);

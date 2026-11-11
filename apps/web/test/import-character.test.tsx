@@ -137,7 +137,7 @@ describe('SHEET-26 importing a character file', () => {
       file.schemaVersion = 4;
     });
     const newerSystem = fileOf((file) => {
-      file.systemSchemaVersion = 11;
+      file.systemSchemaVersion = 12;
     });
     for (const text of [newerCore, newerSystem]) {
       expect(await importCharacterFile(text, database, now)).toMatchObject({

@@ -1,4 +1,5 @@
 import {
+  entityIdSchema,
   entityKeySchema,
   formulaSchema,
   l10nSchema,
@@ -577,6 +578,86 @@ export const ruleDefSchema = base.safeExtend({
 });
 export type RuleDef = z.infer<typeof ruleDefSchema>;
 
+/**
+ * What limits a monster's use of an ability (CONT-06): a number of times a day (and in its lair), a
+ * die that brings it back (`min` or more on `dice`), or a rest that brings it back.
+ */
+const monsterUsageSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('perDay'),
+    times: z.int().positive(),
+    inLair: z.int().positive().optional(),
+  }),
+  z.strictObject({ kind: z.literal('recharge'), dice: formulaSchema, min: z.int().positive() }),
+  z.strictObject({ kind: z.literal('rest'), rests: uniqueList(entityKeySchema) }),
+]);
+
+/**
+ * One trait, action, bonus action, reaction or legendary action of a monster: its name and words,
+ * and the numbers a table rolls: the attack bonus, the damage, the save and its DC, the usage.
+ */
+const monsterAbilitySchema = z.strictObject({
+  name: l10nSchema,
+  text: l10nSchema,
+  attackBonus: z.int().optional(),
+  damage: z.array(damageSchema).min(1).optional(),
+  save: z.strictObject({ ability: entityKeySchema, dc: z.int().positive().optional() }).optional(),
+  usage: monsterUsageSchema.optional(),
+});
+
+/** A list of abilities that may be empty is absent instead, as elsewhere. */
+const monsterAbilities = z.array(monsterAbilitySchema).min(1).optional();
+
+/** A monster's armor class, one for each way it is worked out: a number, and in words how. */
+const monsterArmorSchema = z.strictObject({
+  value: z.int().positive(),
+  kind: entityKeySchema.optional(),
+  note: l10nSchema.optional(),
+});
+
+/**
+ * A monster (CONT-06): the stat block of both SRDs. A number a table reads is a number, in feet and
+ * hit points; what the SRDs give as a sentence ("bludgeoning from nonmagical attacks", languages) is
+ * text. `scores` and the keys of `saves`, `skills` and `senses` are keys, so a custom stat works
+ * as the six do (D3). `saves` and `skills` hold the monster's own bonus, not the proficiency.
+ * `size` is a list for the SRD 5.2.1 monsters of "Medium or Small".
+ */
+export const monsterDefSchema = base.safeExtend({
+  type: z.literal('monster'),
+  size: uniqueList(entityKeySchema),
+  creatureType: entityKeySchema,
+  subtype: l10nSchema.optional(),
+  alignment: l10nSchema.optional(),
+  armorClass: z.array(monsterArmorSchema).min(1),
+  hitPoints: z.strictObject({ average: z.int().nonnegative(), formula: formulaSchema }),
+  speed: speedSchema,
+  hover: z.boolean().optional(),
+  scores: z
+    .record(entityKeySchema, z.int().nonnegative())
+    .refine((scores) => Object.keys(scores).length > 0, 'Needs at least one score.')
+    .meta({ minProperties: 1 }),
+  saves: z.record(entityKeySchema, z.int()).optional(),
+  skills: z.record(entityKeySchema, z.int()).optional(),
+  vulnerabilities: z.array(l10nSchema).min(1).optional(),
+  resistances: z.array(l10nSchema).min(1).optional(),
+  immunities: z.array(l10nSchema).min(1).optional(),
+  conditionImmunities: uniqueList(entityKeySchema).optional(),
+  senses: z.record(entityKeySchema, z.int().positive()).optional(),
+  passivePerception: z.int().nonnegative().optional(),
+  languages: l10nSchema.optional(),
+  challengeRating: z.number().nonnegative(),
+  proficiencyBonus: z.int().positive().optional(),
+  xp: z.int().nonnegative().optional(),
+  xpInLair: z.int().nonnegative().optional(),
+  traits: monsterAbilities,
+  actions: monsterAbilities,
+  bonusActions: monsterAbilities,
+  reactions: monsterAbilities,
+  legendaryActions: monsterAbilities,
+  forms: uniqueList(entityIdSchema).optional(),
+});
+export type MonsterDef = z.infer<typeof monsterDefSchema>;
+
 /** Any fifth-edition entity, chosen by its `type`: the core's three types, then the module's. */
 export const fifthEditionEntitySchema = systemEntitySchemaOf(fifthEdition, [
   speciesDefSchema,
@@ -601,5 +682,6 @@ export const fifthEditionEntitySchema = systemEntitySchemaOf(fifthEdition, [
   featCategoryDefSchema,
   ruleTopicDefSchema,
   ruleDefSchema,
+  monsterDefSchema,
 ]);
 export type FifthEditionEntity = z.infer<typeof fifthEditionEntitySchema>;

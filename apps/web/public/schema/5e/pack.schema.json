@@ -20,7 +20,7 @@
     },
     "systemSchemaVersion": {
       "type": "number",
-      "const": 10
+      "const": 11
     },
     "title": {
       "$ref": "#/$defs/__schema2"
@@ -1897,6 +1897,241 @@
             "name",
             "source",
             "topic"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema9",
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:monster\\/[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "type": "string",
+              "const": "monster"
+            },
+            "key": {
+              "$ref": "#/$defs/__schema72"
+            },
+            "ruleset": {
+              "$ref": "#/$defs/__schema5"
+            },
+            "name": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "aliases": {
+              "$ref": "#/$defs/__schema11"
+            },
+            "summary": {
+              "$ref": "#/$defs/__schema12"
+            },
+            "text": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "tags": {
+              "$ref": "#/$defs/__schema14"
+            },
+            "source": {
+              "$ref": "#/$defs/__schema15"
+            },
+            "effects": {
+              "$ref": "#/$defs/__schema16"
+            },
+            "grants": {
+              "$ref": "#/$defs/__schema26"
+            },
+            "prerequisites": {
+              "$ref": "#/$defs/__schema69"
+            },
+            "meta": {
+              "$ref": "#/$defs/__schema71"
+            },
+            "size": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema10"
+              },
+              "uniqueItems": true
+            },
+            "creatureType": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "subtype": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "alignment": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "armorClass": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema144"
+              }
+            },
+            "hitPoints": {
+              "type": "object",
+              "properties": {
+                "average": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "formula": {
+                  "$ref": "#/$defs/__schema4"
+                }
+              },
+              "required": [
+                "average",
+                "formula"
+              ],
+              "additionalProperties": false
+            },
+            "speed": {
+              "$ref": "#/$defs/__schema74"
+            },
+            "hover": {
+              "type": "boolean"
+            },
+            "scores": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/$defs/__schema10"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/__schema145"
+              },
+              "minProperties": 1
+            },
+            "saves": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/$defs/__schema10"
+              },
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "skills": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/$defs/__schema10"
+              },
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "vulnerabilities": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema2"
+              }
+            },
+            "resistances": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema2"
+              }
+            },
+            "immunities": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema2"
+              }
+            },
+            "conditionImmunities": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema10"
+              },
+              "uniqueItems": true
+            },
+            "senses": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/$defs/__schema10"
+              },
+              "additionalProperties": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "passivePerception": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "languages": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "challengeRating": {
+              "type": "number",
+              "minimum": 0
+            },
+            "proficiencyBonus": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "xp": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "xpInLair": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "traits": {
+              "$ref": "#/$defs/__schema146"
+            },
+            "actions": {
+              "$ref": "#/$defs/__schema146"
+            },
+            "bonusActions": {
+              "$ref": "#/$defs/__schema146"
+            },
+            "reactions": {
+              "$ref": "#/$defs/__schema146"
+            },
+            "legendaryActions": {
+              "$ref": "#/$defs/__schema146"
+            },
+            "forms": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema9"
+              },
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "ruleset",
+            "name",
+            "source",
+            "size",
+            "creatureType",
+            "armorClass",
+            "hitPoints",
+            "speed",
+            "scores",
+            "challengeRating"
           ],
           "additionalProperties": false
         }
@@ -3993,6 +4228,156 @@
       },
       "required": [
         "rarity"
+      ],
+      "additionalProperties": false
+    },
+    "__schema144": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "kind": {
+          "$ref": "#/$defs/__schema10"
+        },
+        "note": {
+          "$ref": "#/$defs/__schema2"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "__schema145": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "__schema146": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema147"
+      }
+    },
+    "__schema147": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "text": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "attackBonus": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "damage": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema120"
+          }
+        },
+        "save": {
+          "type": "object",
+          "properties": {
+            "ability": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "dc": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "ability"
+          ],
+          "additionalProperties": false
+        },
+        "usage": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "perDay"
+                },
+                "times": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "inLair": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "kind",
+                "times"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "recharge"
+                },
+                "dice": {
+                  "$ref": "#/$defs/__schema4"
+                },
+                "min": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "kind",
+                "dice",
+                "min"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "rest"
+                },
+                "rests": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/__schema10"
+                  },
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "kind",
+                "rests"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "text"
       ],
       "additionalProperties": false
     }

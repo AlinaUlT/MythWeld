@@ -475,3 +475,97 @@ Sources: 5e-bits/5e-srd-api at `e6edf9a`, `packages/5e-database/src/{2014,2024}/
 **Found, not fixed:** the engine reads none of the new fields yet, and an unread field gives a quiet wrong number. New rows CONT-63 to CONT-67 in `BACKLOG.md`, wave 2, each before the mechanics row that writes data in its field. The cast panel shows a `maxHp` healing as plain healing; CONT-65 owns it. The spell grant with `abilityFrom` names no casting stat until CONT-63.
 
 **Changelog:** one line, as ENG-53's was: the published JSON Schema is a public file.
+
+---
+
+### CONT-06 Monsters have an entity type
+
+**Hat:** The fifth-edition module has a `monster` entity type that holds both SRDs' stat blocks
+**Depends on:** CONT-05 (the only schema row of wave 2; it ran first)
+**Size:** S
+**Screen:** No
+**SPEC:** §3.1 (monsters in both SRDs), §5.3, §5.8; ADR 004; ADR 010 item 3
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/entity-types.ts` — changes: `monsterDefSchema`, in the union.
+- `packages/system-5e/src/system.ts` — `FIFTH_EDITION_SCHEMA_VERSION` 10 to 11. `character.ts` and `pack.ts` — one no-op step each.
+- `packages/content/src/packs/srd-2014.ts`, `srd-2024.ts` and the golden fixtures' `systemSchemaVersion` — 11.
+- `apps/web/public/schema/5e/pack.schema.json` — regenerated.
+
+#### 2. What is missing now
+
+Measured on `2149c0b`: no `monster` in `packages/schema/src` or `packages/system-5e/src`; a pack with a monster is refused (`strictObject`, unknown type). The source at `e6edf9a` has 334 monsters in SRD 5.1 and 341 in SRD 5.2.1.
+
+#### 3. What it should look like when done
+
+1. `fifthEditionEntitySchema` has a `monster` option; `FifthEditionEntity['type']` names it; the published JSON Schema has one more strict option.
+2. A monster holds: `size` (a list, since 30 SRD 5.2.1 monsters are "Medium or small"), `creatureType`, `subtype`, `alignment`, `armorClass` (one or more of value, kind, note), `hitPoints` (`average`, `formula`), `speed` in feet with `hover`, `scores` by stat key (at least one), `saves` and `skills` (the monster's own bonus), `vulnerabilities`, `resistances` and `immunities` (text, since the SRDs write sentences), `conditionImmunities` (keys), `senses` in feet with `passivePerception`, `languages`, `challengeRating` (0, 0.125, 0.25, 0.5 or a whole number), `proficiencyBonus`, `xp`, `xpInLair`, `traits`, `actions`, `bonusActions`, `reactions`, `legendaryActions`, `forms` (ids).
+3. An ability of a monster is a name and words with, where the SRDs give them, `attackBonus`, `damage` (formula and damage type), `save` (stat and DC) and `usage` (a number of times a day and in its lair, a recharge die, or a rest).
+4. Every one of the 675 stat blocks, mapped by the test's own mapping, passes the schema.
+5. A monster missing its creature type, scores, armor class, hit points or challenge rating is refused.
+6. Version 10 characters and packs open as they are and then at version 11, through a no-op step; one saved by version 12 is refused.
+
+#### 4. How to do it
+
+1. A number a table reads is a number; what the SRDs write as a sentence (damage resistances such as "bludgeoning from nonmagical weapons", languages, alignment) is text, as it stays a sentence in the source. Stat keys are open keys (D3), so a custom stat is a score like Strength.
+2. Abilities are cut as the source cuts them, by their list, in the five lists the SRDs use.
+3. Adding a type changes the stored shape of a pack and of a character's own entities, so the module version goes up, as SHEET-08 did for seven simple types: a pack saved by this version must not open in an older app that would refuse its type. Each chain gets a step that returns the file as it is, and its test (SHEET-76's shape).
+4. Where an SRD gives the field in the shape a test needs, the made-up entity and the mapping use it; the mapping stays in the test, since CONT-20 writes the importer.
+
+#### 5. Stored data
+
+`FIFTH_EDITION_SCHEMA_VERSION` 10 to 11 (the module's number, carried by a pack and a character). A pack of version 10 has no monster, and a character's own entities have none either, so each step returns the file as it is: `FIFTH_EDITION_PACK_MIGRATIONS[9]` and `FIFTH_EDITION_CHARACTER_MIGRATIONS[9]`, each with its test. `schemaVersion` of the core does not change. The built-in packs and the golden files name version 11; no expected value of a golden test changed.
+
+#### 6. What a person will see
+
+Not a screen. The published JSON Schema accepts a `monster`.
+
+#### 7. Tests
+
+- `packages/content/test/monster-schema.test.ts` — 3: all 334 and all 341 stat blocks of the fetched source, mapped to the schema's shape, pass; five missing fields and an empty `scores` are each refused.
+- `packages/system-5e/test/character.test.ts` — 2: version 10 opens as it is then at 11, for a character and a pack, the step returns an equal copy and does not change what it is given. Seven pinned numbers and types moved (version, number of steps, number of types).
+- `packages/system-5e/test/entities.ts` — a made-up monster (no rules text) joins `everyEntity`, so the round trip, the JSON Schema agreement and Ajv acceptance cover it.
+- Control numbers from: §8.
+
+#### 8. Checked against the source
+
+5e-bits/5e-srd-api at `e6edf9a`, `5e-SRD-Monsters.json`, measured 2026-11-11:
+- 334 monsters (2014) and 341 (2024). Common keys: `size`, `type`, `alignment`, `armor_class`, `hit_points`, `hit_points_roll`, `speed`, the six scores, `proficiencies` (each `{proficiency, value}`: 321 saves and 393 skills in 2014, 279 and 447 in 2024), the four damage lists (strings), `condition_immunities` (objects with an `index`), `senses`, `languages`, `challenge_rating`, `proficiency_bonus`, `xp`.
+- Sizes: Tiny, Small, Medium, Large, Huge, Gargantuan; 2024 also "Medium or small" (30). Types include "swarm of Tiny beasts" (2014: 10; 2024: 6) and "swarm of tiny undead" (1).
+- Speeds are strings ("40 ft.") under walk, fly, swim, climb, burrow, plus `hover` as a boolean (7 and 17). Challenge ratings 0, 0.125, 0.25, 0.5, 1 to 30.
+- 2014 `armor_class` entries carry `type` (natural 180, dex 119, armor 37, spell 4, condition 1); 2024's carry only `value` and sometimes `armor`.
+- 2014 `languages` is empty for 134 monsters; 2024 for none.
+- Abilities: `special_abilities`, `actions`, `legendary_actions`, `reactions` and, in 2024 only, `bonus_actions`. Their `usage` is "per day" (times, and in 2024 `times_in_lair`), "recharge on roll" (`dice`, `min_value`) or "recharge after rest" (`rest_types`); `dc` has `dc_type`, `dc_value`, `success_type` (2024: two without a value); a damage part has `damage_dice` and `damage_type`; 16 2014 damage parts are a `choose` with no dice (the mapping leaves them to the text).
+- Six SRD 5.1 monsters list Blinded twice in `condition_immunities` (flying-sword, ochre-jelly, rug-of-smothering, shambling-mound, shrieker, violet-fungus).
+- `forms`: 18 monsters in each ruleset have it, 36 entries each, each an `index`.
+- No `[ПРОВЕРИТЬ]` is involved; no rules fact beyond the shape.
+
+#### 9. Not in this ticket
+
+- The importer (CONT-20) and the Monsters topic (CONT-52); a stat block's screen.
+- Structured attack, multiattack and spellcasting: the words are held; CONT-20 decides what else it keeps.
+- The encounter tools: the DM phase (SPEC L3).
+
+#### 10. Rake check
+
+- **A stored-shape change needs a migration:** version 11, a step in each chain, a test for each (§5).
+- **Everything is data:** scores, saves, skills and senses are keyed by open keys; no stat is named in code.
+- **Stored units are feet:** speeds and senses are feet; the mapping converts "40 ft." only in the test.
+- **No rules text:** the made-up monster says "A made-up attack"; the test reads the source's numbers and words only in memory.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 521 files, no fixes; `pnpm typecheck` clean; `pnpm test` 150 files, 1739 passed, 0 failed, 27.0 s (5 new, from 1734), then speed 2 passed; coverage statements 99.02 % (4162/4203), lines 99.78 % (3648/3656); `pnpm e2e` 106 passed, 0 failed, 1.7 min (the published schema file and the built-in packs are in `apps/web`).
+
+**First run found two things:** six SRD 5.1 monsters list Blinded twice, which a `uniqueList` refuses, so the mapping (and CONT-20) removes the repeat; and `pnpm typecheck` found two pinned types (`version 10`, the type list) that Vitest does not check.
+
+**Published JSON Schema:** regenerated, 105,077 bytes. ENG-38's test limit of 100,000 bytes was a technical choice (its own words); it is now 150,000, because the monster type is the first to cross it.
+
+**Difference from the row:** none. The row said the type lives in the fifth-edition module (ADR 004); it does.
+
+**Found, not fixed:** nothing outside the hat. For CONT-20: the 16 `choose` damage parts, the repeated Blinded, the 134 empty 2014 `languages`, and `size` as a list.
+
+**Changelog:** one line (the published JSON Schema is a public file).
