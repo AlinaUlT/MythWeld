@@ -44,12 +44,18 @@ export function usesDefSchemaOf<E extends z.ZodType<string>>(recoveryEvent: E) {
 export const usesDefSchema = usesDefSchemaOf(entityKeySchema);
 export type UsesDef = z.infer<typeof usesDefSchema>;
 
-/** Picks entities by their fields instead of listing them. */
+/**
+ * Picks entities by their fields instead of listing them. CONT-05: `proficient` keeps only those
+ * the character is proficient with (SRD 5.2.1's weapon mastery choices of the paladin, ranger and
+ * rogue). A tag such as `melee` says "Melee weapons" (the barbarian's choice), the import tagging
+ * each weapon. The engine reads `proficient` from CONT-64 on; before it a filter ignores it.
+ */
 const chooseFilterSchema = z
   .strictObject({
     type: entityTypeNameSchema.optional(),
     tag: visibleTextSchema.optional(),
     category: entityKeySchema.optional(),
+    proficient: z.boolean().optional(),
   })
   .refine(
     (filter) =>

@@ -101,7 +101,7 @@ describe('ENG-38 fifth-edition pack JSON Schema', () => {
     }
   });
 
-  it('lists in its description the 4 checks a JSON Schema cannot say', () => {
+  it('lists in its description the 5 checks a JSON Schema cannot say', () => {
     const [own] = klass.grants;
     const [kit] = background.grants.filter((grant) => grant.id === 'kit');
     const twice = { ...kit, fixed: [kit?.fixed?.[0], kit?.fixed?.[0]] };
@@ -136,6 +136,7 @@ describe('ENG-38 fifth-edition pack JSON Schema', () => {
         '- A class gives each level once in `levels`.',
         "- Grant ids differ in a class's `multiclass.grants`, and from the ids in its `grants`.",
         "- An `item` grant's `fixed` list names each item once.",
+        "- A cantrip's `upgrades` give each level once.",
       ].join('\n'),
     );
   });

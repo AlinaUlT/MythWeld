@@ -326,7 +326,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | Wave | Rows | Starts when |
 |---|---|---|
 | 1 | CONT-01 to 05 | Phase 2 is closed (SHEET-60) |
-| 2 | CONT-06 to 19 | Wave 1 is closed |
+| 2 | CONT-06 to 19, 63 to 67 | Wave 1 is closed |
 | 3 | CONT-20 to 59 | Wave 2 is closed |
 | 4 | CONT-60 to 61 | Wave 3 is closed |
 | 5 | CONT-62 | Wave 4 is closed |
@@ -337,7 +337,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-02 | Phase 3's device tables arrive in one database version | XS | ✅ 2026-11-11 |
 | CONT-03 | Every phase 3 screen has its own empty file | S | ✅ 2026-11-11 |
 | CONT-04 | The import frame maps both SRDs' entries to our ids | S | ✅ 2026-11-11 |
-| CONT-05 | The fifth-edition schemas hold the SRD values found so far | M | 🔲 |
+| CONT-05 | The fifth-edition schemas hold the SRD values found so far | M | ✅ 2026-11-11 |
 | CONT-06 | Monsters have an entity type | S | 🔲 |
 | CONT-07 | Spells are imported from both SRDs | M | 🔲 |
 | CONT-08 | Classes are imported with their subclasses | M | 🔲 |
@@ -395,27 +395,12 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-60 | Every feature of levels 1 to 5 is mechanized or marked manual | S | 🔲 |
 | CONT-61 | The built-in packs are the full SRDs | M | 🔲 |
 | CONT-62 | The phase 3 gate is shown on the built packs | M | 🔲 |
+| CONT-63 | A spell grant takes its casting stat from the person's pick | S | 🔲 |
+| CONT-64 | A choice's filter keeps what the character is proficient with | S | 🔲 |
+| CONT-65 | A spell's growth and healing fields reach the cast panel's dice | M | 🔲 |
+| CONT-66 | A feat taken twice has choices of its own for each take | S | 🔲 |
+| CONT-67 | A magic weapon counts as the weapon it is a kind of | S | 🔲 |
 
-- **CONT-05** — the only row of wave 1 that edits the fifth-edition schemas and the published JSON
-  Schema (`pnpm vitest run apps/web/test/pack-schema.test.ts --update`, `docs/RUNNING.md`); no
-  migration, every field optional. It widens them for what phase 1 found:
-  - ENG-32: 2014 `mounts-and-vehicles` (40 entries) has no `ItemDef.category`; 2024's "Until
-    dispelled or triggered" (2 spells) has no place for "or triggered"; 2024's `elven-lineage`,
-    `gnomish-lineage`, `magic-initiate` let the person choose the casting stat among three, and a
-    `spell` grant's `ability` takes one (`grantCastingStat`, ENG-51, then reads the choice).
-  - ENG-50: growth a spell's `scaling` cannot hold: SRD 5.1 Flame Blade and Spiritual Weapon (every
-    two slot levels), Flame Strike's die type; SRD 5.2.1 Eldritch Blast beams, Shillelagh's die,
-    Spare the Dying's range, True Strike's extra damage.
-  - ENG-53: healing `healing` cannot hold: Aid (both), 2014 Heroes' Feast (hit point maximum), 2024
-    Arcane Vigor (by hit die), Regenerate and Heroism (each turn).
-  - ENG-16: a `mastery` choice's filter cannot say "Melee weapons" or "with which you have
-    proficiency"; a growing die needs its own field; a magic weapon has no kind of its own (dnd5e
-    `type.baseItem`).
-  - ENG-33: a feat taken twice needs its own choices (2024 `ability-score-improvement`,
-    `magic-initiate`, `skilled`); 2024's Ability Score Improvement under one id needs a class grant
-    for each level.
-  - ENG-10: the 2024 human's size is Medium or Small, chosen; `prerequisites.feature_named` (the
-    four fighting style feats; Boon of Spell Recall) has no prerequisite kind.
 - **CONT-06** — ADR 010 item 3 lists a Monsters topic in phase 3; the schemas have no monster type
   (measured: no `monster` in `packages/schema/src` or `packages/system-5e/src`). The only row of
   wave 2 that edits the schemas. The type lives in the fifth-edition module (ADR 004).
@@ -546,6 +531,26 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
   offline start (SETUP-07) are measured.
 - **CONT-62** — its §11 carries the proof of SPEC §12 stage 3 as ADR 000 and OPS-35 change it, and
   each screen's screenshot at 360×800 in the chat.
+- **CONT-63..67** — found by CONT-05 (§11 there). It made the fields; no engine code reads them yet,
+  and a field the engine ignores gives a quiet wrong number, so each row is wave 2 and comes before
+  the mechanics row that writes data in its field (CONT-22 to 33, 37, 38). `CONT-65` is likely to
+  split when it is taken.
+  - **CONT-63** — `spell` grant `abilityFrom` (SRD 5.2.1 elven lineage, gnomish lineage, Magic
+    Initiate: Intelligence, Wisdom or Charisma): the pick is a second choice in the grant (ENG-32
+    §4), and `grantCastingStat` (ENG-51) reads it; with no pick it names no stat.
+  - **CONT-64** — a choice filter's `proficient` flag (SRD 5.2.1 paladin, ranger, rogue: weapons
+    "with which you have proficiency"); `gather.ts`' `matches` reads it. "Melee weapons" is the
+    `tag` the weapons carry (CONT-12), which the filter already read.
+  - **CONT-65** — `scaling.every`, `scaling.damageTypes`, `scaling.pickOne`, a cantrip's `upgrades`
+    (`beams`, `die`, `range`, `extraDamage`), a healing's `hitDice` and kind `maxHp`, a spell's
+    `healingEachTurn` (§8 of CONT-05 has each value). ENG-50's `spell-dice.ts` and ENG-53's
+    healing read them; `applyHealing` has no action for a maximum; the cast panel names `maxHp` as
+    plain healing until then.
+  - **CONT-66** — `feat.repeatable` (SRD 5.2.1 Ability Score Improvement, Magic Initiate, Skilled;
+    ENG-33 §11): an entity two grants give is gathered once with one choice per grant (ENG-11), so
+    each take of a repeatable feat needs its own choices.
+  - **CONT-67** — a weapon's `baseKey` (dnd5e `type.baseItem`): a proficiency and a mastery find a
+    "Longsword, +1" by `longsword` (ENG-16).
 
 ---
 ## Phases 4–7 — cut when the phase before closes

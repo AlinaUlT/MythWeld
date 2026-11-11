@@ -45,8 +45,16 @@ const costSchema = z.strictObject({
 /** Damage of one type: a roll formula and the damage type's key. */
 const damageSchema = z.strictObject({ formula: formulaSchema, type: entityKeySchema });
 
-/** A spell's healing: a roll formula and what it gives, hit points or temporary hit points. */
-const healingSchema = z.strictObject({ formula: formulaSchema, kind: z.enum(HEALING_KINDS) });
+/**
+ * A spell's healing: a roll formula and what it gives (`HEALING_KINDS`). CONT-05: `hitDice` is the
+ * most unexpended Hit Dice of the target that are rolled and added to the formula (SRD 5.2.1's
+ * Arcane Vigor: one or two, so `2`; dnd5e `spells24`).
+ */
+const healingSchema = z.strictObject({
+  formula: formulaSchema,
+  kind: z.enum(HEALING_KINDS),
+  hitDice: z.int().positive().optional(),
+});
 
 /** Speeds in feet, by kind; at least one. */
 const speedSchema = z
@@ -175,6 +183,8 @@ export type Activation = z.infer<typeof activationSchema>;
 export const featDefSchema = base.safeExtend({
   type: z.literal('feat'),
   category: entityKeySchema.optional(),
+  // SRD 5.2.1's Ability Score Improvement, Magic Initiate and Skilled are repeatable. CONT-66 gives
+  // each take its own choices.
   repeatable: z.boolean().optional(),
   activation: activationSchema.optional(),
 });
@@ -221,7 +231,9 @@ const spellRangeSchema = z
 /** How long a spell lasts; a `timed` duration alone has a value and a unit. */
 const spellDurationSchema = z
   .strictObject({
-    kind: z.enum(['instant', 'timed', 'untilDispelled', 'special']),
+    // CONT-05: `untilDispelledOrTriggered` is SRD 5.2.1's "Until dispelled or triggered" (Glyph of
+    // Warding, Symbol), which `untilDispelled` does not say.
+    kind: z.enum(['instant', 'timed', 'untilDispelled', 'untilDispelledOrTriggered', 'special']),
     value: z.int().positive().optional(),
     unit: z.enum(['round', 'minute', 'hour', 'day']).optional(),
   })
@@ -257,6 +269,77 @@ function scalingKind(kind: string) {
 }
 
 /**
+ * How a spell's dice grow (ADR 014 item 6), the slot or character level above its own adding
+ * `formula`. CONT-05: `every` is the step in slot levels when it is more than one (SRD 5.1's
+ * Flame Blade and Spiritual Weapon: "for every two slot levels above 2nd", so `2`); `damageTypes`
+ * names the damage that gains the dice, all of it when absent (Flame Strike's fire and radiant),
+ * and `pickOne` says the caster picks one of them (SRD 5.1's Flame Strike: "fire damage or radiant
+ * damage, your choice"; SRD 5.2.1's grows both).
+ */
+const spellScalingSchema = z
+  .strictObject({
+    kind: z.enum(['cantrip', 'slot']),
+    formula: formulaSchema,
+    every: z.int().min(2).optional(),
+    damageTypes: uniqueList(entityKeySchema).optional(),
+    pickOne: z.boolean().optional(),
+  })
+  .refine((scaling) => scaling.every === undefined || scaling.kind === 'slot', {
+    message: '`every` is a step in slot levels; only `slot` scaling has it.',
+    path: ['every'],
+  })
+  .refine((scaling) => scaling.pickOne !== true || (scaling.damageTypes?.length ?? 0) >= 2, {
+    message: '`pickOne` needs `damageTypes` with two or more.',
+    path: ['pickOne'],
+  })
+  .meta({
+    allOf: [
+      { anyOf: [{ not: { required: ['every'] } }, { properties: { kind: { const: 'slot' } } }] },
+      {
+        anyOf: [
+          { not: { required: ['pickOne'], properties: { pickOne: { const: true } } } },
+          {
+            required: ['damageTypes'],
+            properties: { damageTypes: { type: 'array', minItems: 2 } },
+          },
+        ],
+      },
+    ],
+  });
+
+/**
+ * One step of a cantrip's growth that its `scaling` cannot hold (ENG-50, CONT-05). From
+ * `atLevel` of the character, until a later step: `beams` is how many beams or missiles it makes
+ * (SRD 5.2.1's Eldritch Blast: 2, 3, 4 at 5, 11, 17); `die` replaces its damage die (Shillelagh:
+ * d10, d12, 2d6 at 5, 11, 17); `range` replaces its range, in feet (Spare the Dying: 30, 60, 120);
+ * `extraDamage` adds a damage (True Strike's Radiant 1d6, 2d6, 3d6 at 5, 11, 17).
+ */
+const cantripUpgradeSchema = z
+  .strictObject({
+    atLevel: levelSchema,
+    beams: z.int().positive().optional(),
+    die: formulaSchema.optional(),
+    range: z.int().positive().optional(),
+    extraDamage: damageSchema.optional(),
+  })
+  .refine(
+    (step) =>
+      step.beams !== undefined ||
+      step.die !== undefined ||
+      step.range !== undefined ||
+      step.extraDamage !== undefined,
+    'Needs `beams`, `die`, `range` or `extraDamage`.',
+  )
+  .meta({
+    anyOf: [
+      { required: ['beams'] },
+      { required: ['die'] },
+      { required: ['range'] },
+      { required: ['extraDamage'] },
+    ],
+  });
+
+/**
  * A spell. Level 0 is a cantrip. `scaling` is how its dice grow (ADR 014 item 6): a cantrip's with
  * the character's level, another spell's with the slot it is cast with. `healing` is what it heals
  * (ENG-53). In its roll formulas, `@mod` is the modifier of the stat it is cast with.
@@ -281,9 +364,12 @@ export const spellDefSchema = base
     save: entityKeySchema.optional(),
     damage: z.array(damageSchema).min(1).optional(),
     healing: healingSchema.optional(),
-    scaling: z
-      .strictObject({ kind: z.enum(['cantrip', 'slot']), formula: formulaSchema })
-      .optional(),
+    // CONT-05: what it heals at the start of each of the target's turns (Heroism's temporary hit
+    // points; Regenerate's 1 hit point, beside its `healing` of 4d8 + 15), and a cantrip's growth
+    // that `scaling` cannot hold, by character level.
+    healingEachTurn: healingSchema.optional(),
+    scaling: spellScalingSchema.optional(),
+    upgrades: listWithUnique(cantripUpgradeSchema, 'atLevel').min(1).optional(),
   })
   .refine(
     (spell) =>
@@ -293,10 +379,20 @@ export const spellDefSchema = base
       path: ['scaling', 'kind'],
     },
   )
+  .refine((spell) => spell.upgrades === undefined || spell.level === 0, {
+    message: 'Only a cantrip has `upgrades`.',
+    path: ['upgrades'],
+  })
   .meta({
     anyOf: [
       { properties: { level: { const: 0 }, scaling: scalingKind('cantrip') } },
-      { properties: { level: { not: { const: 0 } }, scaling: scalingKind('slot') } },
+      {
+        properties: {
+          level: { not: { const: 0 } },
+          scaling: scalingKind('slot'),
+          upgrades: false,
+        },
+      },
     ],
   });
 export type SpellDef = z.infer<typeof spellDefSchema>;
@@ -316,6 +412,10 @@ const weaponSchema = z.strictObject({
     })
     .optional(),
   mastery: entityKeySchema.optional(),
+  // CONT-05: the kind of weapon a magic weapon is, a weapon's `key` ("Longsword, +1" has `longsword`;
+  // dnd5e `type.baseItem`), so a proficiency or a mastery by that key still finds it. The engine
+  // reads it from CONT-67 on.
+  baseKey: entityKeySchema.optional(),
 });
 
 /** Armor's numbers. `dexCap` is the most Dexterity adds: `null` for no cap, 0 for none. */
@@ -348,6 +448,9 @@ export const itemDefSchema = base
       'focus',
       'pack',
       'treasure',
+      // CONT-05: mounts and other animals, tack, harness and drawn vehicles, waterborne vehicles:
+      // SRD 5.1's equipment category `mounts-and-vehicles` (40 entries).
+      'transport',
     ]),
     weight: z.number().positive().optional(),
     cost: costSchema.optional(),

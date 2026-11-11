@@ -132,6 +132,23 @@ describe('SHEET-14 an unmet prerequisite gives a warning', () => {
     ]);
   });
 
+  it('CONT-05 a feature named: met by an entity the character has with that name, else unmet', () => {
+    // Brook has the calling Seeker (ENG-27), and no Warden.
+    expect(
+      unmetOf([
+        { kind: 'featureNamed', name: 'Seeker' },
+        { kind: 'featureNamed', name: 'Warden' },
+      ]),
+    ).toEqual([{ kind: 'featureNamed', name: 'Warden' }]);
+    const warnings = prerequisiteCodes(asking(brook, [{ kind: 'featureNamed', name: 'Warden' }]));
+    expect(warnings.map((warning) => warning.code)).toContain('unmetPrerequisite');
+    expect(
+      computed(asking(brook, [{ kind: 'featureNamed', name: 'Warden' }])).warnings.map(
+        ({ message }) => message,
+      ),
+    ).toContain(`${TEST} has a prerequisite the character does not meet: Warden.`);
+  });
+
   it('an ability reads the score after a manual edit', () => {
     const edited = opened(
       openTalesCharacter({

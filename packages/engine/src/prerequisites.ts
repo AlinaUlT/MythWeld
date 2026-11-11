@@ -53,6 +53,11 @@ export function prerequisiteWarnings<E extends GatherableEntity>(
             ({ category, key }) => category === prerequisite.category && key === prerequisite.key,
           );
           break;
+        case 'featureNamed':
+          met = entities.some(({ entity }) =>
+            Object.values(entity.name).some((name) => name === prerequisite.name),
+          );
+          break;
         case 'formula': {
           const result = evaluateCondition(prerequisite.formula, read);
           for (const warning of result.warnings) {
@@ -93,5 +98,7 @@ function describe(prerequisite: Prerequisite): string {
       return `${prerequisite.category} ${prerequisite.key}`;
     case 'formula':
       return prerequisite.formula;
+    case 'featureNamed':
+      return prerequisite.name;
   }
 }

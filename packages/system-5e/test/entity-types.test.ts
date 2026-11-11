@@ -519,7 +519,7 @@ describe("ENG-53 a spell's healing", () => {
     expect(issuePaths(fifthEditionEntitySchema, hp)).toEqual([]);
     expect(issuePaths(fifthEditionEntitySchema, without(spell, 'healing'))).toEqual([]);
     expectTypeOf<Extract<FifthEditionEntity, { type: 'spell' }>['healing']>().toEqualTypeOf<
-      { formula: string; kind: 'hp' | 'tempHp' } | undefined
+      { formula: string; kind: 'hp' | 'tempHp' | 'maxHp'; hitDice?: number | undefined } | undefined
     >();
   });
 

@@ -466,7 +466,7 @@ describe('ENG-04 effects, grants, prerequisites', () => {
     const prerequisite = z.toJSONSchema(prerequisiteSchema) as Node;
     expect(objectOptions(effect)).toHaveLength(5);
     expect(objectOptions(grant)).toHaveLength(5);
-    expect(objectOptions(prerequisite)).toHaveLength(5);
+    expect(objectOptions(prerequisite)).toHaveLength(6);
     for (const option of [effect, grant, prerequisite].flatMap(objectOptions)) {
       expect(option.additionalProperties).toBe(false);
     }

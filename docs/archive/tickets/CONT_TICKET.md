@@ -374,3 +374,104 @@ Measured 2026-11-11 on the files CONT-01 fetched (5e-bits/5e-srd-api at `e6edf9a
 **Found, not fixed:** 2024's magic items keep `desc`, so a row that reads "2014 `desc`, 2024 `description`" from SPEC §3.2 alone would lose their text; `textOf` reads both for every file, and CONT-13's §8 should check the text of each ruleset's magic items against it.
 
 **Changelog:** Nothing for the changelog.
+
+---
+
+### CONT-05 The fifth-edition schemas hold the SRD values found so far
+
+**Hat:** The fifth-edition schemas gain optional fields for the SRD values phase 1 found they could not hold
+**Depends on:** CONT-04 (wave 1 order only)
+**Size:** M
+**Screen:** No
+**SPEC:** §3.2, §5.3, §5.5; ADR 004; ENG-32, ENG-50, ENG-53, ENG-16, ENG-33, ENG-10 (their §8 and §11)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/system-5e/src/entity-types.ts` — changes: item category, weapon base, spell duration, scaling, upgrades, healing.
+- `packages/system-5e/src/system.ts` — `HEALING_KINDS`, the `spell` grant's `abilityFrom`.
+- `packages/system-5e/src/pack.ts` — one more check the JSON Schema cannot say.
+- `packages/schema/src/grant.ts` (a choice filter's `proficient`), `prerequisite.ts` (a `featureNamed` kind) — the core, because both are game-free and shared by every system.
+- `packages/engine/src/prerequisites.ts` — reads the new kind.
+- `apps/web/public/schema/5e/pack.schema.json` — regenerated.
+
+#### 2. What is missing now
+
+Measured on `8efafd7`: no field holds any of §3's values; a pack that wrote one would be refused (`strictObject`). The row's note lists them; ENG-32 §11, ENG-50 §11, ENG-53 §11, ENG-16 §11, ENG-33 §11 and ENG-10 §11 measured each.
+
+#### 3. What it should look like when done
+
+Each line is a field, optional (no migration), with its source value, in both the Zod schema and the published JSON Schema, which agree on every case of `cont-05.test.ts`:
+1. `ItemDef.category` takes `transport`: 2014 `mounts-and-vehicles`, 40 entries (9 mounts and animals, 25 tack, harness and drawn vehicles, 6 waterborne vehicles).
+2. A spell's `duration.kind` takes `untilDispelledOrTriggered`: SRD 5.2.1 Glyph of Warding and Symbol (2 spells).
+3. A `spell` grant takes `abilityFrom`, two or more stats (not with `ability`): 2024 `elven-lineage`, `gnomish-lineage`, `magic-initiate`, Intelligence, Wisdom or Charisma.
+4. `scaling.every` (2 or more, `slot` only): SRD 5.1 Flame Blade (2: 3d6, 4: 4d6, 6: 5d6, 8: 6d6) and Spiritual Weapon, "for every two slot levels". `scaling.damageTypes` and `scaling.pickOne`: SRD 5.1 Flame Strike, fire or radiant at the caster's choice (SRD 5.2.1 grows both).
+5. A cantrip's `upgrades`, by character level, each step with one of `beams`, `die`, `range` (feet), `extraDamage`; a level once; cantrips only: Eldritch Blast 2, 3, 4 beams at 5, 11, 17; Shillelagh d10, d12, 2d6; Spare the Dying 30, 60, 120 feet from 15; True Strike Radiant 1d6, 2d6, 3d6 and nothing before 5 (all SRD 5.2.1).
+6. `healing.kind` takes `maxHp`: Aid (both SRDs, 5 per slot level from 2nd: 5 … 40), Heroes' Feast (both). `healing.hitDice`: Arcane Vigor, 2. A spell's `healingEachTurn`: Heroism (temporary hit points equal to the modifier), Regenerate (1 hit point, beside its 4d8 + 15).
+7. A weapon's `baseKey`: a "Longsword, +1" is a `longsword` (dnd5e `type.baseItem`).
+8. A choice filter's `proficient`: SRD 5.2.1 paladin, ranger and rogue mastery. "Melee weapons" (the barbarian) is a `tag`, which the filter already had.
+9. A prerequisite kind `featureNamed`: 5e-database 2024 `prerequisites.feature_named`, "Fighting Style" (archery, defense, great-weapon-fighting, two-weapon-fighting) and "Spellcasting" (boon-of-spell-recall). The engine checks it.
+10. Held already, shown by a test and no change: a species with `size: ['medium', 'small']` (the 2024 human); `feat.repeatable` (Ability Score Improvement, Magic Initiate, Skilled); a class with four `entity` grants of one feat at levels 4, 8, 12, 16.
+
+#### 4. How to do it
+
+1. Each field is added where its value lives: the spell, the grant, the weapon, the filter, the prerequisite.
+2. A check a JSON Schema can say (`every` only with `slot`, `pickOne` with two or more types, a step with something in it, `upgrades` only on a cantrip, `ability` not with `abilityFrom`) is also written in `.meta()`, as ENG-38 does, so the published file refuses what Zod refuses (`anyOf` and `not`, since the linter refuses a key named `then`). A level once in `upgrades` cannot be said, so it joins the published description's list.
+3. The engine gets only what the build needs: the new prerequisite kind is checked and described, since its `switch` is exhaustive. Nothing else in `engine` or the sheet reads a new field (§9).
+4. The published file is regenerated with `pnpm vitest run apps/web/test/pack-schema.test.ts --update`.
+5. Core or module: `proficient` and `featureNamed` are game-free (a flag on a filter, a name), so they sit in the core as `tag` and `entity` do; the rest name fifth-edition values and sit in the module.
+
+#### 5. Stored data
+
+A stored shape widens and nothing narrows: every new field is optional, and `HEALING_KINDS`, the item category list and the duration kinds only gain a value. A pack of version 10 stays valid, so `FIFTH_EDITION_SCHEMA_VERSION` and `PACK_SCHEMA_VERSION` do not change and no migration is added (SPEC §5.8: ENG-06's frame needs a step only where an old file would be refused). A character is not touched.
+
+#### 6. What a person will see
+
+Not a screen. The published JSON Schema (`schema/5e/pack.schema.json`) accepts the new fields; the cast panel shows a `maxHp` healing as plain healing until CONT-65.
+
+#### 7. Tests
+
+- `packages/system-5e/test/cont-05.test.ts` — 20: one describe for each of §3's lines 1 to 10, each source value written into a made-up entity and judged by both schemas, which must agree; a wrong form each (a step of 1, a pick of one type, a step with nothing, a cantrip field on a level 2 spell, a key not in camelCase).
+- `packages/engine/test/prerequisites.test.ts` — 1 new: `featureNamed` is met by a name the character has and unmet, with a warning and its text, otherwise.
+- `packages/schema/test/mechanics.test.ts` and `packages/system-5e/test/entity-types.test.ts`, `pack-json-schema.test.ts` — three pinned counts and types move with the schemas (prerequisite kinds 5 to 6; the healing type; the checks list 4 to 5).
+- Control numbers from: §8, the source values, never a run's output.
+
+#### 8. Checked against the source
+
+Sources: 5e-bits/5e-srd-api at `e6edf9a`, `packages/5e-database/src/{2014,2024}/en/`, read on 2026-11-11 from the files CONT-01 fetched; foundryvtt/dnd5e at `7bfb3f1` (CC-BY-4.0), cited as ENG-50 §8, ENG-53 §8 and ENG-16 §11 read it on 2026-10-02 and 2026-10-03, and not read again here.
+- **Equipment.** 2014 `5e-SRD-Equipment.json`: 40 entries with `equipment_category` `mounts-and-vehicles`, each with a `vehicle_category`: "Tack, Harness, and Drawn Vehicles" 25, "Mounts and Other Animals" 9, "Waterborne Vehicles" 6; none has a `gear_category`. 2024 equipment has no such category.
+- **Duration.** 2024 `5e-SRD-Spells.json`: `glyph-of-warding` and `symbol` have "Until dispelled or triggered"; SRD 5.1 has 12 "Until dispelled" spells and none "or triggered"; SRD 5.2.1 has 12 "Until dispelled" besides those two.
+- **Scaling.** 2014 Flame Blade: `damage_at_slot_level` 2: 3d6, 4: 4d6, 6: 5d6, 8: 6d6; higher level "1d6 for every two slot levels above 2nd". Spiritual Weapon: 1d8 + MOD at 2 and 3, 2d8 + MOD at 4 and 5 …, "1d8 for every two slot levels above the 2nd". 2014 Flame Strike: two damages (fire, radiant), `4d6 OR 5d6` from slot 6, "the fire damage or the radiant damage (your choice) increases by 1d6 for each slot level above 5th"; 2024: "The Fire damage and the Radiant damage increase by 1d6 for each spell slot level above 5".
+- **Cantrip upgrades**, 2024 `description`: Eldritch Blast "two beams at level 5, three beams at level 11, and four beams at level 17"; Shillelagh "levels 5 (d10), 11 (d12), and 17 (2d6)"; Spare the Dying "The range doubles when you reach levels 5 (30 feet), 11 (60 feet), and 17 (120 feet)", range 15 feet; True Strike "extra Radiant damage when you reach levels 5 (1d6), 11 (2d6), and 17 (3d6)".
+- **Healing.** 2014 Aid `heal_at_slot_level` 2: 5 … 9: 40; 2024 Aid "Hit Point maximum and current Hit Points increase by 5 for the duration"; 2024 Heroes' Feast "Hit Point maximum also increases by 2d10"; 2014 Heroes' Feast has the same (text); 2014 Regenerate `heal_at_slot_level` 7: "4d8 + 15", "1 hit point at the start of each of its turns"; Heroism, both: temporary hit points "equal to your spellcasting ability modifier at the start of each of its turns". Arcane Vigor (SRD 5.2.1) is not in 5e-database; its "one or two unexpended Hit Dice" is from ENG-53 §8 (dnd5e `spells24`).
+- **Feats.** 2024 `5e-SRD-Feats.json`: `archery`, `defense`, `great-weapon-fighting`, `two-weapon-fighting` have `prerequisites.feature_named` "Fighting Style"; `boon-of-spell-recall` has "Spellcasting" with `minimum_level` 19.
+- **Species.** 2024 `human`: `size` "Medium" (one value); `tiefling`: `size_options` choose 1 of Small, Medium. The human's "Medium or Small" is ENG-10 §11's reading of the SRD text, as dnd5e quotes it; not re-read here.
+- **Mastery, magic weapon, repeatable feats:** as ENG-16 §11 and ENG-33 §11 state them; not re-read here.
+- No `[ПРОВЕРИТЬ]` is involved.
+
+#### 9. Not in this ticket
+
+- Reading any new field outside the prerequisite: CONT-63 (the stat pick), CONT-64 (`proficient`), CONT-65 (growth and healing), CONT-66 (a feat taken twice), CONT-67 (`baseKey`). Until each, a field is data the engine ignores.
+- Writing the SRD's spells, items and feats into the fields: CONT-07, CONT-12, CONT-11 and the mechanics rows.
+- A SPEC §5.3 edit: the fields are written in the schemas and here; SPEC is the owner's document (a change to it is an ADR).
+
+#### 10. Rake check
+
+- **Everything is data, the core names no game:** `proficient` and `featureNamed` name no stat, skill or edition; the core gained two optional things.
+- **Missing is not broken:** an unread field is ignored, never an error; a prerequisite is a warning, never a block.
+- **A stored shape change needs a migration:** every field is optional and each list only gains a value, so no old pack or character is refused (§5).
+- **Formulas never run code:** `die`, `formula` and `extraDamage.formula` are formulas checked as text by the same schema as the existing ones.
+- **No rules text:** the entities are made up; the numbers are the source's.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 520 files, no fixes; `pnpm typecheck` clean; `pnpm test` 149 files, 1734 passed, 0 failed, 27.0 s (21 new, from 1713: 20 in `cont-05.test.ts` and 1 in `prerequisites.test.ts`; three existing tests only changed a pinned count or type), then speed 2 passed; coverage statements 99.02 % (4154/4195), lines 99.78 % (3640/3648); `pnpm e2e` 106 passed, 0 failed, 1.7 min (the published schema file is in `apps/web`).
+
+**Published JSON Schema:** regenerated; 467 lines added and 259 removed, most of them `$defs` numbers that shifted. `text.length` stays under ENG-38's 100,000 limit.
+
+**Difference from the row:** three of the row's items needed no field. The 2024 human's Medium or Small is a species `size` list, which the schema already held (the tiefling's is one); the feat taken twice is `repeatable`, already there, and its per-take choices are the engine's; a class that gives Ability Score Improvement at four levels is four grants of one feat, already allowed. §3 item 10 tests each. "Melee weapons" is a tag, so only "with which you have proficiency" needed a field.
+
+**Found, not fixed:** the engine reads none of the new fields yet, and an unread field gives a quiet wrong number. New rows CONT-63 to CONT-67 in `BACKLOG.md`, wave 2, each before the mechanics row that writes data in its field. The cast panel shows a `maxHp` healing as plain healing; CONT-65 owns it. The spell grant with `abilityFrom` names no casting stat until CONT-63.
+
+**Changelog:** one line, as ENG-53's was: the published JSON Schema is a public file.

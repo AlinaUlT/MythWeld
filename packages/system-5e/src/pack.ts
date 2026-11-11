@@ -57,6 +57,7 @@ export const FIFTH_EDITION_CHECKS_LEFT_OUT = [
   'A class gives each level once in `levels`.',
   "Grant ids differ in a class's `multiclass.grants`, and from the ids in its `grants`.",
   "An `item` grant's `fixed` list names each item once.",
+  "A cantrip's `upgrades` give each level once.",
 ] as const;
 
 /** The fifth-edition pack as draft 2020-12 JSON Schema: the file the app publishes. */

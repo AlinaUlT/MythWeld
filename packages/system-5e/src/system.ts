@@ -46,9 +46,11 @@ export const ARMOR_GROUPS = ['light', 'medium', 'heavy'] as const;
 
 /**
  * What a spell's healing gives (ENG-53): hit points regained, or temporary hit points. ENG-20
- * changes each with its own action (`applyHealing`, `setTempHp`).
+ * changes each with its own action (`applyHealing`, `setTempHp`). CONT-05: `maxHp` raises the hit
+ * point maximum and the current hit points by the same amount (Aid, both SRDs; Heroes' Feast,
+ * SRD 5.1 and 5.2.1); no action changes a maximum yet (CONT-65).
  */
-export const HEALING_KINDS = ['hp', 'tempHp'] as const;
+export const HEALING_KINDS = ['hp', 'tempHp', 'maxHp'] as const;
 
 /** The coins: a price's unit, a character's money. */
 export const COINS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const;
@@ -76,6 +78,11 @@ export const spellGrantSchema = withFixedOrChoose(
     fixed: uniqueList(entityIdSchema).optional(),
     choose: chooseEntitiesSchema.optional(),
     ability: entityKeySchema.optional(),
+    // CONT-05: the stats the person picks the casting stat from, when the grant does not name one
+    // (SRD 5.2.1's elven lineage, gnomish lineage and Magic Initiate: Intelligence, Wisdom or
+    // Charisma). `grantCastingStat` reads the pick from CONT-63 on; before it a grant with
+    // `abilityFrom` names no stat.
+    abilityFrom: uniqueList(entityKeySchema).min(2).optional(),
     alwaysPrepared: z.boolean().optional(),
     key: entityKeySchema.optional(),
     uses: fifthEditionLists.usesDefSchema.optional(),
@@ -89,7 +96,14 @@ export const spellGrantSchema = withFixedOrChoose(
     message: 'Needs `uses` with `key`.',
     path: ['uses'],
   })
-  .meta({ dependentRequired: { uses: ['key'], key: ['uses'] } });
+  .refine((grant) => grant.ability === undefined || grant.abilityFrom === undefined, {
+    message: 'Names `ability` or `abilityFrom`, not both.',
+    path: ['abilityFrom'],
+  })
+  .meta({
+    dependentRequired: { uses: ['key'], key: ['uses'] },
+    not: { required: ['ability', 'abilityFrom'] },
+  });
 
 /** Items an entity gives, each with how many (SPEC §5.5). */
 export const itemGrantSchema = withFixedOrChoose(
