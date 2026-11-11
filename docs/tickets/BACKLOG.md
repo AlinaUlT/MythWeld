@@ -340,7 +340,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-05 | The fifth-edition schemas hold the SRD values found so far | M | ✅ 2026-11-11 |
 | CONT-06 | Monsters have an entity type | S | ✅ 2026-11-11 |
 | CONT-07 | Spells are imported from both SRDs | M | ✅ 2026-11-11 |
-| CONT-08 | Classes are imported with their subclasses | M | 🔲 |
+| CONT-08 | Classes are imported with their subclasses | M | ✅ 2026-11-11 |
 | CONT-09 | Species are imported with their subraces | S | ✅ 2026-11-11 |
 | CONT-10 | Backgrounds are imported from both SRDs | S | ✅ 2026-11-11 |
 | CONT-11 | Feats are imported from both SRDs | S | ✅ 2026-11-11 |
@@ -403,10 +403,9 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-68 | The key and proficiency helpers live in the import frame | S | 🔲 |
 | CONT-69 | Alignments and poisons have a place in the packs | S | 🔲 |
 | CONT-70 | The item schema holds the equipment values the import left out | M | 🔲 |
-| CONT-71 | A starting package or gold is a choice the grants can hold | M | 🔲 |
+| CONT-71 | The schemas hold the class and background values the imports left out | M | 🔲 |
 | CONT-72 | SRD 5.2.1's spell areas and the damages the source lists no field for are imported | M | 🔲 |
 
-- **CONT-08** — each class's level table (SPEC §3.1: 12 classes, one subclass each, in both SRDs).
 - **CONT-15** — ADR 014 item 13: both SRDs' rules chapters become `rule` entries, each with a
   `topic` (the `ruleTopic` entries of ADR 013 item 18's list) and an optional icon key, for Quick
   rules.
@@ -545,8 +544,8 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
     `smallTypes.ts`, and the later importers import it from there. `species.ts` keeps a private
     map from a `Proficiencies` entry to a `proficiency` grant's category and key (skills, weapons
     by item, tools; armor, saving throws and the weapon groups are not mapped), which CONT-08 and
-    CONT-10 need whole. CONT-10's `backgrounds.ts` holds a complete copy (`proficienciesOf`), and
-    CONT-08's `classes.ts` another. The row moves them into `frame.ts` as one, and fixes the imports.
+    CONT-10 need whole. CONT-10's `backgrounds.ts` and CONT-08's `classes.ts` each hold a complete
+    copy (`proficienciesOf`). The row moves the three into `frame.ts` as one, and fixes the imports.
   - **CONT-69** — found by CONT-14: the source has 9 alignments (SRD 5.1; SRD 5.2.1 has 10, with
     `unaligned`) and 14 poisons (SRD 5.2.1 only, with a cost and a kind) and no importer takes
     them. An alignment has no entity type; a poison is an item or a `rule`. The row decides where
@@ -558,13 +557,23 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
     `craft` list and `utilize` checks, and an armor's `don_time` and `doff_time`. The row is the
     wave's schema row, so it edits the published JSON Schema (it may add a version and a migration),
     and then fills the fields in `equipment.ts`.
-  - **CONT-71** — found by CONT-10: no grant holds a starting package or gold. SRD 5.1's Acolyte
-    has `starting_gold` (15 gp); SRD 5.2.1's backgrounds and classes say "Choose A or B: (A) items;
-    or (B) 50 GP". `backgrounds.ts` gives SRD 5.2.1's backgrounds no item grant, since a fixed one
-    would give the package to a person who takes the gold; the words keep the line. The row adds
-    what holds it (a choice between a package of items and an amount of gold, in the schema and
-    the published JSON Schema), reads it in the engine's inventory step, and fills it in the
-    importers of backgrounds and classes. It is wave 4's schema row.
+  - **CONT-71** — found by CONT-10 and CONT-08: values of the SRDs the schemas have no field for.
+    It is wave 4's schema row (it edits the published JSON Schema, and may add a version and a
+    migration), and then fills the importers:
+    1. No grant holds a starting package or gold. SRD 5.1's Acolyte has `starting_gold` (15 gp);
+       SRD 5.2.1's backgrounds and classes say "Choose A or B: (A) items; or (B) 50 GP", and SRD 5.1's
+       classes have `starting_equipment_options` (choices of one item, of two, of a package). The
+       importers give SRD 5.2.1's backgrounds and classes no item grant, since a fixed one would
+       give the package to a person who takes the gold, and SRD 5.1's classes only their fixed items;
+       the words keep every line. The row adds what holds a choice between a package of items and an
+       amount of gold, reads it in the engine's inventory step, and fills `backgrounds.ts` and
+       `classes.ts`.
+    2. A class table holds a number or a text: SRD 5.1's Sorcerer `creating_spell_slots` (a list) has
+       no column, and a subclass has no table for its 7 `subclass_specific` entries (Lore's
+       `additional_magical_secrets_max_lvl`, Devotion's `aura_range`).
+    3. An *expanded* spell list (SRD 5.1's Fiend, 10 spells) is spells to choose from, not spells
+       always prepared; `classes.ts` imports no grant for it.
+    4. A feature has no `prerequisites` (21 invocations of SRD 5.1 need a level, a spell or a pact).
   - **CONT-72** — found by CONT-07: SRD 5.2.1's entries have no `area_of_effect` (0 of 339 spells;
     SRD 5.1 has it on 88), and about 19 spells of each SRD (by a pattern over the words) roll a damage in the words that the source's
     `damage` field does not list (SRD 5.1's Sleep and Prismatic Spray list a roll and no type;

@@ -1231,3 +1231,113 @@ Not a screen.
 - The stray commas of SRD 5.2.1's material text (§8).
 
 **Changelog:** nothing for the changelog; a person sees nothing yet.
+
+---
+
+### CONT-08 Classes are imported with their subclasses
+
+**Hat:** The 12 classes and 12 subclasses of each SRD, with their level tables and features, become entities
+**Depends on:** CONT-14 (the tool kind keys), CONT-12 (the items a class starts with), CONT-07 (the spells a subclass gives), CONT-11 (the feat category an Epic Boon is chosen from)
+**Size:** M
+**Screen:** No
+**SPEC:** §3.1 (12 classes, one subclass each, in both SRDs), §5.3 (`ClassDef`, `SubclassDef`), §5.5; ADR 004; ENG-09 §4 and ENG-33 §4 (the conventions)
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/import/classes.ts` — changes: from the empty importer to the real one.
+- `packages/content/test/import-classes.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on `ba19e1d`: `classes` has no types, no files and makes nothing. The source at `e6edf9a` has 12 classes, 12 subclasses, 407 features in SRD 5.1 and 232 in SRD 5.2.1, and one `Levels` entry for each class level (240 each) and each subclass level (50 and 47).
+
+#### 3. What it should look like when done
+
+1. The importer makes `class` 12 and 12, `subclass` 12 and 12, and a `feature` for each entry of `Features` (407 and 232), 0 problems in both rulesets, each under its slug and name.
+2. A class has `key`, `hitDie`, `saves` (the stats of `saving_throws`; no grant), `subclassLevel` (the lowest level of its subclass's entries), `primaryAbilities` (SRD 5.2.1), `spellcasting` (the 8 casters), `multiclass` (prerequisites, and the proficiencies as `multiclass-…` grants), `levels` and its words.
+3. Its features are `entity` grants, `features-<level>` at that `atLevel`, for each level that gives some; every feature a class or subclass level lists is named by one (317 in SRD 5.1, 232 in SRD 5.2.1).
+4. An Ability Score Improvement (a feature of that name) is the grant `ability-scores-<level>`: `distribute` over the source's stats, `[[2], [1, 1]]` (ENG-09 §4, ENG-33 §4). SRD 5.1 has it at levels 4, 8, 12, 16 and 19 (the Fighter also 6 and 14, the Rogue 10); SRD 5.2.1 at 4, 8, 12 and 16 (the same two classes), with an Epic Boon at 19 as the grant `epic-boon`: one feat of the category `epicBoon`.
+5. `levels` has 20 rows with the columns of `class_specific` in camelCase (a pair is two columns, a flag 1 or 0), for each class that has any: 12 in SRD 5.1, 11 in SRD 5.2.1 (the Wizard has none).
+6. `spellcasting`: the stat; `progression` (`full`, `half` or `pact`, from the slots); `preparation` (`spellbook`, `known` where the levels have `spells_known`, else `prepared`); `preparedCount` (SRD 5.2.1's column; SRD 5.1's formula, read from the class's words); `cantripsKnown`, `spellsKnown` (columns of 20), `slotsTable` (20 rows of the slots of spell levels 1 to 9, trailing zeros dropped), `spellList`, `ritual`.
+7. A class's proficiencies are grants: `armor` (a group, or `shield`), `weapons` (a group or an item's key), `tools` (a tool kind), `skills` (a choice from its list, or `{ type: 'skill' }` for any skill); the Monk's choice of a tool is one list of both kinds. SRD 5.1's fixed starting items are an item grant `equipment`.
+8. A subclass has `key`, `classKey`, and its features as `features-<level>`. SRD 5.1's always-prepared spells (a domain's, an oath's) are `spell` grants `domain-spells-<level>`, those of the Land druid on the terrain feature, each needing it. A feature that offers sub-features has the grant `subfeatures` (14 in SRD 5.1).
+9. The hand-written packs' classes (the 2014 cleric, wizard, paladin; the 2024 fighter, wizard, paladin) and subclasses (the 2014 Life; the 2024 Champion) are imported under the same ids with every grant they hold, each equal, and the same hit die, saves, subclass level, primary abilities, levels, multiclass and spellcasting fields.
+
+#### 4. How to do it
+
+1. The conventions of ENG-09 §4 and ENG-33 §4 hold: keys are the source's slugs in camelCase, a column is keyed by its `class_specific` name in camelCase, an improvement is a grant, saves are `saves` only, a slot row lists levels to the last with slots.
+2. `Levels` is read for a class (its entries without `subclass`) and for a subclass (its entries with it). The features are the ones `Levels` lists: SRD 5.2.1's `Subclasses.features` and `Features` agree except for the Circle of the Land (§8), and `Levels` agrees with `Features`.
+3. A proficiency map from each entry of `Proficiencies` to a category and keys, whole (CONT-10's copy; CONT-68 moves both).
+4. Where the source has no field, a value is read from its words, in the two places the SRD says it in one pattern: the number of spells a class prepares (SRD 5.1), and the classes with ritual casting (SRD 5.1).
+5. What no field of the schema holds is left out and named in §11.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/content/test/import-classes.test.ts` — 40: for each ruleset, 0 problems, the 12 classes and 12 subclasses under their slugs, names and keys, the hit dice and saves, no saves grant, every `Features` entry made and every feature `Levels` lists named by a grant, each level's grant against `Levels`; the subclass levels, the improvement levels of all 24 classes, the Epic Boon, the grant's shape, the columns of each class's table and the numbers of a row, the starting items; proficiencies of each kind, tool kinds, skill choices, the Monk's tool choice, multiclass prerequisites and grants, primary abilities, the repaired apostrophe; the 8 casters by progression and preparation, the slots against the source, the columns, the formulas, ritual casting; the subclasses' spell grants (the Life domain, the Devotion oath, the Land's terrains, the Fiend's none), the `subfeatures` choices; the hand-written packs.
+- The registry test of CONT-04 runs `classes` with the others over the real source: 0 problems, so no id is made twice.
+- Control numbers from: §8, measured by a script outside the repository from the source files.
+
+#### 8. Checked against the source
+
+5e-bits/5e-srd-api at `e6edf9a`, measured 2026-11-11, and SRD 5.2.1 (CC-BY-4.0) PDF:
+- **Counts:** 12 classes and 12 subclasses in both (SRD 5.1's: berserker, lore, life, land, champion, open-hand, devotion, hunter, thief, draconic, fiend, evocation; SRD 5.2.1's: Path of the Berserker, College of Lore, Life Domain, Circle of the Land, Champion, Warrior of the Open Hand, Oath of Devotion, Hunter, Thief, Draconic Sorcery, Fiend Patron, Evoker). `Features` 407 and 232; 317 and 232 of them are listed by a level (the other 90 of SRD 5.1 are sub-features to choose, and invocations). `Levels` 290 (240 and 50 of a subclass) and 287 (240 and 47).
+- **Subclass level** (the lowest level of the subclass's entries): SRD 5.1 cleric, sorcerer, warlock 1; druid, wizard 2; the others 3. SRD 5.2.1: 3 for all. Equal to the hand-written packs' values.
+- **Improvements** (the features named "Ability Score Improvement" in `Levels`): as §3 item 4; SRD 5.2.1 has the feature "Epic Boon" for each class at level 19.
+- **Table columns** (`class_specific`): SRD 5.1 has 3 for the Barbarian, 5 the Bard, 2 the Cleric, 3 the Druid (two of them flags), 3 the Fighter, 3 the Monk (`martial_arts` a pair), 1 the Paladin, 2 the Ranger, 1 the Rogue (`sneak_attack` a pair), 3 the Sorcerer (`creating_spell_slots` a list), 5 the Warlock, 1 the Wizard; SRD 5.2.1 has 3, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1 and none for the Wizard. `Levels` also has `subclass_specific` on 7 subclass entries (Lore's `additional_magical_secrets_max_lvl`, Devotion's `aura_range`).
+- **Spellcasting:** 8 classes in both; `spellcasting.level` 1, and 2 for the SRD 5.1 Paladin and Ranger. A level's `spellcasting` has `spell_slots_level_1` to `9` in both, `cantrips_known` on 6 classes (SRD 5.1) and 8 (SRD 5.2.1), `spells_known` on bard, ranger, sorcerer and warlock (SRD 5.1), `prepared_spells` on all 8 (SRD 5.2.1). The Warlock's rows have slots at one spell level (pact magic).
+- **Preparing** (SRD 5.1 `spellcasting.info`): "a number of cleric spells equal to your Wisdom modifier + your cleric level (minimum of one spell)", the same for the druid (Wisdom) and the wizard (Intelligence), "Charisma modifier + half your paladin level, rounded down (minimum of one spell)" for the paladin. The source says "spellbook" only of the Wizard.
+- **Ritual casting:** SRD 5.1 has a "Ritual Casting" section for the bard, cleric, druid and wizard. SRD 5.2.1 says "To cast a spell as a Ritual, a spellcaster must have it prepared" (Rituals, the Spells chapter), and every class of it prepares: `ritual` is on for all 8.
+- **Proficiencies:** SRD 5.1 `proficiencies` of a class are indexes of `Proficiencies` (armor, weapons by group or by kind, a tool, saving throws); `all-armor` has the reference `armor`. The Bard's skill choice lists all 18 skills (SRD 5.1 "Choose any three"); the Monk's tool choice is two nested lists (17 artisan's tools and 10 instruments). SRD 5.2.1's Rogue names `tool-thieves-tools`, whose reference is `thieves-tools`.
+- **A fault of the source:** SRD 5.2.1's Monk "Choose one type of artisan’s tools or one musical instrument" has the three characters a wrong decoding makes of the apostrophe, in that one string of all the source files (measured over every file of both rulesets); the importer puts that right in the class's words.
+- **The Fighter's primary ability** in SRD 5.2.1 is `ability_score_options` (choose one of Strength, Dexterity) where the others have `ability_scores`; both read as the list of stats.
+- **Subclass spells** (SRD 5.1 `Subclasses.spells`): Life 9 spells, Devotion 10, Fiend 10, Land 56 (7 terrains of 8 each, as `Levels` lists) — each with a level prerequisite and, for the Land's, a feature prerequisite (the terrain). SRD 5.2.1 has none (its subclass spells are in the words).
+- **The two lists of SRD 5.2.1's Circle of the Land** (`Subclasses.features` and `Features` with that subclass) differ; `Levels` agrees with `Features` for every subclass, so `Levels` decides.
+- No `[ПРОВЕРИТЬ]` is involved.
+
+#### 9. Not in this ticket
+
+- The effects of a feature, its resources and its uses: CONT-22 to CONT-33 (the class mechanics rows, levels 1 to 5); a feature's prerequisites (21 invocations of SRD 5.1) and the choices of its `feature_specific` other than sub-features (expertise, favored enemies and terrain, invocations): those rows.
+- A starting package or gold, and SRD 5.1's choices of starting equipment: CONT-71.
+- The class's own spells by level for a screen: CONT-43 to CONT-45.
+
+#### 10. Rake check
+
+- **Everything is data:** the stats of an improvement come from `Ability-Scores`; the skills a choice offers from `Proficiencies`; no list of stats, skills or classes is in the code. The importer knows two names, "Ability Score Improvement" and "Epic Boon", which are the SRD's own.
+- **No ruleset checks scattered:** one place says `ritual` differs (SRD 5.1's section, SRD 5.2.1's rule), with the SRD text; the rest follow the source's shapes (a column or a formula, `ability_scores` or options).
+- **Ids are stable:** a feature's id is its index; the hand-written packs' ids are imported unchanged, and a test compares each grant.
+- **Missing is not broken:** a feature `Levels` lists that `Features` lacks fails the import; a choice among features names only features that exist (a test).
+- **No rules text in a test:** the tests assert ids, keys, counts, shapes and numbers.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 529 files, no fixes; `pnpm typecheck` clean; `pnpm test` 158 files, 1967 passed, 0 failed, 35.3 s (40 new, from 1927), then speed 2 passed; coverage statements 99.02 % (4162/4203), lines 99.78 % (3648/3656). No `pnpm e2e`: `apps/web` is not touched.
+
+**Results:** SRD 5.1 imports 12 classes, 12 subclasses and 407 features; SRD 5.2.1 12, 12 and 232. 253 and 259 `features-<level>` grants (classes and subclasses), 63 and 51 improvement grants, 12 and 11 level tables, 8 casters each. 0 problems.
+
+**Differences from the row's note:**
+- The row says "a class's level table". The table is `levels` as ENG-09 and ENG-33 made it: all 20 rows with the camelCase `class_specific` columns. The proficiency bonus (`prof_bonus`) is not a column: the engine derives it from the level.
+- The row's user note says a class's features are `entity` grants "each with its `atLevel`". An improvement is also a grant of its own (`ability-scores-<level>`), as the hand-written Fighter has it, and the 2024 Epic Boon is a choice of a feat of that category.
+
+**Own, complete map, in this file:** `proficienciesOf` is a second copy of CONT-10's (and `species.ts` has an incomplete one). CONT-68's note names the three.
+
+**Source disagreed with itself, resolved from its other field, not a stop:** SRD 5.2.1's Circle of the Land `features` against its `Features` (§8); the Fighter's `primary_ability` shape (§8).
+
+**Found, not fixed:**
+- SRD 5.1's Sorcerer `creating_spell_slots` (a list of the slot a sorcery-point cost makes) has no column: a table value is a number or text. The 7 `subclass_specific` entries (Lore's Magical Secrets level, Devotion's aura range) have no place: a subclass has no table.
+- SRD 5.1's Fiend has an *expanded* spell list to choose from, not spells always prepared: no grant holds it, so the subclass has none (the 10 spells are in the source). SRD 5.2.1's subclass spells are in the words only.
+- A feature's `prerequisites` (21 SRD 5.1 invocations: a level, a spell, a pact boon) have no field on a feature.
+- The starting equipment's choices (SRD 5.1) and packages (SRD 5.2.1) are not grants (CONT-71): a class's words keep every line.
+- 90 features of SRD 5.1 that no level lists are made as entities (the options of a choice, the invocations); the choices of the invocations (a count from the table) are not expressed.
+All of these are in the notes of CONT-71 (the schema row) and of the mechanics rows that read them.
+
+**Changelog:** nothing for the changelog; a person sees nothing yet.
