@@ -343,7 +343,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-08 | Classes are imported with their subclasses | M | 🔲 |
 | CONT-09 | Species are imported with their subraces | S | ✅ 2026-11-11 |
 | CONT-10 | Backgrounds are imported from both SRDs | S | 🔲 |
-| CONT-11 | Feats are imported from both SRDs | S | 🔲 |
+| CONT-11 | Feats are imported from both SRDs | S | ✅ 2026-11-11 |
 | CONT-12 | Equipment is imported from both SRDs | M | 🔲 |
 | CONT-13 | Magic items are imported from both SRDs | S | 🔲 |
 | CONT-14 | The small rule types are imported from both SRDs | S | ✅ 2026-11-11 |
@@ -413,8 +413,6 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
   languages on each background, and ENG-56 reads a 2024 background's `language` grants as 2024's
   starting languages (`languageSource`, `rulesets/2024.ts`): the import puts them there, or changes
   that field.
-- **CONT-11** — SRD 5.1 has one (Grappler), SRD 5.2.1 seventeen: 4 origin, 2 general, 4 fighting
-  style, 7 epic boons (SPEC §3.1). `prerequisites.feature_named` takes the kind CONT-05 made.
 - **CONT-12** — armor, weapons, gear, tools, packs, mounts and vehicles. Weapons are tagged so
   ENG-16's "Melee weapons" and "with which you have proficiency" filters can read them (the filter
   field is CONT-05's); `mounts-and-vehicles` takes the category CONT-05 made.

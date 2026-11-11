@@ -759,3 +759,84 @@ Not a screen.
 - SRD 5.2.1's 10 dragonborn subspecies carry `damage_type`, which no field holds. The trait ids (`draconic-breath-weapon-acid`) say it, and CONT-35 writes the effect.
 
 **Changelog:** nothing for the changelog; a person sees nothing yet.
+
+---
+
+### CONT-11 Feats are imported from both SRDs
+
+**Hat:** The feats of both SRDs become `feat` entities with their category and prerequisites
+**Depends on:** CONT-14 (the feat categories), CONT-05 (`featureNamed`, `repeatable`)
+**Size:** S
+**Screen:** No
+**SPEC:** §3.1 (the feats of both SRDs), §5.1, §5.3, §5.5 (prerequisites); ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/import/feats.ts` — changes: from the empty importer to the real one.
+- `packages/content/test/import-feats.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on `c94d33e`: `feats` has no types, no files and makes nothing. The source at `e6edf9a` has 1 feat in SRD 5.1 and 17 in SRD 5.2.1.
+
+#### 3. What it should look like when done
+
+1. The importer makes `feat`: 1 for SRD 5.1 (Grappler) and 17 for SRD 5.2.1 (4 origin, 2 general, 4 fighting style, 7 epic boons), 0 problems in both rulesets. Each id is the source's slug, each has its name and words.
+2. SRD 5.2.1's `category` is the feat's `type` as a key (`fightingStyle`, `epicBoon`), and each names a `featCategory` entity CONT-14 made. SRD 5.1's Grappler has none.
+3. `repeatable` is `true` on Ability Score Improvement, Magic Initiate and Skilled, and absent on the other fourteen.
+4. Prerequisites: SRD 5.1's Grappler: `ability` Strength 13. SRD 5.2.1: `level` 4 on Ability Score Improvement and Grappler, `level` 19 on the 7 epic boons, `featureNamed` "Fighting Style" on the 4 fighting style feats and "Spellcasting" on Boon of Spell Recall. Grappler's "Strength or Dexterity 13+" is a `formula` prerequisite, `@abilities.str.score >= 13 || @abilities.dex.score >= 13`, with the source's words as its label.
+5. The hand-written packs' feats (Alert, Savage Attacker, Defense) are imported with the same id, name and category.
+
+#### 4. How to do it
+
+1. The prerequisites are read in the source's two shapes: SRD 5.1's list of stat minimums, and SRD 5.2.1's object (`minimum_level`, `feature_named`) with `prerequisite_options`.
+2. "One of several stats" is a formula joined by `||`, as the hand-written multiclass prerequisite of the 2024 fighter is; the label is the source's `desc`. Options of any other kind throw, so a shape this ticket did not meet is never read wrongly.
+3. What a feat gives (its stat increase, its grants, its effects, `activation`) is not in the source: CONT-37.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/content/test/import-feats.test.ts` — 13: for each ruleset, 0 problems and one feat for each entry with its name and words; SRD 5.1's Grappler; SRD 5.2.1's counts by category, that each category exists, the three repeatable feats, the levels, the feature names, Grappler's formula; the hand-written packs' feats.
+- Control numbers from: §8, measured by a script outside the repository.
+
+#### 8. Checked against the source
+
+5e-bits/5e-srd-api at `e6edf9a`, measured 2026-11-11:
+- **Counts:** SRD 5.1 `Feats` 1 (`grappler`); SRD 5.2.1 17, with `type`: origin 4, general 2, fighting-style 4, epic-boon 7.
+- **Prerequisites:** SRD 5.1 `grappler`: `prerequisites` is a list of one: Strength, `minimum_score` 13. SRD 5.2.1 gives an object with two keys at most: `minimum_level` (4 on `ability-score-improvement` and `grappler`; 19 on the 7 boons) and `feature_named` ("Fighting Style" on 4; "Spellcasting" on `boon-of-spell-recall`, which has both). `grappler` also has `prerequisite_options`: `choose` 1 of two `score_prerequisite` options, Strength 13 and Dexterity 13, `desc` "Strength or Dexterity 13+". No other feat has it.
+- **`repeatable`:** present on 3 SRD 5.2.1 feats, and a string, the rule's words ("You can take this feat more than once", with, for Magic Initiate, a different spell list each time). It is not a flag, so the importer reads its presence as `true`.
+- No `[ПРОВЕРИТЬ]` is involved.
+
+#### 9. Not in this ticket
+
+- What a feat gives or changes (grants, effects, `activation`): CONT-37.
+- That each take of a repeatable feat has its own choices, and Magic Initiate's different spell list: CONT-66.
+- A feat the SRD text has and 5e-database does not: none; SPEC §3.1 counts 18 and the source has 18.
+
+#### 10. Rake check
+
+- **Prerequisites warn, never block:** the formula and `featureNamed` are checked by the engine as warnings.
+- **Everything is data:** no stat is named in the code; the formula's keys are read from the options.
+- **No ruleset checks scattered:** the two shapes are read by what the entry holds, not by the ruleset.
+- **No rules text:** the test asserts ids, keys, counts and shapes; the label of a formula is the source's words and is asserted in one test, as the hand-written pack does.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 524 files, no fixes; `pnpm typecheck` clean; `pnpm test` 153 files, 1814 passed, 0 failed, 34.2 s (13 new, from 1801), then speed 2 passed; coverage statements 99.02 % (4162/4203), lines 99.78 % (3648/3656). No `pnpm e2e`: `apps/web` is not touched.
+
+**First run found one thing:** `repeatable` is the rule's words, not `true` (§8). My first reading found none of the three.
+
+**Difference from the row:** the row's count of 17 and its four categories are as measured. The row's "SPEC §3.1" lists no feat outside the 18.
+
+**Found, not fixed:** nothing outside the hat. For CONT-66: Magic Initiate's "different spell list each time" is in the words only.
+
+**Changelog:** nothing for the changelog; a person sees nothing yet.
