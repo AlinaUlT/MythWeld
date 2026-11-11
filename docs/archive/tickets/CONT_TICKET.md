@@ -667,3 +667,95 @@ Not a screen.
 **Found, not fixed:** `keyOf` is not in the frame (CONT-68, XS). Alignments and poisons have no importer (CONT-69, S). A language's standard or exotic kind, and its speakers, are in the source and in no field.
 
 **Changelog:** nothing for the changelog; a person sees nothing yet.
+
+---
+
+### CONT-09 Species are imported with their subraces
+
+**Hat:** SRD 5.1's races and subraces and SRD 5.2.1's species and subspecies become entities, with their traits
+**Depends on:** CONT-14 (the keys of sizes and creature types, `keyOf`), CONT-05
+**Size:** S
+**Screen:** No
+**SPEC:** §3 (both SRDs), §5.1, §5.3, §5.5 (grants), §6.8 (what the source gives and what it does not); ADR 004
+
+---
+
+#### 1. Where the code lives
+
+**Main file:** `packages/content/src/import/species.ts` — changes: from the empty importer to the real one.
+- `packages/content/test/import-species.test.ts` — new.
+
+#### 2. What is missing now
+
+Measured on `9380ebf`: `species` has no types, no files and makes nothing. The source at `e6edf9a` has 9 races, 4 subraces and 38 traits (SRD 5.1) and 9 species, 24 subspecies and 67 traits (SRD 5.2.1), and `Proficiencies` (117 and 74 entries).
+
+#### 3. What it should look like when done
+
+1. The importer makes `species`, `lineage` and `feature`. Run through the frame over the real source it gives 0 problems in both rulesets, and counts of 9, 4 and 38 (SRD 5.1) and 9, 24 and 67 (SRD 5.2.1). Each id is the source's slug.
+2. A species has its `size` (a list), `speed` in feet (`walk`), and, in SRD 5.2.1, `creatureType`. SRD 5.2.1's human is `['medium', 'small']`, and its tiefling `['small', 'medium']`, from its `size_options`. Every other one is its one size.
+3. A species and a lineage hold grants for what the source structures: `ability-scores` (fixed increases), `ability-score-choice` (the half-elf: two of five stats by 1), `languages` (the fixed ones and a pick from a list), `traits` (an `entity` grant of its trait ids, in the source's order), and `subrace` (SRD 5.1) or `lineage` (SRD 5.2.1): one pick from its lineages.
+4. The high elf's Extra Language: its `languages` grant is on the lineage (a pick from 14), and the `extra-language` trait has no grant.
+5. A trait is a `feature` with its words, and grants for its proficiencies (`weapons`, `skills`, `tools`: fixed and a pick from a list) and, for the dragonborn's Draconic Ancestry (SRD 5.1), `subtraits`: one of its ten traits.
+6. SRD 5.2.1's Draconic Ancestry, which names the dragonborn and is in no species' or subspecies' trait list, is added to the dragonborn's traits. No trait of either ruleset is left that nothing gives.
+7. The hand-written packs' species, lineages and traits are imported under the same ids, and a species or lineage has the same size, speed, creature type and grants as the pack's (the dwarf, the hill dwarf, the 2024 human).
+
+#### 4. How to do it
+
+1. A race's `ability_bonuses`, `languages`, `language_options` and `traits`, and a subrace's, become grants as §3 says. A `Proficiencies` entry maps to the category and key of what it is a proficiency of (`reference`): a skill's, a weapon's (by item, so `light-hammers` is `lightHammer`), a tool's.
+2. SRD 5.1's races have no text of their own: the four fields (`age`, `alignment`, `size_description`, `language_desc`) become the species' text, each under the label the SRD prints it with (`**Age.** …`).
+3. What the source gives as structure is imported; what it gives as an effect, a resource or a spell is not (SPEC §6.8): CONT-34 and CONT-35.
+4. SRD 5.2.1 has no language on any species (the row's note), so its species have no `languages` grant.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `packages/content/test/import-species.test.ts` — 29: for each ruleset, 0 problems, the counts, one entity for each entry under its slug, every entity grant naming an imported entity and every trait and lineage named by one, the words of every trait; SRD 5.1: sizes and speeds, the race text, the fixed stat increases of the races and subraces, the half-elf's choice, the languages of each race, the high elf's language on the lineage, the traits and the subrace choice, the proficiencies of seven traits, the ten dragonborn ancestries; SRD 5.2.1: creature type, sizes and speeds, the human and the tiefling, no stat or language grant, the lineages offered, Draconic Ancestry, the skill choices of two traits; the hand-written packs' ids and grants.
+- Control numbers from: §8, measured by a script outside the repository.
+
+#### 8. Checked against the source
+
+5e-bits/5e-srd-api at `e6edf9a`, measured 2026-11-11:
+- **Counts:** SRD 5.1 `Races` 9, `Subraces` 4, `Traits` 38; SRD 5.2.1 `Species` 9, `Subspecies` 24, `Traits` 67. SRD 5.1: 2 races are Small (halfling, gnome), 7 are Medium. SRD 5.2.1: `size` is Medium for 6, Small for 2 (halfling, gnome), and absent for the tiefling, whose `size_options` lists Small and Medium. All 9 species have `type` "Humanoid"; SRD 5.1 races have none.
+- **Speeds:** SRD 5.1: 25 for the dwarf, halfling and gnome, 30 for the rest. SRD 5.2.1: 35 for the goliath, 30 for the rest.
+- **The human's size (the row's note, found by ENG-10 §11, not re-read here):** 5e-database gives the SRD 5.2.1 human `Medium`; the SRD's text is Medium or Small. The importer follows the note, for the human alone (`SIZE_BY_SPECIES`).
+- **Stat increases (SRD 5.1):** `ability_bonuses` on all 9 races (the human: six of +1; the half-elf: Charisma +2) and all 4 subraces; the half-elf has `ability_bonus_options`: choose 2, five stats (all but Charisma), each +1. SRD 5.2.1 has none (SPEC §3.1: the stats come from the background).
+- **Languages (SRD 5.1):** `languages` on all 9; `language_options` on the human (1 of 15) and the half-elf (1 of 14); the trait `extra-language` has `language_options` (1 of 14) and belongs to the high elf. SRD 5.2.1 species have none (the row's note).
+- **Proficiencies:** 5 SRD 5.1 traits list `proficiencies` (`dwarven-combat-training`, `keen-senses`, `elf-weapon-training`, `tinker`, `menacing`); 2 have `proficiency_choices` (`tool-proficiency`: 1 of 3, `skill-versatility`: 2 of 18). SRD 5.2.1: `keen-senses` (1 of 3 skills) and `skillful` (1 of 18); the options name the skill itself, not its proficiency. Every proficiency's `reference` is the skill, the weapon or the tool.
+- **Traits:** `draconic-ancestry` (SRD 5.1) has `trait_specific.subtrait_options`: 1 of 10 traits (`draconic-ancestry-<color>`). In SRD 5.2.1 the trait `draconic-ancestry` has `species: dragonborn` and is in none of the 33 `traits` lists. SRD 5.1 has no trait that nothing lists. `Traits` and `Features` share no index.
+- **Not imported, as effects or spells:** SRD 5.1 `trait_specific` on 12 traits (the high elf's cantrip choice, ten ancestries' damage types and breath weapons); SRD 5.2.1 `spells` on 20 traits, `speed` on `wood-elf-speed-increase` (35), `damage_type` on the 10 dragonborn subspecies.
+- No `[ПРОВЕРИТЬ]` is involved.
+
+#### 9. Not in this ticket
+
+- The races' and species' effects, resources and spells (Dwarven Toughness, Lucky, Breath Weapon, Infernal Legacy, Elven Lineage): CONT-34 and CONT-35.
+- A species' words in SRD 5.2.1: the source has none for a species or a lineage.
+- The Species topic and the words "Race" and "Species": CONT-46.
+
+#### 10. Rake check
+
+- **Everything is data:** no stat, skill or language is named in the code; a stat key is read from the entry's link.
+- **Ids are stable:** every id is the source's slug, and the hand-written packs' ids are the same (§7).
+- **No ruleset checks scattered:** the two sources' shapes are read in one place each (`speciesOf`, `lineagesOf`), by the file names; the human's size is a table keyed by species.
+- **No rules text:** the test asserts ids, keys, counts and shapes.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 523 files, no fixes; `pnpm typecheck` clean; `pnpm test` 152 files, 1801 passed, 0 failed, 33.6 s (29 new, from 1772), then speed 2 passed; coverage statements 99.02 % (4162/4203), lines 99.78 % (3648/3656). No `pnpm e2e`: `apps/web` is not touched.
+
+**First run found two things in my own test, none in the importer:** the human's language list has 15 options, not 14 (the half-elf's and the high elf's have 14), and the hand-written packs hold features of classes and backgrounds, which are other importers'. It also found Draconic Ancestry (SRD 5.2.1), in no trait list (§3 item 6).
+
+**Difference from the row:** none. The row's note on the human's size and the high elf's language is followed.
+
+**Found, not fixed:**
+- `species.ts` keeps its own map from a `Proficiencies` entry to a grant's category and key, for the kinds a species' traits need. CONT-08 and CONT-10 need all kinds (armor, saving throws, the weapon groups). It is part of CONT-68, with `keyOf`.
+- A trait's proficiency choice is the source's list of 18 skills, where the hand-written 2024 `skillful` uses the filter `{ type: 'skill' }`. The two differ until CONT-35 merges its mechanics, which should choose one.
+- SRD 5.2.1's 10 dragonborn subspecies carry `damage_type`, which no field holds. The trait ids (`draconic-breath-weapon-acid`) say it, and CONT-35 writes the effect.
+
+**Changelog:** nothing for the changelog; a person sees nothing yet.
