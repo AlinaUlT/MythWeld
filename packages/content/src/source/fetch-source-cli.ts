@@ -10,7 +10,8 @@ const { manifest } = result;
 const count = (ruleset: string): number =>
   manifest.files.filter((file) => file.path.startsWith(`${ruleset}/`)).length;
 const verb = result.status === 'fetched' ? 'fetched' : 'already there';
+const pdf = manifest.pdf === undefined ? '' : `, SRD 5.2.1 PDF ${manifest.pdf.sha256.slice(0, 7)}`;
 console.log(
   `5e-database ${manifest.commit.slice(0, 7)} ${verb}: ${count('2014')} files for 2014, ` +
-    `${count('2024')} for 2024, in ${dir}`,
+    `${count('2024')} for 2024${pdf}, in ${dir}`,
 );

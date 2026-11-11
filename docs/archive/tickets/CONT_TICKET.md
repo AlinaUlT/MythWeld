@@ -1436,3 +1436,103 @@ Not a screen.
 - The sub-sections of SRD 5.1 are separate rules and a rule has no parent: the window of a rule cannot say "in Actions in Combat". A `parent` field is the schema's to add; the topic and the name carry it for now.
 
 **Changelog:** nothing for the changelog; a person sees nothing yet.
+
+---
+
+### CONT-73 SRD 5.2.1's rules chapters are imported as rules with topics
+
+**Hat:** The fetch takes the SRD 5.2.1 PDF as a source, and SRD 5.2.1's rules become `rule` entities
+**Depends on:** CONT-15 (the importer, the topics), CONT-01 (the fetch)
+**Size:** M
+**Screen:** No
+**SPEC:** §3.2 (sources), §5.1; ADR 003, ADR 013 item 18, ADR 014 item 13. The owner said yes to the PDF as a source on 2026-11-11 (CONT-15 §11 had asked).
+
+---
+
+#### 1. Where the code lives
+
+**Main files:** `packages/content/src/source/pin.ts` (the PDF's address and hash), `fetch-source.ts` (downloads it, checks the hash, derives the rules), `srd-pdf.ts` (new: the pure reader of the PDF's text items), `srd-pdf-cli.ts` (new: reads the PDF with `pdfjs-dist`), `packages/content/src/import/rules.ts` (SRD 5.2.1's side).
+- `packages/content/package.json` — dev dependency `pdfjs-dist` 4.10.38 (Apache-2.0).
+- Tests: `srd-pdf.test.ts` (new), `fetch-source.test.ts`, `import-rules.test.ts`, `import-frame.test.ts`.
+- `docs/RUNNING.md` — one sentence on what the fetch now takes.
+
+#### 2. What is missing now
+
+Measured on `48f25f5`: SRD 5.2.1 has 17 topics and no rule; its folder in the source has no `Rules` file (CONT-15 §8).
+
+#### 3. What it should look like when done
+
+1. `pnpm fetch-source` also downloads the SRD 5.2.1 PDF into `srd-5.2.1/`, refuses any bytes whose SHA-256 is not the pinned `8974902d…` (nothing is kept then), keeps the CC-BY-4.0 attribution beside it, and lists both in `SOURCE.json` with the PDF's address and hash. It fetches nothing again when data and PDF are as fetched.
+2. The fetch derives `2024/5e-SRD-Rules.json` from the PDF, in the shape of SRD 5.1's file, and refuses to replace a 2024 `Rules` file the data already has. The file is not committed (it is in the folder git ignores).
+3. The derived file has 267 entries: the 2 chapters ("Playing the Game", "Rules Glossary"), 110 sections of "Playing the Game" (9 at the first level, 40 at the second, 61 at the third) and the 155 terms of the glossary, each with its name, its words, its page, its parent and, for a term, its bracketed kind.
+4. The importer makes a `rule` for each entry but the 2 chapters: 265, each with a `topic`. SRD 5.2.1's topics are the 15 of ADR 013 item 18 and `glossary` (Rules glossary).
+5. A glossary term's topic is its kind (`[Action]` Action, `[Condition]` Conditions and diseases, `[Hazard]` Environment, `[Area of Effect]` Spells, `[Attitude]` Other actions), else the one a table names for it, else `glossary`. A section's topic is its own, or its section's.
+6. SRD 5.1 is as CONT-15 made it, with its topics and 137 rules.
+
+#### 4. How to do it
+
+1. The PDF is the SRD 5.2.1 file on D&D Beyond's own media host, the one the SRD page links; the container cannot open `dndbeyond.com/srd` (403), the file answers. Its hash is the pin.
+2. `pdfjs-dist` gives each piece of text with its position and height. `srd-pdf.ts` reads the pages of "Playing the Game" (5 to 18) and of the glossary (176 to 191), column by column (the second column starts at 300 of a 594 wide page), and drops the footer. A heading is a line by its size (26 the chapter, 18, 14 and 12 the three levels of "Playing the Game"; 12 a glossary term, whose body is 10). A paragraph starts at an indent of about 8, a gap over 13, a bullet or "1:". A word a hyphen broke at the line's end is joined. A table's cells are joined with " | ", words with a space. A sidebar's title, in small capitals (read as capitals and lowercase letters mixed), is a heading one level below the open one.
+3. The derived file is in the 5e-database shape (`index`, `name`, `desc`, `parent`) with `kind`, `tag`, `depth` and `page`, so the importer reads it with `readSourceFile` and the frame is unchanged. An id is the slug of the name; a name that comes twice gets its tag or its parent's slug too (the glossary's Cover is `cover-rules-glossary`).
+4. The fetch runs the reader as a child process, so `fetchSource` stays synchronous.
+
+#### 5. Stored data
+
+Nothing stored changes.
+
+#### 6. What a person will see
+
+Not a screen.
+
+#### 7. Tests
+
+- `srd-pdf.test.ts` — 6, on made-up pages: headings by size and parents, the two columns and the footer, paragraphs by indent and gap, a hyphen-broken word, a hanging list, a table's cells, a small-capital title, a name that comes twice.
+- `fetch-source.test.ts` — 5 new, with a file URL and made-up bytes: the pin; the PDF beside the data, its attribution and the manifest; nothing fetched again, and a fetch again when another PDF is asked for; a wrong hash refused with nothing left; a 2024 `Rules` file already there is not replaced.
+- `import-rules.test.ts` — 10 for SRD 5.2.1 (the older SRD 5.2.1 test is replaced): the manifest names the pinned PDF; 2 + 9 + 40 + 61 + 155 entries; a rule for each but the chapters with its name and words; the glossary whole, from Ability Check to Weapon Attack, in alphabetical order, with its kinds counted (12, 15, 6, 5, 3); the nine sections as the PDF's contents names them, and the ten under Damage and Healing; pages inside each part; each topic's count (summing to 265) and spot rules; a term defined twice; no soft hyphen, no non-breaking space, no hyphen at a line's end.
+- `import-frame.test.ts` — its count of 5e-database's files leaves the derived one out.
+- Control numbers from: §8, measured by a script outside the repository from the PDF.
+
+#### 8. Checked against the source
+
+SRD 5.2.1 PDF (CC-BY-4.0), 364 pages, SHA-256 `8974902d109d6e63672d7c490bde9ccf052410503d9cfa768237154fbc5e3d87`, 6,031,375 bytes, read on 2026-11-11:
+- **Where the rules are:** "Playing the Game" is pages 5 to 18 (the contents lists its sections, Combat at 13, Damage and Healing at 16, Character Creation at 19); the "Rules Glossary" is pages 176 to 191 ("Gameplay Toolbox" starts at 192). Both are in two columns, the left at 63, the right at 313.
+- **Fonts:** headings are 26, 18, 14 and 12 high in "Playing the Game" and 12 in the glossary, the words 10. The footer, the page number and "System Reference Document 5.2.1", is below 45.
+- **The glossary:** 155 terms, alphabetical letter by letter ("Climbing" before "Climb Speed"), from "Ability Check" to "Weapon Attack"; 41 of them carry a bracketed kind: Action 12, Condition 15, Area of Effect 6, Hazard 5, Attitude 3.
+- **The sections:** 9, 40 and 61 at the three levels, among them 6 sidebars set in small capitals (Exceptions Supersede General Rules, Marching Order, Playing on a Grid, Unseen Attackers and Targets, Resting, Knocking out a Creature).
+- **Two parts name 15 terms alike** (Armor Class, Cover, Hit Points, Initiative, Reach, …): a section and a glossary term, with different words.
+- No `[ПРОВЕРИТЬ]` is involved.
+
+#### 9. Not in this ticket
+
+- Icons, the summary line of a rule window: CONT-53, CONT-54. Links from a word to its rule: CONT-42.
+- The rest of the PDF (classes, spells, equipment, monsters, the Gameplay Toolbox): other rows, or already imported from 5e-database.
+- A better layout of the tables: §11.
+
+#### 10. Rake check
+
+- **Only openly licensed content:** SRD 5.2.1 is CC-BY-4.0; the PDF and the file derived from it stay in the folder git ignores, as the rest of the source does; the repository holds the reader and the pin. The attribution is kept beside the PDF.
+- **Reproducible:** the PDF is taken by its hash, and the reader is code in the repository; a change of either fails `verifySource` or the tests.
+- **Core names no game:** all of it is in `packages/content`; the engine and the schema are untouched.
+- **No rules text in a test:** the made-up pages hold made-up words; the real file's test asserts ids, counts, names, order and shapes.
+- **Nothing invisible:** a test refuses a non-breaking space, a soft hyphen, a zero-width space and a byte-order mark in any rule.
+
+#### 11. What came out of it
+
+**Gate, 2026-11-11:** `pnpm lint` 533 files, no fixes; `pnpm typecheck` clean; `pnpm test` 160 files, 2001 passed, 0 failed, 37.4 s (19 new, from 1982), then speed 2 passed; coverage statements 99.02 % (4162/4203), lines 99.78 % (3648/3656). No `pnpm e2e`: `apps/web` is not touched.
+
+**Results:** SRD 5.2.1 imports 265 rules and 16 topics. By topic: Move 22, Action 14, Bonus action 2, Reaction 2, Combat 14, Other actions 14, Environment 25, Damage and attack 39, Hit points, death and rest 26, Abilities and skills 42, Conditions and diseases 15, Spells 15, Rules glossary 35; none for Origins, Active class features and Multiclassing. The derived file is 171,737 bytes; the fetch took 6.9 s with the download.
+
+**Differences from the row:**
+- The row offers the PDF as a pinned source "or a derived file with its page numbers committed". The PDF is pinned by its hash and the file derived at fetch, not committed: the source stays out of the repository as CONT-01 keeps it, and the page of each entry is a field of it.
+- The topics of the two rulesets are not the same list: SRD 5.1 has Equipment and Appendix (its chapters), SRD 5.2.1 has Rules glossary (its 35 terms that no topic holds). CONT-15's test of 17 topics in each is now per ruleset.
+
+**Own choices, reported:** the glossary's term-to-topic table (`TOPIC_OF_TERM` in `rules.ts`) is a judgement: ~100 terms by index, the rest `glossary`; the owner's screens (CONT-53, CONT-54) may move a term.
+
+**Found, not fixed:**
+- A table is read as lines of cells joined with " | " (11 entries have one), not as a table: the row of a table is one line and its heading another.
+- A sidebar sits inside a column's text, and the words that follow it in the same column are read as the sidebar's (the Hit Points section ends mid-sentence, its words after the sidebar are under Resting). The six sidebars are small.
+- The glossary's introduction ("Glossary Conventions", page 176) is not an entry and is left out. Italic ("See also") is plain text.
+- A real hyphen at a line's end followed by a lowercase word is joined as a broken word ("fixed-" "length"); none was found in the 265 entries, and a test refuses a hyphen left at a line's end.
+- Three topics (Origins, Active class features, Multiclassing) have no rule in either SRD's rules chapters (CONT-15 §11).
+
+**Changelog:** nothing for the changelog; a person sees nothing yet.

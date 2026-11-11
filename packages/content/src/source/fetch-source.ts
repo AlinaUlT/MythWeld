@@ -13,12 +13,17 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
+  DERIVED_RULES_PATH,
   MANIFEST_NAME,
   SOURCE_COMMIT,
   SOURCE_LICENSE,
   SOURCE_REPO,
   SOURCE_RULESETS,
+  SRD_PDF,
+  SRD_PDF_LICENSE_PATH,
+  SRD_PDF_PATH,
   sourceFolder,
 } from './pin.ts';
 
@@ -36,10 +41,20 @@ export interface SourceFileEntry {
   readonly sha256: string;
 }
 
+/** CONT-73: a PDF fetched beside the data, by its hash. */
+export interface PdfSource {
+  readonly url: string;
+  readonly sha256: string;
+  /** Whether the rules are derived from it into the 2024 folder. Default true. */
+  readonly derive?: boolean;
+}
+
 export interface SourceManifest {
   readonly repo: string;
   readonly commit: string;
   readonly files: readonly SourceFileEntry[];
+  /** The PDF the fetch added, when it did (CONT-73). */
+  readonly pdf?: { readonly url: string; readonly sha256: string };
 }
 
 export interface FetchOptions {
@@ -49,6 +64,8 @@ export interface FetchOptions {
   readonly repo?: string;
   /** Defaults to the pinned commit. */
   readonly commit?: string;
+  /** Defaults to the pinned SRD 5.2.1 PDF; `false` fetches the data alone (a test, offline). */
+  readonly pdf?: PdfSource | false;
 }
 
 export type FetchResult =
@@ -93,11 +110,11 @@ export function readManifest(dir: string): SourceManifest | undefined {
   try {
     const parsed: unknown = JSON.parse(readFileSync(join(dir, MANIFEST_NAME), 'utf8'));
     if (typeof parsed !== 'object' || parsed === null) return undefined;
-    const { repo, commit, files } = parsed as Partial<SourceManifest>;
+    const { repo, commit, files, pdf } = parsed as Partial<SourceManifest>;
     if (typeof repo !== 'string' || typeof commit !== 'string' || !Array.isArray(files)) {
       return undefined;
     }
-    return { repo, commit, files };
+    return { repo, commit, files, ...(pdf !== undefined && { pdf }) };
   } catch {
     return undefined;
   }
@@ -123,6 +140,32 @@ export function verifySource(dir: string): string[] {
   return problems;
 }
 
+/** The attribution the SRD 5.2.1 asks for, kept beside the PDF. */
+const SRD_PDF_LICENSE = `This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
+`;
+
+/**
+ * CONT-73: downloads the PDF into `staged`, refuses bytes whose hash is not the pinned one, and
+ * derives the 2024 rules file from it. Nothing is kept when the hash is wrong.
+ */
+function addPdf(staged: string, pdf: PdfSource): void {
+  const path = join(staged, SRD_PDF_PATH);
+  mkdirSync(join(path, '..'), { recursive: true });
+  execFileSync('curl', ['-fsSL', '--max-time', '300', '-o', path, pdf.url], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const got = sha256(readFileSync(path));
+  if (got !== pdf.sha256)
+    throw new Error(`the PDF has the hash ${got}, not the pinned ${pdf.sha256}`);
+  writeFileSync(join(staged, SRD_PDF_LICENSE_PATH), SRD_PDF_LICENSE);
+  if (pdf.derive === false) return;
+  const out = join(staged, DERIVED_RULES_PATH);
+  if (existsSync(out))
+    throw new Error(`${DERIVED_RULES_PATH} is already in the data; it is not replaced`);
+  const cli = fileURLToPath(new URL('./srd-pdf-cli.ts', import.meta.url));
+  execFileSync(process.execPath, [cli, path, out], { stdio: ['ignore', 'pipe', 'pipe'] });
+}
+
 /**
  * Fetches the pinned commit and copies the English data folders and the license into `dir`.
  * Nothing is fetched when `dir` already holds this commit and every file is as fetched.
@@ -132,9 +175,19 @@ export function fetchSource(options: FetchOptions): FetchResult {
   const { dir } = options;
   const repo = options.repo ?? SOURCE_REPO;
   const commit = options.commit ?? SOURCE_COMMIT;
+  const pdf = options.pdf === undefined ? SRD_PDF : options.pdf;
+  const same = (earlier: SourceManifest) =>
+    pdf === false
+      ? earlier.pdf === undefined
+      : earlier.pdf?.url === pdf.url && earlier.pdf.sha256 === pdf.sha256;
 
   const earlier = readManifest(dir);
-  if (earlier?.commit === commit && earlier.repo === repo && verifySource(dir).length === 0) {
+  if (
+    earlier?.commit === commit &&
+    earlier.repo === repo &&
+    same(earlier) &&
+    verifySource(dir).length === 0
+  ) {
     return { status: 'already-there', manifest: earlier };
   }
   if (existsSync(dir) && earlier === undefined && readdirSync(dir).length > 0) {
@@ -167,7 +220,16 @@ export function fetchSource(options: FetchOptions): FetchResult {
     if (!files.some((file) => file.path.startsWith('2024/') && file.path.endsWith('.json'))) {
       throw new Error('no 2024 data files came with that commit');
     }
-    const manifest: SourceManifest = { repo, commit, files };
+    let manifest: SourceManifest = { repo, commit, files };
+    if (pdf !== false) {
+      addPdf(staged, pdf);
+      manifest = {
+        repo,
+        commit,
+        files: describeFiles(staged, listFiles(staged)),
+        pdf: { url: pdf.url, sha256: pdf.sha256 },
+      };
+    }
     writeFileSync(join(staged, MANIFEST_NAME), `${JSON.stringify(manifest, null, 2)}\n`);
 
     rmSync(dir, { recursive: true, force: true });

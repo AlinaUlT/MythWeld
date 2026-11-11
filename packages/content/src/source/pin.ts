@@ -24,3 +24,17 @@ export const SOURCE_DIR_NAME = '.source/5e-database';
 
 /** The manifest the fetch writes next to the files. */
 export const MANIFEST_NAME = 'SOURCE.json';
+
+/**
+ * CONT-73: the SRD 5.2.1 PDF, the one source of its rules chapters (5e-database has no 2024 `Rules`
+ * file). The publisher's own file, CC-BY-4.0, by its hash: the fetch refuses any other bytes.
+ */
+export const SRD_PDF = {
+  url: 'https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf',
+  sha256: '8974902d109d6e63672d7c490bde9ccf052410503d9cfa768237154fbc5e3d87',
+} as const;
+
+/** Where the PDF goes in the fetched folder, and the rules file the fetch derives from it. */
+export const SRD_PDF_PATH = 'srd-5.2.1/SRD_CC_v5.2.1.pdf';
+export const SRD_PDF_LICENSE_PATH = 'srd-5.2.1/LICENSE.md';
+export const DERIVED_RULES_PATH = '2024/5e-SRD-Rules.json';

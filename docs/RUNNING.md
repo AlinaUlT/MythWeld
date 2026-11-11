@@ -53,7 +53,9 @@ pnpm e2e
      reporter, the line is shown only on a failure; `--reporter=default` shows it always.
 - The import's tests read the source `pnpm fetch-source` fetches. The `unit` pass first puts it in
   place (`vitest.fetch-source.ts`) and fetches nothing when it is there. With no network a test of
-  the source fails and says to run `pnpm fetch-source`; run it once online.
+  the source fails and says to run `pnpm fetch-source`; run it once online. The fetch also takes the
+  SRD 5.2.1 PDF (6 MB, by its hash, with `curl`) and derives SRD 5.2.1's rules file from it
+  (CONT-73).
 - Each test may take up to 60 s before Vitest stops it (`vitest.config.ts`). The limit only
   catches a test that hangs; a busy machine slows tests without failing them.
 - One pass alone: `pnpm vitest run --project unit` or `pnpm vitest run --project speed`. One file:

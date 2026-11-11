@@ -12,6 +12,9 @@ import {
   SOURCE_DIR_NAME,
   SOURCE_REPO,
   SOURCE_RULESETS,
+  SRD_PDF,
+  SRD_PDF_LICENSE_PATH,
+  SRD_PDF_PATH,
   sourceFolder,
 } from '../src/source/pin.ts';
 
@@ -91,7 +94,7 @@ describe('CONT-01 the pin', () => {
 describe('CONT-01 fetchSource', () => {
   it('copies both English folders and the license, and writes a manifest of what it copied', () => {
     const dir = join(scratch, 'first');
-    const result = fetchSource({ dir, repo: remoteUrl, commit });
+    const result = fetchSource({ dir, repo: remoteUrl, commit, pdf: false });
     expect(result.status).toBe('fetched');
     expect(readFileSync(join(dir, '2014', '5e-SRD-Made-Up.json'), 'utf8')).toBe(
       FILES['packages/5e-database/src/2014/en/5e-SRD-Made-Up.json'],
@@ -127,7 +130,7 @@ describe('CONT-01 fetchSource', () => {
 
   it('takes nothing from a ru folder or from beside the data folders', () => {
     const dir = join(scratch, 'second');
-    fetchSource({ dir, repo: remoteUrl, commit });
+    fetchSource({ dir, repo: remoteUrl, commit, pdf: false });
     const paths = readManifest(dir)?.files.map((file) => file.path) ?? [];
     expect(paths.filter((path) => path.includes('ru') || path.includes('never'))).toEqual([]);
     expect(existsSync(join(dir, 'data.json'))).toBe(false);
@@ -135,11 +138,13 @@ describe('CONT-01 fetchSource', () => {
 
   it('answers "already-there" with the manifest it holds, without reaching the remote', () => {
     const dir = join(scratch, 'idle');
-    fetchSource({ dir, repo: remoteUrl, commit });
+    fetchSource({ dir, repo: remoteUrl, commit, pdf: false });
     const hidden = join(scratch, 'remote-hidden');
     execFileSync('mv', [remote, hidden]);
     try {
-      expect(fetchSource({ dir, repo: remoteUrl, commit }).status).toBe('already-there');
+      expect(fetchSource({ dir, repo: remoteUrl, commit, pdf: false }).status).toBe(
+        'already-there',
+      );
     } finally {
       execFileSync('mv', [hidden, remote]);
     }
@@ -147,7 +152,7 @@ describe('CONT-01 fetchSource', () => {
 
   it('names a changed, a missing and an extra file, and fetches again to put them right', () => {
     const dir = join(scratch, 'damaged');
-    fetchSource({ dir, repo: remoteUrl, commit });
+    fetchSource({ dir, repo: remoteUrl, commit, pdf: false });
     writeFileSync(join(dir, '2014', '5e-SRD-Made-Up.json'), '[]\n');
     rmSync(join(dir, '2014', '5e-SRD-Other.json'));
     writeFileSync(join(dir, '2024', 'extra.json'), '[]\n');
@@ -156,7 +161,7 @@ describe('CONT-01 fetchSource', () => {
       '2014/5e-SRD-Other.json is missing',
       '2024/extra.json is not in SOURCE.json',
     ]);
-    expect(fetchSource({ dir, repo: remoteUrl, commit }).status).toBe('fetched');
+    expect(fetchSource({ dir, repo: remoteUrl, commit, pdf: false }).status).toBe('fetched');
     expect(verifySource(dir)).toEqual([]);
     expect(existsSync(join(dir, '2024', 'extra.json'))).toBe(false);
   });
@@ -171,15 +176,17 @@ describe('CONT-01 fetchSource', () => {
     const dir = join(scratch, 'foreign');
     mkdirSync(dir);
     writeFileSync(join(dir, 'mine.txt'), 'keep');
-    expect(() => fetchSource({ dir, repo: remoteUrl, commit })).toThrow(/is not touched/);
+    expect(() => fetchSource({ dir, repo: remoteUrl, commit, pdf: false })).toThrow(
+      /is not touched/,
+    );
     expect(readFileSync(join(dir, 'mine.txt'), 'utf8')).toBe('keep');
   });
 
   it('fails, and leaves the folder as it was, when the commit does not exist', () => {
     const dir = join(scratch, 'wrong');
-    fetchSource({ dir, repo: remoteUrl, commit });
+    fetchSource({ dir, repo: remoteUrl, commit, pdf: false });
     const missing = '0123456789abcdef0123456789abcdef01234567';
-    expect(() => fetchSource({ dir, repo: remoteUrl, commit: missing })).toThrow();
+    expect(() => fetchSource({ dir, repo: remoteUrl, commit: missing, pdf: false })).toThrow();
     expect(readManifest(dir)?.commit).toBe(commit);
     expect(verifySource(dir)).toEqual([]);
   });
@@ -209,6 +216,103 @@ describe('CONT-01 fetchSource', () => {
         dir,
         repo: pathToFileURL(empty).href,
         commit: git(empty, 'rev-parse', 'HEAD'),
+        pdf: false,
+      }),
+    ).toThrow();
+    expect(existsSync(dir)).toBe(false);
+  });
+});
+
+describe('CONT-73 the SRD 5.2.1 PDF', () => {
+  const bytes = 'made-up bytes, not a PDF\n';
+  const options = (file: string, hash: string) => ({
+    url: pathToFileURL(file).href,
+    sha256: hash,
+    derive: false,
+  });
+  const fakePdf = (name: string, text = bytes) => {
+    const file = join(scratch, name);
+    writeFileSync(file, text);
+    return file;
+  };
+
+  it('is pinned by the hash of the publisher’s own file', () => {
+    expect(SRD_PDF.sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(SRD_PDF.url).toBe(
+      'https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf',
+    );
+  });
+
+  it('fetches it beside the data with its attribution, and lists both in the manifest', () => {
+    const dir = join(scratch, 'with-pdf');
+    const file = fakePdf('a.pdf');
+    const result = fetchSource({ dir, repo: remoteUrl, commit, pdf: options(file, sha(bytes)) });
+    expect(result.status).toBe('fetched');
+    expect(readFileSync(join(dir, SRD_PDF_PATH), 'utf8')).toBe(bytes);
+    expect(readFileSync(join(dir, SRD_PDF_LICENSE_PATH), 'utf8')).toMatch(
+      /Creative Commons Attribution 4\.0/,
+    );
+    const manifest = readManifest(dir);
+    expect(manifest?.pdf).toEqual({ url: pathToFileURL(file).href, sha256: sha(bytes) });
+    expect(manifest?.files.find((f) => f.path === SRD_PDF_PATH)).toEqual({
+      path: SRD_PDF_PATH,
+      bytes: size(bytes),
+      sha256: sha(bytes),
+    });
+    expect(verifySource(dir)).toEqual([]);
+  });
+
+  it('fetches nothing again when the data and the PDF are as fetched, and again when the PDF asked for is another', () => {
+    const dir = join(scratch, 'with-pdf-again');
+    const file = fakePdf('b.pdf');
+    fetchSource({ dir, repo: remoteUrl, commit, pdf: options(file, sha(bytes)) });
+    expect(
+      fetchSource({ dir, repo: remoteUrl, commit, pdf: options(file, sha(bytes)) }).status,
+    ).toBe('already-there');
+    expect(fetchSource({ dir, repo: remoteUrl, commit, pdf: false }).status).toBe('fetched');
+    expect(readManifest(dir)?.pdf).toBeUndefined();
+    expect(existsSync(join(dir, SRD_PDF_PATH))).toBe(false);
+  });
+
+  it('refuses bytes whose hash is not the pinned one, and leaves nothing behind', () => {
+    const dir = join(scratch, 'wrong-hash');
+    const file = fakePdf('c.pdf', 'other bytes\n');
+    expect(() =>
+      fetchSource({ dir, repo: remoteUrl, commit, pdf: options(file, sha(bytes)) }),
+    ).toThrow(/not the pinned/);
+    expect(existsSync(dir)).toBe(false);
+  });
+
+  it('refuses to replace a 2024 Rules file the data already has', () => {
+    const rules = 'packages/5e-database/src/2024/en/5e-SRD-Rules.json';
+    const file = fakePdf('d.pdf');
+    const withRules = mkdtempSync(join(scratch, 'has-rules-'));
+    git(withRules, 'init', '-q');
+    git(withRules, 'config', 'uploadpack.allowFilter', 'true');
+    git(withRules, 'config', 'uploadpack.allowAnySHA1InWant', 'true');
+    for (const [path, text] of Object.entries({ ...FILES, [rules]: '[]\n' })) {
+      mkdirSync(dirname(join(withRules, path)), { recursive: true });
+      writeFileSync(join(withRules, path), text);
+    }
+    git(withRules, 'add', '.');
+    git(
+      withRules,
+      '-c',
+      'user.name=test',
+      '-c',
+      'user.email=test@example.invalid',
+      'commit',
+      '-q',
+      '-m',
+      'x',
+    );
+    const dir = join(scratch, 'has-rules-out');
+    expect(() =>
+      fetchSource({
+        dir,
+        repo: pathToFileURL(withRules).href,
+        commit: git(withRules, 'rev-parse', 'HEAD'),
+        pdf: { url: pathToFileURL(file).href, sha256: sha(bytes) },
       }),
     ).toThrow();
     expect(existsSync(dir)).toBe(false);

@@ -255,9 +255,12 @@ describe('CONT-04 the source, as fetched', () => {
     }
   });
 
+  // CONT-73: the fetch adds SRD 5.2.1's `Rules` to its folder, derived from the PDF. These counts
+  // are of 5e-database's own files, so that one is left out.
   const files = (ruleset: string) =>
     readdirSync(join(SOURCE_DIR, ruleset))
       .filter((name) => name.endsWith('.json'))
+      .filter((name) => !(ruleset === '2024' && name === '5e-SRD-Rules.json'))
       .map((name) => name.slice('5e-SRD-'.length, -'.json'.length));
 
   const everyEntry = RULESETS.flatMap((ruleset) =>

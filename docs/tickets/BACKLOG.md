@@ -405,7 +405,7 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
 | CONT-70 | The item schema holds the equipment values the import left out | M | 🔲 |
 | CONT-71 | The schemas hold the class and background values the imports left out | M | 🔲 |
 | CONT-72 | SRD 5.2.1's spell areas and the damages the source lists no field for are imported | M | 🔲 |
-| CONT-73 | SRD 5.2.1's rules chapters are imported as rules with topics | M | 🔲 |
+| CONT-73 | SRD 5.2.1's rules chapters are imported as rules with topics | M | ✅ 2026-11-11 |
 
 - **CONT-16** — SPEC §6.8: files at `packages/content/mechanics/<pack>/<type>/<slug>.json`, merged
   by `EntityId`. A mechanics file whose id the import lacks fails the build; an entity with no
@@ -581,15 +581,6 @@ highest maximum; uses that add up are an effect `add` on `resources.<key>.max`).
     Weapon and others). The row reads them from the SRD's own text (the PDF) or from a pinned
     second source added to CONT-01's fetch, checks each against the other edition's data where both
     have it, and fills `range.area`, `damage` and `scaling` in `spells.ts`.
-  - **CONT-73** — found by CONT-15: 5e-database's 2024 folder has no `Rules` file, so SRD 5.2.1 has
-    the 17 topics and no rule. Its rules are in the SRD 5.2.1 PDF (CC-BY-4.0): "Playing the Game"
-    and the "Rules Glossary" (from page 176 of 364), where `pdftohtml -xml` shows each entry as a
-    heading (font size 18, bold, `#88191f`) over paragraphs (size 15, Cambria) in two columns. The
-    row adds the PDF to the pinned source (CONT-01's fetch and manifest, by hash, from the
-    publisher's own file named in the pack's attribution) or a derived file with its page numbers,
-    reads it into `rule` entries with the topics of `rules.ts`, and checks the count against the
-    PDF's glossary. Adding a source is a licensing and scope question; it stops for the owner's
-    yes before the PDF or text from it is committed.
 
 ---
 ## Phases 4–7 — cut when the phase before closes

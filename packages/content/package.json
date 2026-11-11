@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@grimoire/engine": "workspace:*",
-    "@types/node": "^22.20.4"
+    "@types/node": "^22.20.4",
+    "pdfjs-dist": "4.10.38"
   }
 }
